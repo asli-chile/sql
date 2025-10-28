@@ -74,12 +74,7 @@ export function DataTable({
   
   const { theme } = useTheme();
   
-  // Temporal: usar permisos básicos sin contexto de usuario
-  const canEdit = true;
-  const canAdd = true;
-  const canDelete = true;
-  const canExport = true;
-  const currentUser = { rol: 'admin', email: 'test@test.com' };
+  const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
   
   // Debug básico
   console.log('🚀 DataTable se está renderizando');
@@ -535,30 +530,30 @@ export function DataTable({
               </>
             )}
 
-            {/* Exportar - SIEMPRE VISIBLE PARA DEBUG */}
-            <button
-              onClick={() => {
-                if (onExport) {
+            {/* Exportar */}
+            {onExport && !selectionMode && canExport && (
+              <button
+                onClick={() => {
                   const actualFilteredData = table.getFilteredRowModel().rows.map(row => row.original);
                   onExport(actualFilteredData);
-                } else {
-                  console.log('onExport no está definido');
-                }
-              }}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden xs:inline">Exportar</span>
-            </button>
+                }}
+                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden xs:inline">Exportar</span>
+              </button>
+            )}
             
-            {/* Agregar - SIEMPRE VISIBLE PARA DEBUG */}
-            <button
-              onClick={onAdd || (() => console.log('onAdd no está definido'))}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden xs:inline">Agregar</span>
-            </button>
+            {/* Agregar */}
+            {onAdd && !selectionMode && canAdd && (
+              <button
+                onClick={onAdd}
+                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden xs:inline">Agregar</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

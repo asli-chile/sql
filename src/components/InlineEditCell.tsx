@@ -36,9 +36,7 @@ export function InlineEditCell({
 }: InlineEditCellProps) {
   const { theme } = useTheme();
   
-  // Temporal: usar permisos básicos sin contexto de usuario
-  const canEdit = true;
-  const currentUser = { rol: 'admin', email: 'test@test.com' };
+  const { canEdit, currentUser } = useUser();
   
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
@@ -343,7 +341,7 @@ export function InlineEditCell({
 
   return (
     <div 
-      className={`flex items-center gap-1 group cursor-pointer rounded px-2 py-1 transition-colors ${className} ${
+      className={`flex items-center gap-1 group rounded px-2 py-1 transition-colors ${className} ${
         shouldShowBulkIndicator 
           ? theme === 'dark'
             ? 'bg-blue-900/30 border border-blue-600'
@@ -353,14 +351,18 @@ export function InlineEditCell({
         theme === 'dark'
           ? 'hover:bg-gray-700'
           : 'hover:bg-blue-50'
+      } ${
+        canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
       }`}
-      onClick={() => setIsEditing(true)}
+      onClick={canEdit ? () => setIsEditing(true) : undefined}
       title={
-        shouldShowBulkIndicator
-          ? `Editar ${selectedRecords.length} registros seleccionados`
-          : onBulkSave === undefined
-            ? "Campo único - Solo edición individual"
-            : "Haz clic para editar"
+        !canEdit 
+          ? "No tienes permisos para editar"
+          : shouldShowBulkIndicator
+            ? `Editar ${selectedRecords.length} registros seleccionados`
+            : onBulkSave === undefined
+              ? "Campo único - Solo edición individual"
+              : "Haz clic para editar"
       }
     >
       <span className={`flex-1 ${getDisplayStyle(value)}`}>
@@ -371,10 +373,12 @@ export function InlineEditCell({
           {selectedRecords.length}
         </span>
       )}
-      <Edit3 
-        size={12} 
-        className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" 
-      />
+      {canEdit && (
+        <Edit3 
+          size={12} 
+          className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" 
+        />
+      )}
     </div>
   );
 }
