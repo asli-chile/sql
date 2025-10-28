@@ -45,13 +45,8 @@ export function InlineEditCell({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Debug: verificar permisos
-  console.log('🔍 InlineEditCell Debug (Temporal):', {
-    field,
-    canEdit,
-    currentUser,
-    value
-  });
+  // Debug básico
+  console.log('🚀 InlineEditCell se está renderizando para campo:', field);
 
   useEffect(() => {
     setEditValue(value || '');

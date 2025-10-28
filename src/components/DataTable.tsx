@@ -78,7 +78,8 @@ export function DataTable({
   const canExport = true;
   const currentUser = { rol: 'admin', email: 'test@test.com' };
   
-  // Debug: verificar permisos en DataTable
+  // Debug básico
+  console.log('🚀 DataTable se está renderizando');
   console.log('🔍 DataTable Debug (Temporal):', {
     canEdit,
     canAdd,
@@ -88,7 +89,8 @@ export function DataTable({
     onAdd: !!onAdd,
     onEdit: !!onEdit,
     onDelete: !!onDelete,
-    onExport: !!onExport
+    onExport: !!onExport,
+    dataLength: data.length
   });
   
   // Helper para obtener estilos de filtro según el tema
@@ -530,31 +532,30 @@ export function DataTable({
               </>
             )}
 
-            {/* Exportar */}
-            {onExport && !selectionMode && canExport && (
-              <button
-                onClick={() => {
-                  // Obtener los datos realmente filtrados por React Table
+            {/* Exportar - SIEMPRE VISIBLE PARA DEBUG */}
+            <button
+              onClick={() => {
+                if (onExport) {
                   const actualFilteredData = table.getFilteredRowModel().rows.map(row => row.original);
                   onExport(actualFilteredData);
-                }}
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden xs:inline">Exportar</span>
-              </button>
-            )}
+                } else {
+                  console.log('onExport no está definido');
+                }
+              }}
+              className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden xs:inline">Exportar</span>
+            </button>
             
-            {/* Agregar */}
-            {onAdd && !selectionMode && canAdd && (
-              <button
-                onClick={onAdd}
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden xs:inline">Agregar</span>
-              </button>
-            )}
+            {/* Agregar - SIEMPRE VISIBLE PARA DEBUG */}
+            <button
+              onClick={onAdd || (() => console.log('onAdd no está definido'))}
+              className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden xs:inline">Agregar</span>
+            </button>
           </div>
         </div>
       </div>
