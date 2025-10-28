@@ -1082,8 +1082,8 @@ export function DataTable({
                      className="px-1 sm:px-2 py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap"
                      style={{ color: 'white' }}
                    >
-                     <span className="hidden sm:inline">Acciones</span>
-                     <span className="sm:hidden">Acc</span>
+                     <span className="hidden sm:inline">Editar</span>
+                     <span className="sm:hidden">Edit</span>
                    </th>
                  </tr>
                ))}
