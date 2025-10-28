@@ -186,8 +186,8 @@ export const createRegistrosColumns = (
         // Si ya es un array, mostrarlo directamente
         if (Array.isArray(contenedor)) {
           return contenedor.map((container, index) => (
-            <div key={index} className="inline-block mr-1 mb-1">
-              <span className={`px-2 py-1 rounded text-xs font-mono ${
+            <div key={index} className="block mb-1">
+              <span className={`px-2 py-1 rounded text-xs font-mono block ${
                 isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
               }`}>
                 {container}
@@ -200,8 +200,8 @@ export const createRegistrosColumns = (
         if (typeof contenedor === 'string' && contenedor.includes(' ')) {
           const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
           return containers.map((container, index) => (
-            <div key={index} className="inline-block mr-1 mb-1">
-              <span className={`px-2 py-1 rounded text-xs font-mono ${
+            <div key={index} className="block mb-1">
+              <span className={`px-2 py-1 rounded text-xs font-mono block ${
                 isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
               }`}>
                 {container}
@@ -221,7 +221,7 @@ export const createRegistrosColumns = (
       };
       
       return (
-        <div className="flex flex-wrap">
+        <div className="block">
           {displayContainers()}
         </div>
       );
