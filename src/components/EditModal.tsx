@@ -89,7 +89,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
         ejecutivo: record.ejecutivo || '',
         shipper: record.shipper || '',
         booking: record.booking || '',
-        contenedor: record.contenedor || '',
+        contenedor: Array.isArray(record.contenedor) ? record.contenedor.join(' ') : (record.contenedor || ''),
         naviera: record.naviera || '',
         naveInicial: record.naveInicial || '',
         especie: record.especie || '',

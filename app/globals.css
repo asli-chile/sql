@@ -201,9 +201,16 @@ body {
   display: flex !important;
   flex-direction: column !important;
   gap: 0.25rem !important;
+  width: 100% !important;
 }
 
 .container-vertical span {
+  display: block !important;
+  width: 100% !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.container-vertical > * {
   display: block !important;
   width: 100% !important;
 }

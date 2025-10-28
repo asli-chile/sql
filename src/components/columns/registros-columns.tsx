@@ -217,7 +217,7 @@ export const createRegistrosColumns = (
       };
       
       return (
-        <div className="container-vertical">
+        <div className="container-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
           {displayContainers()}
         </div>
       );

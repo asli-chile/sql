@@ -1080,7 +1080,7 @@ export function DataTable({
                      className="px-1 sm:px-2 py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap"
                      style={{ color: 'white' }}
                    >
-                     <span className="hidden sm:inline">Editar</span>
+                     <span className="hidden sm:i ine">Editar</span>
                      <span className="sm:hidden">Edit</span>
                    </th>
                  </tr>
@@ -1279,7 +1279,7 @@ export function DataTable({
                       <span className={`text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>Contenedor:</span>
-                      <div className="container-vertical">
+                      <div className="container-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
                         {(() => {
                           const contenedor = registro.contenedor;
                           if (!contenedor || contenedor === '') return null;

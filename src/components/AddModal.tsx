@@ -107,6 +107,7 @@ export function AddModal({
     tipoIngreso: 'NORMAL',
     flete: '',
     comentario: '',
+    contenedor: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -269,6 +270,7 @@ export function AddModal({
         tipoIngreso: 'NORMAL',
         flete: '',
         comentario: '',
+        contenedor: '',
       });
     } catch (err) {
       console.error('Error al crear registro:', err);
@@ -798,6 +800,24 @@ export function AddModal({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
               placeholder="Comentarios adicionales..."
             />
+          </div>
+
+          {/* Contenedor */}
+          <div className="mt-4 space-y-2">
+            <label className="block text-sm font-medium text-gray-900">
+              Contenedor
+            </label>
+            <input
+              type="text"
+              name="contenedor"
+              value={formData.contenedor}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+              placeholder="Ej: MNBU3612662 MNBU4269429 MNBU3121648"
+            />
+            <p className="text-xs text-gray-500">
+              Múltiples contenedores separados por espacios
+            </p>
           </div>
         </form>
 
