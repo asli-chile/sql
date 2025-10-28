@@ -17,7 +17,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sistema ASLI - Gestión Logística",
   description: "Sistema de gestión para exportaciones marítimas y aéreas",
-  version: "1.0.1", // Forzar nuevo deploy
 };
 
 export default function RootLayout({
