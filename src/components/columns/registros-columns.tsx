@@ -63,7 +63,7 @@ export const createRegistrosColumns = (
     return data.filter(record => record.id && selectedRows.has(record.id));
   };
   const baseColumns: ColumnDef<Registro>[] = [
-    ...(selectionMode ? [{
+    {
       id: 'select',
       header: () => null,
       cell: ({ row }: any) => {
@@ -80,7 +80,7 @@ export const createRegistrosColumns = (
         );
       },
       enableSorting: false,
-    }] : []),
+    },
   {
     id: 'refAsli',
     accessorKey: 'refAsli',

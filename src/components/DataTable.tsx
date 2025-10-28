@@ -1096,13 +1096,19 @@ export function DataTable({
                {table.getRowModel().rows.map((row) => {
                  const isCancelado = row.original.estado === 'CANCELADO';
                  const isPendiente = row.original.estado === 'PENDIENTE';
+                 const isSelected = selectedRows?.has(row.original.id || '');
                  
                  // Determinar clases según el tema
                  let bgClass, hoverClass, textClass, editButtonClass;
                  
                  if (theme === 'dark') {
                    // Modo oscuro - colores más vibrantes
-                   if (isCancelado) {
+                   if (isSelected) {
+                     bgClass = 'bg-blue-900/40';
+                     hoverClass = 'hover:bg-blue-900/60';
+                     textClass = 'text-blue-100 font-medium';
+                     editButtonClass = 'text-blue-400 hover:text-blue-300';
+                   } else if (isCancelado) {
                      bgClass = 'bg-red-800/60';
                      hoverClass = 'hover:bg-red-800/80';
                      textClass = 'text-red-100 font-medium';
@@ -1120,11 +1126,16 @@ export function DataTable({
                    }
                  } else {
                    // Modo claro
-                   if (isCancelado) {
+                   if (isSelected) {
+                     bgClass = 'bg-blue-100';
+                     hoverClass = 'hover:bg-blue-200';
+                     textClass = 'text-blue-800 font-medium';
+                     editButtonClass = 'text-blue-600 hover:text-blue-800';
+                   } else if (isCancelado) {
                      bgClass = 'bg-red-100';
                      hoverClass = 'hover:bg-red-200';
                      textClass = 'text-red-900 font-medium';
-                   editButtonClass = 'text-blue-700 hover:text-blue-900';
+                     editButtonClass = 'text-blue-700 hover:text-blue-900';
                    } else if (isPendiente) {
                      bgClass = 'bg-yellow-100';
                      hoverClass = 'hover:bg-yellow-200';
