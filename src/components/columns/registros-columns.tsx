@@ -171,24 +171,59 @@ export const createRegistrosColumns = (
     accessorKey: 'contenedor',
     header: 'Contenedor',
     cell: ({ row }) => {
-      const contenedor = row.getValue('contenedor') as string;
+      const contenedor = row.getValue('contenedor') as string | string[];
       const estado = row.original.estado;
       
       // Si está cancelado, aplicar fondo rojo intenso con texto negro
       const isCancelado = estado === 'CANCELADO';
       
+      // Procesar contenedores para mostrar como lista
+      const displayContainers = () => {
+        if (!contenedor || contenedor === '') {
+          return '-';
+        }
+        
+        // Si ya es un array, mostrarlo directamente
+        if (Array.isArray(contenedor)) {
+          return contenedor.map((container, index) => (
+            <div key={index} className="inline-block mr-1 mb-1">
+              <span className={`px-2 py-1 rounded text-xs font-mono ${
+                isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+              }`}>
+                {container}
+              </span>
+            </div>
+          ));
+        }
+        
+        // Si es string con espacios, convertir a array
+        if (typeof contenedor === 'string' && contenedor.includes(' ')) {
+          const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
+          return containers.map((container, index) => (
+            <div key={index} className="inline-block mr-1 mb-1">
+              <span className={`px-2 py-1 rounded text-xs font-mono ${
+                isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+              }`}>
+                {container}
+              </span>
+            </div>
+          ));
+        }
+        
+        // Si es un solo contenedor
+        return (
+          <span className={`px-2 py-1 rounded text-xs font-mono ${
+            isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+          }`}>
+            {contenedor}
+          </span>
+        );
+      };
+      
       return (
-        <InlineEditCell
-          value={contenedor}
-          field="contenedor"
-          record={row.original}
-          onSave={onUpdateRecord || (() => {})}
-          onBulkSave={allowsBulkEdit('contenedor') ? onBulkUpdate : undefined}
-          type="text"
-          className={isCancelado ? 'bg-red-600 text-black px-2 py-1 rounded font-mono text-xs' : 'font-mono text-xs'}
-          selectedRecords={allowsBulkEdit('contenedor') ? getSelectedRecords() : []}
-          isSelectionMode={allowsBulkEdit('contenedor') && (selectionMode || false)}
-        />
+        <div className="flex flex-wrap">
+          {displayContainers()}
+        </div>
       );
     },
   },

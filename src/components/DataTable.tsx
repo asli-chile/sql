@@ -519,14 +519,14 @@ export function DataTable({
                   <span className="hidden xs:inline">Limpiar</span>
                 </button>
                 {canDelete && onBulkDelete && (
-                  <button
-                    onClick={onBulkDelete}
-                    className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                <button
+                  onClick={onBulkDelete}
+                  className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
                     title={`Eliminar ${selectedRows.size} registros seleccionados`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="hidden xs:inline">Eliminar ({selectedRows.size})</span>
-                  </button>
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden xs:inline">Eliminar ({selectedRows.size})</span>
+                </button>
                 )}
               </>
             )}
@@ -1124,7 +1124,7 @@ export function DataTable({
                      bgClass = 'bg-red-100';
                      hoverClass = 'hover:bg-red-200';
                      textClass = 'text-red-900 font-medium';
-                     editButtonClass = 'text-blue-700 hover:text-blue-900';
+                   editButtonClass = 'text-blue-700 hover:text-blue-900';
                    } else if (isPendiente) {
                      bgClass = 'bg-yellow-100';
                      hoverClass = 'hover:bg-yellow-200';
@@ -1154,8 +1154,8 @@ export function DataTable({
                       }}
                     >
                      {row.getVisibleCells().map((cell) => (
-                       <td
-                         key={cell.id}
+                       <td 
+                         key={cell.id} 
                          className={`px-1 sm:px-2 py-2 whitespace-nowrap text-xs text-center ${textClass}`}
                        >
                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1244,8 +1244,8 @@ export function DataTable({
                   }`}>
                     {registro.estado}
                   </div>
-                </div>
-
+           </div>
+           
                 {/* Detalles principales */}
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between">
@@ -1279,9 +1279,44 @@ export function DataTable({
                       <span className={`text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>Contenedor:</span>
-                      <span className={`text-xs font-mono font-medium ${
-                        theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                      }`}>{registro.contenedor}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {(() => {
+                          const contenedor = registro.contenedor;
+                          if (!contenedor || contenedor === '') return null;
+                          
+                          // Si ya es un array, mostrarlo directamente
+                          if (Array.isArray(contenedor)) {
+                            return contenedor.map((container, index) => (
+                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded ${
+                                theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
+                              }`}>
+                                {container}
+             </span>
+                            ));
+                          }
+                          
+                          // Si es string con espacios, convertir a array
+                          if (typeof contenedor === 'string' && contenedor.includes(' ')) {
+                            const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
+                            return containers.map((container, index) => (
+                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded ${
+                                theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
+                              }`}>
+                                {container}
+                              </span>
+                            ));
+                          }
+                          
+                          // Si es un solo contenedor
+                          return (
+                            <span className={`text-xs font-mono px-1 py-0.5 rounded ${
+                              theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
+                            }`}>
+                              {contenedor}
+                            </span>
+                          );
+                        })()}
+                      </div>
                     </div>
                   )}
                   <div className="flex justify-between">
@@ -1341,7 +1376,7 @@ export function DataTable({
                 {/* Botones de acción */}
                 <div className="flex justify-end space-x-2">
                   {onEdit && (
-                    <button
+             <button
                       onClick={() => onEdit(registro)}
                       className={`p-2 rounded-lg transition-colors ${
                         theme === 'dark'
@@ -1351,10 +1386,10 @@ export function DataTable({
                       title="Editar registro"
                     >
                       <Edit className="h-4 w-4" />
-                    </button>
+             </button>
                   )}
-                </div>
-              </div>
+           </div>
+         </div>
             );
           })}
         </div>
