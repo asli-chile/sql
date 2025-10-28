@@ -196,53 +196,10 @@ body {
   background: #777;
 }
 
-/* Forzar layout vertical para contenedores múltiples - VERSIÓN AGRESIVA */
-.container-vertical {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.25rem !important;
-  width: 100% !important;
-  align-items: stretch !important;
-}
-
+/* Contenedores múltiples en lista vertical */
 .container-vertical span {
   display: block !important;
-  width: 100% !important;
   margin-bottom: 0.25rem !important;
-  flex-shrink: 0 !important;
-  box-sizing: border-box !important;
-}
-
-.container-vertical > * {
-  display: block !important;
-  width: 100% !important;
-  margin-bottom: 0.25rem !important;
-}
-
-/* Forzar que todos los elementos dentro de container-vertical sean block */
-.container-vertical * {
-  display: block !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Específico para celdas de tabla */
-td .container-vertical,
-th .container-vertical {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.25rem !important;
-  width: 100% !important;
-  align-items: stretch !important;
-}
-
-td .container-vertical span,
-th .container-vertical span {
-  display: block !important;
-  width: 100% !important;
-  margin-bottom: 0.25rem !important;
-  flex-shrink: 0 !important;
-  box-sizing: border-box !important;
 }
 
 /* Animación zoomInOut para el logo */

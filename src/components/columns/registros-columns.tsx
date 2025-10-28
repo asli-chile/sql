@@ -217,7 +217,7 @@ export const createRegistrosColumns = (
       };
       
       return (
-        <div className="container-vertical">
+        <div className={Array.isArray(contenedor) || (typeof contenedor === 'string' && contenedor.includes(' ')) ? 'container-vertical' : ''}>
           {displayContainers()}
         </div>
       );
