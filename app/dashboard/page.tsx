@@ -21,6 +21,7 @@ import {
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total: 0,
@@ -53,6 +54,24 @@ export default function DashboardPage() {
       }
 
       setUser(user);
+
+      // Obtener información del usuario desde la tabla usuarios
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error obteniendo información del usuario:', userError);
+        // Si no se encuentra en la tabla usuarios, usar datos de auth
+        setUserInfo({
+          nombre: user.user_metadata?.full_name || user.email?.split('@')[0],
+          email: user.email
+        });
+      } else {
+        setUserInfo(userData);
+      }
     } catch (error) {
       console.error('Error checking user:', error);
       router.push('/auth');
@@ -206,7 +225,7 @@ export default function DashboardPage() {
               <div className="flex items-center space-x-2">
                 <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
                 <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-                  {user.user_metadata?.full_name || user.email}
+                  {userInfo?.nombre || user.email}
                 </span>
               </div>
               <button
