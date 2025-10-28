@@ -196,6 +196,18 @@ body {
   background: #777;
 }
 
+/* Forzar layout vertical para contenedores múltiples */
+.container-vertical {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
+}
+
+.container-vertical span {
+  display: block !important;
+  width: 100% !important;
+}
+
 /* Animación zoomInOut para el logo */
 @keyframes zoomInOut {
   0% {
