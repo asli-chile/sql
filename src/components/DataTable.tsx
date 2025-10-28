@@ -525,7 +525,7 @@ export function DataTable({
             )}
 
             {/* Exportar */}
-            {onExport && !selectionMode && canExport && (
+            {onExport && !selectionMode && (
               <button
                 onClick={() => {
                   // Obtener los datos realmente filtrados por React Table
@@ -540,7 +540,7 @@ export function DataTable({
             )}
             
             {/* Agregar */}
-            {onAdd && !selectionMode && canAdd && (
+            {(onAdd && !selectionMode) && (
               <button
                 onClick={onAdd}
                 className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
