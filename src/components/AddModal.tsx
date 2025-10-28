@@ -292,16 +292,29 @@ export function AddModal({
   const getConsorcioNaves = (naviera: string) => {
     console.log('🔍 getConsorcioNaves - Naviera recibida:', naviera);
     
-    // Si la naviera ya es un consorcio (contiene "/"), devolverla directamente
+    // Si la naviera ya es un consorcio (contiene "/"), buscar naves de las navieras individuales
     if (naviera.includes('/')) {
       console.log('🔍 Naviera es consorcio directo:', naviera);
-      return [naviera];
+      
+      // Extraer las navieras individuales del consorcio
+      const navierasIndividuales = naviera.split(' / ').map(n => n.trim());
+      console.log('🔍 Navieras individuales del consorcio:', navierasIndividuales);
+      
+      // Buscar naves de cada naviera individual en navierasNavesMapping
+      const todasLasNaves: string[] = [];
+      navierasIndividuales.forEach(navieraIndividual => {
+        const navesDeNaviera = navierasNavesMapping[navieraIndividual] || [];
+        console.log(`🔍 Naves de ${navieraIndividual}:`, navesDeNaviera);
+        todasLasNaves.push(...navesDeNaviera);
+      });
+      
+      console.log('🔍 Todas las naves del consorcio:', todasLasNaves);
+      return [...new Set(todasLasNaves)]; // Eliminar duplicados
     }
     
-    // Casos especiales de consorcios - buscar por patrones
+    // Si no es consorcio directo, buscar por patrones en consorciosNavesMapping
     const consorciosEncontrados: string[] = [];
     
-    // Buscar en todos los consorcios disponibles
     Object.keys(consorciosNavesMapping).forEach(consorcio => {
       // Patrón 1: HAPAG-LLOYD / ONE / MSC
       if (naviera.includes('HAPAG') || naviera.includes('ONE') || naviera.includes('MSC')) {
@@ -346,6 +359,17 @@ export function AddModal({
     // Si no hay naves directas, buscar en consorcios
     if (navieraNaves.length === 0) {
       console.log('🔍 No hay naves directas, buscando en consorcios...');
+      
+      // Si es un consorcio directo (contiene "/"), usar la nueva lógica
+      if (formData.naviera.includes('/')) {
+        console.log('🔍 Es consorcio directo, usando lógica de navieras individuales');
+        const navesDelConsorcio = getConsorcioNaves(formData.naviera);
+        console.log('🤝 Naves del consorcio directo:', navesDelConsorcio);
+        console.log('🔍 ===== FIN DEBUG NAVES =====');
+        return navesDelConsorcio;
+      }
+      
+      // Si no es consorcio directo, usar la lógica anterior
       const consorciosEspeciales = getConsorcioNaves(formData.naviera);
       console.log('🔍 Consorcios encontrados:', consorciosEspeciales);
       
