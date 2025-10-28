@@ -35,11 +35,19 @@ export function InlineEditCell({
   isSelectionMode = false
 }: InlineEditCellProps) {
   const { theme } = useTheme();
-  const { canEdit } = useUser();
+  const { canEdit, currentUser } = useUser();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Debug: verificar permisos
+  console.log('🔍 InlineEditCell Debug:', {
+    field,
+    canEdit,
+    currentUser: currentUser ? { rol: currentUser.rol, email: currentUser.email } : null,
+    value
+  });
 
   useEffect(() => {
     setEditValue(value || '');
