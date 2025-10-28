@@ -1056,12 +1056,12 @@ export function DataTable({
         </div>
       )}
 
-             {/* Tabla */}
+             {/* Tabla con scroll interno */}
       {viewMode === 'table' && (
-       <div className="border border-gray-200 rounded-lg overflow-hidden">
-         <div className="overflow-x-auto">
+       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+         <div className="relative max-h-[70vh] overflow-auto overflow-x-auto">
           <table className="w-full min-w-[800px] sm:min-w-[1000px] lg:min-w-[1200px]">
-                         <thead className="bg-blue-800">
+                         <thead className="bg-blue-800 sticky top-0 z-10">
                {table.getHeaderGroups().map((headerGroup) => (
                  <tr key={headerGroup.id}>
                    {headerGroup.headers.map((header) => (
@@ -1362,58 +1362,16 @@ export function DataTable({
         </div>
       )}
 
-             {/* Paginación */}
+             {/* Información de registros (sin paginación) */}
        <div className="flex flex-col gap-3">
          {/* Información de registros */}
          <div className="text-center sm:text-left">
-           <span className="text-xs sm:text-sm text-gray-700">
-             Mostrando {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} a{' '}
-             {Math.min(
-               (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-               table.getFilteredRowModel().rows.length
-             )}{' '}
-             de {table.getFilteredRowModel().rows.length} registros
+           <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+             Mostrando {table.getFilteredRowModel().rows.length} registros
+             {table.getFilteredRowModel().rows.length !== data.length && 
+               ` (filtrados de ${data.length} total)`
+             }
            </span>
-         </div>
-         
-         {/* Controles de paginación */}
-         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-           {/* Selector de tamaño de página */}
-           <div className="flex items-center space-x-2">
-             <span className="text-xs sm:text-sm text-gray-700">Mostrar:</span>
-             <select
-               value={table.getState().pagination.pageSize}
-               onChange={(e) => table.setPageSize(Number(e.target.value))}
-               className="px-2 py-1 border border-gray-300 rounded text-xs sm:text-sm text-gray-900"
-             >
-               {[10, 20, 50, 100, 250, 500].map((pageSize) => (
-                 <option key={pageSize} value={pageSize}>
-                   {pageSize}
-                 </option>
-               ))}
-             </select>
-           </div>
-           
-           {/* Navegación de páginas */}
-           <div className="flex items-center space-x-2">
-             <button
-               onClick={() => table.previousPage()}
-               disabled={!table.getCanPreviousPage()}
-               className="px-2 sm:px-3 py-1 border border-gray-300 rounded text-xs sm:text-sm text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-             >
-               Anterior
-             </button>
-             <span className="text-xs sm:text-sm text-gray-700 px-2">
-               Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
-             </span>
-             <button
-               onClick={() => table.nextPage()}
-               disabled={!table.getCanNextPage()}
-               className="px-2 sm:px-3 py-1 border border-gray-300 rounded text-xs sm:text-sm text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
-             >
-               Siguiente
-             </button>
-           </div>
          </div>
        </div>
        
