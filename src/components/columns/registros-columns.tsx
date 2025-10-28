@@ -217,7 +217,7 @@ export const createRegistrosColumns = (
       };
       
       return (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
           {displayContainers()}
         </div>
       );

@@ -1279,7 +1279,7 @@ export function DataTable({
                       <span className={`text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>Contenedor:</span>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-1" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         {(() => {
                           const contenedor = registro.contenedor;
                           if (!contenedor || contenedor === '') return null;
@@ -1287,7 +1287,7 @@ export function DataTable({
                           // Si ya es un array, mostrarlo directamente
                           if (Array.isArray(contenedor)) {
                             return contenedor.map((container, index) => (
-                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded block ${
+                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded ${
                                 theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
                               }`}>
                                 {container}
@@ -1299,7 +1299,7 @@ export function DataTable({
                           if (typeof contenedor === 'string' && contenedor.includes(' ')) {
                             const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
                             return containers.map((container, index) => (
-                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded block ${
+                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded ${
                                 theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
                               }`}>
                                 {container}
@@ -1309,7 +1309,7 @@ export function DataTable({
                           
                           // Si es un solo contenedor
                           return (
-                            <span className={`text-xs font-mono px-1 py-0.5 rounded block ${
+                            <span className={`text-xs font-mono px-1 py-0.5 rounded ${
                               theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
                             }`}>
                               {contenedor}
