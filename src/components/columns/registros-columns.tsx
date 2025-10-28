@@ -591,8 +591,8 @@ export const createRegistrosColumns = (
     },
   },
   {
-    id: 'acciones',
-    header: 'Acciones',
+    id: 'historial',
+    header: 'Historial',
     cell: ({ row }) => {
       return (
         <div className="flex items-center justify-center">
