@@ -43,6 +43,21 @@ export function AddModal({
   cbmUnicos,
   fletesUnicos,
 }: AddModalProps) {
+  
+  // Función para procesar contenedores múltiples
+  const processContainers = (containerValue: string): string | string[] => {
+    if (!containerValue || containerValue.trim() === '') {
+      return '';
+    }
+    
+    // Si contiene espacios, es múltiple - convertir a lista
+    if (containerValue.includes(' ')) {
+      return containerValue.split(/\s+/).filter(container => container.trim() !== '');
+    }
+    
+    // Si es uno solo, mantener como string
+    return containerValue.trim();
+  };
   const { theme } = useTheme();
   
   // Helper para obtener estilos de select según el tema
@@ -164,7 +179,7 @@ export function AddModal({
         tipo_ingreso: formData.tipoIngreso,
         flete: formData.flete,
         comentario: formData.comentario,
-        contenedor: '',
+        contenedor: formData.contenedor ? processContainers(formData.contenedor) : '',
         ct: '',
         co2: null,
         o2: null,

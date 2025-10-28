@@ -34,6 +34,21 @@ export function InlineEditCell({
   selectedRecords = [],
   isSelectionMode = false
 }: InlineEditCellProps) {
+  
+  // Función para procesar contenedores múltiples
+  const processContainers = (containerValue: string): string | string[] => {
+    if (!containerValue || containerValue.trim() === '') {
+      return '';
+    }
+    
+    // Si contiene espacios, es múltiple - convertir a lista
+    if (containerValue.includes(' ')) {
+      return containerValue.split(/\s+/).filter(container => container.trim() !== '');
+    }
+    
+    // Si es uno solo, mantener como string
+    return containerValue.trim();
+  };
   const { theme } = useTheme();
   
   const { canEdit, currentUser } = useUser();
@@ -107,6 +122,9 @@ export function InlineEditCell({
         } else {
           processedValue = null;
         }
+      } else if (field === 'contenedor') {
+        // Procesar contenedores: convertir string a lista si hay múltiples
+        processedValue = processContainers(editValue);
       }
       
       onBulkSave(field, processedValue, selectedRecords);
@@ -129,6 +147,9 @@ export function InlineEditCell({
         } else {
           processedValue = null;
         }
+      } else if (field === 'contenedor') {
+        // Procesar contenedores: convertir string a lista si hay múltiples
+        processedValue = processContainers(editValue);
       }
 
       // Obtener el nombre del campo en la base de datos

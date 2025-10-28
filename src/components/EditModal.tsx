@@ -62,6 +62,21 @@ interface EditFormData {
 }
 
 export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas = [], navesUnicas = [], fletesUnicos = [], temperaturasUnicas = [], navierasNavesMapping = {}, consorciosNavesMapping = {} }: EditModalProps) {
+  
+  // Función para procesar contenedores múltiples
+  const processContainers = (containerValue: string): string | string[] => {
+    if (!containerValue || containerValue.trim() === '') {
+      return '';
+    }
+    
+    // Si contiene espacios, es múltiple - convertir a lista
+    if (containerValue.includes(' ')) {
+      return containerValue.split(/\s+/).filter(container => container.trim() !== '');
+    }
+    
+    // Si es uno solo, mantener como string
+    return containerValue.trim();
+  };
   const [formData, setFormData] = useState<EditFormData>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -119,7 +134,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
         ejecutivo: formData.ejecutivo,
         shipper: formData.shipper,
         booking: formData.booking,
-        contenedor: formData.contenedor,
+        contenedor: formData.contenedor ? processContainers(formData.contenedor) : '',
         naviera: formData.naviera,
         nave_inicial: formData.naveInicial,
         especie: formData.especie,
