@@ -80,6 +80,10 @@ export default function AuthPage() {
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
@@ -90,9 +94,20 @@ export default function AuthPage() {
 
       console.log('✅ Google OAuth iniciado:', data);
       
+      // No necesitamos setLoading(false) aquí porque la página se redirigirá
+      
     } catch (err: any) {
       console.error('❌ Error completo:', err);
-      setError(`Google OAuth no está configurado: ${err.message}`);
+      
+      // Mensajes de error más específicos
+      if (err.message.includes('OAuth')) {
+        setError('Google OAuth no está configurado. Contacta al administrador.');
+      } else if (err.message.includes('redirect')) {
+        setError('Error de redirección. Verifica la configuración de URLs.');
+      } else {
+        setError(`Error de autenticación: ${err.message}`);
+      }
+      
       setLoading(false);
     }
   };
