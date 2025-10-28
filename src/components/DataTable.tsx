@@ -1098,16 +1098,16 @@ export function DataTable({
                  let bgClass, hoverClass, textClass, editButtonClass;
                  
                  if (theme === 'dark') {
-                   // Modo oscuro
+                   // Modo oscuro - colores más vibrantes
                    if (isCancelado) {
-                     bgClass = 'bg-red-900/20';
-                     hoverClass = 'hover:bg-red-900/30';
-                     textClass = 'text-red-200 font-medium';
+                     bgClass = 'bg-red-800/60';
+                     hoverClass = 'hover:bg-red-800/80';
+                     textClass = 'text-red-100 font-medium';
                      editButtonClass = 'text-blue-400 hover:text-blue-300';
                    } else if (isPendiente) {
-                     bgClass = 'bg-yellow-900/20';
-                     hoverClass = 'hover:bg-yellow-900/30';
-                     textClass = 'text-yellow-200 font-medium';
+                     bgClass = 'bg-yellow-800/60';
+                     hoverClass = 'hover:bg-yellow-800/80';
+                     textClass = 'text-yellow-100 font-medium';
                      editButtonClass = 'text-blue-400 hover:text-blue-300';
                    } else {
                      bgClass = 'bg-gray-800';
@@ -1194,9 +1194,9 @@ export function DataTable({
                 className={`p-4 rounded-lg border transition-colors ${
                   theme === 'dark'
                     ? isCancelado
-                      ? 'bg-red-900/20 border-red-700'
+                      ? 'bg-red-800/60 border-red-600'
                       : isPendiente
-                      ? 'bg-yellow-900/20 border-yellow-700'
+                      ? 'bg-yellow-800/60 border-yellow-600'
                       : 'bg-gray-800 border-gray-600'
                     : isCancelado
                     ? 'bg-red-50 border-red-200'
@@ -1229,14 +1229,14 @@ export function DataTable({
                   <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
                     registro.estado === 'CONFIRMADO'
                       ? theme === 'dark'
-                        ? 'bg-green-900/30 text-green-300'
+                        ? 'bg-green-800/60 text-green-200'
                         : 'bg-green-100 text-green-800'
                       : registro.estado === 'CANCELADO'
                       ? theme === 'dark'
-                        ? 'bg-red-900/30 text-red-300'
+                        ? 'bg-red-800/60 text-red-200'
                         : 'bg-red-100 text-red-800'
                       : theme === 'dark'
-                        ? 'bg-yellow-900/30 text-yellow-300'
+                        ? 'bg-yellow-800/60 text-yellow-200'
                         : 'bg-yellow-100 text-yellow-800'
                   }`}>
                     {registro.estado}
