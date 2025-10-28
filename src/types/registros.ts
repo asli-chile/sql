@@ -7,7 +7,7 @@ export interface Registro {
   ejecutivo: string;
   shipper: string;
   booking: string;
-  contenedor: string;
+  contenedor: string | string[];
   naviera: string;
   naveInicial: string;
   // Número de viaje (opcional); se muestra entre corchetes en UI
@@ -75,7 +75,7 @@ export interface ControlOperacional {
   emision: string;
   deposito: string;
   transporte: string;
-  contenedor: string;
+  contenedor: string | string[];
   sello: string;
   tara: number | null;
   porteo: string;

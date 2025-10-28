@@ -17,7 +17,7 @@ export interface Database {
           ejecutivo: string
           shipper: string
           booking: string
-          contenedor: string
+          contenedor: string | string[]
           naviera: string
           nave_inicial: string
           especie: string
@@ -65,7 +65,7 @@ export interface Database {
           ejecutivo: string
           shipper: string
           booking: string
-          contenedor: string
+          contenedor: string | string[]
           naviera: string
           nave_inicial: string
           especie: string
@@ -203,7 +203,7 @@ export interface Database {
           emision: string
           deposito: string
           transporte: string
-          contenedor: string
+          contenedor: string | string[]
           sello: string
           tara: number | null
           porteo: string
@@ -252,7 +252,7 @@ export interface Database {
           emision: string
           deposito: string
           transporte: string
-          contenedor: string
+          contenedor: string | string[]
           sello: string
           tara?: number | null
           porteo: string
