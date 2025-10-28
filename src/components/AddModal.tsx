@@ -348,44 +348,20 @@ export function AddModal({
     
     console.log('🔍 ===== DEBUG NAVES =====');
     console.log('🔍 Naviera seleccionada:', formData.naviera);
-    console.log('🔍 navierasNavesMapping keys:', Object.keys(navierasNavesMapping));
-    console.log('🔍 consorciosNavesMapping keys:', Object.keys(consorciosNavesMapping));
-    console.log('🔍 consorciosNavesMapping completo:', consorciosNavesMapping);
     
-    // Obtener naves directas de la naviera
-    const navieraNaves = navierasNavesMapping[formData.naviera] || [];
-    console.log('🚢 Naves directas para', formData.naviera, ':', navieraNaves);
-    
-    // Si no hay naves directas, buscar en consorcios
-    if (navieraNaves.length === 0) {
-      console.log('🔍 No hay naves directas, buscando en consorcios...');
-      
-      // Si es un consorcio directo (contiene "/"), usar la nueva lógica
-      if (formData.naviera.includes('/')) {
-        console.log('🔍 Es consorcio directo, usando lógica de navieras individuales');
-        const navesDelConsorcio = getConsorcioNaves(formData.naviera);
-        console.log('🤝 Naves del consorcio directo:', navesDelConsorcio);
-        console.log('🔍 ===== FIN DEBUG NAVES =====');
-        return navesDelConsorcio;
-      }
-      
-      // Si no es consorcio directo, usar la lógica anterior
-      const consorciosEspeciales = getConsorcioNaves(formData.naviera);
-      console.log('🔍 Consorcios encontrados:', consorciosEspeciales);
-      
-      const consorcioNaves: string[] = [];
-      
-      consorciosEspeciales.forEach(consorcio => {
-        const navesDelConsorcio = consorciosNavesMapping[consorcio] || [];
-        console.log(`🔍 Naves del consorcio "${consorcio}":`, navesDelConsorcio);
-        consorcioNaves.push(...navesDelConsorcio);
-      });
-      
-      console.log('🤝 Naves de consorcios totales:', consorcioNaves);
+    // Si es un consorcio (contiene "/"), mostrar naves de todas las navieras del consorcio
+    if (formData.naviera.includes('/')) {
+      console.log('🔍 Es consorcio, buscando naves de navieras individuales');
+      const navesDelConsorcio = getConsorcioNaves(formData.naviera);
+      console.log('🤝 Naves del consorcio:', navesDelConsorcio);
       console.log('🔍 ===== FIN DEBUG NAVES =====');
-      return [...new Set(consorcioNaves)];
+      return navesDelConsorcio;
     }
     
+    // Si es naviera individual, mostrar solo sus naves
+    console.log('🔍 Es naviera individual, buscando naves directas');
+    const navieraNaves = navierasNavesMapping[formData.naviera] || [];
+    console.log('🚢 Naves de', formData.naviera, ':', navieraNaves);
     console.log('🔍 ===== FIN DEBUG NAVES =====');
     return navieraNaves;
   };
@@ -522,19 +498,11 @@ export function AddModal({
                   <option key={naviera} value={naviera}>{naviera}</option>
                 ))}
               </select>
-              {formData.naviera && (
+              {formData.naviera && formData.naviera.includes('/') && (
                 <div className="text-xs text-gray-600">
-                  {(() => {
-                    const consorciosEspeciales = getConsorcioNaves(formData.naviera);
-                    if (consorciosEspeciales.length > 0) {
-                      return (
-                        <span className="text-blue-600">
-                          Consorcio: {consorciosEspeciales.join(', ')}
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
+                  <span className="text-blue-600">
+                    Consorcio: {formData.naviera}
+                  </span>
                 </div>
               )}
             </div>
