@@ -333,32 +333,36 @@ export function AddModal({
   const getAvailableNaves = () => {
     if (!formData.naviera) return [];
     
-    console.log('🔍 Buscando naves para naviera:', formData.naviera);
-    console.log('📋 Mapeo navieras-naves:', navierasNavesMapping);
+    console.log('🔍 ===== DEBUG NAVES =====');
+    console.log('🔍 Naviera seleccionada:', formData.naviera);
+    console.log('🔍 navierasNavesMapping keys:', Object.keys(navierasNavesMapping));
+    console.log('🔍 consorciosNavesMapping keys:', Object.keys(consorciosNavesMapping));
+    console.log('🔍 consorciosNavesMapping completo:', consorciosNavesMapping);
     
     // Obtener naves directas de la naviera
     const navieraNaves = navierasNavesMapping[formData.naviera] || [];
-    
-    console.log('🚢 Naves encontradas para', formData.naviera, ':', navieraNaves);
+    console.log('🚢 Naves directas para', formData.naviera, ':', navieraNaves);
     
     // Si no hay naves directas, buscar en consorcios
     if (navieraNaves.length === 0) {
+      console.log('🔍 No hay naves directas, buscando en consorcios...');
       const consorciosEspeciales = getConsorcioNaves(formData.naviera);
-      console.log('🔍 Consorcios especiales para', formData.naviera, ':', consorciosEspeciales);
-      console.log('🔍 consorciosNavesMapping completo:', consorciosNavesMapping);
+      console.log('🔍 Consorcios encontrados:', consorciosEspeciales);
       
       const consorcioNaves: string[] = [];
       
       consorciosEspeciales.forEach(consorcio => {
         const navesDelConsorcio = consorciosNavesMapping[consorcio] || [];
-        console.log(`🔍 Naves del consorcio ${consorcio}:`, navesDelConsorcio);
+        console.log(`🔍 Naves del consorcio "${consorcio}":`, navesDelConsorcio);
         consorcioNaves.push(...navesDelConsorcio);
       });
       
       console.log('🤝 Naves de consorcios totales:', consorcioNaves);
+      console.log('🔍 ===== FIN DEBUG NAVES =====');
       return [...new Set(consorcioNaves)];
     }
     
+    console.log('🔍 ===== FIN DEBUG NAVES =====');
     return navieraNaves;
   };
 
