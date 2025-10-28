@@ -10,6 +10,8 @@ export interface Registro {
   contenedor: string;
   naviera: string;
   naveInicial: string;
+  // Número de viaje (opcional); se muestra entre corchetes en UI
+  viaje?: string | null;
   especie: string;
   temperatura: number | null;
   cbm: number | null;
