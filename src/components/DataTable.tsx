@@ -1076,13 +1076,6 @@ export function DataTable({
                            )}
                      </th>
                    ))}
-                   <th 
-                     className="px-1 sm:px-2 py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-                     style={{ color: 'white' }}
-                   >
-                     <span className="hidden sm:i ine">Editar</span>
-                     <span className="sm:hidden">Edit</span>
-                   </th>
                  </tr>
                ))}
              </thead>
@@ -1172,19 +1165,6 @@ export function DataTable({
                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                        </td>
                      ))}
-                     <td className={`px-1 sm:px-2 py-2 whitespace-nowrap text-xs ${textClass}`}>
-                       <div className="flex items-center justify-center space-x-1 sm:space-x-2">
-                         {onEdit && (
-                           <button
-                             onClick={() => onEdit(row.original)}
-                             className={editButtonClass}
-                             title="Editar registro"
-                           >
-                             <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                           </button>
-                         )}
-                       </div>
-                     </td>
                    </tr>
                  );
                })}
@@ -1395,19 +1375,6 @@ export function DataTable({
 
                 {/* Botones de acción */}
                 <div className="flex justify-end space-x-2">
-                  {onEdit && (
-             <button
-                      onClick={() => onEdit(registro)}
-                      className={`p-2 rounded-lg transition-colors ${
-                        theme === 'dark'
-                          ? 'text-blue-400 hover:bg-blue-900/30'
-                          : 'text-blue-600 hover:bg-blue-100'
-                      }`}
-                      title="Editar registro"
-                    >
-                      <Edit className="h-4 w-4" />
-             </button>
-                  )}
            </div>
          </div>
             );
