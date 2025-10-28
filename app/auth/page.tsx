@@ -75,11 +75,11 @@ export default function AuthPage() {
       <div className="max-w-md w-full">
         {/* Logo y título */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-26 h-26 mb-4 flex items-center justify-center">
+          <div className="mx-auto w-32 h-32 mb-6 flex items-center justify-center">
             <img
               src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
               alt="ASLI Logo"
-              className="max-w-full max-h-full object-contain scale-110"
+              className="max-w-full max-h-full object-contain scale-125"
               onError={(e) => {
                 console.log('Error cargando logo:', e);
                 e.currentTarget.style.display = 'none';
