@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -69,6 +69,9 @@ export function DataTable({
   onToggleSelectionMode,
   preserveFilters = true,
 }: DataTableProps) {
+  // Log muy básico al inicio
+  console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO');
+  
   const { theme } = useTheme();
   
   // Temporal: usar permisos básicos sin contexto de usuario

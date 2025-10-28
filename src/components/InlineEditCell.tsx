@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, X, Edit3 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { createClient } from '@/lib/supabase-browser';
