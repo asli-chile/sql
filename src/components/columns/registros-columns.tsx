@@ -220,11 +220,11 @@ export const createRegistrosColumns = (
         <div 
           className="container-vertical" 
           style={{ 
-            display: 'flex !important', 
-            flexDirection: 'column !important', 
-            gap: '0.25rem !important', 
-            width: '100% !important',
-            alignItems: 'stretch !important'
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '0.25rem', 
+            width: '100%',
+            alignItems: 'stretch'
           }}
         >
           {displayContainers()}
