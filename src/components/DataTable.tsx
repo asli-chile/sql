@@ -1279,7 +1279,16 @@ export function DataTable({
                       <span className={`text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>Contenedor:</span>
-                      <div className="container-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%' }}>
+                      <div 
+                        className="container-vertical" 
+                        style={{ 
+                          display: 'flex !important', 
+                          flexDirection: 'column !important', 
+                          gap: '0.25rem !important', 
+                          width: '100% !important',
+                          alignItems: 'stretch !important'
+                        }}
+                      >
                         {(() => {
                           const contenedor = registro.contenedor;
                           if (!contenedor || contenedor === '') return null;
