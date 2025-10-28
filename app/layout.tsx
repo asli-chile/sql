@@ -17,6 +17,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sistema ASLI - Gestión Logística",
   description: "Sistema de gestión para exportaciones marítimas y aéreas",
+  icons: {
+    icon: [
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/logo-asli.png', sizes: '192x192', type: 'image/png' }
+    ],
+    apple: [
+      { url: '/logo-asli.png', sizes: '180x180', type: 'image/png' }
+    ]
+  }
 };
 
 export default function RootLayout({
