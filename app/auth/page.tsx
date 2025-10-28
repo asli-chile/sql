@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus, AlertCircle } from 'lucide-react';
-import Image from 'next/image';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -76,13 +75,11 @@ export default function AuthPage() {
       <div className="max-w-md w-full">
         {/* Logo y título */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-20 h-20 relative mb-4">
-            <Image
+          <div className="mx-auto w-20 h-20 mb-4 flex items-center justify-center">
+            <img
               src="/logo-asli.png"
               alt="ASLI Logo"
-              fill
-              className="object-contain"
-              priority
+              className="max-w-full max-h-full object-contain"
             />
           </div>
           <h1 className="text-3xl font-bold text-white">Sistema ASLI</h1>
