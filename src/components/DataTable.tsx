@@ -33,13 +33,11 @@ interface DataTableProps {
   onDelete?: (record: Registro) => void;
   onExport?: (filteredData?: Registro[]) => void;
   // Props para selección múltiple
-  selectionMode?: boolean;
   selectedRows?: Set<string>;
   onToggleRowSelection?: (recordId: string) => void;
   onSelectAll?: () => void;
   onClearSelection?: () => void;
   onBulkDelete?: () => void;
-  onToggleSelectionMode?: () => void;
   // Prop para mantener filtros
   preserveFilters?: boolean;
 }
@@ -59,13 +57,11 @@ export function DataTable({
   onEdit,
   onDelete,
   onExport,
-  selectionMode = false,
   selectedRows = new Set(),
   onToggleRowSelection,
   onSelectAll,
   onClearSelection,
   onBulkDelete,
-  onToggleSelectionMode,
   preserveFilters = true,
 }: DataTableProps) {
   // Log muy básico al inicio
@@ -489,50 +485,10 @@ export function DataTable({
 
           {/* Botones de acción */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Modo Selección */}
-            {onToggleSelectionMode && (
-              <button
-                onClick={onToggleSelectionMode}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm ${
-                  selectionMode
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                    : 'border border-gray-300 hover:bg-gray-50 text-gray-800'
-                }`}
-                title={selectionMode ? "Finalizar selección múltiple" : "Activar modo de selección múltiple para editar o eliminar varios registros"}
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden xs:inline">
-                  {selectionMode ? 'Finalizar' : 'Seleccionar'}
-                </span>
-              </button>
-            )}
 
-            {/* Botones de acción múltiple */}
-            {selectionMode && selectedRows.size > 0 && (
-              <>
-                <button
-                  onClick={onClearSelection}
-                  className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm text-gray-800"
-                  title="Limpiar selección de registros"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="hidden xs:inline">Limpiar</span>
-                </button>
-                {canDelete && onBulkDelete && (
-                <button
-                  onClick={onBulkDelete}
-                  className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                    title={`Eliminar ${selectedRows.size} registros seleccionados`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="hidden xs:inline">Eliminar ({selectedRows.size})</span>
-                </button>
-                )}
-              </>
-            )}
 
             {/* Exportar */}
-            {onExport && !selectionMode && canExport && (
+            {onExport && canExport && (
               <button
                 onClick={() => {
                   const actualFilteredData = table.getFilteredRowModel().rows.map(row => row.original);
@@ -547,7 +503,7 @@ export function DataTable({
             )}
             
             {/* Agregar */}
-            {onAdd && !selectionMode && canAdd && (
+            {onAdd && canAdd && (
               <button
                 onClick={onAdd}
                 className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"

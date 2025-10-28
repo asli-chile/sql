@@ -35,7 +35,6 @@ const allowsBulkEdit = (field: keyof Registro): boolean => {
 // Función para crear las columnas con soporte de selección
 export const createRegistrosColumns = (
   data: Registro[] = [],
-  selectionMode?: boolean,
   selectedRows?: Set<string>,
   onToggleRowSelection?: (id: string) => void,
   onUpdateRecord?: (updatedRecord: Registro) => void,
@@ -135,7 +134,7 @@ export const createRegistrosColumns = (
           type="select"
           options={clientesUnicos || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -161,7 +160,7 @@ export const createRegistrosColumns = (
           type="text"
           className={isCancelado ? 'bg-red-600 text-black px-2 py-1 rounded' : ''}
           selectedRecords={allowsBulkEdit('booking') ? getSelectedRecords() : []}
-          isSelectionMode={allowsBulkEdit('booking') && (selectionMode || false)}
+          isSelectionMode={allowsBulkEdit('booking')}
         />
       );
     },
@@ -271,7 +270,7 @@ export const createRegistrosColumns = (
           type="select"
           options={navesUnicas || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -292,7 +291,7 @@ export const createRegistrosColumns = (
           type="select"
           options={polsUnicos || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -313,7 +312,7 @@ export const createRegistrosColumns = (
           type="select"
           options={destinosUnicos || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -333,7 +332,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="date"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -353,7 +352,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="date"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -390,7 +389,7 @@ export const createRegistrosColumns = (
           type="select"
           options={estadosUnicos || ['PENDIENTE', 'CONFIRMADO', 'CANCELADO']}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -411,7 +410,7 @@ export const createRegistrosColumns = (
           type="select"
           options={['NORMAL', 'EARLY', 'LATE', 'EXTRA LATE']}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -432,7 +431,7 @@ export const createRegistrosColumns = (
           type="select"
           options={especiesUnicas || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -452,7 +451,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="number"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -472,7 +471,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="number"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -492,7 +491,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="number"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -512,7 +511,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="number"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -533,7 +532,7 @@ export const createRegistrosColumns = (
           type="select"
           options={fletesUnicos || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -554,7 +553,7 @@ export const createRegistrosColumns = (
           type="select"
           options={ejecutivosUnicos || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -575,7 +574,7 @@ export const createRegistrosColumns = (
           type="select"
           options={depositosUnicos || []}
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -595,7 +594,7 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="text"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },
@@ -616,7 +615,7 @@ export const createRegistrosColumns = (
           type="textarea"
           className="max-w-xs"
           selectedRecords={getSelectedRecords()}
-          isSelectionMode={selectionMode || false}
+          isSelectionMode={true}
         />
       );
     },

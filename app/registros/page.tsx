@@ -785,7 +785,6 @@ export default function RegistrosPage() {
   // Crear columnas con permisos basados en usuario autenticado
   const columns = createRegistrosColumns(
     registros, // data
-    selectionMode, // selectionMode
     selectedRows, // selectedRows
     handleToggleRowSelection, // toggleRowSelection
     handleUpdateRecord,
@@ -1049,13 +1048,11 @@ export default function RegistrosPage() {
             onEdit={handleEdit}
             onDelete={handleDelete}
             onExport={handleExport}
-            selectionMode={selectionMode}
             selectedRows={selectedRows}
             onToggleRowSelection={handleToggleRowSelection}
             onSelectAll={handleSelectAll}
             onClearSelection={handleClearSelection}
             onBulkDelete={handleBulkDelete}
-            onToggleSelectionMode={handleToggleSelectionMode}
             preserveFilters={true}
           />
         </div>
