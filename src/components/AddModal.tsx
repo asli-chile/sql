@@ -290,17 +290,43 @@ export function AddModal({
 
   // Función para obtener naves de consorcios especiales
   const getConsorcioNaves = (naviera: string) => {
-    // Casos especiales de consorcios
-    const consorciosEspeciales: Record<string, string[]> = {
-      'HAPAG-LLOYD': ['HAPAG-LLOYD / ONE / MSC'],
-      'ONE': ['HAPAG-LLOYD / ONE / MSC'],
-      'MSC': ['HAPAG-LLOYD / ONE / MSC'],
-      'PIL': ['PIL / YANG MING / WAN HAI'],
-      'YANG MING': ['PIL / YANG MING / WAN HAI'],
-      'WAN HAI': ['PIL / YANG MING / WAN HAI'],
-    };
-
-    return consorciosEspeciales[naviera] || [];
+    console.log('🔍 getConsorcioNaves - Naviera recibida:', naviera);
+    
+    // Si la naviera ya es un consorcio (contiene "/"), devolverla directamente
+    if (naviera.includes('/')) {
+      console.log('🔍 Naviera es consorcio directo:', naviera);
+      return [naviera];
+    }
+    
+    // Casos especiales de consorcios - buscar por patrones
+    const consorciosEncontrados: string[] = [];
+    
+    // Buscar en todos los consorcios disponibles
+    Object.keys(consorciosNavesMapping).forEach(consorcio => {
+      // Patrón 1: HAPAG-LLOYD / ONE / MSC
+      if (naviera.includes('HAPAG') || naviera.includes('ONE') || naviera.includes('MSC')) {
+        if (consorcio.includes('HAPAG') || consorcio.includes('ONE') || consorcio.includes('MSC')) {
+          consorciosEncontrados.push(consorcio);
+        }
+      }
+      
+      // Patrón 2: PIL / YANG MING / WAN HAI
+      if (naviera.includes('PIL') || naviera.includes('YANG MING') || naviera.includes('WAN HAI')) {
+        if (consorcio.includes('PIL') || consorcio.includes('YANG MING') || consorcio.includes('WAN HAI')) {
+          consorciosEncontrados.push(consorcio);
+        }
+      }
+      
+      // Patrón 3: CMA CGM / COSCO / OOCL
+      if (naviera.includes('CMA CGM') || naviera.includes('COSCO') || naviera.includes('OOCL')) {
+        if (consorcio.includes('CMA CGM') || consorcio.includes('COSCO') || consorcio.includes('OOCL')) {
+          consorciosEncontrados.push(consorcio);
+        }
+      }
+    });
+    
+    console.log('🔍 Consorcios encontrados para', naviera, ':', consorciosEncontrados);
+    return consorciosEncontrados;
   };
 
   // Obtener naves disponibles basadas en la naviera seleccionada

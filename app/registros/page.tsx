@@ -621,47 +621,82 @@ export default function RegistrosPage() {
   const createConsorciosNavesMapping = (registrosData: Registro[]) => {
     const mapping: Record<string, string[]> = {};
     
-    // Consorcios especiales conocidos
-    const consorciosEspeciales: Record<string, string[]> = {
-      'HAPAG-LLOYD / ONE / MSC': ['HAPAG-LLOYD', 'ONE', 'MSC'],
-      'PIL / YANG MING / WAN HAI': ['PIL', 'YANG MING', 'WAN HAI'],
-      'CMA CGM / COSCO / OOCL': ['CMA CGM', 'COSCO', 'OOCL'],
-      'EVERGREEN / HAPAG-LLOYD': ['EVERGREEN', 'HAPAG-LLOYD'],
-    };
-    
     console.log('🔍 Debug consorcios - Registros disponibles:', registrosData.length);
     console.log('🔍 Debug consorcios - Navieras únicas:', [...new Set(registrosData.map(r => r.naviera).filter(Boolean))]);
     
-    // Crear mapeo inverso: naviera -> consorcio
-    Object.entries(consorciosEspeciales).forEach(([consorcio, navieras]) => {
-      console.log(`🔍 Procesando consorcio: ${consorcio}`, navieras);
-      
-      navieras.forEach(naviera => {
-        if (!mapping[consorcio]) {
-          mapping[consorcio] = [];
+    // Obtener todas las navieras únicas de los datos
+    const navierasUnicas = [...new Set(registrosData.map(r => r.naviera).filter(Boolean))];
+    
+    // Crear mapeos de consorcios basados en patrones encontrados en los datos
+    const consorciosEncontrados: Record<string, string[]> = {};
+    
+    // Buscar patrones de consorcios en los nombres de navieras
+    navierasUnicas.forEach(naviera => {
+      // Patrón 1: HAPAG-LLOYD / ONE / MSC
+      if (naviera.includes('HAPAG') || naviera.includes('ONE') || naviera.includes('MSC')) {
+        if (!consorciosEncontrados['HAPAG-LLOYD / ONE / MSC']) {
+          consorciosEncontrados['HAPAG-LLOYD / ONE / MSC'] = [];
         }
-        
-        // Buscar registros que coincidan con esta naviera
-        const registrosCoincidentes = registrosData.filter(registro => 
-          registro.naviera === naviera && registro.naveInicial
-        );
-        
-        console.log(`🔍 Naviera ${naviera}: ${registrosCoincidentes.length} registros encontrados`);
-        
-        // Agregar todas las naves de las navieras del consorcio
-        registrosCoincidentes.forEach(registro => {
-          if (!mapping[consorcio].includes(registro.naveInicial)) {
-            mapping[consorcio].push(registro.naveInicial);
-            console.log(`🔍 Agregada nave ${registro.naveInicial} al consorcio ${consorcio}`);
-          }
-        });
-      });
+        // Agregar todas las naves de esta naviera al consorcio
+        registrosData
+          .filter(r => r.naviera === naviera && r.naveInicial)
+          .forEach(registro => {
+            if (!consorciosEncontrados['HAPAG-LLOYD / ONE / MSC'].includes(registro.naveInicial)) {
+              consorciosEncontrados['HAPAG-LLOYD / ONE / MSC'].push(registro.naveInicial);
+            }
+          });
+      }
       
-      console.log(`🔍 Consorcio ${consorcio} final:`, mapping[consorcio]);
+      // Patrón 2: PIL / YANG MING / WAN HAI
+      if (naviera.includes('PIL') || naviera.includes('YANG MING') || naviera.includes('WAN HAI')) {
+        if (!consorciosEncontrados['PIL / YANG MING / WAN HAI']) {
+          consorciosEncontrados['PIL / YANG MING / WAN HAI'] = [];
+        }
+        registrosData
+          .filter(r => r.naviera === naviera && r.naveInicial)
+          .forEach(registro => {
+            if (!consorciosEncontrados['PIL / YANG MING / WAN HAI'].includes(registro.naveInicial)) {
+              consorciosEncontrados['PIL / YANG MING / WAN HAI'].push(registro.naveInicial);
+            }
+          });
+      }
+      
+      // Patrón 3: CMA CGM / COSCO / OOCL
+      if (naviera.includes('CMA CGM') || naviera.includes('COSCO') || naviera.includes('OOCL')) {
+        if (!consorciosEncontrados['CMA CGM / COSCO / OOCL']) {
+          consorciosEncontrados['CMA CGM / COSCO / OOCL'] = [];
+        }
+        registrosData
+          .filter(r => r.naviera === naviera && r.naveInicial)
+          .forEach(registro => {
+            if (!consorciosEncontrados['CMA CGM / COSCO / OOCL'].includes(registro.naveInicial)) {
+              consorciosEncontrados['CMA CGM / COSCO / OOCL'].push(registro.naveInicial);
+            }
+          });
+      }
     });
     
-    console.log('🔍 Mapping final de consorcios:', mapping);
-    return mapping;
+    console.log('🔍 Consorcios encontrados en datos:', consorciosEncontrados);
+    
+    // Agregar también los consorcios que aparecen directamente en los datos
+    navierasUnicas.forEach(naviera => {
+      if (naviera.includes('/') && naviera.length > 10) {
+        // Es probable que sea un consorcio directo
+        if (!consorciosEncontrados[naviera]) {
+          consorciosEncontrados[naviera] = [];
+        }
+        registrosData
+          .filter(r => r.naviera === naviera && r.naveInicial)
+          .forEach(registro => {
+            if (!consorciosEncontrados[naviera].includes(registro.naveInicial)) {
+              consorciosEncontrados[naviera].push(registro.naveInicial);
+            }
+          });
+      }
+    });
+    
+    console.log('🔍 Mapping final de consorcios:', consorciosEncontrados);
+    return consorciosEncontrados;
   };
 
   // Función para generar arrays de filtro basados en datos reales
