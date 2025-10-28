@@ -41,7 +41,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 3. Función para cambiar rol de usuario
+-- 3. Función para cambiar nombre de usuario
+CREATE OR REPLACE FUNCTION cambiar_nombre_usuario(email_usuario TEXT, nuevo_nombre TEXT)
+RETURNS BOOLEAN AS $$
+DECLARE
+  usuario_encontrado BOOLEAN := false;
+BEGIN
+  -- Cambiar nombre
+  UPDATE usuarios 
+  SET nombre = nuevo_nombre, updated_at = NOW()
+  WHERE email = email_usuario;
+  
+  -- Verificar si se actualizó
+  IF FOUND THEN
+    usuario_encontrado := true;
+  END IF;
+  
+  RETURN usuario_encontrado;
+END;
+$$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION cambiar_rol_usuario(email_usuario TEXT, nuevo_rol TEXT)
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -198,8 +216,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Activar usuario
 -- SELECT activar_usuario('usuario@ejemplo.com');
 
--- Cambiar rol
--- SELECT cambiar_rol_usuario('usuario@ejemplo.com', 'admin');
+-- Cambiar nombre
+-- SELECT cambiar_nombre_usuario('usuario@ejemplo.com', 'Nuevo Nombre');
 
 -- Listar usuarios
 -- SELECT * FROM listar_usuarios();
