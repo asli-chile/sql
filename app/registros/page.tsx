@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { LogOut, ArrowLeft, User as UserIcon } from 'lucide-react';
+import Image from 'next/image';
 
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/DataTable';
@@ -847,8 +848,14 @@ export default function RegistrosPage() {
               </button>
               <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
               <div className="flex items-center space-x-3">
-                <div className="w-6 h-6 sm:w-8 sm:h-8 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Ship className="w-3 h-3 sm:w-5 sm:h-5 text-white" />
+                <div className="w-6 h-6 sm:w-8 sm:h-8 relative">
+                  <Image
+                    src="/logo-asli.png"
+                    alt="ASLI Logo"
+                    fill
+                    className="object-contain"
+                    priority
+                  />
                 </div>
                 <div>
                   <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Registros de Embarques</h1>

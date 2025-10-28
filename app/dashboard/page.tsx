@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserProfileModal } from '@/components/UserProfileModal';
+import Image from 'next/image';
 import { 
   Ship, 
   Package, 
@@ -212,8 +213,14 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
-                <Ship className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 relative">
+                <Image
+                  src="/logo-asli.png"
+                  alt="ASLI Logo"
+                  fill
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div>
                 <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Sistema ASLI</h1>

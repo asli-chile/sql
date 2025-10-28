@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus, AlertCircle, Ship } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import Image from 'next/image';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -75,8 +76,14 @@ export default function AuthPage() {
       <div className="max-w-md w-full">
         {/* Logo y título */}
         <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mb-4">
-            <Ship className="w-8 h-8 text-white" />
+          <div className="mx-auto w-20 h-20 relative mb-4">
+            <Image
+              src="/logo-asli.png"
+              alt="ASLI Logo"
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
           <h1 className="text-3xl font-bold text-white">Sistema ASLI</h1>
           <p className="text-gray-300 mt-2">Gestión Logística Integral</p>
