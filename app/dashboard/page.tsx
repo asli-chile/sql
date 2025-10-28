@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { UserProfileModal } from '@/components/UserProfileModal';
 import { 
   Ship, 
   Package, 
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
     pendientes: 0,
@@ -224,9 +226,12 @@ export default function DashboardPage() {
               <ThemeToggle />
               <div className="flex items-center space-x-2">
                 <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
-                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                <button
+                  onClick={() => setShowProfileModal(true)}
+                  className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
                   {userInfo?.nombre || user.email}
-                </span>
+                </button>
               </div>
               <button
                 onClick={handleLogout}
@@ -364,6 +369,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* User Profile Modal */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        userInfo={userInfo}
+        onUserUpdate={(updatedUser) => {
+          setUserInfo(updatedUser);
+          setShowProfileModal(false);
+        }}
+      />
     </div>
-  );
-}
