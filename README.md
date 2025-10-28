@@ -1,36 +1,76 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Sistema ASLI - Gestión de Embarques
 
-## Getting Started
+Sistema web para la gestión de embarques y contenedores desarrollado con Next.js, Supabase y Tailwind CSS.
 
-First, run the development server:
+## 🚀 Características
 
+- **Gestión de Registros**: CRUD completo de embarques y contenedores
+- **Autenticación**: Sistema de login con Supabase Auth
+- **Filtros Avanzados**: Filtrado por múltiples criterios
+- **Vista Responsive**: Tabla y vista de tarjetas para móviles
+- **Tema Oscuro/Claro**: Interfaz adaptable
+- **Exportación**: Exportar datos filtrados a Excel
+- **Historial**: Seguimiento de cambios en registros
+- **Edición Múltiple**: Editar varios registros simultáneamente
+
+## 🛠️ Tecnologías
+
+- **Frontend**: Next.js 16, React 19, TypeScript
+- **Backend**: Supabase (PostgreSQL, Auth, RLS)
+- **Styling**: Tailwind CSS
+- **UI Components**: Radix UI, Lucide React
+- **Data Table**: TanStack Table
+- **Deployment**: Vercel
+
+## 📦 Instalación
+
+1. Clonar el repositorio:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd asli-supabase
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Instalar dependencias:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Configurar variables de entorno:
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Configurar las variables en `.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=tu_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_supabase_anon_key
+```
 
-## Learn More
+5. Ejecutar en desarrollo:
+```bash
+npm run dev
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 🚀 Deploy en Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Conectar repositorio con Vercel
+2. Configurar variables de entorno en Vercel
+3. Deploy automático en cada push
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📱 Uso
 
-## Deploy on Vercel
+- **Login**: Usar credenciales de Supabase
+- **Dashboard**: Vista general de estadísticas
+- **Registros**: Gestión completa de embarques
+- **Filtros**: Buscar y filtrar registros
+- **Exportar**: Descargar datos en Excel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔧 Desarrollo
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Linting**: `npm run lint`
+- **Build**: `npm run build`
+- **Start**: `npm start`
+
+## 📄 Licencia
+
+Privado - ASLI

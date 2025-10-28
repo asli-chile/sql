@@ -1,0 +1,350 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase-browser';
+import { User } from '@supabase/supabase-js';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { 
+  Ship, 
+  Package, 
+  Truck, 
+  CreditCard, 
+  LogOut, 
+  User as UserIcon, 
+  Settings,
+  ArrowRight,
+  Clock,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
+
+export default function DashboardPage() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    pendientes: 0,
+    confirmados: 0,
+    cancelados: 0
+  });
+  const router = useRouter();
+
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadStats();
+    }
+  }, [user]);
+
+  const checkUser = async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) throw error;
+      
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+
+      setUser(user);
+    } catch (error) {
+      console.error('Error checking user:', error);
+      router.push('/auth');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const supabase = createClient();
+      
+      // Consulta optimizada para obtener estadísticas en una sola query
+      const { data: registros, error } = await supabase
+        .from('registros')
+        .select('ref_asli, estado, updated_at')
+        .is('deleted_at', null) // Solo registros no eliminados
+        .not('ref_asli', 'is', null); // Solo registros con REF ASLI
+
+      if (error) throw error;
+
+      // Agrupar por REF ASLI y obtener el estado más reciente de cada uno
+      const refAsliMap = new Map();
+      
+      registros?.forEach(registro => {
+        const refAsli = registro.ref_asli;
+        const existing = refAsliMap.get(refAsli);
+        
+        if (!existing || new Date(registro.updated_at) > new Date(existing.updated_at)) {
+          refAsliMap.set(refAsli, {
+            estado: registro.estado,
+            updated_at: registro.updated_at
+          });
+        }
+      });
+
+      // Contar por estado
+      const estadoCounts = {
+        pendientes: 0,
+        confirmados: 0,
+        cancelados: 0
+      };
+
+      refAsliMap.forEach(({ estado }) => {
+        if (estado) {
+          switch (estado.toLowerCase()) {
+            case 'pendiente':
+            case 'en proceso':
+              estadoCounts.pendientes++;
+              break;
+            case 'confirmado':
+            case 'completado':
+              estadoCounts.confirmados++;
+              break;
+            case 'cancelado':
+            case 'rechazado':
+              estadoCounts.cancelados++;
+              break;
+          }
+        }
+      });
+
+      setStats({
+        total: refAsliMap.size,
+        pendientes: estadoCounts.pendientes,
+        confirmados: estadoCounts.confirmados,
+        cancelados: estadoCounts.cancelados
+      });
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push('/auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
+  const modules = [
+    {
+      id: 'registros',
+      title: 'Registros de Embarques',
+      description: 'Gestión completa de contenedores y embarques',
+      icon: Ship,
+      color: 'bg-blue-500',
+      hoverColor: 'hover:bg-blue-600',
+      available: true,
+      stats: stats
+    },
+    {
+      id: 'transporte',
+      title: 'Registros de Transporte',
+      description: 'Control de flota y rutas de transporte',
+      icon: Truck,
+      color: 'bg-green-500',
+      hoverColor: 'hover:bg-green-600',
+      available: false,
+      comingSoon: true
+    },
+    {
+      id: 'facturacion',
+      title: 'Facturación',
+      description: 'Gestión de facturas y pagos',
+      icon: CreditCard,
+      color: 'bg-purple-500',
+      hoverColor: 'hover:bg-purple-600',
+      available: false,
+      comingSoon: true
+    }
+  ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 dark:bg-blue-500 rounded-lg flex items-center justify-center">
+                <Ship className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Sistema ASLI</h1>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Dashboard Principal</p>
+              </div>
+            </div>
+
+            {/* User menu */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <ThemeToggle />
+              <div className="flex items-center space-x-2">
+                <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  {user.user_metadata?.full_name || user.email}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              >
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">Cerrar Sesión</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Welcome section */}
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            ¡Bienvenido, {user.user_metadata?.full_name?.split(' ')[0] || 'Usuario'}!
+          </h2>
+          <p className="text-gray-600">
+            Selecciona el módulo al que deseas acceder
+          </p>
+        </div>
+
+        {/* Modules grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {modules.map((module) => {
+            const IconComponent = module.icon;
+            
+            return (
+              <div
+                key={module.id}
+                className={`bg-white rounded-xl shadow-sm border-2 transition-all duration-200 ${
+                  module.available
+                    ? 'border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
+                    : 'border-gray-100 opacity-60 cursor-not-allowed'
+                }`}
+                onClick={() => {
+                  if (module.available) {
+                    router.push(`/${module.id}`);
+                  }
+                }}
+              >
+                <div className="p-6">
+                  {/* Icon and status */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 ${module.color} rounded-lg flex items-center justify-center`}>
+                      <IconComponent className="w-6 h-6 text-white" />
+                    </div>
+                    
+                    {module.available ? (
+                      <div className="flex items-center space-x-1 text-green-600">
+                        <CheckCircle className="w-4 h-4" />
+                        <span className="text-xs font-medium">Disponible</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-1 text-orange-600">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-xs font-medium">Próximamente</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Title and description */}
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {module.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    {module.description}
+                  </p>
+
+                  {/* Stats (only for available modules) */}
+                  {module.available && module.stats && (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="text-center p-2 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-bold text-gray-900">
+                          {module.stats.total.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-gray-600">Total</div>
+                      </div>
+                      <div className="text-center p-2 bg-gray-50 rounded-lg">
+                        <div className="text-lg font-bold text-blue-600">
+                          {module.stats.pendientes}
+                        </div>
+                        <div className="text-xs text-gray-600">Pendientes</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action button */}
+                  <div className="flex items-center justify-between">
+                    {module.available ? (
+                      <div className="flex items-center text-blue-600 text-sm font-medium">
+                        <span>Acceder</span>
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center text-gray-400 text-sm">
+                        <AlertCircle className="w-4 h-4 mr-1" />
+                        <span>En desarrollo</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Quick stats */}
+        <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen General</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg">
+              <Package className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-blue-600">{stats.total.toLocaleString()}</div>
+              <div className="text-sm text-gray-600">Total Registros</div>
+            </div>
+            <div className="text-center p-4 bg-yellow-50 rounded-lg">
+              <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-yellow-600">{stats.pendientes}</div>
+              <div className="text-sm text-gray-600">Pendientes</div>
+            </div>
+            <div className="text-center p-4 bg-green-50 rounded-lg">
+              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-green-600">{stats.confirmados}</div>
+              <div className="text-sm text-gray-600">Confirmados</div>
+            </div>
+            <div className="text-center p-4 bg-red-50 rounded-lg">
+              <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-red-600">{stats.cancelados}</div>
+              <div className="text-sm text-gray-600">Cancelados</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
