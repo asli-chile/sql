@@ -16,8 +16,10 @@ interface UserContextType {
   isLoggedIn: boolean;
   hasRole: (role: string) => boolean;
   canEdit: boolean;
+  canAdd: boolean;
   canViewHistory: boolean;
   canDelete: boolean;
+  canExport: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -55,9 +57,15 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return currentUser.rol === role;
   };
 
-  const canEdit = currentUser ? ['admin', 'supervisor', 'usuario'].includes(currentUser.rol) : false;
-  const canViewHistory = currentUser ? ['admin', 'supervisor', 'usuario', 'lector'].includes(currentUser.rol) : false;
-  const canDelete = currentUser ? ['admin', 'supervisor'].includes(currentUser.rol) : false;
+  // Permisos según roles:
+  // admin: puede hacer todo
+  // usuario: puede agregar registros y descargar, NO puede editar campos existentes
+  // lector: solo puede ver y descargar, NO puede agregar ni editar
+  const canEdit = currentUser ? currentUser.rol === 'admin' : false;
+  const canAdd = currentUser ? ['admin', 'usuario'].includes(currentUser.rol) : false;
+  const canViewHistory = currentUser ? ['admin', 'usuario', 'lector'].includes(currentUser.rol) : false;
+  const canDelete = currentUser ? currentUser.rol === 'admin' : false;
+  const canExport = currentUser ? ['admin', 'usuario', 'lector'].includes(currentUser.rol) : false;
 
   const value: UserContextType = {
     currentUser,
@@ -65,8 +73,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     isLoggedIn,
     hasRole,
     canEdit,
+    canAdd,
     canViewHistory,
     canDelete,
+    canExport,
   };
 
   return (

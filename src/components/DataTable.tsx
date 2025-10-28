@@ -16,6 +16,7 @@ import { Registro } from '@/types/registros';
 import { Search, Filter, Download, Plus, Edit, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List } from 'lucide-react';
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUser } from '@/hooks/useUser';
 
 interface DataTableProps {
   data: Registro[];
@@ -69,6 +70,7 @@ export function DataTable({
   preserveFilters = true,
 }: DataTableProps) {
   const { theme } = useTheme();
+  const { canEdit, canAdd, canDelete, canExport } = useUser();
   
   // Helper para obtener estilos de filtro según el tema
   const getFilterStyles = (hasFilter: boolean) => {
@@ -497,18 +499,20 @@ export function DataTable({
                   <X className="h-4 w-4" />
                   <span className="hidden xs:inline">Limpiar</span>
                 </button>
-                <button
-                  onClick={onBulkDelete}
-                  className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span className="hidden xs:inline">Eliminar ({selectedRows.size})</span>
-                </button>
+                {canDelete && onBulkDelete && (
+                  <button
+                    onClick={onBulkDelete}
+                    className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="hidden xs:inline">Eliminar ({selectedRows.size})</span>
+                  </button>
+                )}
               </>
             )}
 
             {/* Exportar */}
-            {onExport && !selectionMode && (
+            {onExport && !selectionMode && canExport && (
               <button
                 onClick={() => {
                   // Obtener los datos realmente filtrados por React Table
@@ -523,7 +527,7 @@ export function DataTable({
             )}
             
             {/* Agregar */}
-            {onAdd && !selectionMode && (
+            {onAdd && !selectionMode && canAdd && (
               <button
                 onClick={onAdd}
                 className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
@@ -1400,7 +1404,7 @@ export function DataTable({
              top: `${contextMenu.y}px`,
            }}
          >
-           {onEdit && (
+           {canEdit && onEdit && (
              <button
                onClick={() => {
                  onEdit(contextMenu.record);
@@ -1412,7 +1416,7 @@ export function DataTable({
                <span>Editar</span>
              </button>
            )}
-           {onDelete && (
+           {canDelete && onDelete && (
              <button
                onClick={() => {
                  onDelete(contextMenu.record);
