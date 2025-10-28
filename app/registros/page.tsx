@@ -122,7 +122,15 @@ export default function RegistrosPage() {
         setCurrentUser(basicUser);
       } else {
         // Establecer el usuario en el contexto
+        console.log('🔍 Usuario cargado desde BD:', userData);
         setCurrentUser({
+          id: userData.id,
+          nombre: userData.nombre,
+          email: userData.email,
+          rol: userData.rol,
+          activo: userData.activo
+        });
+        console.log('✅ Usuario establecido en contexto:', {
           id: userData.id,
           nombre: userData.nombre,
           email: userData.email,

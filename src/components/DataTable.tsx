@@ -70,7 +70,20 @@ export function DataTable({
   preserveFilters = true,
 }: DataTableProps) {
   const { theme } = useTheme();
-  const { canEdit, canAdd, canDelete, canExport } = useUser();
+  const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
+  
+  // Debug: verificar permisos en DataTable
+  console.log('🔍 DataTable Debug:', {
+    canEdit,
+    canAdd,
+    canDelete,
+    canExport,
+    currentUser: currentUser ? { rol: currentUser.rol, email: currentUser.email } : null,
+    onAdd: !!onAdd,
+    onEdit: !!onEdit,
+    onDelete: !!onDelete,
+    onExport: !!onExport
+  });
   
   // Helper para obtener estilos de filtro según el tema
   const getFilterStyles = (hasFilter: boolean) => {
