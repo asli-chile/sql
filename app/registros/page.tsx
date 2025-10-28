@@ -629,23 +629,38 @@ export default function RegistrosPage() {
       'EVERGREEN / HAPAG-LLOYD': ['EVERGREEN', 'HAPAG-LLOYD'],
     };
     
+    console.log('🔍 Debug consorcios - Registros disponibles:', registrosData.length);
+    console.log('🔍 Debug consorcios - Navieras únicas:', [...new Set(registrosData.map(r => r.naviera).filter(Boolean))]);
+    
     // Crear mapeo inverso: naviera -> consorcio
     Object.entries(consorciosEspeciales).forEach(([consorcio, navieras]) => {
+      console.log(`🔍 Procesando consorcio: ${consorcio}`, navieras);
+      
       navieras.forEach(naviera => {
         if (!mapping[consorcio]) {
           mapping[consorcio] = [];
         }
+        
+        // Buscar registros que coincidan con esta naviera
+        const registrosCoincidentes = registrosData.filter(registro => 
+          registro.naviera === naviera && registro.naveInicial
+        );
+        
+        console.log(`🔍 Naviera ${naviera}: ${registrosCoincidentes.length} registros encontrados`);
+        
         // Agregar todas las naves de las navieras del consorcio
-        registrosData.forEach(registro => {
-          if (registro.naviera === naviera && registro.naveInicial) {
-            if (!mapping[consorcio].includes(registro.naveInicial)) {
-              mapping[consorcio].push(registro.naveInicial);
-            }
+        registrosCoincidentes.forEach(registro => {
+          if (!mapping[consorcio].includes(registro.naveInicial)) {
+            mapping[consorcio].push(registro.naveInicial);
+            console.log(`🔍 Agregada nave ${registro.naveInicial} al consorcio ${consorcio}`);
           }
         });
       });
+      
+      console.log(`🔍 Consorcio ${consorcio} final:`, mapping[consorcio]);
     });
     
+    console.log('🔍 Mapping final de consorcios:', mapping);
     return mapping;
   };
 

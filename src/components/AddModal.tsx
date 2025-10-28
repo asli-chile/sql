@@ -318,14 +318,18 @@ export function AddModal({
     // Si no hay naves directas, buscar en consorcios
     if (navieraNaves.length === 0) {
       const consorciosEspeciales = getConsorcioNaves(formData.naviera);
+      console.log('🔍 Consorcios especiales para', formData.naviera, ':', consorciosEspeciales);
+      console.log('🔍 consorciosNavesMapping completo:', consorciosNavesMapping);
+      
       const consorcioNaves: string[] = [];
       
       consorciosEspeciales.forEach(consorcio => {
         const navesDelConsorcio = consorciosNavesMapping[consorcio] || [];
+        console.log(`🔍 Naves del consorcio ${consorcio}:`, navesDelConsorcio);
         consorcioNaves.push(...navesDelConsorcio);
       });
       
-      console.log('🤝 Naves de consorcios:', consorcioNaves);
+      console.log('🤝 Naves de consorcios totales:', consorcioNaves);
       return [...new Set(consorcioNaves)];
     }
     
