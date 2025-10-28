@@ -807,10 +807,26 @@ export default function RegistrosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-800">Cargando registros...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center w-full max-w-4xl px-8">
+          <div className="w-64 h-64 mx-auto mb-8 flex items-center justify-center">
+            <img
+              src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
+              alt="ASLI Logo"
+              className="max-w-full max-h-full object-contain"
+              style={{
+                animation: 'zoomInOut 2s ease-in-out infinite'
+              }}
+              onError={(e) => {
+                console.log('Error cargando logo:', e);
+                e.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+          <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">
+            Sistema ASLI
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400">Cargando registros...</p>
         </div>
       </div>
     );
