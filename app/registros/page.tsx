@@ -849,9 +849,13 @@ export default function RegistrosPage() {
               <div className="flex items-center space-x-3">
                 <div className="w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center">
                   <img
-                    src="/logo-asli.png"
+                    src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                     alt="ASLI Logo"
                     className="max-w-full max-h-full object-contain"
+                    onError={(e) => {
+                      console.log('Error cargando logo:', e);
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 </div>
                 <div>

@@ -214,9 +214,13 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
                 <img
-                  src="/logo-asli.png"
+                  src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                   alt="ASLI Logo"
                   className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    console.log('Error cargando logo:', e);
+                    e.currentTarget.style.display = 'none';
+                  }}
                 />
               </div>
               <div>
