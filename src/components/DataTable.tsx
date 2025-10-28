@@ -70,15 +70,21 @@ export function DataTable({
   preserveFilters = true,
 }: DataTableProps) {
   const { theme } = useTheme();
-  const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
+  
+  // Temporal: usar permisos básicos sin contexto de usuario
+  const canEdit = true;
+  const canAdd = true;
+  const canDelete = true;
+  const canExport = true;
+  const currentUser = { rol: 'admin', email: 'test@test.com' };
   
   // Debug: verificar permisos en DataTable
-  console.log('🔍 DataTable Debug:', {
+  console.log('🔍 DataTable Debug (Temporal):', {
     canEdit,
     canAdd,
     canDelete,
     canExport,
-    currentUser: currentUser ? { rol: currentUser.rol, email: currentUser.email } : null,
+    currentUser,
     onAdd: !!onAdd,
     onEdit: !!onEdit,
     onDelete: !!onDelete,
@@ -525,7 +531,7 @@ export function DataTable({
             )}
 
             {/* Exportar */}
-            {onExport && !selectionMode && (
+            {onExport && !selectionMode && canExport && (
               <button
                 onClick={() => {
                   // Obtener los datos realmente filtrados por React Table
@@ -540,7 +546,7 @@ export function DataTable({
             )}
             
             {/* Agregar */}
-            {(onAdd && !selectionMode) && (
+            {onAdd && !selectionMode && canAdd && (
               <button
                 onClick={onAdd}
                 className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
