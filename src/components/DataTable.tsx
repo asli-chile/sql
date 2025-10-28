@@ -138,7 +138,7 @@ export function DataTable({
   });
 
   // Columnas que nunca se pueden ocultar
-  const alwaysVisibleColumns = ['refAsli', 'booking'];
+  const alwaysVisibleColumns = ['select', 'refAsli', 'booking'];
   
   // Estado para el menú contextual
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro } | null>(null);
