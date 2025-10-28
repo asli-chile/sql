@@ -16,6 +16,7 @@ import { HistorialModal } from '@/components/HistorialModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ThemeTest } from '@/components/ThemeTest';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUser } from '@/hooks/useUser';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -33,6 +34,7 @@ interface User {
 
 export default function RegistrosPage() {
   const { theme } = useTheme();
+  const { currentUser, setCurrentUser } = useUser();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -99,6 +101,36 @@ export default function RegistrosPage() {
       }
 
       setUser(user);
+      
+      // Cargar datos del usuario desde la tabla usuarios
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error loading user data:', userError);
+        // Si no existe en la tabla usuarios, crear un usuario básico
+        const basicUser = {
+          id: user.id,
+          nombre: user.email?.split('@')[0] || 'Usuario',
+          email: user.email || '',
+          rol: 'usuario',
+          activo: true
+        };
+        setCurrentUser(basicUser);
+      } else {
+        // Establecer el usuario en el contexto
+        setCurrentUser({
+          id: userData.id,
+          nombre: userData.nombre,
+          email: userData.email,
+          rol: userData.rol,
+          activo: userData.activo
+        });
+      }
+      
       // Cargar datos después de verificar usuario
       await loadRegistros();
       await loadCatalogos();
@@ -114,6 +146,7 @@ export default function RegistrosPage() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
+      setCurrentUser(null); // Limpiar el contexto de usuario
       router.push('/auth');
     } catch (error) {
       console.error('Error logging out:', error);
