@@ -1112,10 +1112,7 @@ export function DataTable({
                         setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
                       }}
                       onDoubleClick={() => {
-                        // Solo abrir modal de edición con doble click en móvil
-                        if (isMobile && onEdit) {
-                          onEdit(row.original);
-                        }
+                        // Funcionalidad de doble clic deshabilitada
                       }}
                     >
                      {row.getVisibleCells().map((cell) => (
@@ -1366,18 +1363,6 @@ export function DataTable({
              top: `${contextMenu.y}px`,
            }}
          >
-           {canEdit && onEdit && (
-             <button
-               onClick={() => {
-                 onEdit(contextMenu.record);
-                 setContextMenu(null);
-               }}
-               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
-             >
-               <Edit className="h-4 w-4" />
-               <span>Editar</span>
-             </button>
-           )}
            {canDelete && onDelete && (
              <button
                onClick={() => {
