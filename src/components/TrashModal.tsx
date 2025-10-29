@@ -38,7 +38,8 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
         .not('deleted_at', 'is', null)
         .gte('deleted_at', cutoffDate.toISOString())
         .order('deleted_at', { ascending: false });
-
+    
+        
       if (error) {
         console.error('Error al cargar registros eliminados:', error);
         return;

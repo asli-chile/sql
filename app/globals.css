@@ -214,3 +214,23 @@ body {
     transform: scale(1);
   }
 }
+
+/* Ocultar columna EDITAR completamente - Método más compatible */
+/* Ocultar cualquier th o td que contenga texto "Editar" o "Edit" */
+th:has(span:contains("Editar")),
+th:has(span:contains("Edit")),
+td:has(span:contains("Editar")),
+td:has(span:contains("Edit")) {
+  display: none !important;
+}
+
+/* Alternativa usando JavaScript para navegadores que no soportan :has() */
+.hide-edit-column {
+  display: none !important;
+}
+
+/* Ocultar columna específica por posición (después de Historial) */
+table th:nth-last-child(1),
+table td:nth-last-child(1) {
+  display: none !important;
+}

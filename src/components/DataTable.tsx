@@ -89,6 +89,46 @@ export function DataTable({
     onExport: !!onExport,
     dataLength: data.length
   });
+
+  // Ocultar columna EDITAR usando JavaScript
+  useEffect(() => {
+    const hideEditColumn = () => {
+      // Buscar todas las celdas que contengan "Editar" o "Edit"
+      const allCells = document.querySelectorAll('th, td');
+      allCells.forEach(cell => {
+        const cellText = cell.textContent?.trim();
+        if (cellText === 'Editar' || cellText === 'Edit') {
+          cell.style.display = 'none';
+          cell.classList.add('hide-edit-column');
+        }
+        
+        // También buscar spans dentro de las celdas
+        const spans = cell.querySelectorAll('span');
+        spans.forEach(span => {
+          const spanText = span.textContent?.trim();
+          if (spanText === 'Editar' || spanText === 'Edit') {
+            cell.style.display = 'none';
+            cell.classList.add('hide-edit-column');
+          }
+        });
+      });
+    };
+
+    // Ejecutar inmediatamente
+    hideEditColumn();
+    
+    // Ejecutar después de un pequeño delay para asegurar que el DOM esté listo
+    const timeoutId = setTimeout(hideEditColumn, 100);
+    
+    // Ejecutar cuando cambien los datos
+    const observer = new MutationObserver(hideEditColumn);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    return () => {
+      clearTimeout(timeoutId);
+      observer.disconnect();
+    };
+  }, [data]);
   
   // Helper para obtener estilos de filtro según el tema
   const getFilterStyles = (hasFilter: boolean) => {
