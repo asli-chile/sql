@@ -98,7 +98,7 @@ export function DataTable({
       allCells.forEach(cell => {
         const cellText = cell.textContent?.trim();
         if (cellText === 'Editar' || cellText === 'Edit') {
-          cell.style.display = 'none';
+          (cell as HTMLElement).style.display = 'none';
           cell.classList.add('hide-edit-column');
         }
         
@@ -107,7 +107,7 @@ export function DataTable({
         spans.forEach(span => {
           const spanText = span.textContent?.trim();
           if (spanText === 'Editar' || spanText === 'Edit') {
-            cell.style.display = 'none';
+            (cell as HTMLElement).style.display = 'none';
             cell.classList.add('hide-edit-column');
           }
         });

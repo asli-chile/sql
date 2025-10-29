@@ -216,14 +216,6 @@ body {
 }
 
 /* Ocultar columna EDITAR completamente - Método más compatible */
-/* Ocultar cualquier th o td que contenga texto "Editar" o "Edit" */
-th:has(span:contains("Editar")),
-th:has(span:contains("Edit")),
-td:has(span:contains("Editar")),
-td:has(span:contains("Edit")) {
-  display: none !important;
-}
-
 /* Alternativa usando JavaScript para navegadores que no soportan :has() */
 .hide-edit-column {
   display: none !important;
