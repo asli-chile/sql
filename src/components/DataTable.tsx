@@ -65,7 +65,9 @@ export function DataTable({
   preserveFilters = true,
 }: DataTableProps) {
   // Log muy básico al inicio
-  console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO');
+  console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO - VERSION 1.0.3-CLEAN');
+  console.log('📊 Número de columnas recibidas:', columns.length);
+  console.log('📋 IDs de columnas:', columns.map(c => c.id).filter(Boolean));
   
   const { theme } = useTheme();
   
