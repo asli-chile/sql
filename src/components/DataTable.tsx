@@ -65,9 +65,10 @@ export function DataTable({
   preserveFilters = true,
 }: DataTableProps) {
   // Log muy básico al inicio
-  console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO - VERSION 1.0.3-CLEAN');
+  console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO - VERSION 1.0.5-FINAL');
   console.log('📊 Número de columnas recibidas:', columns.length);
   console.log('📋 IDs de columnas:', columns.map(c => c.id).filter(Boolean));
+  console.log('📋 Headers de columnas:', columns.map(c => typeof c.header === 'string' ? c.header : 'Complex Header'));
   
   const { theme } = useTheme();
   
@@ -1086,7 +1087,7 @@ export function DataTable({
                      bgClass = 'bg-red-100';
                      hoverClass = 'hover:bg-red-200';
                      textClass = 'text-red-900 font-medium';
-                     editButtonClass = 'text-blue-700 hover:text-blue-900';
+                   editButtonClass = 'text-blue-700 hover:text-blue-900';
                    } else if (isPendiente) {
                      bgClass = 'bg-yellow-100';
                      hoverClass = 'hover:bg-yellow-200';
@@ -1249,7 +1250,7 @@ export function DataTable({
                                 theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
                               }`}>
                                 {container}
-                              </span>
+             </span>
                             ));
                           }
                           
@@ -1274,7 +1275,7 @@ export function DataTable({
                             </span>
                           );
                         })()}
-                      </div>
+           </div>
                     </div>
                   )}
                   <div className="flex justify-between">
