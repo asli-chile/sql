@@ -106,16 +106,17 @@ export function InlineEditCell({
           'naveInicial': 'naves',
           'viaje': 'viajes',
           'ejecutivo': 'ejecutivos',
-          'commodity': 'commodities',
-          'consignatario': 'consignatarios',
+          'especie': 'especies',
           'shipper': 'shippers',
-          'agenciaMaritima': 'agencias_maritimas',
-          'tipoIngreso': 'tipos_ingreso',
-          'puertoOrigen': 'puertos_origen',
-          'puertoDestino': 'puertos_destino',
-          'estado': 'estados',
+          'pol': 'puertos_origen',
+          'pod': 'puertos_destino',
+          'deposito': 'depositos',
           'flete': 'fletes',
-          'roleadaDesde': 'roleada_desde'
+          'roleadaDesde': 'roleada_desde',
+          'tipoIngreso': 'tipos_ingreso',
+          'estado': 'estados',
+          'estadoBl': 'estados_bl',
+          'ct': 'cts'
         };
 
         const category = fieldToCatalogCategory[field];
