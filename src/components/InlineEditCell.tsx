@@ -505,7 +505,7 @@ export function InlineEditCell({
               autoFocus
             />
             {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 max-h-60 overflow-y-auto bg-gray-800 dark:bg-gray-900 border border-gray-600 rounded-md shadow-2xl z-[9999] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+              <div className="absolute left-0 top-full mt-1 min-w-[200px] w-max max-w-[400px] max-h-60 overflow-y-auto bg-gray-800 dark:bg-gray-900 border border-gray-600 rounded-md shadow-2xl z-[9999] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
                 {filteredSuggestions.map((suggestion, index) => (
                   <div
                     key={index}
@@ -514,7 +514,7 @@ export function InlineEditCell({
                       setEditValue(suggestion);
                       setShowSuggestions(false);
                     }}
-                    className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+                    className={`px-3 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap ${
                       index === selectedIndex
                         ? 'bg-blue-600 text-white font-semibold'
                         : 'text-gray-200 hover:bg-gray-700 hover:text-white'
