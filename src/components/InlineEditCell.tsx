@@ -100,6 +100,7 @@ export function InlineEditCell({
       const filtered = catalogSuggestions.filter(suggestion =>
         suggestion.toString().toLowerCase().includes(searchValue)
       );
+      console.log(`🔎 Filtro: "${searchValue}" | Total: ${catalogSuggestions.length} | Filtradas: ${filtered.length}`, filtered);
       setFilteredSuggestions(filtered);
       setShowSuggestions(filtered.length > 0 && isEditing);
     } else {
@@ -155,6 +156,8 @@ export function InlineEditCell({
           return;
         }
 
+        console.log(`🔍 Buscando catálogo para campo: ${field} → categoría: ${category}`);
+        
         const { data, error } = await supabase
           .from('catalogos')
           .select('valores')
@@ -162,14 +165,16 @@ export function InlineEditCell({
           .single();
 
         if (error) {
-          console.warn(`No se encontraron sugerencias para ${category}:`, error);
+          console.warn(`❌ No se encontraron sugerencias para ${category}:`, error);
           setCatalogSuggestions([]);
           return;
         }
 
         if (data && Array.isArray(data.valores)) {
+          console.log(`✅ Sugerencias cargadas para ${field}:`, data.valores);
           setCatalogSuggestions(data.valores);
         } else {
+          console.warn(`⚠️ Datos del catálogo no son un array para ${category}:`, data);
           setCatalogSuggestions([]);
         }
       } catch (err) {
