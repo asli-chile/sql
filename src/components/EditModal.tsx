@@ -255,10 +255,10 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
   if (!isOpen || !record) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-3 border-b border-gray-200">
+        <div className="flex items-center justify-between p-3 border-b border-gray-200 flex-shrink-0">
           <h2 className="text-lg font-bold text-gray-900">
             Editar Registro: {record.refAsli}
           </h2>
@@ -556,7 +556,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
          </form>
 
                  {/* Footer */}
-         <div className="flex items-center justify-end space-x-2 p-3 border-t border-gray-200">
+         <div className="flex items-center justify-end space-x-2 p-3 border-t border-gray-200 flex-shrink-0">
            <button
              type="button"
              onClick={onClose}

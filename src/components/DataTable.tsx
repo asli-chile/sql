@@ -6,14 +6,13 @@ import {
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
-  getPaginationRowModel,
   useReactTable,
   ColumnDef,
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Download, Plus, Edit, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List } from 'lucide-react';
+import { Search, Filter, Download, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List } from 'lucide-react';
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -89,46 +88,6 @@ export function DataTable({
     onExport: !!onExport,
     dataLength: data.length
   });
-
-  // Ocultar columna EDITAR usando JavaScript
-  useEffect(() => {
-    const hideEditColumn = () => {
-      // Buscar todas las celdas que contengan "Editar" o "Edit"
-      const allCells = document.querySelectorAll('th, td');
-      allCells.forEach(cell => {
-        const cellText = cell.textContent?.trim();
-        if (cellText === 'Editar' || cellText === 'Edit') {
-          (cell as HTMLElement).style.display = 'none';
-          cell.classList.add('hide-edit-column');
-        }
-        
-        // También buscar spans dentro de las celdas
-        const spans = cell.querySelectorAll('span');
-        spans.forEach(span => {
-          const spanText = span.textContent?.trim();
-          if (spanText === 'Editar' || spanText === 'Edit') {
-            (cell as HTMLElement).style.display = 'none';
-            cell.classList.add('hide-edit-column');
-          }
-        });
-      });
-    };
-
-    // Ejecutar inmediatamente
-    hideEditColumn();
-    
-    // Ejecutar después de un pequeño delay para asegurar que el DOM esté listo
-    const timeoutId = setTimeout(hideEditColumn, 100);
-    
-    // Ejecutar cuando cambien los datos
-    const observer = new MutationObserver(hideEditColumn);
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    return () => {
-      clearTimeout(timeoutId);
-      observer.disconnect();
-    };
-  }, [data]);
   
   // Helper para obtener estilos de filtro según el tema
   const getFilterStyles = (hasFilter: boolean) => {
@@ -159,7 +118,6 @@ export function DataTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [showSorting, setShowSorting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   
@@ -178,7 +136,7 @@ export function DataTable({
   });
 
   // Columnas que nunca se pueden ocultar
-  const alwaysVisibleColumns = ['select', 'refAsli', 'booking'];
+  const alwaysVisibleColumns = ['select', 'refAsli', 'booking', 'historial'];
   
   // Estado para el menú contextual
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro } | null>(null);
@@ -212,7 +170,6 @@ export function DataTable({
 
   // Refs
   const filterPanelRef = useRef<HTMLDivElement>(null);
-  const sortingPanelRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Funciones para manejar visibilidad de columnas
@@ -260,18 +217,17 @@ export function DataTable({
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowFilters(false);
-        setShowSorting(false);
       }
     };
 
-    if (showFilters || showSorting) {
+    if (showFilters) {
       document.addEventListener('keydown', handleEsc);
     }
 
     return () => {
       document.removeEventListener('keydown', handleEsc);
     };
-  }, [showFilters, showSorting]);
+  }, [showFilters]);
 
   // Cerrar con click fuera
   useEffect(() => {
@@ -286,28 +242,20 @@ export function DataTable({
         }
       }
       
-      // Verificar si el click fue fuera del panel de ordenamiento
-      if (sortingPanelRef.current && showSorting) {
-        // No cerrar si el click fue en el botón de ordenar
-        if (!target.closest('[data-sort-button]') && !sortingPanelRef.current.contains(target)) {
-          setShowSorting(false);
-        }
-      }
-      
       // Cerrar menú contextual si se hace click fuera
       if (contextMenuRef.current && contextMenu && !contextMenuRef.current.contains(event.target as Node)) {
         setContextMenu(null);
       }
     };
 
-    if (showFilters || showSorting || contextMenu) {
+    if (showFilters || contextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showFilters, showSorting, contextMenu]);
+  }, [showFilters, contextMenu]);
 
   // Filtrar datos por fechas antes de pasar a la tabla (solo si hay filtros activos)
   const filteredData = useMemo(() => {
@@ -395,7 +343,6 @@ export function DataTable({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
@@ -458,25 +405,6 @@ export function DataTable({
               {(columnFilters.length > 0 || Object.values(dateFilters).some(value => value !== '')) && (
                 <span className="bg-blue-600 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded-full">
                   {columnFilters.length + Object.values(dateFilters).filter(value => value !== '').length}
-                </span>
-              )}
-            </button>
-            
-            {/* Ordenar */}
-            <button 
-              data-sort-button
-              onClick={() => setShowSorting(!showSorting)}
-              className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 border rounded-lg text-xs sm:text-sm transition-colors ${
-                theme === 'dark'
-                  ? 'border-gray-600 hover:bg-gray-700 text-gray-300'
-                  : 'border-gray-300 hover:bg-gray-50 text-gray-600'
-              }`}
-            >
-              <ArrowUpDown className={`h-3 w-3 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`} />
-              <span className="hidden sm:inline">Ordenar</span>
-              {sorting.length > 0 && (
-                <span className="bg-blue-600 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded-full">
-                  {sorting.length}
                 </span>
               )}
             </button>
@@ -556,6 +484,23 @@ export function DataTable({
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden xs:inline">Agregar</span>
+              </button>
+            )}
+
+            {/* Limpiar selección */}
+            {selectedRows.size > 0 && onClearSelection && (
+              <button
+                onClick={onClearSelection}
+                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 border border-gray-600'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
+                }`}
+                title="Limpiar selección"
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden xs:inline">Limpiar ({selectedRows.size})</span>
+                <span className="xs:hidden">{selectedRows.size}</span>
               </button>
             )}
           </div>
@@ -966,117 +911,65 @@ export function DataTable({
         </div>
       )}
 
-      {/* Panel de Ordenamiento */}
-      {showSorting && (
-        <div ref={sortingPanelRef} className="bg-white border border-gray-200 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-medium text-gray-900">Ordenar por</h3>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  setSorting([]);
-                }}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Limpiar
-              </button>
-              <button
-                onClick={() => setShowSorting(false)}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            {/* Campo para ordenar */}
-            <div>
-              <label className="text-sm font-medium text-gray-900 mb-2 block">
-                Columna
-              </label>
-                             <select
-                 value={sorting[0]?.id || ''}
-                 onChange={(e) => {
-                   if (e.target.value) {
-                     setSorting([{ id: e.target.value, desc: sorting[0]?.desc || false }]);
-                   } else {
-                     setSorting([]);
-                   }
-                 }}
-                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white"
-               >
-                 <option value="">Seleccionar columna...</option>
-                 <option value="refAsli">REF ASLI</option>
-                 <option value="ingresado">Ingresado</option>
-                 <option value="etd">ETD</option>
-                 <option value="eta">ETA</option>
-                 <option value="naviera">Naviera</option>
-               </select>
-            </div>
-            
-            {/* Dirección del ordenamiento */}
-            {sorting[0]?.id && (
-              <div>
-                <label className="text-sm font-medium text-gray-900 mb-2 block">
-                  Dirección
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSorting([{ id: sorting[0].id, desc: false }])}
-                    className={`flex-1 px-3 py-2 text-sm border-2 rounded-lg transition-colors ${
-                      !sorting[0].desc
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center space-x-1">
-                      <ArrowUp className="h-4 w-4" />
-                      <span>Ascendente (A-Z)</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setSorting([{ id: sorting[0].id, desc: true }])}
-                    className={`flex-1 px-3 py-2 text-sm border-2 rounded-lg transition-colors ${
-                      sorting[0].desc
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center space-x-1">
-                      <ArrowDown className="h-4 w-4" />
-                      <span>Descendente (Z-A)</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-             {/* Tabla con scroll interno */}
+      {/* Tabla con scroll interno */}
       {viewMode === 'table' && (
        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-         <div className="relative max-h-[70vh] overflow-auto overflow-x-auto">
+         <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
           <table className="w-full min-w-[800px] sm:min-w-[1000px] lg:min-w-[1200px]">
-                         <thead className="bg-blue-800 sticky top-0 z-10">
+                         <thead className="bg-blue-900 sticky top-0 z-10 shadow-sm">
                {table.getHeaderGroups().map((headerGroup) => (
                  <tr key={headerGroup.id}>
-                   {headerGroup.headers.map((header) => (
-                     <th
-                       key={header.id}
-                       className="px-1 sm:px-2 py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-                       style={{ color: 'white' }}
-                     >
-                       {header.isPlaceholder
-                         ? null
-                         : flexRender(
-                             header.column.columnDef.header,
-                             header.getContext()
+                   {headerGroup.headers.map((header) => {
+                     const canSort = header.column.getCanSort();
+                     const sortDirection = header.column.getIsSorted();
+                     const isSelectColumn = header.id === 'select';
+                     const isRefAsliColumn = header.id === 'refAsli';
+                     
+                     // Clases para sticky
+                     let stickyClasses = '';
+                     let stickyStyles: React.CSSProperties = {};
+                     
+                    if (isSelectColumn) {
+                      stickyClasses = 'sticky left-0 z-20 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
+                      stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px' };
+                    } else if (isRefAsliColumn) {
+                      stickyClasses = 'sticky z-20 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
+                      stickyStyles = { left: '36px' }; // Ancho exacto de checkbox
+                    }
+                     
+                     return (
+                       <th
+                         key={header.id}
+                        className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap ${
+                          canSort ? 'cursor-pointer select-none hover:bg-blue-800 transition-colors' : ''
+                        } ${stickyClasses}`}
+                         style={{ ...stickyStyles, color: 'white' }}
+                         onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+                       >
+                         <div className="flex items-center justify-center gap-1">
+                           {header.isPlaceholder
+                             ? null
+                             : flexRender(
+                                 header.column.columnDef.header,
+                                 header.getContext()
+                               )}
+                           {canSort && (
+                             <span className="inline-flex flex-col ml-1">
+                               {sortDirection === 'asc' && (
+                                 <ArrowUp className="h-3 w-3" />
+                               )}
+                               {sortDirection === 'desc' && (
+                                 <ArrowDown className="h-3 w-3" />
+                               )}
+                               {!sortDirection && (
+                                 <ArrowUpDown className="h-3 w-3 opacity-50" />
+                               )}
+                             </span>
                            )}
-                     </th>
-                   ))}
+                         </div>
+                       </th>
+                     );
+                   })}
                  </tr>
                ))}
              </thead>
@@ -1155,14 +1048,32 @@ export function DataTable({
                         // Funcionalidad de doble clic deshabilitada
                       }}
                     >
-                     {row.getVisibleCells().map((cell) => (
-                       <td 
-                         key={cell.id} 
-                         className={`px-1 sm:px-2 py-2 whitespace-nowrap text-xs text-center ${textClass}`}
-                       >
-                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                       </td>
-                     ))}
+                     {row.getVisibleCells().map((cell) => {
+                       const isSelectColumn = cell.column.id === 'select';
+                       const isRefAsliColumn = cell.column.id === 'refAsli';
+                       
+                       // Clases para sticky
+                       let stickyClasses = '';
+                       let stickyStyles: React.CSSProperties = {};
+                       
+                      if (isSelectColumn) {
+                        stickyClasses = `sticky left-0 z-10 ${bgClass} shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
+                        stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px' };
+                      } else if (isRefAsliColumn) {
+                        stickyClasses = `sticky z-10 ${bgClass} shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
+                        stickyStyles = { left: '36px' }; // Ancho exacto de checkbox
+                      }
+                       
+                       return (
+                         <td 
+                           key={cell.id} 
+                           className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center ${textClass} ${stickyClasses}`}
+                           style={stickyStyles}
+                         >
+                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                         </td>
+                       );
+                     })}
                    </tr>
                  );
                })}
@@ -1397,22 +1308,33 @@ export function DataTable({
        {contextMenu && (
          <div
            ref={contextMenuRef}
-           className="fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-2 min-w-[180px]"
+           className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 min-w-[180px]"
            style={{
              left: `${contextMenu.x}px`,
              top: `${contextMenu.y}px`,
            }}
          >
-           {canDelete && onDelete && (
+           {canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete) && (
              <button
                onClick={() => {
-                 onDelete(contextMenu.record);
+                 if (selectedRows.size > 0 && onBulkDelete) {
+                   // Si hay filas seleccionadas, eliminar todas las seleccionadas
+                   onBulkDelete();
+                 } else if (onDelete) {
+                   // Si no hay selección, eliminar solo el registro del clic derecho
+                   onDelete(contextMenu.record);
+                 }
                  setContextMenu(null);
                }}
-               className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+               className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
              >
                <Trash2 className="h-4 w-4" />
-               <span>Eliminar</span>
+               <span>
+                 {selectedRows.size > 0 
+                   ? `Eliminar selección (${selectedRows.size})`
+                   : 'Eliminar'
+                 }
+               </span>
              </button>
            )}
          </div>

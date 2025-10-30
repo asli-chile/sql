@@ -10,9 +10,11 @@ interface TrashModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRestore?: () => void;
+  onSuccess?: (message: string) => void;
+  onError?: (message: string) => void;
 }
 
-export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
+export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: TrashModalProps) {
   const [deletedRecords, setDeletedRecords] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDays, setSelectedDays] = useState(7); // Días para conservar registros eliminados
@@ -99,11 +101,12 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
 
       if (error) {
         console.error('Error al restaurar registros:', error);
-        alert('Error al restaurar los registros');
+        if (onError) onError('Error al restaurar los registros');
         return;
       }
 
       console.log(`✅ Restaurados ${selectedIds.length} registros`);
+      if (onSuccess) onSuccess(`✅ Se restauraron ${selectedIds.length} registros exitosamente`);
       clearSelection();
       loadDeletedRecords();
       
@@ -112,7 +115,7 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
       }
     } catch (error) {
       console.error('Error al restaurar registros:', error);
-      alert('Error al restaurar los registros');
+      if (onError) onError('Error al restaurar los registros');
     } finally {
       setBulkLoading(false);
     }
@@ -134,11 +137,12 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
 
       if (error) {
         console.error('Error al eliminar registros:', error);
-        alert('Error al eliminar los registros');
+        if (onError) onError('Error al eliminar los registros permanentemente');
         return;
       }
 
       console.log(`✅ Eliminados permanentemente ${selectedIds.length} registros`);
+      if (onSuccess) onSuccess(`✅ Se eliminaron ${selectedIds.length} registros permanentemente`);
       clearSelection();
       loadDeletedRecords();
       
@@ -147,7 +151,7 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
       }
     } catch (error) {
       console.error('Error al eliminar registros:', error);
-      alert('Error al eliminar los registros');
+      if (onError) onError('Error al eliminar los registros permanentemente');
     } finally {
       setBulkLoading(false);
     }
@@ -166,11 +170,12 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
 
       if (error) {
         console.error('Error al restaurar registro:', error);
-        alert('Error al restaurar el registro');
+        if (onError) onError('Error al restaurar el registro');
         return;
       }
 
       // Recargar lista
+      if (onSuccess) onSuccess('✅ Registro restaurado exitosamente');
       loadDeletedRecords();
       
       // Notificar al componente padre
@@ -179,7 +184,7 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
       }
     } catch (error) {
       console.error('Error al restaurar registro:', error);
-      alert('Error al restaurar el registro');
+      if (onError) onError('Error al restaurar el registro');
     }
   };
 
@@ -196,10 +201,11 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
 
       if (error) {
         console.error('Error al eliminar permanentemente:', error);
-        alert('Error al eliminar permanentemente el registro');
+        if (onError) onError('Error al eliminar permanentemente el registro');
         return;
       }
 
+      if (onSuccess) onSuccess('✅ Registro eliminado permanentemente');
       loadDeletedRecords();
       
       if (onRestore) {
@@ -207,7 +213,7 @@ export function TrashModal({ isOpen, onClose, onRestore }: TrashModalProps) {
       }
     } catch (error) {
       console.error('Error al eliminar permanentemente:', error);
-      alert('Error al eliminar permanentemente el registro');
+      if (onError) onError('Error al eliminar permanentemente el registro');
     }
   };
 

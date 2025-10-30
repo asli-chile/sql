@@ -10,6 +10,13 @@
   --foreground: #ededed;
 }
 
+/* Aplicar Fira Sans Italic Bold globalmente */
+* {
+  font-family: var(--font-fira-sans), sans-serif !important;
+  font-style: italic !important;
+  font-weight: 700 !important;
+}
+
 /* Forzar tema claro cuando no hay clase dark */
 body {
   background-color: #f9fafb !important;
@@ -132,8 +139,8 @@ body {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-fira-sans);
+  --font-mono: var(--font-fira-sans);
 }
 
 /* Mejoras de responsividad */
@@ -215,14 +222,3 @@ body {
   }
 }
 
-/* Ocultar columna EDITAR completamente - Método más compatible */
-/* Alternativa usando JavaScript para navegadores que no soportan :has() */
-.hide-edit-column {
-  display: none !important;
-}
-
-/* Ocultar columna específica por posición (después de Historial) */
-table th:nth-last-child(1),
-table td:nth-last-child(1) {
-  display: none !important;
-}

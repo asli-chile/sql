@@ -87,6 +87,9 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const refAsli = row.getValue('refAsli') as string;
       const tipoIngreso = row.original.tipoIngreso;
+      const selectedRecordsArray = getSelectedRecords();
+      const isCurrentRecordSelected = selectedRecordsArray.some(selected => selected.id === row.original.id);
+      const shouldShowIndicator = selectedRecordsArray.length > 1 && isCurrentRecordSelected;
       
       let bgColor = 'bg-green-500';
       let textColor = 'text-white';
@@ -103,8 +106,15 @@ export const createRegistrosColumns = (
       }
       
       return (
-        <div className={`font-semibold px-2 py-1 rounded ${bgColor} ${textColor}`}>
-          {refAsli}
+        <div className="flex items-center gap-2">
+          <div className={`font-semibold px-2 py-1 rounded ${bgColor} ${textColor}`}>
+            {refAsli}
+          </div>
+          {shouldShowIndicator && (
+            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold">
+              {selectedRecordsArray.length}
+            </span>
+          )}
         </div>
       );
     },
@@ -186,7 +196,7 @@ export const createRegistrosColumns = (
         if (Array.isArray(contenedor)) {
           return contenedor.map((container, index) => (
             <span key={index} className={`px-2 py-1 rounded text-xs font-mono ${
-              isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+              isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
             }`}>
               {container}
             </span>
@@ -198,7 +208,7 @@ export const createRegistrosColumns = (
           const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
           return containers.map((container, index) => (
             <span key={index} className={`px-2 py-1 rounded text-xs font-mono ${
-              isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+              isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
             }`}>
               {container}
             </span>
@@ -208,7 +218,7 @@ export const createRegistrosColumns = (
         // Si es un solo contenedor
         return (
           <span className={`px-2 py-1 rounded text-xs font-mono ${
-            isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+            isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
           }`}>
             {contenedor}
           </span>

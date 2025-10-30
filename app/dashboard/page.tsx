@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a1628' }}>
         <div className="text-center w-full max-w-4xl px-8">
           <div className="w-64 h-64 mx-auto mb-8 flex items-center justify-center">
             <img
@@ -208,10 +208,10 @@ export default function DashboardPage() {
               }}
             />
           </div>
-          <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">
-            Sistema ASLI
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 px-4" style={{ color: '#ffffff' }}>
+            Asesorías y Servicios Logísticos Integrales Ltda.
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Cargando dashboard...</p>
+          <p className="text-lg" style={{ color: '#ffffff' }}>Cargando dashboard...</p>
         </div>
       </div>
     );
@@ -222,7 +222,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

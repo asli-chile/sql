@@ -8,6 +8,7 @@ import { parseDateString } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
+import { useEditingCell } from '@/contexts/EditingCellContext';
 
 interface InlineEditCellProps {
   value: any;
@@ -52,11 +53,30 @@ export function InlineEditCell({
   const { theme } = useTheme();
   
   const { canEdit, currentUser } = useUser();
+  const { setEditingCell, isEditing: isEditingInContext, clearEditing } = useEditingCell();
   
-  const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [lastTap, setLastTap] = useState(0);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [showTapHint, setShowTapHint] = useState(false);
+  
+  // Determinar si esta celda específica está en edición
+  const isEditing = isEditingInContext(record.id, field);
+
+  // Detectar si es un dispositivo táctil
+  useEffect(() => {
+    const checkTouchDevice = () => {
+      return (
+        'ontouchstart' in window ||
+        navigator.maxTouchPoints > 0 ||
+        // @ts-ignore
+        navigator.msMaxTouchPoints > 0
+      );
+    };
+    setIsTouchDevice(checkTouchDevice());
+  }, []);
 
   // Debug básico
   console.log('🚀 InlineEditCell se está renderizando para campo:', field);
@@ -80,7 +100,7 @@ export function InlineEditCell({
 
   const handleSave = async () => {
     if (editValue === value) {
-      setIsEditing(false);
+      clearEditing();
       return;
     }
 
@@ -128,7 +148,7 @@ export function InlineEditCell({
       }
       
       onBulkSave(field, processedValue, selectedRecords);
-      setIsEditing(false);
+      clearEditing();
       return;
     }
 
@@ -201,7 +221,7 @@ export function InlineEditCell({
       };
 
       onSave(updatedRecord);
-      setIsEditing(false);
+      clearEditing();
     } catch (err: any) {
       setError(err.message || 'Error al guardar');
     } finally {
@@ -211,8 +231,38 @@ export function InlineEditCell({
 
   const handleCancel = () => {
     setEditValue(value || '');
-    setIsEditing(false);
+    clearEditing();
     setError('');
+  };
+
+  // Manejar el clic/toque para activar la edición
+  const handleCellClick = () => {
+    if (!canEdit) return;
+
+    // En dispositivos táctiles, requerir doble tap
+    if (isTouchDevice) {
+      const now = Date.now();
+      const DOUBLE_TAP_DELAY = 300; // 300ms para considerar un doble tap
+
+      if (now - lastTap < DOUBLE_TAP_DELAY) {
+        // Es un doble tap, activar edición
+        setEditingCell(record.id, field);
+        setLastTap(0);
+        setShowTapHint(false);
+      } else {
+        // Es el primer tap, guardar el timestamp y mostrar hint
+        setLastTap(now);
+        setShowTapHint(true);
+        
+        // Ocultar el hint después de 500ms
+        setTimeout(() => {
+          setShowTapHint(false);
+        }, 500);
+      }
+    } else {
+      // En desktop, activar inmediatamente con un solo clic
+      setEditingCell(record.id, field);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -358,43 +408,55 @@ export function InlineEditCell({
 
   // Verificar si el registro actual está seleccionado
   const isCurrentRecordSelected = selectedRecords.some(selected => selected.id === record.id);
-  const shouldShowBulkIndicator = isSelectionMode && selectedRecords.length > 1 && isCurrentRecordSelected && onBulkSave;
+  // Solo mostrar el indicador en REF ASLI para mejor UX
+  const shouldShowBulkIndicator = field === 'refAsli' && isSelectionMode && selectedRecords.length > 1 && isCurrentRecordSelected;
 
   return (
     <div 
-      className={`flex items-center gap-1 group rounded px-2 py-1 transition-colors ${className} ${
+      className={`flex items-center gap-1 group rounded px-2 py-1 transition-colors relative ${className} ${
         shouldShowBulkIndicator 
           ? theme === 'dark'
             ? 'bg-blue-900/30 border border-blue-600'
             : 'bg-blue-100 border border-blue-300'
           : ''
       } ${
-        theme === 'dark'
-          ? 'hover:bg-gray-700'
-          : 'hover:bg-blue-50'
+        showTapHint
+          ? theme === 'dark'
+            ? 'bg-yellow-900/40 border border-yellow-500'
+            : 'bg-yellow-100 border border-yellow-400'
+          : theme === 'dark'
+            ? 'hover:bg-gray-700'
+            : 'hover:bg-blue-50'
       } ${
         canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'
       }`}
-      onClick={canEdit ? () => setIsEditing(true) : undefined}
+      onClick={handleCellClick}
       title={
         !canEdit 
           ? "No tienes permisos para editar"
-          : shouldShowBulkIndicator
-            ? `Editar ${selectedRecords.length} registros seleccionados`
-            : onBulkSave === undefined
-              ? "Campo único - Solo edición individual"
-              : "Haz clic para editar"
+          : isTouchDevice
+            ? "Toca dos veces para editar"
+            : shouldShowBulkIndicator
+              ? `Editar ${selectedRecords.length} registros seleccionados`
+              : onBulkSave === undefined
+                ? "Campo único - Solo edición individual"
+                : "Haz clic para editar"
       }
     >
       <span className={`flex-1 ${getDisplayStyle(value)}`}>
         {formatDisplayValue(value)}
       </span>
+      {showTapHint && (
+        <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-[10px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-semibold whitespace-nowrap z-10 shadow-md animate-pulse">
+          Toca de nuevo
+        </span>
+      )}
       {shouldShowBulkIndicator && (
         <span className="text-xs bg-blue-500 text-white px-1 py-0.5 rounded-full font-semibold">
           {selectedRecords.length}
         </span>
       )}
-      {canEdit && (
+      {canEdit && !showTapHint && (
         <Edit3 
           size={12} 
           className="text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" 

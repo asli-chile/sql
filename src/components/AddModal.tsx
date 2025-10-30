@@ -86,10 +86,16 @@ export function AddModal({
     destinosUnicos: destinosUnicos.length,
     depositosUnicos: depositosUnicos.length,
     navesUnicas: navesUnicas.length,
+    navierasNavesMapping: Object.keys(navierasNavesMapping).length,
+    consorciosNavesMapping: Object.keys(consorciosNavesMapping).length,
     cbmUnicos: cbmUnicos.length,
     fletesUnicos: fletesUnicos.length
   });
   
+  console.log('🗺️ Navieras con mapping:', Object.keys(navierasNavesMapping));
+  console.log('🗺️ Consorcios con mapping:', Object.keys(consorciosNavesMapping));
+  
+  const viajeInputRef = React.useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     refAsli: '',
     ejecutivo: '',
@@ -150,6 +156,11 @@ export function AddModal({
     if (formData.naveInicial && !formData.viaje.trim()) {
       setError('El campo Viaje es obligatorio cuando hay una nave seleccionada');
       setLoading(false);
+      // Hacer scroll hacia el campo con error
+      setTimeout(() => {
+        viajeInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        viajeInputRef.current?.focus();
+      }, 100);
       return;
     }
 
@@ -305,91 +316,69 @@ export function AddModal({
     }
   };
 
-  // Función para obtener naves de consorcios especiales
-  const getConsorcioNaves = (naviera: string) => {
-    console.log('🔍 getConsorcioNaves - Naviera recibida:', naviera);
-    
-    // Si la naviera ya es un consorcio (contiene "/"), buscar naves de las navieras individuales
-    if (naviera.includes('/')) {
-      console.log('🔍 Naviera es consorcio directo:', naviera);
-      
-      // Extraer las navieras individuales del consorcio
-      const navierasIndividuales = naviera.split(' / ').map(n => n.trim());
-      console.log('🔍 Navieras individuales del consorcio:', navierasIndividuales);
-      
-      // Buscar naves de cada naviera individual en navierasNavesMapping
-      const todasLasNaves: string[] = [];
-      navierasIndividuales.forEach(navieraIndividual => {
-        const navesDeNaviera = navierasNavesMapping[navieraIndividual] || [];
-        console.log(`🔍 Naves de ${navieraIndividual}:`, navesDeNaviera);
-        todasLasNaves.push(...navesDeNaviera);
-      });
-      
-      console.log('🔍 Todas las naves del consorcio:', todasLasNaves);
-      return [...new Set(todasLasNaves)]; // Eliminar duplicados
-    }
-    
-    // Si no es consorcio directo, buscar por patrones en consorciosNavesMapping
-    const consorciosEncontrados: string[] = [];
-    
-    Object.keys(consorciosNavesMapping).forEach(consorcio => {
-      // Patrón 1: HAPAG-LLOYD / ONE / MSC
-      if (naviera.includes('HAPAG') || naviera.includes('ONE') || naviera.includes('MSC')) {
-        if (consorcio.includes('HAPAG') || consorcio.includes('ONE') || consorcio.includes('MSC')) {
-          consorciosEncontrados.push(consorcio);
-        }
-      }
-      
-      // Patrón 2: PIL / YANG MING / WAN HAI
-      if (naviera.includes('PIL') || naviera.includes('YANG MING') || naviera.includes('WAN HAI')) {
-        if (consorcio.includes('PIL') || consorcio.includes('YANG MING') || consorcio.includes('WAN HAI')) {
-          consorciosEncontrados.push(consorcio);
-        }
-      }
-      
-      // Patrón 3: CMA CGM / COSCO / OOCL
-      if (naviera.includes('CMA CGM') || naviera.includes('COSCO') || naviera.includes('OOCL')) {
-        if (consorcio.includes('CMA CGM') || consorcio.includes('COSCO') || consorcio.includes('OOCL')) {
-          consorciosEncontrados.push(consorcio);
-        }
-      }
-    });
-    
-    console.log('🔍 Consorcios encontrados para', naviera, ':', consorciosEncontrados);
-    return consorciosEncontrados;
-  };
-
-  // Obtener naves disponibles basadas en la naviera seleccionada
+  // Obtener naves disponibles desde el mapping del catálogo
   const getAvailableNaves = () => {
     if (!formData.naviera) return [];
     
-    console.log('🔍 ===== DEBUG NAVES =====');
+    console.log('🔍 ===== DEBUG NAVES DESDE CATÁLOGO =====');
     console.log('🔍 Naviera seleccionada:', formData.naviera);
+    console.log('🔍 Tipo de naviera seleccionada:', typeof formData.naviera);
+    console.log('🗺️ Keys disponibles en navierasNavesMapping:', Object.keys(navierasNavesMapping));
+    console.log('🗺️ Keys disponibles en consorciosNavesMapping:', Object.keys(consorciosNavesMapping));
+    console.log('🗺️ Total de navieras con mapping:', Object.keys(navierasNavesMapping).length);
+    console.log('🗺️ Total de consorcios con mapping:', Object.keys(consorciosNavesMapping).length);
+    console.log('📋 Total de naves en catálogo (fallback):', navesUnicas.length);
     
-    // Si es un consorcio (contiene "/"), mostrar naves de todas las navieras del consorcio
+    // Si es un consorcio, buscar en consorciosNavesMapping
     if (formData.naviera.includes('/')) {
-      console.log('🔍 Es consorcio, buscando naves de navieras individuales');
-      const navesDelConsorcio = getConsorcioNaves(formData.naviera);
-      console.log('🤝 Naves del consorcio:', navesDelConsorcio);
-      console.log('🔍 ===== FIN DEBUG NAVES =====');
-      return navesDelConsorcio;
+      console.log('🔍 Es consorcio, buscando en consorciosNavesMapping');
+      console.log('🔍 Buscando key exacta:', formData.naviera);
+      const navesConsorcio = consorciosNavesMapping[formData.naviera] || [];
+      console.log('🚢 Naves del consorcio encontradas:', navesConsorcio.length);
+      console.log('🚢 Naves:', navesConsorcio);
+      
+      if (navesConsorcio.length === 0) {
+        console.error(`❌ NO se encontraron naves para el consorcio "${formData.naviera}"`);
+        console.error('❌ Keys disponibles:', Object.keys(consorciosNavesMapping));
+        console.warn('⚠️ Mostrando todas las naves como fallback');
+        return [...navesUnicas].sort();
+      }
+      
+      console.log('✅ Retornando naves del consorcio:', navesConsorcio.length);
+      return navesConsorcio.sort();
     }
     
-    // Si es naviera individual, mostrar solo sus naves
-    console.log('🔍 Es naviera individual, buscando naves directas');
-    const navieraNaves = navierasNavesMapping[formData.naviera] || [];
-    console.log('🚢 Naves de', formData.naviera, ':', navieraNaves);
+    // Si es naviera individual, buscar en navierasNavesMapping
+    console.log('🔍 Es naviera individual, buscando en navierasNavesMapping');
+    console.log('🔍 Buscando key exacta:', formData.naviera);
+    console.log('🔍 ¿Existe la key?', formData.naviera in navierasNavesMapping);
+    const navesNaviera = navierasNavesMapping[formData.naviera] || [];
+    console.log('🚢 Naves de la naviera encontradas:', navesNaviera.length);
+    console.log('🚢 Naves:', navesNaviera);
+    
+    if (navesNaviera.length === 0) {
+      console.error(`❌ NO se encontraron naves para la naviera "${formData.naviera}"`);
+      console.error('❌ Keys disponibles:', Object.keys(navierasNavesMapping));
+      console.error('❌ Comparación de keys:');
+      Object.keys(navierasNavesMapping).forEach(key => {
+        console.error(`  - "${key}" === "${formData.naviera}": ${key === formData.naviera}`);
+      });
+      console.warn('⚠️ Mostrando todas las naves como fallback (117 naves)');
+      return [...navesUnicas].sort();
+    }
+    
+    console.log('✅ Retornando naves de la naviera:', navesNaviera.length);
     console.log('🔍 ===== FIN DEBUG NAVES =====');
-    return navieraNaves;
+    return navesNaviera.sort();
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+        <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <Save className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Agregar Nuevo Registro</h2>
@@ -403,7 +392,7 @@ export function AddModal({
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-3 sm:p-4 lg:p-6 overflow-auto max-h-[75vh] sm:max-h-[70vh]">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
@@ -558,28 +547,43 @@ export function AddModal({
 
             {/* Viaje */}
             <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <label className={`block text-sm font-medium ${
+                formData.naveInicial && !formData.viaje && error.includes('Viaje')
+                  ? 'text-red-600'
+                  : getLabelStyles()
+              }`}>
                 Viaje {formData.naveInicial ? '*' : ''}
               </label>
               <input
+                ref={viajeInputRef}
                 type="text"
                 name="viaje"
                 value={formData.viaje}
                 onChange={handleChange}
                 required={!!formData.naveInicial}
                 disabled={!formData.naveInicial}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  !formData.naveInicial 
-                    ? theme === 'dark'
-                      ? 'bg-gray-700 cursor-not-allowed text-gray-400 border-gray-600'
-                      : 'bg-gray-100 cursor-not-allowed text-gray-500 border-gray-300'
-                    : theme === 'dark'
-                      ? 'bg-gray-700 text-white border-gray-600'
-                      : 'bg-white text-gray-900 border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                  formData.naveInicial && !formData.viaje && error.includes('Viaje')
+                    ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                    : !formData.naveInicial 
+                      ? theme === 'dark'
+                        ? 'bg-gray-700 cursor-not-allowed text-gray-400 border-gray-600'
+                        : 'bg-gray-100 cursor-not-allowed text-gray-500 border-gray-300'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-white border-gray-600 focus:ring-blue-500'
+                        : 'bg-white text-gray-900 border-gray-300 focus:ring-blue-500'
                 }`}
-                placeholder={formData.naveInicial ? "Ej: [001E]" : "Primero selecciona una nave"}
+                placeholder={formData.naveInicial ? "Ej: 001E" : "Primero selecciona una nave"}
               />
-              {formData.naveInicial && (
+              {formData.naveInicial && !formData.viaje && error.includes('Viaje') && (
+                <div className="flex items-center space-x-1 text-red-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <p className="text-xs font-medium">
+                    El número de viaje es obligatorio cuando hay una nave seleccionada
+                  </p>
+                </div>
+              )}
+              {formData.naveInicial && formData.viaje && (
                 <p className="text-xs text-gray-700">
                   El número de viaje se mostrará entre corchetes en la nave completa
                 </p>
@@ -822,7 +826,7 @@ export function AddModal({
         </form>
 
         {/* Footer */}
-        <div className="p-3 sm:p-4 lg:p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3">
+        <div className="p-3 sm:p-4 lg:p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}

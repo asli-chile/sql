@@ -17,6 +17,9 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { ThemeTest } from '@/components/ThemeTest';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
+import { useToast } from '@/hooks/useToast';
+import { ToastContainer } from '@/components/Toast';
+import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -35,6 +38,7 @@ interface User {
 export default function RegistrosPage() {
   const { theme } = useTheme();
   const { currentUser, setCurrentUser } = useUser();
+  const { toasts, removeToast, success, error, warning } = useToast();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -209,6 +213,7 @@ export default function RegistrosPage() {
       // Procesar catálogos
       catalogos.forEach(catalogo => {
         const valores = catalogo.valores || [];
+        const mapping = catalogo.mapping;
         console.log(`📋 Procesando catálogo ${catalogo.categoria}:`, valores);
 
         switch (catalogo.categoria) {
@@ -254,6 +259,25 @@ export default function RegistrosPage() {
             break;
           case 'tipo_ingreso':
             setTipoIngresoUnicos(valores);
+            break;
+          
+          // CARGAR MAPPINGS DESDE EL CATÁLOGO
+          case 'navierasNavesMapping':
+            if (mapping && typeof mapping === 'object') {
+              console.log('🗺️ ✅ Mapping de navieras cargado desde catálogo:', mapping);
+              setNavierasNavesMapping(mapping as Record<string, string[]>);
+            } else {
+              console.warn('⚠️ navierasNavesMapping no tiene mapping válido');
+            }
+            break;
+            
+          case 'consorciosNavesMapping':
+            if (mapping && typeof mapping === 'object') {
+              console.log('🗺️ ✅ Mapping de consorcios cargado desde catálogo:', mapping);
+              setConsorciosNavesMapping(mapping as Record<string, string[]>);
+            } else {
+              console.warn('⚠️ consorciosNavesMapping no tiene mapping válido');
+            }
             break;
         }
       });
@@ -571,11 +595,11 @@ export default function RegistrosPage() {
       };
       
       const fieldDisplayName = fieldNames[field] || field;
-      alert(`✅ Se actualizaron ${selectedRecords.length} registros en el campo "${fieldDisplayName}"`);
+      success(`✅ Se actualizaron ${selectedRecords.length} registros en el campo "${fieldDisplayName}"`);
 
-    } catch (error: any) {
-      console.error('Error en edición masiva:', error);
-      alert(`Error al actualizar los registros: ${error.message}`);
+    } catch (err: any) {
+      console.error('Error en edición masiva:', err);
+      error(`Error al actualizar los registros: ${err.message}`);
     }
   };
 
@@ -806,7 +830,7 @@ export default function RegistrosPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a1628' }}>
         <div className="text-center w-full max-w-4xl px-8">
           <div className="w-64 h-64 mx-auto mb-8 flex items-center justify-center">
             <img
@@ -822,10 +846,10 @@ export default function RegistrosPage() {
               }}
             />
           </div>
-          <h2 className="text-3xl font-semibold text-gray-900 dark:text-white mb-4">
-            Sistema ASLI
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4 px-4" style={{ color: '#ffffff' }}>
+            Asesorías y Servicios Logísticos Integrales Ltda.
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Cargando registros...</p>
+          <p className="text-lg" style={{ color: '#ffffff' }}>Cargando registros...</p>
         </div>
       </div>
     );
@@ -836,12 +860,13 @@ export default function RegistrosPage() {
   }
 
   return (
-    <div 
-      className="min-h-screen transition-colors"
-      style={{
-        backgroundColor: theme === 'dark' ? '#0a0a0a' : '#f9fafb'
-      }}
-    >
+    <EditingCellProvider>
+      <div 
+        className="min-h-screen transition-colors"
+        style={{
+          backgroundColor: theme === 'dark' ? '#0a0a0a' : '#f9fafb'
+        }}
+      >
       {/* Header */}
       <header 
         className="shadow-sm border-b transition-colors"
@@ -850,7 +875,7 @@ export default function RegistrosPage() {
           borderColor: theme === 'dark' ? '#374151' : '#e5e7eb'
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
               <button
@@ -910,7 +935,7 @@ export default function RegistrosPage() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 py-8">
         {/* Estadísticas */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
           <Card 
@@ -1101,6 +1126,8 @@ export default function RegistrosPage() {
           loadRegistros();
           setIsTrashModalOpen(false);
         }}
+        onSuccess={success}
+        onError={error}
       />
 
       {selectedRegistroForHistorial && (
@@ -1111,7 +1138,11 @@ export default function RegistrosPage() {
           registroRefAsli={selectedRegistroForHistorial.refAsli}
         />
       )}
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
+    </EditingCellProvider>
   );
 }
 
