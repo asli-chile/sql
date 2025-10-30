@@ -92,7 +92,7 @@ export function InlineEditCell({
 
   // Cargar sugerencias del catálogo cuando se entra en modo edición
   useEffect(() => {
-    if (!isEditing || type === 'select' || type === 'date' || type === 'number') {
+    if (!isEditing || type === 'select' || type === 'date') {
       return;
     }
 
@@ -116,7 +116,11 @@ export function InlineEditCell({
           'tipoIngreso': 'tipos_ingreso',
           'estado': 'estados',
           'estadoBl': 'estados_bl',
-          'ct': 'cts'
+          'ct': 'cts',
+          'temperatura': 'temperaturas',
+          'cbm': 'cbms',
+          'co2': 'co2s',
+          'o2': 'o2s'
         };
 
         const category = fieldToCatalogCategory[field];
