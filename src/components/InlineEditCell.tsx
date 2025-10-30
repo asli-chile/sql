@@ -63,7 +63,7 @@ export function InlineEditCell({
   const [showTapHint, setShowTapHint] = useState(false);
   
   // Determinar si esta celda específica está en edición
-  const isEditing = isEditingInContext(record.id, field);
+  const isEditing = isEditingInContext(record.id || '', field);
 
   // Detectar si es un dispositivo táctil
   useEffect(() => {

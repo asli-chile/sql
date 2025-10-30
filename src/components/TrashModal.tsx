@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, Trash2, RotateCcw, RefreshCw, CheckSquare, Square } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { supabase } from '@/lib/supabase';
@@ -21,13 +21,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadDeletedRecords();
-    }
-  }, [isOpen, selectedDays]);
-
-  const loadDeletedRecords = async () => {
+  const loadDeletedRecords = useCallback(async () => {
     setLoading(true);
     try {
       const cutoffDate = new Date();
@@ -55,7 +49,13 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDays]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadDeletedRecords();
+    }
+  }, [isOpen, loadDeletedRecords]);
 
   // Funciones para selección múltiple
   const toggleRecordSelection = (recordId: string) => {
