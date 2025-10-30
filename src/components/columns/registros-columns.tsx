@@ -189,6 +189,13 @@ export const createRegistrosColumns = (
       // Convertir a string para edición
       const value = Array.isArray(contenedor) ? contenedor.join(' ') : (contenedor || '');
       
+      // Procesar para mostrar en lista vertical
+      const contenedores = Array.isArray(contenedor) 
+        ? contenedor 
+        : typeof contenedor === 'string' && contenedor.includes(' ')
+          ? contenedor.split(/\s+/).filter(c => c.trim() !== '')
+          : contenedor ? [contenedor] : [];
+      
       return (
         <InlineEditCell
           value={value}
@@ -200,6 +207,18 @@ export const createRegistrosColumns = (
           className={isCancelado ? 'bg-red-600 text-black px-2 py-1 rounded' : ''}
           selectedRecords={allowsBulkEdit('contenedor') ? getSelectedRecords() : []}
           isSelectionMode={allowsBulkEdit('contenedor')}
+          displayAsVerticalList={contenedores.length > 1}
+          customDisplay={contenedores.length > 1 ? (
+            <div className="flex flex-col gap-1">
+              {contenedores.map((container, index) => (
+                <span key={index} className={`px-2 py-1 rounded text-xs font-mono ${
+                  isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
+                }`}>
+                  {container}
+                </span>
+              ))}
+            </div>
+          ) : undefined}
         />
       );
     },

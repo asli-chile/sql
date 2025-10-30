@@ -21,6 +21,8 @@ interface InlineEditCellProps {
   className?: string;
   selectedRecords?: Registro[];
   isSelectionMode?: boolean;
+  customDisplay?: React.ReactNode;
+  displayAsVerticalList?: boolean;
 }
 
 export function InlineEditCell({ 
@@ -33,7 +35,9 @@ export function InlineEditCell({
   options = [],
   className = '',
   selectedRecords = [],
-  isSelectionMode = false
+  isSelectionMode = false,
+  customDisplay,
+  displayAsVerticalList = false
 }: InlineEditCellProps) {
   
   // Función para procesar contenedores múltiples
@@ -443,9 +447,15 @@ export function InlineEditCell({
                 : "Haz clic para editar"
       }
     >
-      <span className={`flex-1 ${getDisplayStyle(value)}`}>
-        {formatDisplayValue(value)}
-      </span>
+      {customDisplay ? (
+        <div className="flex-1">
+          {customDisplay}
+        </div>
+      ) : (
+        <span className={`flex-1 ${getDisplayStyle(value)}`}>
+          {formatDisplayValue(value)}
+        </span>
+      )}
       {showTapHint && (
         <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 text-[10px] bg-yellow-500 text-white px-2 py-0.5 rounded-full font-semibold whitespace-nowrap z-10 shadow-md animate-pulse">
           Toca de nuevo
