@@ -58,6 +58,10 @@ export default function RegistrosPage() {
   const [contratosUnicos, setContratosUnicos] = useState<string[]>([]);
   const [tipoIngresoUnicos, setTipoIngresoUnicos] = useState<string[]>([]);
   const [estadosUnicos, setEstadosUnicos] = useState<string[]>([]);
+  const [temperaturasUnicas, setTemperaturasUnicas] = useState<string[]>([]);
+  const [co2sUnicos, setCo2sUnicos] = useState<string[]>([]);
+  const [o2sUnicos, setO2sUnicos] = useState<string[]>([]);
+  const [facturacionesUnicas, setFacturacionesUnicas] = useState<string[]>([]);
   
   const [navierasFiltro, setNavierasFiltro] = useState<string[]>([]);
   const [ejecutivosFiltro, setEjecutivosFiltro] = useState<string[]>([]);
@@ -257,8 +261,20 @@ export default function RegistrosPage() {
           case 'contratos':
             setContratosUnicos(valores);
             break;
-          case 'tipo_ingreso':
+          case 'tipoIngreso':
             setTipoIngresoUnicos(valores);
+            break;
+          case 'temperatura':
+            setTemperaturasUnicas(valores);
+            break;
+          case 'co2':
+            setCo2sUnicos(valores);
+            break;
+          case 'o2':
+            setO2sUnicos(valores);
+            break;
+          case 'facturacion':
+            setFacturacionesUnicas(valores);
             break;
           
           // CARGAR MAPPINGS DESDE EL CATÁLOGO
@@ -825,6 +841,11 @@ export default function RegistrosPage() {
     contratosUnicos,
     tipoIngresoUnicos,
     estadosUnicos,
+    temperaturasUnicas,
+    cbmUnicos,
+    co2sUnicos,
+    o2sUnicos,
+    facturacionesUnicas,
     handleShowHistorial
   );
 

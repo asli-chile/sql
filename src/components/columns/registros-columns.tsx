@@ -51,6 +51,11 @@ export const createRegistrosColumns = (
   contratosUnicos?: string[],
   tipoIngresoUnicos?: string[],
   estadosUnicos?: string[],
+  temperaturasUnicas?: string[],
+  cbmUnicos?: string[],
+  co2sUnicos?: string[],
+  o2sUnicos?: string[],
+  facturacionesUnicas?: string[],
   onShowHistorial?: (registro: Registro) => void
 ): ColumnDef<Registro>[] => {
   // Crear mapeo de naves a navieras
@@ -469,7 +474,8 @@ export const createRegistrosColumns = (
           record={row.original}
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={onBulkUpdate}
-          type="number"
+          type="select"
+          options={temperaturasUnicas || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />
@@ -489,7 +495,8 @@ export const createRegistrosColumns = (
           record={row.original}
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={onBulkUpdate}
-          type="number"
+          type="select"
+          options={cbmsUnicos || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />
@@ -509,7 +516,8 @@ export const createRegistrosColumns = (
           record={row.original}
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={onBulkUpdate}
-          type="number"
+          type="select"
+          options={co2sUnicos || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />
@@ -529,7 +537,8 @@ export const createRegistrosColumns = (
           record={row.original}
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={onBulkUpdate}
-          type="number"
+          type="select"
+          options={o2sUnicos || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />
@@ -612,7 +621,8 @@ export const createRegistrosColumns = (
           record={row.original}
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={onBulkUpdate}
-          type="text"
+          type="select"
+          options={contratosUnicos || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />
