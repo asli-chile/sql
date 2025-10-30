@@ -246,7 +246,7 @@ export function InlineEditCell({
 
       if (now - lastTap < DOUBLE_TAP_DELAY) {
         // Es un doble tap, activar edición
-        setEditingCell(record.id, field);
+        setEditingCell(record.id || '', field);
         setLastTap(0);
         setShowTapHint(false);
       } else {
@@ -261,7 +261,7 @@ export function InlineEditCell({
       }
     } else {
       // En desktop, activar inmediatamente con un solo clic
-      setEditingCell(record.id, field);
+      setEditingCell(record.id || '', field);
     }
   };
 
