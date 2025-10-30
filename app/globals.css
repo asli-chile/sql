@@ -21,11 +21,11 @@
 
 /* Logo con resplandor según tema */
 .logo-glow {
-  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
 }
 
 .dark .logo-glow {
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+  filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
 }
 
 /* Forzar tema claro cuando no hay clase dark */

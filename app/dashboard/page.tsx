@@ -228,7 +228,7 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center space-x-3">
-              <div className="w-14 h-14 sm:w-18 sm:h-18 flex items-center justify-center">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
                 <img
                   src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                   alt="ASLI Logo"
