@@ -100,31 +100,24 @@ export function InlineEditCell({
       try {
         const supabase = createClient();
         
-        // Mapear campos a categorías del catálogo
+        // Mapear campos a categorías del catálogo (nombres exactos de Supabase)
         const fieldToCatalogCategory: Record<string, string> = {
           'naviera': 'navieras',
           'naveInicial': 'naves',
-          'viaje': 'viajes',
           'ejecutivo': 'ejecutivos',
           'especie': 'especies',
-          'shipper': 'shippers',
-          'pol': 'puertos_origen',
-          'pod': 'puertos_destino',
+          'pol': 'pols',
+          'pod': 'destinos',
           'deposito': 'depositos',
           'flete': 'fletes',
-          'roleadaDesde': 'roleada_desde',
-          'tipoIngreso': 'tipos_ingreso',
-          'estado': 'estados',
-          'estadoBl': 'estados_bl',
-          'ct': 'cts',
-          'temperatura': 'temperaturas',
-          'cbm': 'cbms',
-          'co2': 'co2s',
-          'o2': 'o2s',
+          'tipoIngreso': 'tipoIngreso',
+          'estado': 'Estado',
+          'temperatura': 'temperatura',
+          'cbm': 'cbm',
+          'co2': 'co2',
+          'o2': 'o2',
           'contrato': 'contratos',
-          'booking': 'bookings',
-          'numeroBl': 'numeros_bl',
-          'facturacion': 'facturaciones'
+          'facturacion': 'facturacion'
         };
 
         const category = fieldToCatalogCategory[field];
