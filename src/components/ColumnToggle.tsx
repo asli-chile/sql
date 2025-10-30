@@ -50,7 +50,7 @@ export const ColumnToggle = ({ columns, onToggleColumn, onToggleAll, alwaysVisib
         <>
           {/* Overlay para cerrar al hacer click fuera */}
           <div 
-            className="fixed inset-0 z-40" 
+            className="fixed inset-0 z-50" 
             onClick={() => setIsOpen(false)}
           />
           

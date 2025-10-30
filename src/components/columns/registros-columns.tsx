@@ -181,18 +181,25 @@ export const createRegistrosColumns = (
     header: 'Contenedor',
     cell: ({ row }) => {
       const contenedor = row.getValue('contenedor') as string | string[];
-      // Convertir array a string si es necesario
+      const estado = row.original.estado;
+      
+      // Si está cancelado, aplicar fondo rojo intenso con texto negro
+      const isCancelado = estado === 'CANCELADO';
+      
+      // Convertir a string para edición
       const value = Array.isArray(contenedor) ? contenedor.join(' ') : (contenedor || '');
+      
       return (
         <InlineEditCell
           value={value}
           field="contenedor"
           record={row.original}
           onSave={onUpdateRecord || (() => {})}
-          onBulkSave={onBulkUpdate}
+          onBulkSave={allowsBulkEdit('contenedor') ? onBulkUpdate : undefined}
           type="text"
-          selectedRecords={getSelectedRecords()}
-          isSelectionMode={true}
+          className={isCancelado ? 'bg-red-600 text-black px-2 py-1 rounded' : ''}
+          selectedRecords={allowsBulkEdit('contenedor') ? getSelectedRecords() : []}
+          isSelectionMode={allowsBulkEdit('contenedor')}
         />
       );
     },
@@ -204,9 +211,17 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const value = row.getValue('naviera') as string;
       return (
-        <span className="font-semibold text-gray-900">
-          {value || '-'}
-        </span>
+        <InlineEditCell
+          value={value}
+          field="naviera"
+          record={row.original}
+          onSave={onUpdateRecord || (() => {})}
+          onBulkSave={onBulkUpdate}
+          type="select"
+          options={navierasUnicas || []}
+          selectedRecords={getSelectedRecords()}
+          isSelectionMode={true}
+        />
       );
     },
     filterFn: (row, id, value) => {
