@@ -186,15 +186,26 @@ export const createRegistrosColumns = (
       // Si está cancelado, aplicar fondo rojo intenso con texto negro
       const isCancelado = estado === 'CANCELADO';
       
+      // Parsear contenedor si viene como string JSON
+      let contenedorParsed = contenedor;
+      if (typeof contenedor === 'string' && (contenedor.startsWith('[') || contenedor.startsWith('{"'))) {
+        try {
+          contenedorParsed = JSON.parse(contenedor);
+        } catch (e) {
+          // Si falla el parsing, mantener el valor original
+          contenedorParsed = contenedor;
+        }
+      }
+      
       // Convertir a string para edición
-      const value = Array.isArray(contenedor) ? contenedor.join(' ') : (contenedor || '');
+      const value = Array.isArray(contenedorParsed) ? contenedorParsed.join(' ') : (contenedorParsed || '');
       
       // Procesar para mostrar en lista vertical
-      const contenedores = Array.isArray(contenedor) 
-        ? contenedor 
-        : typeof contenedor === 'string' && contenedor.includes(' ')
-          ? contenedor.split(/\s+/).filter(c => c.trim() !== '')
-          : contenedor ? [contenedor] : [];
+      const contenedores = Array.isArray(contenedorParsed) 
+        ? contenedorParsed 
+        : typeof contenedorParsed === 'string' && contenedorParsed.includes(' ')
+          ? contenedorParsed.split(/\s+/).filter(c => c.trim() !== '')
+          : contenedorParsed ? [contenedorParsed] : [];
       
       return (
         <InlineEditCell
