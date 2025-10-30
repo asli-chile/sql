@@ -340,8 +340,8 @@ export function AddModal({
       if (navesConsorcio.length === 0) {
         console.error(`❌ NO se encontraron naves para el consorcio "${formData.naviera}"`);
         console.error('❌ Keys disponibles:', Object.keys(consorciosNavesMapping));
-        console.warn('⚠️ Mostrando todas las naves como fallback');
-        return [...navesUnicas].sort();
+        console.warn('⚠️ NO se usará fallback. Por favor configura el mapping para este consorcio.');
+        return [];
       }
       
       console.log('✅ Retornando naves del consorcio:', navesConsorcio.length);
@@ -363,8 +363,8 @@ export function AddModal({
       Object.keys(navierasNavesMapping).forEach(key => {
         console.error(`  - "${key}" === "${formData.naviera}": ${key === formData.naviera}`);
       });
-      console.warn('⚠️ Mostrando todas las naves como fallback (117 naves)');
-      return [...navesUnicas].sort();
+      console.warn('⚠️ NO se usará fallback. Por favor configura el mapping para esta naviera.');
+      return [];
     }
     
     console.log('✅ Retornando naves de la naviera:', navesNaviera.length);
