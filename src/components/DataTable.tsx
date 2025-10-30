@@ -940,7 +940,7 @@ export function DataTable({
                      return (
                        <th
                          key={header.id}
-                        className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap ${
+                        className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap border-r border-gray-300 dark:border-gray-600 ${
                           canSort ? 'cursor-pointer select-none hover:bg-blue-800 transition-colors' : ''
                         } ${stickyClasses}`}
                          style={{ ...stickyStyles, color: 'white' }}
@@ -1073,7 +1073,7 @@ export function DataTable({
                        return (
                          <td 
                            key={cell.id} 
-                           className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center ${textClass} ${stickyClasses}`}
+                           className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center border-r border-b border-gray-200 dark:border-gray-700 ${textClass} ${stickyClasses}`}
                            style={stickyStyles}
                          >
                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
