@@ -916,7 +916,7 @@ export function DataTable({
        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
          <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
           <table className="w-full min-w-[800px] sm:min-w-[1000px] lg:min-w-[1200px]">
-                         <thead className="bg-blue-900 sticky top-0 z-10 shadow-sm">
+                         <thead className="bg-blue-900 sticky top-0 z-30 shadow-sm">
                {table.getHeaderGroups().map((headerGroup) => (
                  <tr key={headerGroup.id}>
                    {headerGroup.headers.map((header) => {
@@ -930,10 +930,10 @@ export function DataTable({
                      let stickyStyles: React.CSSProperties = {};
                      
                     if (isSelectColumn) {
-                      stickyClasses = 'sticky left-0 z-20 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
+                      stickyClasses = 'sticky left-0 z-40 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
                       stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px' };
                     } else if (isRefAsliColumn) {
-                      stickyClasses = 'sticky z-20 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
+                      stickyClasses = 'sticky z-40 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
                       stickyStyles = { left: '36px' }; // Ancho exacto de checkbox
                     }
                      
