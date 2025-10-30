@@ -50,12 +50,12 @@ export const ColumnToggle = ({ columns, onToggleColumn, onToggleAll, alwaysVisib
         <>
           {/* Overlay para cerrar al hacer click fuera */}
           <div 
-            className="fixed inset-0 z-10" 
+            className="fixed inset-0 z-40" 
             onClick={() => setIsOpen(false)}
           />
           
           {/* Panel de columnas */}
-          <div className={`absolute right-0 top-full mt-2 w-64 border rounded-lg shadow-lg z-20 max-h-96 overflow-y-auto ${
+          <div className={`absolute right-0 top-full mt-2 w-64 border rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto ${
             theme === 'dark'
               ? 'bg-gray-800 border-gray-600'
               : 'bg-white border-gray-200'

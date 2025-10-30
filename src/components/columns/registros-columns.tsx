@@ -181,54 +181,19 @@ export const createRegistrosColumns = (
     header: 'Contenedor',
     cell: ({ row }) => {
       const contenedor = row.getValue('contenedor') as string | string[];
-      const estado = row.original.estado;
-      
-      // Si está cancelado, aplicar fondo rojo intenso con texto negro
-      const isCancelado = estado === 'CANCELADO';
-      
-      // Procesar contenedores para mostrar como lista
-      const displayContainers = () => {
-        if (!contenedor || contenedor === '') {
-          return '-';
-        }
-        
-        // Si ya es un array, mostrarlo directamente
-        if (Array.isArray(contenedor)) {
-          return contenedor.map((container, index) => (
-            <span key={index} className={`px-2 py-1 rounded text-xs font-mono ${
-              isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
-            }`}>
-              {container}
-            </span>
-          ));
-        }
-        
-        // Si es string con espacios, convertir a array
-        if (typeof contenedor === 'string' && contenedor.includes(' ')) {
-          const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
-          return containers.map((container, index) => (
-            <span key={index} className={`px-2 py-1 rounded text-xs font-mono ${
-              isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
-            }`}>
-              {container}
-            </span>
-          ));
-        }
-        
-        // Si es un solo contenedor
-        return (
-          <span className={`px-2 py-1 rounded text-xs font-mono ${
-            isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
-          }`}>
-            {contenedor}
-          </span>
-        );
-      };
-      
+      // Convertir array a string si es necesario
+      const value = Array.isArray(contenedor) ? contenedor.join(' ') : (contenedor || '');
       return (
-        <div className={Array.isArray(contenedor) || (typeof contenedor === 'string' && contenedor.includes(' ')) ? 'container-vertical' : ''}>
-          {displayContainers()}
-        </div>
+        <InlineEditCell
+          value={value}
+          field="contenedor"
+          record={row.original}
+          onSave={onUpdateRecord || (() => {})}
+          onBulkSave={onBulkUpdate}
+          type="text"
+          selectedRecords={getSelectedRecords()}
+          isSelectionMode={true}
+        />
       );
     },
   },
