@@ -120,7 +120,11 @@ export function InlineEditCell({
           'temperatura': 'temperaturas',
           'cbm': 'cbms',
           'co2': 'co2s',
-          'o2': 'o2s'
+          'o2': 'o2s',
+          'contrato': 'contratos',
+          'booking': 'bookings',
+          'numeroBl': 'numeros_bl',
+          'facturacion': 'facturaciones'
         };
 
         const category = fieldToCatalogCategory[field];
