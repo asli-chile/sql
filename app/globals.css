@@ -19,6 +19,15 @@
   font-weight: 700 !important;
 }
 
+/* Logo con resplandor según tema */
+.logo-glow {
+  filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.4));
+}
+
+.dark .logo-glow {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+
 /* Forzar tema claro cuando no hay clase dark */
 body {
   background-color: #f9fafb !important;

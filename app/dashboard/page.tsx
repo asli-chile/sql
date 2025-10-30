@@ -228,11 +228,11 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center">
+              <div className="w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center">
                 <img
                   src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                   alt="ASLI Logo"
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-full object-contain logo-glow"
                   onError={(e) => {
                     console.log('Error cargando logo:', e);
                     e.currentTarget.style.display = 'none';
