@@ -930,11 +930,11 @@ export function DataTable({
                      let stickyStyles: React.CSSProperties = {};
                      
                     if (isSelectColumn) {
-                      stickyClasses = 'sticky left-0 z-40 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
-                      stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px' };
+                      stickyClasses = 'sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
+                      stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: '#1e3a8a' };
                     } else if (isRefAsliColumn) {
-                      stickyClasses = 'sticky z-40 bg-blue-900 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
-                      stickyStyles = { left: '36px' }; // Ancho exacto de checkbox
+                      stickyClasses = 'sticky z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
+                      stickyStyles = { left: '36px', backgroundColor: '#1e3a8a' }; // Ancho exacto de checkbox
                     }
                      
                      return (
@@ -1057,11 +1057,17 @@ export function DataTable({
                        let stickyStyles: React.CSSProperties = {};
                        
                       if (isSelectColumn) {
-                        stickyClasses = `sticky left-0 z-10 ${bgClass} shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px' };
+                        stickyClasses = `sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
+                        const bgColor = theme === 'dark' 
+                          ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
+                          : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
+                        stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: bgColor };
                       } else if (isRefAsliColumn) {
-                        stickyClasses = `sticky z-10 ${bgClass} shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        stickyStyles = { left: '36px' }; // Ancho exacto de checkbox
+                        stickyClasses = `sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
+                        const bgColor = theme === 'dark'
+                          ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
+                          : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
+                        stickyStyles = { left: '36px', backgroundColor: bgColor }; // Ancho exacto de checkbox
                       }
                        
                        return (
