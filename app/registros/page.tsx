@@ -887,7 +887,7 @@ export default function RegistrosPage() {
               </button>
               <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 flex items-center justify-center">
+                <div className="w-11 h-11 sm:w-16 sm:h-16 flex items-center justify-center">
                   <img
                     src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                     alt="ASLI Logo"
