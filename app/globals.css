@@ -21,7 +21,7 @@
 
 /* Logo con resplandor según tema */
 .logo-glow {
-  filter: drop-shadow(0 0 12px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 6px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 0 16px rgba(0, 0, 0, 0.8)) drop-shadow(0 0 8px rgba(0, 0, 0, 0.6)) drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
 }
 
 .dark .logo-glow {
