@@ -66,6 +66,9 @@ export function InlineEditCell({
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [showTapHint, setShowTapHint] = useState(false);
   const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
   
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
@@ -89,6 +92,30 @@ export function InlineEditCell({
   useEffect(() => {
     setEditValue(value || '');
   }, [value]);
+
+  // Filtrar sugerencias basadas en el valor ingresado
+  useEffect(() => {
+    if (catalogSuggestions.length > 0 && editValue !== null && editValue !== undefined) {
+      const searchValue = editValue.toString().toLowerCase();
+      const filtered = catalogSuggestions.filter(suggestion =>
+        suggestion.toString().toLowerCase().includes(searchValue)
+      );
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0 && isEditing);
+    } else {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+    }
+    setSelectedIndex(-1);
+  }, [editValue, catalogSuggestions, isEditing]);
+
+  // Scroll automático a la opción seleccionada
+  useEffect(() => {
+    if (selectedIndex >= 0 && showSuggestions) {
+      const element = document.querySelector(`[data-suggestion-index="${selectedIndex}"]`);
+      element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedIndex, showSuggestions]);
 
   // Cargar sugerencias del catálogo cuando se entra en modo edición
   useEffect(() => {
@@ -335,10 +362,36 @@ export function InlineEditCell({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      handleCancel();
+    if (showSuggestions && filteredSuggestions.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => 
+          prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedIndex >= 0 && filteredSuggestions[selectedIndex]) {
+          setEditValue(filteredSuggestions[selectedIndex]);
+          setShowSuggestions(false);
+        } else {
+          handleSave();
+        }
+      } else if (e.key === 'Escape') {
+        if (showSuggestions) {
+          setShowSuggestions(false);
+        } else {
+          handleCancel();
+        }
+      }
+    } else {
+      if (e.key === 'Enter') {
+        handleSave();
+      } else if (e.key === 'Escape') {
+        handleCancel();
+      }
     }
   };
 
@@ -440,25 +493,39 @@ export function InlineEditCell({
             autoFocus
           />
         ) : (
-          <>
+          <div className="relative flex-1">
             <input
               type={type}
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              onFocus={() => catalogSuggestions.length > 0 && setShowSuggestions(true)}
+              className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
               autoComplete="off"
-              list={catalogSuggestions.length > 0 ? `catalog-suggestions-${field}-${record.id}` : undefined}
               autoFocus
             />
-            {catalogSuggestions.length > 0 && (
-              <datalist id={`catalog-suggestions-${field}-${record.id}`}>
-                {catalogSuggestions.map((suggestion, index) => (
-                  <option key={index} value={suggestion} />
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 max-h-60 overflow-y-auto bg-gray-800 dark:bg-gray-900 border border-gray-600 rounded-md shadow-2xl z-[9999] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+                {filteredSuggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    data-suggestion-index={index}
+                    onClick={() => {
+                      setEditValue(suggestion);
+                      setShowSuggestions(false);
+                    }}
+                    className={`px-3 py-2 text-sm cursor-pointer transition-colors ${
+                      index === selectedIndex
+                        ? 'bg-blue-600 text-white font-semibold'
+                        : 'text-gray-200 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    {suggestion}
+                  </div>
                 ))}
-              </datalist>
+              </div>
             )}
-          </>
+          </div>
         )}
         
         <button
