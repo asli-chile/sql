@@ -65,6 +65,7 @@ export function InlineEditCell({
   const [lastTap, setLastTap] = useState(0);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [showTapHint, setShowTapHint] = useState(false);
+  const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
   
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
@@ -88,6 +89,68 @@ export function InlineEditCell({
   useEffect(() => {
     setEditValue(value || '');
   }, [value]);
+
+  // Cargar sugerencias del catálogo cuando se entra en modo edición
+  useEffect(() => {
+    if (!isEditing || type === 'select' || type === 'date' || type === 'number') {
+      return;
+    }
+
+    const loadCatalogSuggestions = async () => {
+      try {
+        const supabase = createClient();
+        
+        // Mapear campos a categorías del catálogo
+        const fieldToCatalogCategory: Record<string, string> = {
+          'naviera': 'navieras',
+          'naveInicial': 'naves',
+          'viaje': 'viajes',
+          'ejecutivo': 'ejecutivos',
+          'commodity': 'commodities',
+          'consignatario': 'consignatarios',
+          'shipper': 'shippers',
+          'agenciaMaritima': 'agencias_maritimas',
+          'tipoIngreso': 'tipos_ingreso',
+          'puertoOrigen': 'puertos_origen',
+          'puertoDestino': 'puertos_destino',
+          'estado': 'estados',
+          'flete': 'fletes',
+          'roleadaDesde': 'roleada_desde'
+        };
+
+        const category = fieldToCatalogCategory[field];
+        
+        if (!category) {
+          // Si no hay categoría mapeada, no cargar sugerencias
+          setCatalogSuggestions([]);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('catalogos')
+          .select('valores')
+          .eq('categoria', category)
+          .single();
+
+        if (error) {
+          console.warn(`No se encontraron sugerencias para ${category}:`, error);
+          setCatalogSuggestions([]);
+          return;
+        }
+
+        if (data && Array.isArray(data.valores)) {
+          setCatalogSuggestions(data.valores);
+        } else {
+          setCatalogSuggestions([]);
+        }
+      } catch (err) {
+        console.error('Error cargando sugerencias del catálogo:', err);
+        setCatalogSuggestions([]);
+      }
+    };
+
+    loadCatalogSuggestions();
+  }, [isEditing, field, type]);
 
   // Mapear nombres de campos del tipo TypeScript a nombres de la base de datos
   const getDatabaseFieldName = (fieldName: keyof Registro): string => {
@@ -375,14 +438,25 @@ export function InlineEditCell({
             autoFocus
           />
         ) : (
-          <input
-            type={type}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            autoFocus
-          />
+          <>
+            <input
+              type={type}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+              autoComplete="off"
+              list={catalogSuggestions.length > 0 ? `catalog-suggestions-${field}-${record.id}` : undefined}
+              autoFocus
+            />
+            {catalogSuggestions.length > 0 && (
+              <datalist id={`catalog-suggestions-${field}-${record.id}`}>
+                {catalogSuggestions.map((suggestion, index) => (
+                  <option key={index} value={suggestion} />
+                ))}
+              </datalist>
+            )}
+          </>
         )}
         
         <button
