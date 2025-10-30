@@ -495,7 +495,7 @@ export function InlineEditCell({
         ) : (
           <div className="relative flex-1">
             <input
-              type={type}
+              type={catalogSuggestions.length > 0 ? 'text' : type}
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
