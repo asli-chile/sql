@@ -69,6 +69,7 @@ export function InlineEditCell({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [initialValue, setInitialValue] = useState(value);
   
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
@@ -91,24 +92,35 @@ export function InlineEditCell({
 
   useEffect(() => {
     setEditValue(value || '');
-  }, [value]);
+    if (isEditing) {
+      setInitialValue(value);
+    }
+  }, [value, isEditing]);
 
   // Filtrar sugerencias basadas en el valor ingresado
   useEffect(() => {
     if (catalogSuggestions.length > 0 && editValue !== null && editValue !== undefined) {
-      const searchValue = editValue.toString().toLowerCase();
-      const filtered = catalogSuggestions.filter(suggestion =>
-        suggestion.toString().toLowerCase().includes(searchValue)
-      );
-      console.log(`🔎 Filtro: "${searchValue}" | Total: ${catalogSuggestions.length} | Filtradas: ${filtered.length}`, filtered);
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(filtered.length > 0 && isEditing);
+      // Si el valor actual es el mismo que el inicial, mostrar TODAS las sugerencias
+      if (editValue === initialValue || editValue === '') {
+        console.log(`🔎 Mostrando todas las sugerencias (${catalogSuggestions.length}):`, catalogSuggestions);
+        setFilteredSuggestions(catalogSuggestions);
+        setShowSuggestions(isEditing);
+      } else {
+        // Solo filtrar si el usuario ha empezado a escribir algo diferente
+        const searchValue = editValue.toString().toLowerCase();
+        const filtered = catalogSuggestions.filter(suggestion =>
+          suggestion.toString().toLowerCase().includes(searchValue)
+        );
+        console.log(`🔎 Filtro: "${searchValue}" | Total: ${catalogSuggestions.length} | Filtradas: ${filtered.length}`, filtered);
+        setFilteredSuggestions(filtered);
+        setShowSuggestions(filtered.length > 0 && isEditing);
+      }
     } else {
       setFilteredSuggestions([]);
       setShowSuggestions(false);
     }
     setSelectedIndex(-1);
-  }, [editValue, catalogSuggestions, isEditing]);
+  }, [editValue, catalogSuggestions, isEditing, initialValue]);
 
   // Scroll automático a la opción seleccionada
   useEffect(() => {
@@ -504,7 +516,12 @@ export function InlineEditCell({
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              onFocus={() => catalogSuggestions.length > 0 && setShowSuggestions(true)}
+              onFocus={(e) => {
+                if (catalogSuggestions.length > 0) {
+                  e.target.select(); // Seleccionar todo el texto
+                  setShowSuggestions(true);
+                }
+              }}
               className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
               autoComplete="off"
               autoFocus
