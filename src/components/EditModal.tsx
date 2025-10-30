@@ -541,7 +541,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
 
               {/* Comentario */}
               <div className="md:col-span-2">
-                <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                <label className="block text-xs font-medium text-gray-900 dark:text-gray-100 mb-0.5">
                   Comentario
                 </label>
                 <textarea
@@ -549,7 +549,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
                   value={formData.comentario || ''}
                   onChange={handleChange}
                   rows={2}
-                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                  className="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                 />
               </div>
            </div>

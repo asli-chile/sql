@@ -793,7 +793,7 @@ export function AddModal({
 
           {/* Comentario */}
           <div className="mt-4 space-y-2">
-            <label className="block text-sm font-medium text-gray-900">
+            <label className="block text-sm font-medium text-gray-900 dark:text-gray-100">
               Comentario
             </label>
             <textarea
@@ -801,7 +801,7 @@ export function AddModal({
               value={formData.comentario}
               onChange={handleChange}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
               placeholder="Comentarios adicionales..."
             />
           </div>
