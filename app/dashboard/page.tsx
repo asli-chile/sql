@@ -115,26 +115,35 @@ export default function DashboardPage() {
         if (registro.contenedor) {
           let contenedorStr = '';
           
+          console.log('🔍 Tipo de contenedor:', typeof registro.contenedor);
+          console.log('🔍 Valor original:', registro.contenedor);
+          
           // Convertir a string si viene como array
           if (Array.isArray(registro.contenedor)) {
             contenedorStr = registro.contenedor.join(' ');
+            console.log('📦 Es array, después de join:', contenedorStr);
           } else if (typeof registro.contenedor === 'string') {
             // Si viene como JSON string, intentar parsearlo
             try {
               const parsed = JSON.parse(registro.contenedor);
               if (Array.isArray(parsed)) {
                 contenedorStr = parsed.join(' ');
+                console.log('📦 Es JSON array, después de join:', contenedorStr);
               } else {
                 contenedorStr = registro.contenedor;
+                console.log('📦 Es JSON pero no array:', contenedorStr);
               }
             } catch {
               // No es JSON, usar como string directo
               contenedorStr = registro.contenedor;
+              console.log('📦 Es string directo:', contenedorStr);
             }
           }
           
           // Dividir por espacios y contar elementos no vacíos
           const contenedores = contenedorStr.trim().split(/\s+/).filter(c => c.length > 0);
+          console.log('✅ Contenedores después de split:', contenedores);
+          console.log('✅ Cantidad:', contenedores.length);
           totalContenedores += contenedores.length;
         }
       });
