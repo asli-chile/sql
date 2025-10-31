@@ -96,15 +96,20 @@ export default function DashboardPage() {
 
       if (error) throw error;
 
+      console.log('═══════════════════════════════════════');
+      console.log('🚀 INICIANDO CONTEO DE CONTENEDORES');
+      console.log('═══════════════════════════════════════');
+      console.log('Total de registros obtenidos:', registros?.length || 0);
+      
+      // Contar cuántos tienen contenedor
+      const registrosConContenedor = registros?.filter(r => r.contenedor && r.contenedor.length > 0) || [];
+      console.log('Registros con contenedor:', registrosConContenedor.length);
+
       // Agrupar por REF ASLI y obtener el estado más reciente de cada uno
       const refAsliMap = new Map();
       let totalContenedores = 0;
       let ejemplosMostrados = 0;
       const maxEjemplos = 3;
-      
-      console.log('═══════════════════════════════════════');
-      console.log('🚀 INICIANDO CONTEO DE CONTENEDORES');
-      console.log('═══════════════════════════════════════');
       
       registros?.forEach(registro => {
         const refAsli = registro.ref_asli;
