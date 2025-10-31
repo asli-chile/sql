@@ -573,9 +573,25 @@ export default function RegistrosPage() {
     try {
       const supabase = createClient();
       
+      // Mapear nombres de campos del tipo TypeScript a nombres de la base de datos
+      const getDatabaseFieldName = (fieldName: keyof Registro): string => {
+        const fieldMapping: Record<string, string> = {
+          'naveInicial': 'nave_inicial',
+          'tipoIngreso': 'tipo_ingreso',
+          'roleadaDesde': 'roleada_desde',
+          'ingresoStacking': 'ingreso_stacking',
+          'refAsli': 'ref_asli',
+          'numeroBl': 'numero_bl',
+          'estadoBl': 'estado_bl'
+        };
+        
+        return fieldMapping[fieldName] || fieldName;
+      };
+      
       // Preparar datos para actualizar
+      const dbFieldName = getDatabaseFieldName(field);
       const updateData: any = {
-        [field]: value,
+        [dbFieldName]: value,
         updated_at: new Date().toISOString()
       };
 
@@ -608,7 +624,7 @@ export default function RegistrosPage() {
         try {
           await supabase.rpc('crear_historial_manual', {
             registro_uuid: record.id,
-            campo: field,
+            campo: dbFieldName, // Usar el nombre de campo de la base de datos
             valor_anterior: record[field] || 'NULL',
             valor_nuevo: value || 'NULL'
           });
