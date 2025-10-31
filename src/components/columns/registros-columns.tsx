@@ -496,7 +496,7 @@ export const createRegistrosColumns = (
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={onBulkUpdate}
           type="select"
-          options={cbmsUnicos || []}
+          options={cbmUnicos || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />
