@@ -937,6 +937,10 @@ export function DataTable({
          <div 
            ref={tableContainerRef}
            className="max-h-[70vh] overflow-y-auto overflow-x-auto"
+           style={{
+             willChange: 'scroll-position',
+             WebkitOverflowScrolling: 'touch'
+           }}
          >
           <table className="w-full min-w-[800px] sm:min-w-[1000px] lg:min-w-[1200px]">
                          <thead className="bg-blue-900 sticky top-0 z-30 shadow-sm">
@@ -954,10 +958,27 @@ export function DataTable({
                      
                     if (isSelectColumn) {
                       stickyClasses = 'sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
-                      stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: '#1e3a8a' };
+                      stickyStyles = { 
+                        left: 0, 
+                        width: '36px', 
+                        minWidth: '36px', 
+                        maxWidth: '36px', 
+                        backgroundColor: '#1e3a8a',
+                        transform: 'translateZ(0)',
+                        WebkitBackfaceVisibility: 'hidden',
+                        backfaceVisibility: 'hidden' as any,
+                        willChange: 'transform'
+                      };
                     } else if (isRefAsliColumn) {
                       stickyClasses = 'sticky z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
-                      stickyStyles = { left: '36px', backgroundColor: '#1e3a8a' }; // Ancho exacto de checkbox
+                      stickyStyles = { 
+                        left: '36px', 
+                        backgroundColor: '#1e3a8a',
+                        transform: 'translateZ(0)',
+                        WebkitBackfaceVisibility: 'hidden',
+                        backfaceVisibility: 'hidden' as any,
+                        willChange: 'transform'
+                      };
                     }
                      
                      return (
@@ -1053,10 +1074,27 @@ export function DataTable({
                       
                       if (isSelectColumn) {
                         stickyClasses = `sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: rowBgColor };
+                        stickyStyles = { 
+                          left: 0, 
+                          width: '36px', 
+                          minWidth: '36px', 
+                          maxWidth: '36px', 
+                          backgroundColor: rowBgColor,
+                          transform: 'translateZ(0)',
+                          WebkitBackfaceVisibility: 'hidden',
+                          backfaceVisibility: 'hidden' as any,
+                          willChange: 'transform'
+                        };
                       } else if (isRefAsliColumn) {
                         stickyClasses = `sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        stickyStyles = { left: '36px', backgroundColor: rowBgColor };
+                        stickyStyles = { 
+                          left: '36px', 
+                          backgroundColor: rowBgColor,
+                          transform: 'translateZ(0)',
+                          WebkitBackfaceVisibility: 'hidden',
+                          backfaceVisibility: 'hidden' as any,
+                          willChange: 'transform'
+                        };
                       }
                       
                       return (
