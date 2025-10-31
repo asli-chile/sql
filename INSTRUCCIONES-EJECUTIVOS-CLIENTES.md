@@ -15,27 +15,67 @@ scripts/crear-ejecutivo-clientes.sql
 
 Este script crea la tabla `ejecutivo_clientes` que relaciona ejecutivos con sus clientes.
 
-### 2. Asignar Clientes a Ejecutivos
+### 2. Ver los Clientes del Catálogo
 
-Para asignar clientes a un ejecutivo, ejecuta en Supabase:
+**IMPORTANTE:** Los nombres de clientes DEBEN venir del catálogo. Primero ve qué clientes tienes:
 
 ```sql
--- Ejemplo: Asignar clientes a un ejecutivo
+-- Ver todos los clientes disponibles en el catálogo
+SELECT valores
+FROM catalogos
+WHERE categoria = 'clientes';
+```
+
+Esto te mostrará un array con todos los clientes. **Usa estos nombres EXACTOS** para asignar.
+
+### 3. Ver los Ejecutivos Disponibles
+
+```sql
+-- Ver usuarios ejecutivos (@asli.cl)
+SELECT id, email, nombre
+FROM usuarios
+WHERE email LIKE '%@asli.cl'
+ORDER BY email;
+```
+
+### 4. Asignar Clientes a Ejecutivos
+
+**Usa los scripts en:** `scripts/asignar-clientes-ejecutivo.sql`
+
+Este archivo tiene ejemplos completos paso a paso. Los más comunes:
+
+#### Asignar UN cliente:
+```sql
 INSERT INTO ejecutivo_clientes (ejecutivo_id, cliente_nombre) 
-SELECT u.id, 'NOMBRE_CLIENTE_1'
+SELECT u.id, 'NOMBRE_EXACTO_DEL_CATALOGO'
 FROM usuarios u 
 WHERE u.email = 'ejecutivo@asli.cl'
 ON CONFLICT (ejecutivo_id, cliente_nombre) DO NOTHING;
+```
 
--- Asignar múltiples clientes al mismo ejecutivo
+#### Asignar VARIOS clientes:
+```sql
 INSERT INTO ejecutivo_clientes (ejecutivo_id, cliente_nombre) 
 SELECT u.id, cliente
 FROM usuarios u 
 CROSS JOIN (VALUES 
-  ('CLIENTE_1'), 
-  ('CLIENTE_2'), 
-  ('CLIENTE_3')
+  ('CLIENTE_1_DEL_CATALOGO'), 
+  ('CLIENTE_2_DEL_CATALOGO')
 ) AS clientes(cliente)
+WHERE u.email = 'ejecutivo@asli.cl'
+ON CONFLICT (ejecutivo_id, cliente_nombre) DO NOTHING;
+```
+
+#### Asignar TODOS los clientes del catálogo:
+```sql
+INSERT INTO ejecutivo_clientes (ejecutivo_id, cliente_nombre)
+SELECT u.id, cliente
+FROM usuarios u
+CROSS JOIN LATERAL (
+  SELECT unnest(valores) as cliente
+  FROM catalogos
+  WHERE categoria = 'clientes'
+) AS clientes_catalogo
 WHERE u.email = 'ejecutivo@asli.cl'
 ON CONFLICT (ejecutivo_id, cliente_nombre) DO NOTHING;
 ```
@@ -98,9 +138,16 @@ ON CONFLICT (ejecutivo_id, cliente_nombre) DO NOTHING;
 
 ## 📌 Notas Importantes
 
-1. **Nombres de Clientes**: El campo `cliente_nombre` en `ejecutivo_clientes` debe coincidir **exactamente** con el valor del campo `shipper` en la tabla `registros`
+1. **⚠️ CRÍTICO - Nombres de Clientes**: 
+   - El campo `cliente_nombre` en `ejecutivo_clientes` debe coincidir **EXACTAMENTE** con los valores del catálogo (`catalogos` donde `categoria = 'clientes'`)
+   - **NO uses** nombres de registros, **SIEMPRE usa** los nombres del catálogo
+   - Para ver los nombres exactos: `SELECT valores FROM catalogos WHERE categoria = 'clientes'`
+   
 2. **Activo**: Puedes desactivar temporalmente la asignación cambiando `activo = false` en `ejecutivo_clientes`
+
 3. **Clientes sin Asignar**: Si un ejecutivo no tiene clientes asignados, NO verá ningún registro
+
+4. **Ejecutivos del Catálogo**: Los ejecutivos también vienen del catálogo (`categoria = 'ejecutivos'`), pero los usuarios ejecutivos están en la tabla `usuarios` con email `@asli.cl`
 
 ## 🛠️ Consultas Útiles
 

@@ -129,7 +129,7 @@ export default function RegistrosPage() {
           });
       }
     }
-  }, [clientesAsignados, isEjecutivo]);
+  }, [clientesAsignados, isEjecutivo, loadRegistros]);
 
   const checkUser = async () => {
     try {
@@ -247,7 +247,7 @@ export default function RegistrosPage() {
   };
 
   // Funciones existentes del sistema de registros
-  const loadRegistros = async () => {
+  const loadRegistros = useCallback(async () => {
     try {
       const supabase = createClient();
       let query = supabase
@@ -272,7 +272,7 @@ export default function RegistrosPage() {
     } catch (error) {
       console.error('Error loading registros:', error);
     }
-  };
+  }, [isEjecutivo, clientesAsignados]);
 
   const loadCatalogos = async () => {
     try {
