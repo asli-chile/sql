@@ -12,7 +12,7 @@ import {
   ColumnFiltersState,
 } from '@tanstack/react-table';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Download, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List } from 'lucide-react';
+import { Search, Filter, Download, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit } from 'lucide-react';
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -30,6 +30,7 @@ interface DataTableProps {
   yearsUnicos: string[];
   onAdd?: () => void;
   onEdit?: (record: Registro) => void;
+  onEditNaveViaje?: (record: Registro) => void;
   onDelete?: (record: Registro) => void;
   onExport?: (filteredData?: Registro[]) => void;
   // Props para selección múltiple
@@ -55,6 +56,7 @@ export function DataTable({
   yearsUnicos,
   onAdd,
   onEdit,
+  onEditNaveViaje,
   onDelete,
   onExport,
   selectedRows = new Set(),
@@ -1332,6 +1334,18 @@ export function DataTable({
              top: `${contextMenu.y}px`,
            }}
          >
+           {onEditNaveViaje && (
+             <button
+               onClick={() => {
+                 onEditNaveViaje(contextMenu.record);
+                 setContextMenu(null);
+               }}
+               className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center space-x-2"
+             >
+               <Edit className="h-4 w-4" />
+               <span>Editar Nave y Viaje</span>
+             </button>
+           )}
            {canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete) && (
              <button
                onClick={() => {

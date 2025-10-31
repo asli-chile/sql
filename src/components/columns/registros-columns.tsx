@@ -286,19 +286,22 @@ export const createRegistrosColumns = (
     accessorKey: 'naveInicial',
     header: 'Nave',
     cell: ({ row }) => {
-      const value = row.getValue('naveInicial') as string;
+      let value = row.getValue('naveInicial') as string;
+      let viaje = row.original.viaje;
+      
+      // Si la nave contiene [ ], extraer el viaje
+      const match = value?.match(/^(.+?)\s*\[(.+?)\]$/);
+      if (match) {
+        value = match[1].trim();
+        viaje = match[2].trim();
+      }
+      
+      // Mostrar nave y viaje juntos, sin edición inline (solo se edita con clic derecho)
       return (
-        <InlineEditCell
-          value={value}
-          field="naveInicial"
-          record={row.original}
-          onSave={onUpdateRecord || (() => {})}
-          onBulkSave={onBulkUpdate}
-          type="select"
-          options={navesUnicas || []}
-          selectedRecords={getSelectedRecords()}
-          isSelectionMode={true}
-        />
+        <div className="text-xs">
+          {value || '-'}
+          {viaje && <span className="text-gray-500 dark:text-gray-400"> [{viaje}]</span>}
+        </div>
       );
     },
   },

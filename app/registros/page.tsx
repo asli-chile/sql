@@ -13,6 +13,7 @@ import { EditModal } from '@/components/EditModal';
 import { AddModal } from '@/components/AddModal';
 import { TrashModal } from '@/components/TrashModal';
 import { HistorialModal } from '@/components/HistorialModal';
+import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ThemeTest } from '@/components/ThemeTest';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -79,6 +80,8 @@ export default function RegistrosPage() {
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
   const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
   const [selectedRegistroForHistorial, setSelectedRegistroForHistorial] = useState<Registro | null>(null);
+  const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
+  const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
   
   // Estado para preservar filtros del DataTable
   const [preservedFilters, setPreservedFilters] = useState({
@@ -436,6 +439,63 @@ export default function RegistrosPage() {
   const handleCloseHistorial = () => {
     setIsHistorialModalOpen(false);
     setSelectedRegistroForHistorial(null);
+  };
+
+  const handleEditNaveViaje = (registro: Registro) => {
+    // Extraer nave y viaje si viene en formato "NAVE [VIAJE]"
+    let naveActual = registro.naveInicial || '';
+    let viajeActual = registro.viaje || '';
+    
+    // Si la nave contiene [ ], extraer el viaje
+    const match = naveActual.match(/^(.+?)\s*\[(.+?)\]$/);
+    if (match) {
+      naveActual = match[1].trim();
+      viajeActual = match[2].trim();
+    }
+    
+    // Crear un registro temporal con nave y viaje separados para el modal
+    const registroParaModal = {
+      ...registro,
+      naveInicial: naveActual,
+      viaje: viajeActual
+    };
+    
+    setSelectedRegistroForNaveViaje(registroParaModal);
+    setIsEditNaveViajeModalOpen(true);
+  };
+
+  const handleCloseNaveViajeModal = () => {
+    setIsEditNaveViajeModalOpen(false);
+    setSelectedRegistroForNaveViaje(null);
+  };
+
+  const handleSaveNaveViaje = async (nave: string, viaje: string) => {
+    if (!selectedRegistroForNaveViaje?.id) return;
+
+    try {
+      const supabase = createClient();
+      
+      // Construir el nombre completo de la nave con viaje (igual que en AddModal)
+      const naveCompleta = nave && viaje.trim() 
+        ? `${nave} [${viaje.trim()}]` 
+        : nave || '';
+
+      const { error } = await supabase
+        .from('registros')
+        .update({
+          nave_inicial: naveCompleta,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedRegistroForNaveViaje.id);
+
+      if (error) throw error;
+
+      success('Nave y viaje actualizados correctamente');
+      await loadRegistros();
+      handleCloseNaveViajeModal();
+    } catch (err: any) {
+      error('Error al actualizar nave y viaje: ' + (err.message || 'Error desconocido'));
+    }
   };
 
   // Funciones para selección múltiple
@@ -1150,6 +1210,7 @@ export default function RegistrosPage() {
             yearsUnicos={yearsFiltro}
             onAdd={handleAdd}
             onEdit={handleEdit}
+            onEditNaveViaje={handleEditNaveViaje}
             onDelete={handleDelete}
             onExport={handleExport}
             selectedRows={selectedRows}
@@ -1215,6 +1276,16 @@ export default function RegistrosPage() {
           onClose={handleCloseHistorial}
           registroId={selectedRegistroForHistorial.id || ''}
           registroRefAsli={selectedRegistroForHistorial.refAsli}
+        />
+      )}
+
+      {selectedRegistroForNaveViaje && (
+        <EditNaveViajeModal
+          isOpen={isEditNaveViajeModalOpen}
+          onClose={handleCloseNaveViajeModal}
+          record={selectedRegistroForNaveViaje}
+          navesUnicas={navesUnicas}
+          onSave={handleSaveNaveViaje}
         />
       )}
 
