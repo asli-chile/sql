@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -91,6 +91,7 @@ export default function RegistrosPage() {
   // Estado para selección múltiple
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const lastSelectedRowIndex = useRef<number | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -446,16 +447,51 @@ export default function RegistrosPage() {
     }
   };
 
-  const handleToggleRowSelection = (recordId: string) => {
-    console.log('🔄 Seleccionando fila:', recordId, 'Modo selección:', selectionMode);
+  const handleToggleRowSelection = (recordId: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => {
+    const isShiftPressed = event?.shiftKey || false;
+    const currentIndex = rowIndex ?? registros.findIndex(r => r.id === recordId);
+    
+    console.log('🔄 Seleccionando fila:', recordId, 'Índice:', currentIndex, 'Shift:', isShiftPressed);
+    
     const newSelectedRows = new Set(selectedRows);
-    if (newSelectedRows.has(recordId)) {
-      newSelectedRows.delete(recordId);
-      console.log('❌ Deseleccionando:', recordId);
+    
+    // Si se presiona Shift y hay una última fila seleccionada, seleccionar rango
+    if (isShiftPressed && lastSelectedRowIndex.current !== null) {
+      const startIndex = Math.min(lastSelectedRowIndex.current, currentIndex);
+      const endIndex = Math.max(lastSelectedRowIndex.current, currentIndex);
+      
+      console.log(`📏 Seleccionando rango de ${startIndex} a ${endIndex}`);
+      
+      // Determinar si debemos seleccionar o deseleccionar el rango
+      // Si la última fila seleccionada está seleccionada, seleccionamos todo el rango
+      // Si no, deseleccionamos todo el rango
+      const lastSelectedId = registros[lastSelectedRowIndex.current]?.id;
+      const shouldSelect = lastSelectedId ? selectedRows.has(lastSelectedId) : true;
+      
+      // Seleccionar/deseleccionar todas las filas en el rango
+      for (let i = startIndex; i <= endIndex; i++) {
+        const rowId = registros[i]?.id;
+        if (rowId) {
+          if (shouldSelect) {
+            newSelectedRows.add(rowId);
+          } else {
+            newSelectedRows.delete(rowId);
+          }
+        }
+      }
     } else {
-      newSelectedRows.add(recordId);
-      console.log('✅ Seleccionando:', recordId);
+      // Comportamiento normal: toggle de la fila individual
+      if (newSelectedRows.has(recordId)) {
+        newSelectedRows.delete(recordId);
+        console.log('❌ Deseleccionando:', recordId);
+        lastSelectedRowIndex.current = null;
+      } else {
+        newSelectedRows.add(recordId);
+        console.log('✅ Seleccionando:', recordId);
+        lastSelectedRowIndex.current = currentIndex;
+      }
     }
+    
     setSelectedRows(newSelectedRows);
     console.log('📊 Filas seleccionadas:', newSelectedRows.size);
   };
@@ -463,13 +499,17 @@ export default function RegistrosPage() {
   const handleSelectAll = () => {
     if (selectedRows.size === registros.length) {
       setSelectedRows(new Set());
+      lastSelectedRowIndex.current = null;
     } else {
       setSelectedRows(new Set(registros.map(r => r.id).filter((id): id is string => Boolean(id))));
+      // Guardar el índice de la última fila cuando se selecciona todo
+      lastSelectedRowIndex.current = registros.length - 1;
     }
   };
 
   const handleClearSelection = () => {
     setSelectedRows(new Set());
+    lastSelectedRowIndex.current = null;
   };
 
   const handleBulkDelete = async () => {

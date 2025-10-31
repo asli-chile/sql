@@ -1,3 +1,4 @@
+import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Registro } from '@/types/registros';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +37,7 @@ const allowsBulkEdit = (field: keyof Registro): boolean => {
 export const createRegistrosColumns = (
   data: Registro[] = [],
   selectedRows?: Set<string>,
-  onToggleRowSelection?: (id: string) => void,
+  onToggleRowSelection?: (id: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => void,
   onUpdateRecord?: (updatedRecord: Registro) => void,
   onBulkUpdate?: (field: keyof Registro, value: any, selectedRecords: Registro[]) => void,
   navierasUnicas?: string[],
@@ -72,12 +73,13 @@ export const createRegistrosColumns = (
       header: () => null,
       cell: ({ row }: any) => {
         const isSelected = selectedRows?.has(row.original.id || '');
+        const rowIndex = row.index;
         return (
           <div className="flex items-center">
             <input
               type="checkbox"
               checked={isSelected || false}
-              onChange={() => onToggleRowSelection?.(row.original.id || '')}
+              onChange={(e) => onToggleRowSelection?.(row.original.id || '', rowIndex, e as any)}
               className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
             />
           </div>
