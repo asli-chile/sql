@@ -56,131 +56,98 @@ CREATE TRIGGER set_registros_user_fields
 -- 2. VERIFICAR Y CORREGIR FUNCIÓN REF ASLI
 -- ============================================
 
--- Verificar si la función existe
-DO $$
+-- Crear o reemplazar función get_next_ref_asli
+CREATE OR REPLACE FUNCTION get_next_ref_asli()
+RETURNS TEXT AS $$
+DECLARE
+  max_numero INTEGER;
+  siguiente_numero INTEGER;
+  ref_asli_result TEXT;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM information_schema.routines 
-    WHERE routine_schema = 'public' 
-      AND routine_name = 'get_next_ref_asli'
-  ) THEN
-    RAISE NOTICE 'La función get_next_ref_asli no existe. Creándola...';
-    
-    -- Crear función
-    CREATE OR REPLACE FUNCTION get_next_ref_asli()
-    RETURNS TEXT AS $$
-    DECLARE
-      max_numero INTEGER;
-      siguiente_numero INTEGER;
-      ref_asli_result TEXT;
-    BEGIN
-      -- Obtener el número máximo de REF ASLI existentes
-      -- Buscar todos los REF ASLI que coincidan con el patrón A####
-      SELECT COALESCE(MAX(
-        CASE 
-          WHEN ref_asli ~ '^A\d+$' THEN 
-            CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
-          ELSE 0
-        END
-      ), 0) INTO max_numero
-      FROM registros
-      WHERE deleted_at IS NULL
-        AND ref_asli ~ '^A\d+$';
-      
-      -- Si no hay registros, empezar desde 1
-      IF max_numero IS NULL OR max_numero = 0 THEN
-        siguiente_numero := 1;
-      ELSE
-        siguiente_numero := max_numero + 1;
-      END IF;
-      
-      -- Buscar el primer número disponible (por si hay huecos)
-      WHILE EXISTS (
-        SELECT 1 
-        FROM registros 
-        WHERE deleted_at IS NULL
-          AND ref_asli = 'A' || LPAD(siguiente_numero::TEXT, 4, '0')
-      ) LOOP
-        siguiente_numero := siguiente_numero + 1;
-      END LOOP;
-      
-      -- Generar el REF ASLI con formato A0001
-      ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
-      
-      RETURN ref_asli_result;
-    END;
-    $$ LANGUAGE plpgsql SECURITY DEFINER;
-    
-    RAISE NOTICE '✅ Función get_next_ref_asli creada exitosamente';
+  -- Obtener el número máximo de REF ASLI existentes
+  -- Buscar todos los REF ASLI que coincidan con el patrón A####
+  SELECT COALESCE(MAX(
+    CASE 
+      WHEN ref_asli ~ '^A\d+$' THEN 
+        CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
+      ELSE 0
+    END
+  ), 0) INTO max_numero
+  FROM registros
+  WHERE deleted_at IS NULL
+    AND ref_asli ~ '^A\d+$';
+  
+  -- Si no hay registros, empezar desde 1
+  IF max_numero IS NULL OR max_numero = 0 THEN
+    siguiente_numero := 1;
   ELSE
-    RAISE NOTICE '✅ La función get_next_ref_asli ya existe';
+    siguiente_numero := max_numero + 1;
   END IF;
-END $$;
+  
+  -- Buscar el primer número disponible (por si hay huecos)
+  WHILE EXISTS (
+    SELECT 1 
+    FROM registros 
+    WHERE deleted_at IS NULL
+      AND ref_asli = 'A' || LPAD(siguiente_numero::TEXT, 4, '0')
+  ) LOOP
+    siguiente_numero := siguiente_numero + 1;
+  END LOOP;
+  
+  -- Generar el REF ASLI con formato A0001
+  ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
+  
+  RETURN ref_asli_result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Verificar también get_multiple_ref_asli
-DO $$
+-- Crear o reemplazar función get_multiple_ref_asli
+CREATE OR REPLACE FUNCTION get_multiple_ref_asli(cantidad INTEGER)
+RETURNS TEXT[] AS $$
+DECLARE
+  ref_asli_list TEXT[] := ARRAY[]::TEXT[];
+  max_numero INTEGER;
+  siguiente_numero INTEGER;
+  ref_asli_result TEXT;
+  i INTEGER;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM information_schema.routines 
-    WHERE routine_schema = 'public' 
-      AND routine_name = 'get_multiple_ref_asli'
-  ) THEN
-    RAISE NOTICE 'La función get_multiple_ref_asli no existe. Creándola...';
-    
-    CREATE OR REPLACE FUNCTION get_multiple_ref_asli(cantidad INTEGER)
-    RETURNS TEXT[] AS $$
-    DECLARE
-      ref_asli_list TEXT[] := ARRAY[]::TEXT[];
-      max_numero INTEGER;
-      siguiente_numero INTEGER;
-      ref_asli_result TEXT;
-      i INTEGER;
-    BEGIN
-      -- Obtener el número máximo
-      SELECT COALESCE(MAX(
-        CASE 
-          WHEN ref_asli ~ '^A\d+$' THEN 
-            CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
-          ELSE 0
-        END
-      ), 0) INTO max_numero
-      FROM registros
+  -- Obtener el número máximo
+  SELECT COALESCE(MAX(
+    CASE 
+      WHEN ref_asli ~ '^A\d+$' THEN 
+        CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
+      ELSE 0
+    END
+  ), 0) INTO max_numero
+  FROM registros
+  WHERE deleted_at IS NULL
+    AND ref_asli ~ '^A\d+$';
+  
+  -- Empezar desde el siguiente al máximo
+  siguiente_numero := COALESCE(max_numero, 0) + 1;
+  
+  -- Generar los REF ASLI
+  FOR i IN 1..cantidad LOOP
+    -- Buscar el siguiente número disponible
+    WHILE EXISTS (
+      SELECT 1 
+      FROM registros 
       WHERE deleted_at IS NULL
-        AND ref_asli ~ '^A\d+$';
-      
-      -- Empezar desde el siguiente al máximo
-      siguiente_numero := COALESCE(max_numero, 0) + 1;
-      
-      -- Generar los REF ASLI
-      FOR i IN 1..cantidad LOOP
-        -- Buscar el siguiente número disponible
-        WHILE EXISTS (
-          SELECT 1 
-          FROM registros 
-          WHERE deleted_at IS NULL
-            AND ref_asli = 'A' || LPAD(siguiente_numero::TEXT, 4, '0')
-        ) LOOP
-          siguiente_numero := siguiente_numero + 1;
-        END LOOP;
-        
-        -- Generar el REF ASLI
-        ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
-        ref_asli_list := array_append(ref_asli_list, ref_asli_result);
-        
-        siguiente_numero := siguiente_numero + 1;
-      END LOOP;
-      
-      RETURN ref_asli_list;
-    END;
-    $$ LANGUAGE plpgsql SECURITY DEFINER;
+        AND ref_asli = 'A' || LPAD(siguiente_numero::TEXT, 4, '0')
+    ) LOOP
+      siguiente_numero := siguiente_numero + 1;
+    END LOOP;
     
-    RAISE NOTICE '✅ Función get_multiple_ref_asli creada exitosamente';
-  ELSE
-    RAISE NOTICE '✅ La función get_multiple_ref_asli ya existe';
-  END IF;
-END $$;
+    -- Generar el REF ASLI
+    ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
+    ref_asli_list := array_append(ref_asli_list, ref_asli_result);
+    
+    siguiente_numero := siguiente_numero + 1;
+  END LOOP;
+  
+  RETURN ref_asli_list;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 3. DIAGNÓSTICO
 -- ============================================
