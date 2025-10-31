@@ -216,7 +216,7 @@ export function AddModal({
         setError(`Error de conexión: ${testError.message || 'No se puede conectar con la base de datos'}`);
         return;
       }
-
+      
       const { data: insertData, error: insertError } = await supabase
         .from('registros')
         .insert(recordsToInsert)
@@ -515,10 +515,10 @@ export function AddModal({
                   formData.naveInicial && !formData.viaje && error.includes('Viaje')
                     ? 'border-red-500 focus:ring-red-500 bg-red-50'
                     : !formData.naveInicial 
-                      ? theme === 'dark'
-                        ? 'bg-gray-700 cursor-not-allowed text-gray-400 border-gray-600'
-                        : 'bg-gray-100 cursor-not-allowed text-gray-500 border-gray-300'
-                      : theme === 'dark'
+                    ? theme === 'dark'
+                      ? 'bg-gray-700 cursor-not-allowed text-gray-400 border-gray-600'
+                      : 'bg-gray-100 cursor-not-allowed text-gray-500 border-gray-300'
+                    : theme === 'dark'
                         ? 'bg-gray-700 text-white border-gray-600 focus:ring-blue-500'
                         : 'bg-white text-gray-900 border-gray-300 focus:ring-blue-500'
                 }`}

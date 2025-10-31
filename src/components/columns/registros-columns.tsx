@@ -128,6 +128,27 @@ export const createRegistrosColumns = (
     },
   },
   {
+    id: 'ejecutivo',
+    accessorKey: 'ejecutivo',
+    header: 'Ejecutivo',
+    cell: ({ row }) => {
+      const value = row.getValue('ejecutivo') as string;
+      return (
+        <InlineEditCell
+          value={value}
+          field="ejecutivo"
+          record={row.original}
+          onSave={onUpdateRecord || (() => {})}
+          onBulkSave={onBulkUpdate}
+          type="select"
+          options={ejecutivosUnicos || []}
+          selectedRecords={getSelectedRecords()}
+          isSelectionMode={true}
+        />
+      );
+    },
+  },
+  {
     id: 'ingresado',
     accessorKey: 'ingresado',
     header: 'Ingresado',
@@ -566,27 +587,6 @@ export const createRegistrosColumns = (
           onBulkSave={onBulkUpdate}
           type="select"
           options={fletesUnicos || []}
-          selectedRecords={getSelectedRecords()}
-          isSelectionMode={true}
-        />
-      );
-    },
-  },
-  {
-    id: 'ejecutivo',
-    accessorKey: 'ejecutivo',
-    header: 'Ejecutivo',
-    cell: ({ row }) => {
-      const value = row.getValue('ejecutivo') as string;
-      return (
-        <InlineEditCell
-          value={value}
-          field="ejecutivo"
-          record={row.original}
-          onSave={onUpdateRecord || (() => {})}
-          onBulkSave={onBulkUpdate}
-          type="select"
-          options={ejecutivosUnicos || []}
           selectedRecords={getSelectedRecords()}
           isSelectionMode={true}
         />

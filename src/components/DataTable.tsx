@@ -128,13 +128,11 @@ export function DataTable({
   
   // Estado para visibilidad de columnas
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
-    // Inicializar todas las columnas como visibles excepto algunas menos importantes
+    // Inicializar todas las columnas como visibles por defecto
     const initialVisibility: Record<string, boolean> = {};
     columns.forEach(column => {
       if (column.id) {
-        // Ocultar algunas columnas menos críticas por defecto
-        const hiddenByDefault = ['comentario', 'contrato', 'ejecutivo', 'flete'];
-        initialVisibility[column.id] = !hiddenByDefault.includes(column.id);
+        initialVisibility[column.id] = true;
       }
     });
     return initialVisibility;
