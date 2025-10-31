@@ -1,28 +1,54 @@
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
 
 /**
  * Genera un REF ASLI único sin repetición
+ * Usa una función SQL con SECURITY DEFINER para ver TODOS los registros
+ * (ignora RLS para encontrar el siguiente número correcto)
  * @returns Promise<string> - REF ASLI único (ej: A0443)
  */
 export const generateUniqueRefAsli = async (): Promise<string> => {
   try {
-    console.log('🔄 Obteniendo REF ASLI existentes desde Supabase...');
+    console.log('🔄 Generando REF ASLI único usando función SQL...');
     
-    // Obtener todos los REF ASLI existentes ordenados por número
+    const supabase = createClient();
+    
+    // Llamar a la función SQL que ve TODOS los registros (ignora RLS)
+    const { data, error } = await supabase.rpc('get_next_ref_asli');
+
+    if (error) {
+      console.error('❌ Error generando REF ASLI:', error);
+      console.error('📋 Detalles del error:', JSON.stringify(error, null, 2));
+      
+      // Si la función no existe, intentar método antiguo como fallback
+      console.log('⚠️ Función SQL no disponible, usando método antiguo...');
+      return await generateUniqueRefAsliFallback();
+    }
+
+    const refAsli = data as string;
+    console.log(`✅ REF ASLI generado: ${refAsli}`);
+    
+    return refAsli;
+    
+  } catch (error) {
+    console.error('💥 Error generando REF ASLI único:', error);
+    return await generateUniqueRefAsliFallback();
+  }
+};
+
+/**
+ * Método fallback: consulta directa (puede fallar con RLS)
+ */
+const generateUniqueRefAsliFallback = async (): Promise<string> => {
+  try {
+    const supabase = createClient();
+    
     const { data: registros, error } = await supabase
       .from('registros')
       .select('ref_asli')
       .order('ref_asli', { ascending: true });
 
-    if (error) {
-      console.error('❌ Error obteniendo REF ASLI existentes:', error);
-      console.error('📋 Detalles del error:', JSON.stringify(error, null, 2));
-      throw new Error(`Error obteniendo REF ASLI existentes: ${error.message || 'Error desconocido'}`);
-    }
+    if (error) throw error;
 
-    console.log(`✅ Conectividad con Supabase verificada. Registros encontrados: ${registros?.length || 0}`);
-
-    // Extraer números de los REF ASLI existentes
     const numerosExistentes = new Set<number>();
     
     if (registros && registros.length > 0) {
@@ -34,25 +60,20 @@ export const generateUniqueRefAsli = async (): Promise<string> => {
       });
     }
 
-    // Encontrar el siguiente número disponible
     let siguienteNumero = 1;
     while (numerosExistentes.has(siguienteNumero)) {
       siguienteNumero++;
     }
 
-    // Generar el REF ASLI con formato A0001
     const refAsli = `A${siguienteNumero.toString().padStart(4, '0')}`;
-    
-    console.log(`🔢 REF ASLI generado: ${refAsli} (siguiente número: ${siguienteNumero})`);
-    
+    console.log(`🔢 REF ASLI generado (fallback): ${refAsli}`);
     return refAsli;
     
   } catch (error) {
-    console.error('💥 Error generando REF ASLI único:', error);
-    // Fallback: usar timestamp como número
-    const timestamp = Date.now() % 10000; // Últimos 4 dígitos del timestamp
+    console.error('💥 Error en fallback, usando timestamp:', error);
+    const timestamp = Date.now() % 10000;
     const fallbackRefAsli = `A${timestamp.toString().padStart(4, '0')}`;
-    console.log(`⚠️ Usando REF ASLI de fallback: ${fallbackRefAsli}`);
+    console.log(`⚠️ Usando REF ASLI de timestamp: ${fallbackRefAsli}`);
     return fallbackRefAsli;
   }
 };
@@ -66,21 +87,36 @@ export const validateUniqueRefAsli = async (refAsli: string): Promise<boolean> =
   try {
     console.log(`🔍 Validando REF ASLI: ${refAsli}`);
     
-    const { data, error } = await supabase
-      .from('registros')
-      .select('id')
-      .eq('ref_asli', refAsli)
-      .limit(1);
+    const supabase = createClient();
+    
+    // Usar función SQL que ve TODOS los registros
+    const { data, error } = await supabase.rpc('validate_ref_asli_unique', {
+      ref_asli_to_check: refAsli
+    });
 
     if (error) {
       console.error('❌ Error validando REF ASLI:', error);
-      console.error('📋 Detalles del error:', JSON.stringify(error, null, 2));
-      return false;
+      // Fallback: validación directa
+      const { data: directData, error: directError } = await supabase
+        .from('registros')
+        .select('id')
+        .eq('ref_asli', refAsli)
+        .limit(1);
+
+      if (directError) {
+        console.error('❌ Error en validación directa:', directError);
+        return false;
+      }
+
+      const isUnique = !directData || directData.length === 0;
+      console.log(`✅ REF ASLI ${refAsli} es ${isUnique ? 'único' : 'duplicado'} (fallback)`);
+      return isUnique;
     }
 
-    const isUnique = !data || data.length === 0;
+    const isUnique = data as boolean;
     console.log(`✅ REF ASLI ${refAsli} es ${isUnique ? 'único' : 'duplicado'}`);
     return isUnique;
+    
   } catch (error) {
     console.error('💥 Error validando REF ASLI:', error);
     return false;
@@ -89,25 +125,55 @@ export const validateUniqueRefAsli = async (refAsli: string): Promise<boolean> =
 
 /**
  * Genera múltiples REF ASLI únicos
+ * Usa una función SQL con SECURITY DEFINER para ver TODOS los registros
  * @param cantidad - Número de REF ASLI a generar
  * @returns Promise<string[]> - Array de REF ASLI únicos
  */
 export const generateMultipleUniqueRefAsli = async (cantidad: number): Promise<string[]> => {
-  console.log(`🔄 Generando ${cantidad} REF ASLI únicos...`);
+  console.log(`🔄 Generando ${cantidad} REF ASLI únicos usando función SQL...`);
   
   try {
-    // Obtener todos los REF ASLI existentes una sola vez
+    const supabase = createClient();
+    
+    // Llamar a la función SQL que ve TODOS los registros (ignora RLS)
+    const { data, error } = await supabase.rpc('get_multiple_ref_asli', {
+      cantidad: cantidad
+    });
+
+    if (error) {
+      console.error('❌ Error generando múltiples REF ASLI:', error);
+      console.error('📋 Detalles del error:', JSON.stringify(error, null, 2));
+      
+      // Si la función no existe, intentar método antiguo como fallback
+      console.log('⚠️ Función SQL no disponible, usando método antiguo...');
+      return await generateMultipleUniqueRefAsliFallback(cantidad);
+    }
+
+    const refAsliList = data as string[];
+    console.log(`✅ ${refAsliList.length} REF ASLI generados:`, refAsliList);
+    
+    return refAsliList;
+    
+  } catch (error) {
+    console.error('💥 Error generando múltiples REF ASLI:', error);
+    return await generateMultipleUniqueRefAsliFallback(cantidad);
+  }
+};
+
+/**
+ * Método fallback: consulta directa (puede fallar con RLS)
+ */
+const generateMultipleUniqueRefAsliFallback = async (cantidad: number): Promise<string[]> => {
+  try {
+    const supabase = createClient();
+    
     const { data: registros, error } = await supabase
       .from('registros')
       .select('ref_asli')
       .order('ref_asli', { ascending: true });
 
-    if (error) {
-      console.error('❌ Error obteniendo REF ASLI existentes:', error);
-      throw new Error(`Error obteniendo REF ASLI existentes: ${error.message}`);
-    }
+    if (error) throw error;
 
-    // Extraer números de los REF ASLI existentes
     const numerosExistentes = new Set<number>();
     
     if (registros && registros.length > 0) {
@@ -119,36 +185,25 @@ export const generateMultipleUniqueRefAsli = async (cantidad: number): Promise<s
       });
     }
 
-    console.log(`📊 Números existentes encontrados:`, Array.from(numerosExistentes).slice(0, 10));
-
-    // Generar múltiples REF ASLI únicos
     const refAsliList: string[] = [];
     let siguienteNumero = 1;
     
     for (let i = 0; i < cantidad; i++) {
-      // Encontrar el siguiente número disponible
       while (numerosExistentes.has(siguienteNumero)) {
         siguienteNumero++;
       }
       
-      // Generar el REF ASLI con formato A0001
       const refAsli = `A${siguienteNumero.toString().padStart(4, '0')}`;
       refAsliList.push(refAsli);
-      
-      // Agregar este número a la lista de existentes para evitar duplicados en la misma generación
       numerosExistentes.add(siguienteNumero);
-      
-      console.log(`✅ REF ASLI ${i + 1}/${cantidad}: ${refAsli}`);
-      
       siguienteNumero++;
     }
     
-    console.log(`🎯 REF ASLI generados:`, refAsliList);
+    console.log(`🔢 REF ASLI generados (fallback):`, refAsliList);
     return refAsliList;
     
   } catch (error) {
-    console.error('💥 Error generando múltiples REF ASLI:', error);
-    // Fallback: generar REF ASLI basados en timestamp
+    console.error('💥 Error en fallback, usando timestamp:', error);
     const refAsliList: string[] = [];
     const baseTimestamp = Date.now() % 10000;
     
@@ -157,7 +212,7 @@ export const generateMultipleUniqueRefAsli = async (cantidad: number): Promise<s
       refAsliList.push(fallbackRefAsli);
     }
     
-    console.log(`⚠️ Usando REF ASLI de fallback:`, refAsliList);
+    console.log(`⚠️ Usando REF ASLI de timestamp:`, refAsliList);
     return refAsliList;
   }
 };
