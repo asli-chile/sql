@@ -18,20 +18,31 @@ export const generateUniqueRefAsli = async (): Promise<string> => {
     if (error) {
       console.error('❌ Error generando REF ASLI:', error);
       console.error('📋 Detalles del error:', JSON.stringify(error, null, 2));
+      console.error('⚠️ ERROR: La función SQL get_next_ref_asli no existe o hay un problema.');
+      console.error('⚠️ Por favor, ejecuta el script: scripts/crear-funcion-ref-asli.sql en Supabase');
       
-      // Si la función no existe, intentar método antiguo como fallback
-      console.log('⚠️ Función SQL no disponible, usando método antiguo...');
-      return await generateUniqueRefAsliFallback();
+      // Intentar método antiguo como fallback
+      console.log('⚠️ Usando método fallback (puede generar A0001 si hay RLS)...');
+      const fallbackResult = await generateUniqueRefAsliFallback();
+      console.warn('⚠️ IMPORTANTE: Ejecuta scripts/crear-funcion-ref-asli.sql para corregir esto');
+      return fallbackResult;
     }
 
     const refAsli = data as string;
-    console.log(`✅ REF ASLI generado: ${refAsli}`);
+    
+    if (!refAsli || refAsli === 'A0001') {
+      console.warn('⚠️ La función devolvió A0001, esto puede indicar que no hay registros o hay un problema');
+    }
+    
+    console.log(`✅ REF ASLI generado por función SQL: ${refAsli}`);
     
     return refAsli;
     
   } catch (error) {
     console.error('💥 Error generando REF ASLI único:', error);
-    return await generateUniqueRefAsliFallback();
+    const fallbackResult = await generateUniqueRefAsliFallback();
+    console.warn('⚠️ IMPORTANTE: Ejecuta scripts/crear-funcion-ref-asli.sql para corregir esto');
+    return fallbackResult;
   }
 };
 
