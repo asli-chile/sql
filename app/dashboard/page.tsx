@@ -111,22 +111,30 @@ export default function DashboardPage() {
           });
         }
 
-        // Contar contenedores
+        // Contar contenedores (separados por espacios)
         if (registro.contenedor) {
-          let contenedores: string[] = [];
+          let contenedorStr = '';
           
-          // Manejar si viene como string JSON o como array
-          if (typeof registro.contenedor === 'string') {
+          // Convertir a string si viene como array
+          if (Array.isArray(registro.contenedor)) {
+            contenedorStr = registro.contenedor.join(' ');
+          } else if (typeof registro.contenedor === 'string') {
+            // Si viene como JSON string, intentar parsearlo
             try {
-              contenedores = JSON.parse(registro.contenedor);
+              const parsed = JSON.parse(registro.contenedor);
+              if (Array.isArray(parsed)) {
+                contenedorStr = parsed.join(' ');
+              } else {
+                contenedorStr = registro.contenedor;
+              }
             } catch {
-              // Si no es JSON válido, tratarlo como un solo contenedor
-              contenedores = [registro.contenedor];
+              // No es JSON, usar como string directo
+              contenedorStr = registro.contenedor;
             }
-          } else if (Array.isArray(registro.contenedor)) {
-            contenedores = registro.contenedor;
           }
           
+          // Dividir por espacios y contar elementos no vacíos
+          const contenedores = contenedorStr.trim().split(/\s+/).filter(c => c.length > 0);
           totalContenedores += contenedores.length;
         }
       });
