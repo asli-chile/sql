@@ -65,11 +65,6 @@ export function InlineEditCell({
   const [lastTap, setLastTap] = useState(0);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [showTapHint, setShowTapHint] = useState(false);
-  const [catalogSuggestions, setCatalogSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [initialValue, setInitialValue] = useState(value);
   
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
@@ -87,116 +82,9 @@ export function InlineEditCell({
     setIsTouchDevice(checkTouchDevice());
   }, []);
 
-  // Debug básico
-  console.log('🚀 InlineEditCell se está renderizando para campo:', field);
-
   useEffect(() => {
     setEditValue(value || '');
-    if (isEditing) {
-      setInitialValue(value);
-    }
-  }, [value, isEditing]);
-
-  // Filtrar sugerencias basadas en el valor ingresado
-  useEffect(() => {
-    if (catalogSuggestions.length > 0 && editValue !== null && editValue !== undefined) {
-      // Si el valor actual es el mismo que el inicial, mostrar TODAS las sugerencias
-      if (editValue === initialValue || editValue === '') {
-        console.log(`🔎 Mostrando todas las sugerencias (${catalogSuggestions.length}):`, catalogSuggestions);
-        setFilteredSuggestions(catalogSuggestions);
-        setShowSuggestions(isEditing);
-      } else {
-        // Solo filtrar si el usuario ha empezado a escribir algo diferente
-        const searchValue = editValue.toString().toLowerCase();
-        const filtered = catalogSuggestions.filter(suggestion =>
-          suggestion.toString().toLowerCase().includes(searchValue)
-        );
-        console.log(`🔎 Filtro: "${searchValue}" | Total: ${catalogSuggestions.length} | Filtradas: ${filtered.length}`, filtered);
-        setFilteredSuggestions(filtered);
-        setShowSuggestions(filtered.length > 0 && isEditing);
-      }
-    } else {
-      setFilteredSuggestions([]);
-      setShowSuggestions(false);
-    }
-    setSelectedIndex(-1);
-  }, [editValue, catalogSuggestions, isEditing, initialValue]);
-
-  // Scroll automático a la opción seleccionada
-  useEffect(() => {
-    if (selectedIndex >= 0 && showSuggestions) {
-      const element = document.querySelector(`[data-suggestion-index="${selectedIndex}"]`);
-      element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    }
-  }, [selectedIndex, showSuggestions]);
-
-  // Cargar sugerencias del catálogo cuando se entra en modo edición
-  useEffect(() => {
-    if (!isEditing || type === 'select' || type === 'date') {
-      return;
-    }
-
-    const loadCatalogSuggestions = async () => {
-      try {
-        const supabase = createClient();
-        
-        // Mapear campos a categorías del catálogo (nombres exactos de Supabase)
-        const fieldToCatalogCategory: Record<string, string> = {
-          'naviera': 'navieras',
-          'naveInicial': 'naves',
-          'ejecutivo': 'ejecutivos',
-          'especie': 'especies',
-          'pol': 'pols',
-          'pod': 'destinos',
-          'deposito': 'depositos',
-          'flete': 'fletes',
-          'tipoIngreso': 'tipoIngreso',
-          'estado': 'Estado',
-          'temperatura': 'temperatura',
-          'cbm': 'cbm',
-          'co2': 'co2',
-          'o2': 'o2',
-          'contrato': 'contratos',
-          'facturacion': 'facturacion'
-        };
-
-        const category = fieldToCatalogCategory[field];
-        
-        if (!category) {
-          // Si no hay categoría mapeada, no cargar sugerencias
-          setCatalogSuggestions([]);
-          return;
-        }
-
-        console.log(`🔍 Buscando catálogo para campo: ${field} → categoría: ${category}`);
-        
-        const { data, error } = await supabase
-          .from('catalogos')
-          .select('valores')
-          .eq('categoria', category)
-          .single();
-
-        if (error) {
-          console.warn(`❌ No se encontraron sugerencias para ${category}:`, error);
-          setCatalogSuggestions([]);
-          return;
-        }
-
-        if (data && Array.isArray(data.valores)) {
-          console.log(`✅ Sugerencias cargadas para ${field}:`, data.valores);
-          setCatalogSuggestions(data.valores);
-        } else {
-          console.warn(`⚠️ Datos del catálogo no son un array para ${category}:`, data);
-          setCatalogSuggestions([]);
-        }
-      } catch (err) {
-        console.error('Error cargando sugerencias del catálogo:', err);
-        setCatalogSuggestions([]);
-      }
-    };
-
-    loadCatalogSuggestions();
-  }, [isEditing, field, type]);
+  }, [value]);
 
   // Mapear nombres de campos del tipo TypeScript a nombres de la base de datos
   const getDatabaseFieldName = (fieldName: keyof Registro): string => {
@@ -320,7 +208,6 @@ export function InlineEditCell({
           valor_anterior: value || 'NULL',
           valor_nuevo: processedValue || 'NULL'
         });
-        console.log('✅ Historial creado para campo:', field);
       } catch (historialError) {
         console.warn('⚠️ Error creando historial:', historialError);
         // No fallar la operación por el historial
@@ -356,21 +243,17 @@ export function InlineEditCell({
     if (isTouchDevice) {
       const now = Date.now();
       const DOUBLE_TAP_DELAY = 300; // 300ms para considerar un doble tap
-
+      
       if (now - lastTap < DOUBLE_TAP_DELAY) {
-        // Es un doble tap, activar edición
+        // Doble tap detectado, activar edición
         setEditingCell(record.id || '', field);
         setLastTap(0);
         setShowTapHint(false);
       } else {
-        // Es el primer tap, guardar el timestamp y mostrar hint
+        // Primer tap, mostrar hint
         setLastTap(now);
         setShowTapHint(true);
-        
-        // Ocultar el hint después de 500ms
-        setTimeout(() => {
-          setShowTapHint(false);
-        }, 500);
+        setTimeout(() => setShowTapHint(false), 1500);
       }
     } else {
       // En desktop, activar inmediatamente con un solo clic
@@ -379,36 +262,10 @@ export function InlineEditCell({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (showSuggestions && filteredSuggestions.length > 0) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSelectedIndex(prev => 
-          prev < filteredSuggestions.length - 1 ? prev + 1 : prev
-        );
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        if (selectedIndex >= 0 && filteredSuggestions[selectedIndex]) {
-          setEditValue(filteredSuggestions[selectedIndex]);
-          setShowSuggestions(false);
-        } else {
-          handleSave();
-        }
-      } else if (e.key === 'Escape') {
-        if (showSuggestions) {
-          setShowSuggestions(false);
-        } else {
-          handleCancel();
-        }
-      }
-    } else {
-      if (e.key === 'Enter') {
-        handleSave();
-      } else if (e.key === 'Escape') {
-        handleCancel();
-      }
+    if (e.key === 'Enter') {
+      handleSave();
+    } else if (e.key === 'Escape') {
+      handleCancel();
     }
   };
 
@@ -483,7 +340,7 @@ export function InlineEditCell({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
           >
             {options.map(option => (
@@ -496,7 +353,7 @@ export function InlineEditCell({
             value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
           />
         ) : type === 'textarea' ? (
@@ -504,50 +361,21 @@ export function InlineEditCell({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white resize-none"
+            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
             rows={3}
             cols={20}
             autoFocus
           />
         ) : (
-          <div className="relative flex-1">
-            <input
-              type={catalogSuggestions.length > 0 ? 'text' : type}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={(e) => {
-                if (catalogSuggestions.length > 0) {
-                  e.target.select(); // Seleccionar todo el texto
-                  setShowSuggestions(true);
-                }
-              }}
-              className="w-full px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
-              autoComplete="off"
-              autoFocus
-            />
-            {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute left-0 top-full mt-1 min-w-[200px] w-max max-w-[400px] max-h-60 overflow-y-auto bg-gray-800 dark:bg-gray-900 border border-gray-600 rounded-md shadow-2xl z-[9999] scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-                {filteredSuggestions.map((suggestion, index) => (
-                  <div
-                    key={index}
-                    data-suggestion-index={index}
-                    onClick={() => {
-                      setEditValue(suggestion);
-                      setShowSuggestions(false);
-                    }}
-                    className={`px-3 py-2 text-sm cursor-pointer transition-colors whitespace-nowrap ${
-                      index === selectedIndex
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : 'text-gray-200 hover:bg-gray-700 hover:text-white'
-                    }`}
-                  >
-                    {suggestion}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <input
+            type={type}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
+            autoComplete="off"
+            autoFocus
+          />
         )}
         
         <button
@@ -640,3 +468,4 @@ export function InlineEditCell({
     </div>
   );
 }
+
