@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [stats, setStats] = useState({
     total: 0,
+    totalContenedores: 0,
     pendientes: 0,
     confirmados: 0,
     cancelados: 0
@@ -89,7 +90,7 @@ export default function DashboardPage() {
       // Consulta optimizada para obtener estadísticas en una sola query
       const { data: registros, error } = await supabase
         .from('registros')
-        .select('ref_asli, estado, updated_at')
+        .select('ref_asli, estado, updated_at, contenedor')
         .is('deleted_at', null) // Solo registros no eliminados
         .not('ref_asli', 'is', null); // Solo registros con REF ASLI
 
@@ -97,6 +98,7 @@ export default function DashboardPage() {
 
       // Agrupar por REF ASLI y obtener el estado más reciente de cada uno
       const refAsliMap = new Map();
+      let totalContenedores = 0;
       
       registros?.forEach(registro => {
         const refAsli = registro.ref_asli;
@@ -107,6 +109,25 @@ export default function DashboardPage() {
             estado: registro.estado,
             updated_at: registro.updated_at
           });
+        }
+
+        // Contar contenedores
+        if (registro.contenedor) {
+          let contenedores: string[] = [];
+          
+          // Manejar si viene como string JSON o como array
+          if (typeof registro.contenedor === 'string') {
+            try {
+              contenedores = JSON.parse(registro.contenedor);
+            } catch {
+              // Si no es JSON válido, tratarlo como un solo contenedor
+              contenedores = [registro.contenedor];
+            }
+          } else if (Array.isArray(registro.contenedor)) {
+            contenedores = registro.contenedor;
+          }
+          
+          totalContenedores += contenedores.length;
         }
       });
 
@@ -138,6 +159,7 @@ export default function DashboardPage() {
 
       setStats({
         total: refAsliMap.size,
+        totalContenedores: totalContenedores,
         pendientes: estadoCounts.pendientes,
         confirmados: estadoCounts.confirmados,
         cancelados: estadoCounts.cancelados
@@ -372,8 +394,8 @@ export default function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <Package className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600">{stats.total.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Total Registros</div>
+              <div className="text-2xl font-bold text-blue-600">{stats.totalContenedores.toLocaleString()}</div>
+              <div className="text-sm text-gray-600">Total Contenedores</div>
             </div>
             <div className="text-center p-4 bg-yellow-50 rounded-lg">
               <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
