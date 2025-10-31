@@ -27,11 +27,11 @@ WHERE schemaname = 'public'
 -- 3. Probar las funciones en contexto de RLS
 SELECT 
   'auth.uid()' as funcion,
-  auth.uid() as resultado
+  auth.uid()::TEXT as resultado
 UNION ALL
 SELECT 
   'get_current_user_id()' as funcion,
-  get_current_user_id()::TEXT as resultado
+  COALESCE(get_current_user_id()::TEXT, 'NULL') as resultado
 UNION ALL
 SELECT 
   'is_admin()' as funcion,
