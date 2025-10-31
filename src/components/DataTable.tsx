@@ -1297,10 +1297,10 @@ export function DataTable({
         </div>
       )}
 
-             {/* Información de registros (sin paginación) */}
-       <div className="flex flex-col gap-3">
-         {/* Información de registros */}
-         <div className="text-center sm:text-left">
+             {/* Footer con información de registros y logo */}
+       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+         {/* Información de registros - Izquierda */}
+         <div className="flex-1 text-left">
            <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
              Mostrando {table.getFilteredRowModel().rows.length} registros
              {table.getFilteredRowModel().rows.length !== data.length && 
@@ -1308,6 +1308,18 @@ export function DataTable({
              }
            </span>
          </div>
+         
+         {/* Logo ASLI - Centro */}
+         <div className="flex-shrink-0 flex justify-center">
+           <img 
+             src="https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png" 
+             alt="ASLI Logo" 
+             className="h-8 w-auto opacity-70 hover:opacity-100 transition-opacity"
+           />
+         </div>
+         
+         {/* Espacio derecho (puede usarse para paginación futura) */}
+         <div className="flex-1"></div>
        </div>
        
        {/* Menú contextual */}
