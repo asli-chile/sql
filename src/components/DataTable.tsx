@@ -11,6 +11,7 @@ import {
   SortingState,
   ColumnFiltersState,
 } from '@tanstack/react-table';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
 import { Search, Filter, Download, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit } from 'lucide-react';
 import { ColumnToggle } from './ColumnToggle';
@@ -175,6 +176,8 @@ export function DataTable({
   // Refs
   const filterPanelRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Helper function para calcular clases de fila (fuera del map para optimización)
   const getRowClasses = (theme: string, isSelected: boolean, isCancelado: boolean, isPendiente: boolean) => {
@@ -363,6 +366,15 @@ export function DataTable({
       globalFilter,
       columnVisibility,
     },
+  });
+
+  // Virtualización para optimizar el renderizado de muchas filas
+  const { rows } = table.getRowModel();
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 40, // Altura estimada de cada fila en píxeles
+    overscan: 10, // Renderizar 10 filas adicionales fuera del viewport para scroll suave
   });
 
   return (
@@ -924,7 +936,10 @@ export function DataTable({
       {/* Tabla con scroll interno */}
       {viewMode === 'table' && (
        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
-         <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
+         <div 
+           ref={tableContainerRef}
+           className="max-h-[70vh] overflow-y-auto overflow-x-auto"
+         >
           <table className="w-full min-w-[800px] sm:min-w-[1000px] lg:min-w-[1200px]">
                          <thead className="bg-blue-900 sticky top-0 z-30 shadow-sm">
                {table.getHeaderGroups().map((headerGroup) => (
@@ -984,38 +999,60 @@ export function DataTable({
                ))}
              </thead>
                          <tbody 
+              ref={tableBodyRef}
               className={`divide-y transition-colors ${
                 theme === 'dark' 
                   ? 'bg-gray-900 divide-gray-700' 
                   : 'bg-white divide-gray-200'
               }`}
             >
-               {table.getRowModel().rows.map((row) => {
-                 const isCancelado = row.original.estado === 'CANCELADO';
-                 const isPendiente = row.original.estado === 'PENDIENTE';
-                 const isSelected = selectedRows?.has(row.original.id || '');
-                 const rowClasses = getRowClasses(theme, isSelected, isCancelado, isPendiente);
-                 const rowBgColor = theme === 'dark' 
-                   ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
-                   : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
-                 
-                 return (
-                    <tr 
-                      key={row.id} 
-                      className={`${rowClasses.bg} ${rowClasses.hover}`}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
-                      }}
-                    >
-                     {row.getVisibleCells().map((cell) => {
-                       const isSelectColumn = cell.column.id === 'select';
-                       const isRefAsliColumn = cell.column.id === 'refAsli';
-                       
-                       // Clases para sticky
-                       let stickyClasses = '';
-                       let stickyStyles: React.CSSProperties = {};
-                       
+              {/* Spacer para filas que están antes del viewport */}
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <tr>
+                  <td 
+                    colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length} 
+                    style={{ 
+                      height: `${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px`,
+                      padding: 0,
+                      border: 'none'
+                    }} 
+                  />
+                </tr>
+              )}
+              
+              {/* Renderizar solo las filas virtuales visibles */}
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                if (!row) return null;
+                
+                const isCancelado = row.original.estado === 'CANCELADO';
+                const isPendiente = row.original.estado === 'PENDIENTE';
+                const isSelected = selectedRows?.has(row.original.id || '');
+                const rowClasses = getRowClasses(theme, isSelected, isCancelado, isPendiente);
+                const rowBgColor = theme === 'dark' 
+                  ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
+                  : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
+                
+                return (
+                  <tr
+                    key={row.id}
+                    className={`${rowClasses.bg} ${rowClasses.hover}`}
+                    style={{
+                      height: `${virtualRow.size}px`,
+                    }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const isSelectColumn = cell.column.id === 'select';
+                      const isRefAsliColumn = cell.column.id === 'refAsli';
+                      
+                      // Clases para sticky
+                      let stickyClasses = '';
+                      let stickyStyles: React.CSSProperties = {};
+                      
                       if (isSelectColumn) {
                         stickyClasses = `sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
                         stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: rowBgColor };
@@ -1023,20 +1060,34 @@ export function DataTable({
                         stickyClasses = `sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
                         stickyStyles = { left: '36px', backgroundColor: rowBgColor };
                       }
-                       
-                       return (
-                         <td 
-                           key={cell.id} 
-                           className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center border-r border-b border-gray-200 dark:border-gray-700 ${rowClasses.text} ${stickyClasses}`}
-                           style={stickyStyles}
-                         >
-                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                         </td>
-                       );
-                     })}
-                   </tr>
-                 );
-               })}
+                      
+                      return (
+                        <td 
+                          key={cell.id} 
+                          className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center border-r border-b border-gray-200 dark:border-gray-700 ${rowClasses.text} ${stickyClasses}`}
+                          style={stickyStyles}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+              
+              {/* Spacer para filas que están después del viewport */}
+              {rowVirtualizer.getVirtualItems().length > 0 && (
+                <tr>
+                  <td 
+                    colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length} 
+                    style={{ 
+                      height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end ?? 0)}px`,
+                      padding: 0,
+                      border: 'none'
+                    }} 
+                  />
+                </tr>
+              )}
              </tbody>
           </table>
         </div>
