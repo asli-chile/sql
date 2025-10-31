@@ -73,23 +73,6 @@ export function AddModal({
       : 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder:text-gray-500';
   };
 
-  console.log('🔧 AddModal props:', {
-    ejecutivosUnicos: ejecutivosUnicos.length,
-    clientesUnicos: clientesUnicos.length,
-    navierasUnicas: navierasUnicas.length,
-    especiesUnicas: especiesUnicas.length,
-    polsUnicos: polsUnicos.length,
-    destinosUnicos: destinosUnicos.length,
-    depositosUnicos: depositosUnicos.length,
-    navesUnicas: navesUnicas.length,
-    navierasNavesMapping: Object.keys(navierasNavesMapping).length,
-    consorciosNavesMapping: Object.keys(consorciosNavesMapping).length,
-    cbmUnicos: cbmUnicos.length,
-    fletesUnicos: fletesUnicos.length
-  });
-  
-  console.log('🗺️ Navieras con mapping:', Object.keys(navierasNavesMapping));
-  console.log('🗺️ Consorcios con mapping:', Object.keys(consorciosNavesMapping));
   
   const viajeInputRef = React.useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
@@ -167,9 +150,7 @@ export function AddModal({
         : formData.naveInicial || '';
 
       // Generar REF ASLI únicos para todas las copias
-      console.log(`🔄 Generando ${numberOfCopies} REF ASLI únicos...`);
       const refAsliList = await generateMultipleUniqueRefAsli(numberOfCopies);
-      console.log(`✅ REF ASLI generados:`, refAsliList);
 
       // Crear múltiples copias
       const baseRegistroData = {
@@ -220,8 +201,6 @@ export function AddModal({
         ref_asli: refAsli,
       }));
 
-      console.log(`🔄 Insertando ${recordsToInsert.length} registros...`);
-      console.log('📋 Datos a insertar:', JSON.stringify(recordsToInsert, null, 2));
       
       // Crear cliente Supabase
       const supabase = createClient();
@@ -238,8 +217,6 @@ export function AddModal({
         return;
       }
 
-      console.log('✅ Conectividad con Supabase verificada');
-      
       const { data: insertData, error: insertError } = await supabase
         .from('registros')
         .insert(recordsToInsert)
@@ -253,7 +230,6 @@ export function AddModal({
         return;
       }
 
-      console.log(`✅ Registros insertados exitosamente:`, insertData);
       
       onSuccess();
       onClose();
@@ -316,44 +292,23 @@ export function AddModal({
   const getAvailableNaves = () => {
     if (!formData.naviera) return [];
     
-    console.log('🔍 ===== DEBUG NAVES DESDE CATÁLOGO =====');
-    console.log('🔍 Naviera seleccionada:', formData.naviera);
-    console.log('🔍 Tipo de naviera seleccionada:', typeof formData.naviera);
-    console.log('🗺️ Keys disponibles en navierasNavesMapping:', Object.keys(navierasNavesMapping));
-    console.log('🗺️ Keys disponibles en consorciosNavesMapping:', Object.keys(consorciosNavesMapping));
-    console.log('🗺️ Total de navieras con mapping:', Object.keys(navierasNavesMapping).length);
-    console.log('🗺️ Total de consorcios con mapping:', Object.keys(consorciosNavesMapping).length);
-    console.log('📋 Total de naves en catálogo (fallback):', navesUnicas.length);
-    
     // Si es un consorcio, buscar en consorciosNavesMapping
     if (formData.naviera.includes('/')) {
-      console.log('🔍 Es consorcio, buscando en consorciosNavesMapping');
-      console.log('🔍 Buscando key exacta:', formData.naviera);
       const navesConsorcio = consorciosNavesMapping[formData.naviera] || [];
-      console.log('🚢 Naves del consorcio encontradas:', navesConsorcio.length);
-      console.log('🚢 Naves:', navesConsorcio);
       
       if (navesConsorcio.length === 0) {
-        console.error(`❌ NO se encontraron naves para el consorcio "${formData.naviera}"`);
         console.error('❌ Keys disponibles:', Object.keys(consorciosNavesMapping));
         console.warn('⚠️ NO se usará fallback. Por favor configura el mapping para este consorcio.');
         return [];
       }
       
-      console.log('✅ Retornando naves del consorcio:', navesConsorcio.length);
       return navesConsorcio.sort();
     }
     
     // Si es naviera individual, buscar en navierasNavesMapping
-    console.log('🔍 Es naviera individual, buscando en navierasNavesMapping');
-    console.log('🔍 Buscando key exacta:', formData.naviera);
-    console.log('🔍 ¿Existe la key?', formData.naviera in navierasNavesMapping);
     const navesNaviera = navierasNavesMapping[formData.naviera] || [];
-    console.log('🚢 Naves de la naviera encontradas:', navesNaviera.length);
-    console.log('🚢 Naves:', navesNaviera);
     
     if (navesNaviera.length === 0) {
-      console.error(`❌ NO se encontraron naves para la naviera "${formData.naviera}"`);
       console.error('❌ Keys disponibles:', Object.keys(navierasNavesMapping));
       console.error('❌ Comparación de keys:');
       Object.keys(navierasNavesMapping).forEach(key => {
@@ -363,8 +318,6 @@ export function AddModal({
       return [];
     }
     
-    console.log('✅ Retornando naves de la naviera:', navesNaviera.length);
-    console.log('🔍 ===== FIN DEBUG NAVES =====');
     return navesNaviera.sort();
   };
 

@@ -67,15 +67,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const canDelete = currentUser ? currentUser.rol === 'admin' : false;
   const canExport = currentUser ? ['admin', 'usuario', 'lector'].includes(currentUser.rol) : false;
 
-  // Debug: verificar permisos
-  console.log('🔍 useUser Debug:', {
-    currentUser: currentUser ? { rol: currentUser.rol, email: currentUser.email } : null,
-    canEdit,
-    canAdd,
-    canDelete,
-    canExport
-  });
-
   const value: UserContextType = {
     currentUser,
     setCurrentUser: handleSetCurrentUser,

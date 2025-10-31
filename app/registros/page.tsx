@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -177,7 +177,6 @@ export default function RegistrosPage() {
   // Funciones existentes del sistema de registros
   const loadRegistros = async () => {
     try {
-      console.log('🔄 Cargando registros desde Supabase...');
       const supabase = createClient();
       const { data, error } = await supabase
         .from('registros')
@@ -190,10 +189,8 @@ export default function RegistrosPage() {
         throw error;
       }
 
-      console.log(`✅ Registros cargados: ${data?.length || 0} registros`);
       const registrosConvertidos = data.map(convertSupabaseToApp);
       setRegistros(registrosConvertidos);
-      console.log('✅ Registros convertidos y establecidos en estado');
     } catch (error) {
       console.error('Error loading registros:', error);
     }
@@ -201,8 +198,6 @@ export default function RegistrosPage() {
 
   const loadCatalogos = async () => {
     try {
-      console.log('🔄 Iniciando carga de catálogos desde Supabase...');
-      
       const supabase = createClient();
       
       // Cargar catálogo de estados primero
@@ -217,13 +212,10 @@ export default function RegistrosPage() {
         return;
       }
 
-      console.log('📊 Catálogos cargados:', catalogos);
-
       // Procesar catálogos
       catalogos.forEach(catalogo => {
         const valores = catalogo.valores || [];
         const mapping = catalogo.mapping;
-        console.log(`📋 Procesando catálogo ${catalogo.categoria}:`, valores);
 
         switch (catalogo.categoria) {
           case 'navieras':
@@ -285,25 +277,18 @@ export default function RegistrosPage() {
           // CARGAR MAPPINGS DESDE EL CATÁLOGO
           case 'navierasNavesMapping':
             if (mapping && typeof mapping === 'object') {
-              console.log('🗺️ ✅ Mapping de navieras cargado desde catálogo:', mapping);
               setNavierasNavesMapping(mapping as Record<string, string[]>);
-            } else {
-              console.warn('⚠️ navierasNavesMapping no tiene mapping válido');
             }
             break;
             
           case 'consorciosNavesMapping':
             if (mapping && typeof mapping === 'object') {
-              console.log('🗺️ ✅ Mapping de consorcios cargado desde catálogo:', mapping);
               setConsorciosNavesMapping(mapping as Record<string, string[]>);
-            } else {
-              console.warn('⚠️ consorciosNavesMapping no tiene mapping válido');
             }
             break;
         }
       });
 
-      console.log('✅ Catálogos procesados exitosamente');
     } catch (error) {
       console.error('Error loading catalogos:', error);
     }
@@ -326,7 +311,6 @@ export default function RegistrosPage() {
 
       const estados = data?.valores || ['PENDIENTE', 'CONFIRMADO', 'CANCELADO'];
       setEstadosUnicos(estados);
-      console.log('✅ Estados cargados desde catálogo:', estados);
     } catch (error) {
       console.error('Error cargando estados desde catálogo:', error);
       setEstadosUnicos(['PENDIENTE', 'CONFIRMADO', 'CANCELADO']);
@@ -658,15 +642,15 @@ export default function RegistrosPage() {
     }
   };
 
-  const handleUpdateRecord = (updatedRecord: Registro) => {
+  const handleUpdateRecord = useCallback((updatedRecord: Registro) => {
     setRegistros(prevRegistros => 
       prevRegistros.map(record => 
         record.id === updatedRecord.id ? updatedRecord : record
       )
     );
-  };
+  }, []);
 
-  const handleBulkUpdate = async (field: keyof Registro, value: any, selectedRecords: Registro[]) => {
+  const handleBulkUpdate = useCallback(async (field: keyof Registro, value: any, selectedRecords: Registro[]) => {
     if (selectedRecords.length === 0) return;
 
     try {
@@ -694,17 +678,10 @@ export default function RegistrosPage() {
         updated_at: new Date().toISOString()
       };
 
-      // Si estamos editando ETD o ETA, recalcular TT para cada registro
-      if (field === 'etd' || field === 'eta') {
-        // Para edición masiva, mantenemos el TT original o lo calculamos si ambos campos están presentes
-        console.log('Edición masiva de fecha - TT se mantendrá igual');
-      }
-
       // Obtener IDs de los registros seleccionados
       const recordIds = selectedRecords.map(record => record.id).filter((id): id is string => Boolean(id));
       
       if (recordIds.length === 0) {
-        console.warn('No hay IDs válidos para actualizar');
         return;
       }
 
@@ -745,8 +722,6 @@ export default function RegistrosPage() {
           return record;
         })
       );
-
-      console.log(`✅ Actualizados ${selectedRecords.length} registros en el campo ${field}`);
       
       // Mostrar confirmación visual mejorada
       const fieldNames: Record<string, string> = {
@@ -774,14 +749,14 @@ export default function RegistrosPage() {
       console.error('Error en edición masiva:', err);
       error(`Error al actualizar los registros: ${err.message}`);
     }
-  };
+  }, [success, error]);
 
   // Estado para los mapeos de naves
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
   const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
 
-  // Crear mapeos de navieras a naves (considerando naves compartidas)
-  const createNavierasNavesMapping = (registrosData: Registro[]) => {
+  // Crear mapeos de navieras a naves (considerando naves compartidas) - memoizado
+  const createNavierasNavesMapping = useCallback((registrosData: Registro[]) => {
     const mapping: Record<string, string[]> = {};
     
     // Primero, crear un mapeo de nave → navieras que la usan
@@ -812,14 +787,12 @@ export default function RegistrosPage() {
     });
     
     return mapping;
-  };
+  }, []);
 
-  // Crear mapeos de consorcios a naves
-  const createConsorciosNavesMapping = (registrosData: Registro[]) => {
+  // Crear mapeos de consorcios a naves - memoizado
+  const createConsorciosNavesMapping = useCallback((registrosData: Registro[]) => {
     const mapping: Record<string, string[]> = {};
     
-    console.log('🔍 Debug consorcios - Registros disponibles:', registrosData.length);
-    console.log('🔍 Debug consorcios - Navieras únicas:', [...new Set(registrosData.map(r => r.naviera).filter(Boolean))]);
     
     // Obtener todas las navieras únicas de los datos
     const navierasUnicas = [...new Set(registrosData.map(r => r.naviera).filter(Boolean))];
@@ -873,8 +846,6 @@ export default function RegistrosPage() {
       }
     });
     
-    console.log('🔍 Consorcios encontrados en datos:', consorciosEncontrados);
-    
     // Agregar también los consorcios que aparecen directamente en los datos
     navierasUnicas.forEach(naviera => {
       if (naviera.includes('/') && naviera.length > 10) {
@@ -892,12 +863,11 @@ export default function RegistrosPage() {
       }
     });
     
-    console.log('🔍 Mapping final de consorcios:', consorciosEncontrados);
     return consorciosEncontrados;
-  };
+  }, [navierasUnicas]);
 
-  // Función para generar arrays de filtro basados en datos reales
-  const generateFilterArrays = (registrosData: Registro[]) => {
+  // Función para generar arrays de filtro basados en datos reales - memoizada
+  const generateFilterArrays = useCallback((registrosData: Registro[]) => {
     const navierasFiltro = [...new Set(registrosData.map(r => r.naviera).filter(Boolean))].sort();
     const especiesFiltro = [...new Set(registrosData.map(r => r.especie).filter(Boolean))].sort();
     const clientesFiltro = [...new Set(registrosData.map(r => r.shipper).filter(Boolean))].sort();
@@ -925,7 +895,7 @@ export default function RegistrosPage() {
       depositosFiltro,
       yearsFiltro
     };
-  };
+  }, []);
 
   // Función para validar formato de contenedor (debe tener al menos una letra y un número)
   const isValidContainer = (contenedor: string | number | null): boolean => {
@@ -946,9 +916,10 @@ export default function RegistrosPage() {
     return hasLetterOrNumber;
   };
 
-  // Actualizar mapeos y filtros cuando cambien los registros
+  // Memoizar mapeos y filtros para evitar recalcular en cada render
+  const registrosLength = registros.length;
   useEffect(() => {
-    if (registros.length > 0) {
+    if (registrosLength > 0) {
       const navierasMapping = createNavierasNavesMapping(registros);
       const consorciosMapping = createConsorciosNavesMapping(registros);
       
@@ -964,23 +935,11 @@ export default function RegistrosPage() {
       setDestinosFiltro(filterArrays.destinosFiltro);
       setEjecutivosFiltro(filterArrays.ejecutivosFiltro);
       setNavesFiltro(filterArrays.navesFiltro);
-      
-      console.log('🔧 Mapeos y filtros actualizados:', {
-        navierasNavesMapping: navierasMapping,
-        consorciosNavesMapping: consorciosMapping,
-        totalRegistros: registros.length,
-        registrosConNaviera: registros.filter(r => r.naviera && r.naveInicial).length,
-        filtrosGenerados: filterArrays
-      });
-
-      // Debug específico para HAPAG-LLOYD / ONE / MSC
-      const hapagRegistros = registros.filter(r => r.naviera && r.naviera.includes('HAPAG'));
-      console.log('🔍 Registros HAPAG-LLOYD:', hapagRegistros.map(r => ({ naviera: r.naviera, nave: r.naveInicial })));
     }
-  }, [registros]);
+  }, [registrosLength, registros, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
 
-  // Crear columnas con permisos basados en usuario autenticado
-  const columns = createRegistrosColumns(
+  // Memoizar las columnas para evitar recrearlas en cada render
+  const columns = useMemo(() => createRegistrosColumns(
     registros, // data
     selectedRows, // selectedRows
     handleToggleRowSelection, // toggleRowSelection
@@ -1004,7 +963,31 @@ export default function RegistrosPage() {
     o2sUnicos,
     facturacionesUnicas,
     handleShowHistorial
-  );
+  ), [
+    registros,
+    selectedRows,
+    handleToggleRowSelection,
+    handleUpdateRecord,
+    handleBulkUpdate,
+    navierasUnicas,
+    ejecutivosUnicos,
+    especiesUnicas,
+    clientesUnicos,
+    polsUnicos,
+    destinosUnicos,
+    depositosUnicos,
+    navesUnicas,
+    fletesUnicos,
+    contratosUnicos,
+    tipoIngresoUnicos,
+    estadosUnicos,
+    temperaturasUnicas,
+    cbmUnicos,
+    co2sUnicos,
+    o2sUnicos,
+    facturacionesUnicas,
+    handleShowHistorial
+  ]);
 
   if (loading) {
     return (

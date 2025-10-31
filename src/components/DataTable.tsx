@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
 import {
   flexRender,
   getCoreRowModel,
@@ -176,6 +176,21 @@ export function DataTable({
   const filterPanelRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
+  // Helper function para calcular clases de fila (fuera del map para optimización)
+  const getRowClasses = (theme: string, isSelected: boolean, isCancelado: boolean, isPendiente: boolean) => {
+    if (theme === 'dark') {
+      if (isSelected) return { bg: 'bg-blue-900/40', hover: 'hover:bg-blue-900/60', text: 'text-blue-100 font-medium' };
+      if (isCancelado) return { bg: 'bg-red-800/60', hover: 'hover:bg-red-800/80', text: 'text-red-100 font-medium' };
+      if (isPendiente) return { bg: 'bg-yellow-800/60', hover: 'hover:bg-yellow-800/80', text: 'text-yellow-100 font-medium' };
+      return { bg: 'bg-gray-800', hover: 'hover:bg-gray-700', text: 'text-gray-100' };
+    } else {
+      if (isSelected) return { bg: 'bg-blue-100', hover: 'hover:bg-blue-200', text: 'text-blue-800 font-medium' };
+      if (isCancelado) return { bg: 'bg-red-100', hover: 'hover:bg-red-200', text: 'text-red-900 font-medium' };
+      if (isPendiente) return { bg: 'bg-yellow-100', hover: 'hover:bg-yellow-200', text: 'text-yellow-900 font-medium' };
+      return { bg: 'bg-white', hover: 'hover:bg-gray-50', text: 'text-gray-900' };
+    }
+  };
+
   // Funciones para manejar visibilidad de columnas
   const handleToggleColumn = (columnId: string) => {
     // No permitir ocultar columnas críticas
@@ -205,16 +220,7 @@ export function DataTable({
   };
 
   // Mantener filtros cuando los datos cambien
-  useEffect(() => {
-    if (preserveFilters) {
-      // Los filtros se mantienen automáticamente, solo necesitamos asegurar que la tabla se actualice
-      console.log('📊 Datos actualizados, manteniendo filtros:', {
-        globalFilter,
-        columnFilters: columnFilters.length,
-        dateFilters: Object.values(dateFilters).filter(v => v !== '').length
-      });
-    }
-  }, [data, globalFilter, columnFilters, dateFilters, preserveFilters]);
+  // Los filtros se mantienen automáticamente por React Table
 
   // Cerrar con ESC
   useEffect(() => {
@@ -988,78 +994,23 @@ export function DataTable({
                  const isCancelado = row.original.estado === 'CANCELADO';
                  const isPendiente = row.original.estado === 'PENDIENTE';
                  const isSelected = selectedRows?.has(row.original.id || '');
+                 const rowClasses = getRowClasses(theme, isSelected, isCancelado, isPendiente);
+                 const rowBgColor = theme === 'dark' 
+                   ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
+                   : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
                  
-                 // Determinar clases según el tema
-                 let bgClass, hoverClass, textClass, editButtonClass;
-                 
-                 if (theme === 'dark') {
-                   // Modo oscuro - colores más vibrantes
-                   if (isSelected) {
-                     bgClass = 'bg-blue-900/40';
-                     hoverClass = 'hover:bg-blue-900/60';
-                     textClass = 'text-blue-100 font-medium';
-                     editButtonClass = 'text-blue-400 hover:text-blue-300';
-                   } else if (isCancelado) {
-                     bgClass = 'bg-red-800/60';
-                     hoverClass = 'hover:bg-red-800/80';
-                     textClass = 'text-red-100 font-medium';
-                     editButtonClass = 'text-blue-400 hover:text-blue-300';
-                   } else if (isPendiente) {
-                     bgClass = 'bg-yellow-800/60';
-                     hoverClass = 'hover:bg-yellow-800/80';
-                     textClass = 'text-yellow-100 font-medium';
-                     editButtonClass = 'text-blue-400 hover:text-blue-300';
-                   } else {
-                     bgClass = 'bg-gray-800';
-                     hoverClass = 'hover:bg-gray-700';
-                     textClass = 'text-gray-100';
-                     editButtonClass = 'text-blue-400 hover:text-blue-300';
-                   }
-                 } else {
-                   // Modo claro
-                   if (isSelected) {
-                     bgClass = 'bg-blue-100';
-                     hoverClass = 'hover:bg-blue-200';
-                     textClass = 'text-blue-800 font-medium';
-                     editButtonClass = 'text-blue-600 hover:text-blue-800';
-                   } else if (isCancelado) {
-                     bgClass = 'bg-red-100';
-                     hoverClass = 'hover:bg-red-200';
-                     textClass = 'text-red-900 font-medium';
-                   editButtonClass = 'text-blue-700 hover:text-blue-900';
-                   } else if (isPendiente) {
-                     bgClass = 'bg-yellow-100';
-                     hoverClass = 'hover:bg-yellow-200';
-                     textClass = 'text-yellow-900 font-medium';
-                     editButtonClass = 'text-blue-700 hover:text-blue-900';
-                   } else {
-                     bgClass = 'bg-white';
-                     hoverClass = 'hover:bg-gray-50';
-                     textClass = 'text-gray-900';
-                     editButtonClass = 'text-blue-600 hover:text-blue-900';
-                   }
-                 }
-                 
-                                   return (
+                 return (
                     <tr 
                       key={row.id} 
-                      className={`${bgClass} ${hoverClass}`}
+                      className={`${rowClasses.bg} ${rowClasses.hover}`}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
-                      }}
-                      onDoubleClick={() => {
-                        // Funcionalidad de doble clic deshabilitada
                       }}
                     >
                      {row.getVisibleCells().map((cell) => {
                        const isSelectColumn = cell.column.id === 'select';
                        const isRefAsliColumn = cell.column.id === 'refAsli';
-                       
-                       // Pre-calcular bgColor para sticky columns (fuera del condicional)
-                       const rowBgColor = theme === 'dark' 
-                         ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
-                         : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
                        
                        // Clases para sticky
                        let stickyClasses = '';
@@ -1076,7 +1027,7 @@ export function DataTable({
                        return (
                          <td 
                            key={cell.id} 
-                           className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center border-r border-b border-gray-200 dark:border-gray-700 ${textClass} ${stickyClasses}`}
+                           className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center border-r border-b border-gray-200 dark:border-gray-700 ${rowClasses.text} ${stickyClasses}`}
                            style={stickyStyles}
                          >
                            {flexRender(cell.column.columnDef.cell, cell.getContext())}

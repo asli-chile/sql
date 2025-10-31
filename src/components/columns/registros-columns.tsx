@@ -102,25 +102,22 @@ export const createRegistrosColumns = (
       const isCurrentRecordSelected = selectedRecordsArray.some(selected => selected.id === row.original.id);
       const shouldShowIndicator = selectedRecordsArray.length > 1 && isCurrentRecordSelected;
       
-      let bgColor = 'bg-green-500';
-      let textColor = 'text-white';
+      // Color del texto según tipoIngreso, sin fondo de color en la celda
+      let textColor = 'text-green-600 dark:text-green-400';
       
       if (tipoIngreso === 'EARLY') {
-        bgColor = 'bg-cyan-500';
-        textColor = 'text-white';
+        textColor = 'text-cyan-600 dark:text-cyan-400';
       } else if (tipoIngreso === 'LATE') {
-        bgColor = 'bg-yellow-500';
-        textColor = 'text-white';
+        textColor = 'text-yellow-600 dark:text-yellow-400';
       } else if (tipoIngreso === 'EXTRA LATE') {
-        bgColor = 'bg-red-500';
-        textColor = 'text-white';
+        textColor = 'text-red-600 dark:text-red-400';
       }
       
       return (
         <div className="flex items-center gap-2">
-          <div className={`font-semibold px-2 py-1 rounded ${bgColor} ${textColor}`}>
+          <span className={`font-semibold ${textColor}`}>
             {refAsli}
-          </div>
+          </span>
           {shouldShowIndicator && (
             <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold">
               {selectedRecordsArray.length}
