@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -447,11 +447,12 @@ export default function RegistrosPage() {
     }
   };
 
-  const handleToggleRowSelection = (recordId: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => {
+  const handleToggleRowSelection = useCallback((recordId: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => {
     const isShiftPressed = event?.shiftKey || false;
     const currentIndex = rowIndex ?? registros.findIndex(r => r.id === recordId);
     
-    console.log('🔄 Seleccionando fila:', recordId, 'Índice:', currentIndex, 'Shift:', isShiftPressed);
+    // Early return si no se encuentra la fila
+    if (currentIndex === -1) return;
     
     const newSelectedRows = new Set(selectedRows);
     
@@ -460,41 +461,42 @@ export default function RegistrosPage() {
       const startIndex = Math.min(lastSelectedRowIndex.current, currentIndex);
       const endIndex = Math.max(lastSelectedRowIndex.current, currentIndex);
       
-      console.log(`📏 Seleccionando rango de ${startIndex} a ${endIndex}`);
-      
       // Determinar si debemos seleccionar o deseleccionar el rango
       // Si la última fila seleccionada está seleccionada, seleccionamos todo el rango
       // Si no, deseleccionamos todo el rango
       const lastSelectedId = registros[lastSelectedRowIndex.current]?.id;
       const shouldSelect = lastSelectedId ? selectedRows.has(lastSelectedId) : true;
       
-      // Seleccionar/deseleccionar todas las filas en el rango
-      for (let i = startIndex; i <= endIndex; i++) {
-        const rowId = registros[i]?.id;
-        if (rowId) {
-          if (shouldSelect) {
-            newSelectedRows.add(rowId);
-          } else {
-            newSelectedRows.delete(rowId);
-          }
+      // Optimizar: evitar verificaciones innecesarias en el bucle
+      if (shouldSelect) {
+        // Agregar todas las filas del rango
+        for (let i = startIndex; i <= endIndex; i++) {
+          const rowId = registros[i]?.id;
+          if (rowId) newSelectedRows.add(rowId);
+        }
+      } else {
+        // Eliminar todas las filas del rango
+        for (let i = startIndex; i <= endIndex; i++) {
+          const rowId = registros[i]?.id;
+          if (rowId) newSelectedRows.delete(rowId);
         }
       }
+      
+      // Actualizar la referencia
+      lastSelectedRowIndex.current = currentIndex;
     } else {
       // Comportamiento normal: toggle de la fila individual
       if (newSelectedRows.has(recordId)) {
         newSelectedRows.delete(recordId);
-        console.log('❌ Deseleccionando:', recordId);
         lastSelectedRowIndex.current = null;
       } else {
         newSelectedRows.add(recordId);
-        console.log('✅ Seleccionando:', recordId);
         lastSelectedRowIndex.current = currentIndex;
       }
     }
     
     setSelectedRows(newSelectedRows);
-    console.log('📊 Filas seleccionadas:', newSelectedRows.size);
-  };
+  }, [selectedRows, registros]);
 
   const handleSelectAll = () => {
     if (selectedRows.size === registros.length) {
