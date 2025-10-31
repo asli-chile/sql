@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { X, Trash2, RotateCcw, RefreshCw, CheckSquare, Square } from 'lucide-react';
 import { Registro } from '@/types/registros';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase-browser';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 
 interface TrashModalProps {
@@ -24,6 +24,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
   const loadDeletedRecords = useCallback(async () => {
     setLoading(true);
     try {
+      const supabase = createClient();
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - selectedDays);
       cutoffDate.setHours(0, 0, 0, 0);
@@ -89,6 +90,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
 
     setBulkLoading(true);
     try {
+      const supabase = createClient();
       const selectedIds = Array.from(selectedRecords);
       const { error } = await supabase
         .from('registros')
@@ -129,6 +131,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
 
     setBulkLoading(true);
     try {
+      const supabase = createClient();
       const selectedIds = Array.from(selectedRecords);
       const { error } = await supabase
         .from('registros')
@@ -159,6 +162,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
 
   const handleRestore = async (recordId: string) => {
     try {
+      const supabase = createClient();
       const { error } = await supabase
         .from('registros')
         .update({
@@ -194,6 +198,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     }
 
     try {
+      const supabase = createClient();
       const { error } = await supabase
         .from('registros')
         .delete()
