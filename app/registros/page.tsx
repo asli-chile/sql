@@ -230,6 +230,8 @@ export default function RegistrosPage() {
         .is('deleted_at', null);
 
       // Si es ejecutivo, filtrar solo sus clientes asignados
+      // NOTA: Los usuarios normales (rol 'usuario') NO se filtran aquí porque
+      // la RLS ya filtra automáticamente por created_by/usuario = su nombre
       if (isEjecutivo && clientesAsignados.length > 0) {
         query = query.in('shipper', clientesAsignados);
       }

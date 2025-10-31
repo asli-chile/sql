@@ -149,6 +149,19 @@ export const createRegistrosColumns = (
     },
   },
   {
+    id: 'usuario',
+    accessorKey: 'usuario',
+    header: 'Usuario',
+    cell: ({ row }) => {
+      const value = row.getValue('usuario') as string || row.original.createdBy || '';
+      return (
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          {value || '-'}
+        </span>
+      );
+    },
+  },
+  {
     id: 'ingresado',
     accessorKey: 'ingresado',
     header: 'Ingresado',

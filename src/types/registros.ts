@@ -5,6 +5,7 @@ export interface Registro {
   ingresado: Date | null;
   refAsli: string;
   ejecutivo: string;
+  usuario?: string;
   shipper: string;
   booking: string;
   contenedor: string | string[];

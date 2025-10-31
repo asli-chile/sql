@@ -58,6 +58,7 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     ingresado: supabaseData.ingresado ? new Date(supabaseData.ingresado) : null,
     refAsli: supabaseData.ref_asli,
     ejecutivo: supabaseData.ejecutivo,
+    usuario: supabaseData.usuario || supabaseData.created_by || undefined,
     shipper: supabaseData.shipper,
     booking: supabaseData.booking,
     contenedor: supabaseData.contenedor,
