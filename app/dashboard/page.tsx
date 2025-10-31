@@ -99,6 +99,12 @@ export default function DashboardPage() {
       // Agrupar por REF ASLI y obtener el estado más reciente de cada uno
       const refAsliMap = new Map();
       let totalContenedores = 0;
+      let ejemplosMostrados = 0;
+      const maxEjemplos = 3;
+      
+      console.log('═══════════════════════════════════════');
+      console.log('🚀 INICIANDO CONTEO DE CONTENEDORES');
+      console.log('═══════════════════════════════════════');
       
       registros?.forEach(registro => {
         const refAsli = registro.ref_asli;
@@ -115,38 +121,47 @@ export default function DashboardPage() {
         if (registro.contenedor) {
           let contenedorStr = '';
           
-          console.log('🔍 Tipo de contenedor:', typeof registro.contenedor);
-          console.log('🔍 Valor original:', registro.contenedor);
-          
           // Convertir a string si viene como array
           if (Array.isArray(registro.contenedor)) {
             contenedorStr = registro.contenedor.join(' ');
-            console.log('📦 Es array, después de join:', contenedorStr);
           } else if (typeof registro.contenedor === 'string') {
             // Si viene como JSON string, intentar parsearlo
             try {
               const parsed = JSON.parse(registro.contenedor);
               if (Array.isArray(parsed)) {
                 contenedorStr = parsed.join(' ');
-                console.log('📦 Es JSON array, después de join:', contenedorStr);
               } else {
                 contenedorStr = registro.contenedor;
-                console.log('📦 Es JSON pero no array:', contenedorStr);
               }
             } catch {
               // No es JSON, usar como string directo
               contenedorStr = registro.contenedor;
-              console.log('📦 Es string directo:', contenedorStr);
             }
           }
           
           // Dividir por espacios y contar elementos no vacíos
           const contenedores = contenedorStr.trim().split(/\s+/).filter(c => c.length > 0);
-          console.log('✅ Contenedores después de split:', contenedores);
-          console.log('✅ Cantidad:', contenedores.length);
+          
+          // Mostrar solo los primeros ejemplos
+          if (ejemplosMostrados < maxEjemplos) {
+            console.log(`\n📦 Ejemplo ${ejemplosMostrados + 1}:`);
+            console.log(`   REF ASLI: ${refAsli}`);
+            console.log(`   Tipo: ${typeof registro.contenedor}`);
+            console.log(`   Valor original: "${registro.contenedor}"`);
+            console.log(`   String procesado: "${contenedorStr}"`);
+            console.log(`   Array después de split:`, contenedores);
+            console.log(`   ✅ Cantidad: ${contenedores.length}`);
+            ejemplosMostrados++;
+          }
+          
           totalContenedores += contenedores.length;
         }
       });
+      
+      console.log('\n═══════════════════════════════════════');
+      console.log(`🎯 TOTAL REGISTROS: ${registros?.length || 0}`);
+      console.log(`🎯 TOTAL CONTENEDORES: ${totalContenedores}`);
+      console.log('═══════════════════════════════════════\n');
 
       // Contar por estado
       const estadoCounts = {
