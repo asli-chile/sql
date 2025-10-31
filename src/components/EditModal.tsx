@@ -64,18 +64,14 @@ interface EditFormData {
 export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas = [], navesUnicas = [], fletesUnicos = [], temperaturasUnicas = [], navierasNavesMapping = {}, consorciosNavesMapping = {} }: EditModalProps) {
   
   // Función para procesar contenedores múltiples
-  const processContainers = (containerValue: string): string | string[] => {
+  const processContainers = (containerValue: string): string => {
     if (!containerValue || containerValue.trim() === '') {
       return '';
     }
     
-    // Si contiene espacios, es múltiple - convertir a lista
-    if (containerValue.includes(' ')) {
-      return containerValue.split(/\s+/).filter(container => container.trim() !== '');
-    }
-    
-    // Si es uno solo, mantener como string
-    return containerValue.trim();
+    // Siempre devolver como texto plano con espacios
+    // Limpiar espacios múltiples y mantener formato: "cont1 cont2 cont3"
+    return containerValue.trim().split(/\s+/).join(' ');
   };
   const [formData, setFormData] = useState<EditFormData>({});
   const [loading, setLoading] = useState(false);
