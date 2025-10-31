@@ -96,10 +96,40 @@ export default function RegistrosPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const lastSelectedRowIndex = useRef<number | null>(null);
+  
+  // Estado para clientes asignados al ejecutivo
+  const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
+  const [isEjecutivo, setIsEjecutivo] = useState(false);
 
   useEffect(() => {
     checkUser();
   }, []);
+
+  // Recargar registros cuando cambien los clientes asignados
+  useEffect(() => {
+    if (isEjecutivo) {
+      loadRegistros();
+      // Re-filtrar clientes en catálogos cuando cambien los clientes asignados
+      if (clientesAsignados.length > 0) {
+        // Obtener todos los clientes del catálogo
+        const supabase = createClient();
+        supabase
+          .from('catalogos')
+          .select('valores')
+          .eq('categoria', 'clientes')
+          .single()
+          .then(({ data }) => {
+            if (data?.valores) {
+              const clientesFiltrados = (data.valores as string[]).filter((cliente: string) => 
+                clientesAsignados.includes(cliente)
+              );
+              setClientesUnicos(clientesFiltrados);
+              setClientesFiltro(clientesFiltrados);
+            }
+          });
+      }
+    }
+  }, [clientesAsignados, isEjecutivo]);
 
   const checkUser = async () => {
     try {
@@ -133,6 +163,8 @@ export default function RegistrosPage() {
           activo: true
         };
         setCurrentUser(basicUser);
+        setIsEjecutivo(false);
+        setClientesAsignados([]);
       } else {
         // Establecer el usuario en el contexto
         console.log('🔍 Usuario cargado desde BD:', userData);
@@ -143,18 +175,33 @@ export default function RegistrosPage() {
           rol: userData.rol,
           activo: userData.activo
         });
+        
+        // Verificar si es ejecutivo (@asli.cl) y cargar sus clientes asignados
+        const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
+        setIsEjecutivo(emailEsEjecutivo);
+        
+        if (emailEsEjecutivo) {
+          // Cargar clientes asignados al ejecutivo ANTES de cargar catálogos y registros
+          await loadClientesAsignados(userData.id);
+        } else {
+          setClientesAsignados([]);
+        }
+        
         console.log('✅ Usuario establecido en contexto:', {
           id: userData.id,
           nombre: userData.nombre,
           email: userData.email,
           rol: userData.rol,
-          activo: userData.activo
+          activo: userData.activo,
+          isEjecutivo: emailEsEjecutivo
         });
       }
       
-      // Cargar datos después de verificar usuario
-      await loadRegistros();
+      // Cargar catálogos (después de establecer isEjecutivo y clientesAsignados)
       await loadCatalogos();
+      
+      // Cargar registros (depende de clientes asignados si es ejecutivo)
+      await loadRegistros();
     } catch (error) {
       console.error('Error checking user:', error);
       router.push('/auth');
@@ -174,15 +221,46 @@ export default function RegistrosPage() {
     }
   };
 
+  // Función para cargar clientes asignados a un ejecutivo
+  const loadClientesAsignados = async (ejecutivoId: string) => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('ejecutivo_clientes')
+        .select('cliente_nombre')
+        .eq('ejecutivo_id', ejecutivoId)
+        .eq('activo', true);
+
+      if (error) {
+        console.error('Error cargando clientes asignados:', error);
+        setClientesAsignados([]);
+        return;
+      }
+
+      const clientes = data?.map(item => item.cliente_nombre) || [];
+      setClientesAsignados(clientes);
+      console.log('📋 Clientes asignados al ejecutivo:', clientes);
+    } catch (error) {
+      console.error('Error loading clientes asignados:', error);
+      setClientesAsignados([]);
+    }
+  };
+
   // Funciones existentes del sistema de registros
   const loadRegistros = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase
+      let query = supabase
         .from('registros')
         .select('*')
-        .is('deleted_at', null)
-        .order('ref_asli', { ascending: false });
+        .is('deleted_at', null);
+
+      // Si es ejecutivo, filtrar solo sus clientes asignados
+      if (isEjecutivo && clientesAsignados.length > 0) {
+        query = query.in('shipper', clientesAsignados);
+      }
+
+      const { data, error } = await query.order('ref_asli', { ascending: false });
 
       if (error) {
         console.error('Error en consulta de registros:', error);
@@ -231,8 +309,20 @@ export default function RegistrosPage() {
             setEspeciesFiltro(valores);
             break;
           case 'clientes':
-            setClientesUnicos(valores);
-            setClientesFiltro(valores);
+            // Si es ejecutivo, filtrar solo sus clientes asignados
+            // Usar el estado actual de clientesAsignados
+            const currentClientesAsignados = clientesAsignados;
+            const currentIsEjecutivo = isEjecutivo;
+            if (currentIsEjecutivo && currentClientesAsignados.length > 0) {
+              const clientesFiltrados = valores.filter((cliente: string) => 
+                currentClientesAsignados.includes(cliente)
+              );
+              setClientesUnicos(clientesFiltrados);
+              setClientesFiltro(clientesFiltrados);
+            } else {
+              setClientesUnicos(valores);
+              setClientesFiltro(valores);
+            }
             break;
           case 'pols':
             setPolsUnicos(valores);
@@ -329,11 +419,26 @@ export default function RegistrosPage() {
   };
 
   const handleEdit = (registro: Registro) => {
+    // Validar que el ejecutivo solo pueda editar registros de sus clientes
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      if (!clientesAsignados.includes(registro.shipper || '')) {
+        error('No tienes permiso para editar este registro');
+        return;
+      }
+    }
     setSelectedRecord(registro);
     setIsEditModalOpen(true);
   };
 
   const handleDelete = async (registro: Registro) => {
+    // Validar que el ejecutivo solo pueda eliminar registros de sus clientes
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      if (!clientesAsignados.includes(registro.shipper || '')) {
+        error('No tienes permiso para eliminar este registro');
+        return;
+      }
+    }
+
     if (!confirm(`¿Estás seguro de que quieres eliminar el registro ${registro.refAsli}?`)) {
       return;
     }
@@ -427,6 +532,14 @@ export default function RegistrosPage() {
   };
 
   const handleEditNaveViaje = (registro: Registro) => {
+    // Validar que el ejecutivo solo pueda editar registros de sus clientes
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      if (!clientesAsignados.includes(registro.shipper || '')) {
+        error('No tienes permiso para editar este registro');
+        return;
+      }
+    }
+
     // Extraer nave y viaje si viene en formato "NAVE [VIAJE]"
     let naveActual = registro.naveInicial || '';
     let viajeActual = registro.viaje || '';
@@ -458,6 +571,14 @@ export default function RegistrosPage() {
   const handleSaveNaveViaje = async (nave: string, viaje: string) => {
     if (!selectedRegistroForNaveViaje?.id) return;
 
+    // Validar que el ejecutivo solo pueda editar registros de sus clientes
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      if (!clientesAsignados.includes(selectedRegistroForNaveViaje.shipper || '')) {
+        error('No tienes permiso para editar este registro');
+        return;
+      }
+    }
+
     try {
       const supabase = createClient();
       
@@ -485,12 +606,40 @@ export default function RegistrosPage() {
   };
 
   const handleBulkEditNaveViaje = (records: Registro[]) => {
-    setSelectedRegistroForNaveViaje(null);
-    setSelectedRecordsForNaveViaje(records);
+    // Validar que todos los registros sean de clientes asignados al ejecutivo
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      const registrosValidos = records.filter(r => 
+        clientesAsignados.includes(r.shipper || '')
+      );
+      
+      if (registrosValidos.length !== records.length) {
+        error('No tienes permiso para editar algunos de los registros seleccionados');
+        return;
+      }
+      
+      setSelectedRegistroForNaveViaje(null);
+      setSelectedRecordsForNaveViaje(registrosValidos);
+    } else {
+      setSelectedRegistroForNaveViaje(null);
+      setSelectedRecordsForNaveViaje(records);
+    }
     setIsEditNaveViajeModalOpen(true);
   };
 
   const handleBulkSaveNaveViaje = async (nave: string, viaje: string, records: Registro[]) => {
+    // Validar que todos los registros sean de clientes asignados al ejecutivo
+    let registrosParaActualizar = records;
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      registrosParaActualizar = records.filter(r => 
+        clientesAsignados.includes(r.shipper || '')
+      );
+      
+      if (registrosParaActualizar.length !== records.length) {
+        error('No tienes permiso para actualizar algunos de los registros seleccionados');
+        return;
+      }
+    }
+
     try {
       const supabase = createClient();
       
@@ -499,7 +648,7 @@ export default function RegistrosPage() {
         ? `${nave} [${viaje.trim()}]` 
         : nave || '';
 
-      const recordIds = records.map(r => r.id).filter((id): id is string => Boolean(id));
+      const recordIds = registrosParaActualizar.map(r => r.id).filter((id): id is string => Boolean(id));
       
       if (recordIds.length === 0) return;
 
@@ -513,7 +662,7 @@ export default function RegistrosPage() {
 
       if (error) throw error;
 
-      success(`${records.length} registro(s) actualizado(s) correctamente`);
+      success(`${registrosParaActualizar.length} registro(s) actualizado(s) correctamente`);
       await loadRegistros();
       handleCloseNaveViajeModal();
     } catch (err: any) {
@@ -600,7 +749,23 @@ export default function RegistrosPage() {
   const handleBulkDelete = async () => {
     if (selectedRows.size === 0) return;
     
-    const confirmMessage = `¿Estás seguro de que quieres eliminar ${selectedRows.size} registro(s)?`;
+    // Obtener registros seleccionados
+    const registrosSeleccionados = registros.filter(r => r.id && selectedRows.has(r.id));
+    
+    // Si es ejecutivo, filtrar solo registros de sus clientes
+    let registrosParaEliminar = registrosSeleccionados;
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      registrosParaEliminar = registrosSeleccionados.filter(r => 
+        clientesAsignados.includes(r.shipper || '')
+      );
+      
+      if (registrosParaEliminar.length !== registrosSeleccionados.length) {
+        error('No tienes permiso para eliminar algunos de los registros seleccionados');
+        return;
+      }
+    }
+    
+    const confirmMessage = `¿Estás seguro de que quieres eliminar ${registrosParaEliminar.length} registro(s)?`;
     if (!confirm(confirmMessage)) {
       return;
     }
@@ -609,13 +774,14 @@ export default function RegistrosPage() {
       const supabase = createClient();
       
       // Marcar múltiples registros como eliminados (soft delete)
+      const idsParaEliminar = registrosParaEliminar.map(r => r.id).filter((id): id is string => Boolean(id));
       const { error } = await supabase
         .from('registros')
         .update({ 
           deleted_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
-        .in('id', Array.from(selectedRows));
+        .in('id', idsParaEliminar);
 
       if (error) {
         console.error('Error al eliminar registros:', error);
@@ -635,7 +801,7 @@ export default function RegistrosPage() {
       // Actualizar estadísticas
       await loadStats();
       
-      alert(`${selectedRows.size} registro(s) eliminado(s) correctamente`);
+      success(`${registrosParaEliminar.length} registro(s) eliminado(s) correctamente`);
     } catch (error) {
       console.error('Error inesperado:', error);
       alert('Error inesperado al eliminar los registros');
@@ -652,6 +818,19 @@ export default function RegistrosPage() {
 
   const handleBulkUpdate = useCallback(async (field: keyof Registro, value: any, selectedRecords: Registro[]) => {
     if (selectedRecords.length === 0) return;
+
+    // Si es ejecutivo, validar que todos los registros sean de sus clientes
+    let registrosParaActualizar = selectedRecords;
+    if (isEjecutivo && clientesAsignados.length > 0) {
+      registrosParaActualizar = selectedRecords.filter(r => 
+        clientesAsignados.includes(r.shipper || '')
+      );
+      
+      if (registrosParaActualizar.length !== selectedRecords.length) {
+        error('No tienes permiso para actualizar algunos de los registros seleccionados');
+        return;
+      }
+    }
 
     try {
       const supabase = createClient();
@@ -678,8 +857,8 @@ export default function RegistrosPage() {
         updated_at: new Date().toISOString()
       };
 
-      // Obtener IDs de los registros seleccionados
-      const recordIds = selectedRecords.map(record => record.id).filter((id): id is string => Boolean(id));
+      // Obtener IDs de los registros seleccionados (solo los permitidos)
+      const recordIds = registrosParaActualizar.map(record => record.id).filter((id): id is string => Boolean(id));
       
       if (recordIds.length === 0) {
         return;
@@ -696,7 +875,7 @@ export default function RegistrosPage() {
       }
 
       // Crear historial para cada registro actualizado
-      for (const record of selectedRecords) {
+      for (const record of registrosParaActualizar) {
         try {
           await supabase.rpc('crear_historial_manual', {
             registro_uuid: record.id,
@@ -712,7 +891,7 @@ export default function RegistrosPage() {
       // Actualizar el estado local
       setRegistros(prevRegistros => 
         prevRegistros.map(record => {
-          if (selectedRecords.some(selected => selected.id === record.id)) {
+          if (registrosParaActualizar.some(selected => selected.id === record.id)) {
             return {
               ...record,
               [field]: value,
@@ -743,13 +922,13 @@ export default function RegistrosPage() {
       };
       
       const fieldDisplayName = fieldNames[field] || field;
-      success(`✅ Se actualizaron ${selectedRecords.length} registros en el campo "${fieldDisplayName}"`);
+      success(`✅ Se actualizaron ${registrosParaActualizar.length} registros en el campo "${fieldDisplayName}"`);
 
     } catch (err: any) {
       console.error('Error en edición masiva:', err);
       error(`Error al actualizar los registros: ${err.message}`);
     }
-  }, [success, error]);
+  }, [success, error, isEjecutivo, clientesAsignados]);
 
   // Estado para los mapeos de naves
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
