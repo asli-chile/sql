@@ -111,39 +111,44 @@ export default function DashboardPage() {
       let ejemplosMostrados = 0;
       const maxEjemplos = 3;
       
+      // Primero, agrupar registros por REF ASLI y obtener el más reciente de cada uno
       registros?.forEach(registro => {
         const refAsli = registro.ref_asli;
         const existing = refAsliMap.get(refAsli);
         
+        // Guardar el registro más reciente de cada REF ASLI
         if (!existing || new Date(registro.updated_at) > new Date(existing.updated_at)) {
           refAsliMap.set(refAsli, {
             estado: registro.estado,
-            updated_at: registro.updated_at
+            updated_at: registro.updated_at,
+            contenedor: registro.contenedor // Guardar también el contenedor
           });
         }
+      });
 
-        // Contar contenedores (separados por espacios en texto plano)
-        if (registro.contenedor) {
+      // Ahora contar contenedores SOLO UNA VEZ por REF ASLI único
+      refAsliMap.forEach((data, refAsli) => {
+        if (data.contenedor) {
           let cantidadContenedores = 0;
           let contenedorTexto = '';
           
           // Si es array (datos antiguos), convertir a texto
-          if (Array.isArray(registro.contenedor)) {
-            contenedorTexto = registro.contenedor.join(' ');
+          if (Array.isArray(data.contenedor)) {
+            contenedorTexto = data.contenedor.join(' ');
           } 
           // Si es string, usarlo directamente
-          else if (typeof registro.contenedor === 'string') {
+          else if (typeof data.contenedor === 'string') {
             // Intentar parsear por si viene como JSON string antiguo
             try {
-              const parsed = JSON.parse(registro.contenedor);
+              const parsed = JSON.parse(data.contenedor);
               if (Array.isArray(parsed)) {
                 contenedorTexto = parsed.join(' ');
               } else {
-                contenedorTexto = registro.contenedor;
+                contenedorTexto = data.contenedor;
               }
             } catch {
               // No es JSON, usar como texto directo
-              contenedorTexto = registro.contenedor;
+              contenedorTexto = data.contenedor;
             }
           }
           
@@ -155,7 +160,7 @@ export default function DashboardPage() {
           if (ejemplosMostrados < maxEjemplos) {
             console.log(`\n📦 Ejemplo ${ejemplosMostrados + 1}:`);
             console.log(`   REF ASLI: ${refAsli}`);
-            console.log(`   Valor original:`, registro.contenedor);
+            console.log(`   Valor original:`, data.contenedor);
             console.log(`   Texto procesado: "${contenedorTexto}"`);
             console.log(`   Contenedores:`, contenedores);
             console.log(`   ✅ Cantidad: ${cantidadContenedores}`);
