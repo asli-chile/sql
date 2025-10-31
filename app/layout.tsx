@@ -16,11 +16,11 @@ export const metadata: Metadata = {
   description: "Sistema de gestión para exportaciones marítimas y aéreas",
   icons: {
     icon: [
-      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
-      { url: '/logo-asli.png', sizes: '192x192', type: 'image/png' }
+      { url: 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png', sizes: '32x32', type: 'image/png' },
+      { url: 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png', sizes: '192x192', type: 'image/png' }
     ],
     apple: [
-      { url: '/logo-asli.png', sizes: '180x180', type: 'image/png' }
+      { url: 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png', sizes: '180x180', type: 'image/png' }
     ]
   }
 };
