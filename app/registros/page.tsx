@@ -105,32 +105,6 @@ export default function RegistrosPage() {
     checkUser();
   }, []);
 
-  // Recargar registros cuando cambien los clientes asignados
-  useEffect(() => {
-    if (isEjecutivo) {
-      loadRegistros();
-      // Re-filtrar clientes en catálogos cuando cambien los clientes asignados
-      if (clientesAsignados.length > 0) {
-        // Obtener todos los clientes del catálogo
-        const supabase = createClient();
-        supabase
-          .from('catalogos')
-          .select('valores')
-          .eq('categoria', 'clientes')
-          .single()
-          .then(({ data }) => {
-            if (data?.valores) {
-              const clientesFiltrados = (data.valores as string[]).filter((cliente: string) => 
-                clientesAsignados.includes(cliente)
-              );
-              setClientesUnicos(clientesFiltrados);
-              setClientesFiltro(clientesFiltrados);
-            }
-          });
-      }
-    }
-  }, [clientesAsignados, isEjecutivo, loadRegistros]);
-
   const checkUser = async () => {
     try {
       const supabase = createClient();
