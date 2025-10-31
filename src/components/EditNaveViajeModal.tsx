@@ -9,16 +9,20 @@ interface EditNaveViajeModalProps {
   isOpen: boolean;
   onClose: () => void;
   record: Registro | null;
+  records?: Registro[]; // Para edición múltiple
   navesUnicas: string[];
   onSave: (nave: string, viaje: string) => Promise<void>;
+  onBulkSave?: (nave: string, viaje: string, records: Registro[]) => Promise<void>;
 }
 
 export function EditNaveViajeModal({
   isOpen,
   onClose,
   record,
+  records,
   navesUnicas,
-  onSave
+  onSave,
+  onBulkSave
 }: EditNaveViajeModalProps) {
   const { theme } = useTheme();
   const [nave, setNave] = useState('');
@@ -26,15 +30,32 @@ export function EditNaveViajeModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (record) {
-      setNave(record.naveInicial || '');
-      setViaje(record.viaje || '');
-      setError('');
-    }
-  }, [record]);
+  const isBulkEdit = records && records.length > 1;
+  const recordsToEdit = isBulkEdit ? records : (record ? [record] : []);
 
-  if (!isOpen || !record) return null;
+  useEffect(() => {
+    if (record && !isBulkEdit) {
+      // Para edición individual, pre-llenar con los valores del registro
+      let naveActual = record.naveInicial || '';
+      let viajeActual = record.viaje || '';
+      
+      const match = naveActual.match(/^(.+?)\s*\[(.+?)\]$/);
+      if (match) {
+        naveActual = match[1].trim();
+        viajeActual = match[2].trim();
+      }
+      
+      setNave(naveActual);
+      setViaje(viajeActual);
+    } else {
+      // Para edición múltiple, dejar en blanco
+      setNave('');
+      setViaje('');
+    }
+    setError('');
+  }, [record, isBulkEdit]);
+
+  if (!isOpen || (!record && !records?.length)) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +73,11 @@ export function EditNaveViajeModal({
 
     setLoading(true);
     try {
-      await onSave(nave.trim(), viaje.trim());
+      if (isBulkEdit && onBulkSave && records) {
+        await onBulkSave(nave.trim(), viaje.trim(), records);
+      } else if (record) {
+        await onSave(nave.trim(), viaje.trim());
+      }
       onClose();
     } catch (err: any) {
       setError(err.message || 'Error al guardar');
@@ -73,7 +98,7 @@ export function EditNaveViajeModal({
           <h2 className={`text-lg font-semibold ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            Editar Nave y Viaje
+            {isBulkEdit ? `Editar Nave y Viaje (${recordsToEdit.length} registros)` : 'Editar Nave y Viaje'}
           </h2>
           <button
             onClick={onClose}
@@ -92,18 +117,32 @@ export function EditNaveViajeModal({
             <label className={`block text-sm font-medium mb-1 ${
               theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
             }`}>
-              REF ASLI
+              {isBulkEdit ? `REF ASLI (${recordsToEdit.length} registros)` : 'REF ASLI'}
             </label>
-            <input
-              type="text"
-              value={record.refAsli || ''}
-              disabled
+            {isBulkEdit ? (
+              <div className={`w-full max-h-32 overflow-y-auto px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-700 text-gray-400 border-gray-600'
+                  : 'bg-gray-100 text-gray-500 border-gray-300'
+              }`}>
+                <div className="flex flex-col gap-1">
+                  {recordsToEdit.map((r, idx) => (
+                    <span key={idx} className="text-xs">{r.refAsli || '-'}</span>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={record?.refAsli || ''}
+                disabled
               className={`w-full px-3 py-2 rounded border ${
                 theme === 'dark'
                   ? 'bg-gray-700 text-gray-400 border-gray-600'
                   : 'bg-gray-100 text-gray-500 border-gray-300'
               } cursor-not-allowed`}
             />
+            )}
           </div>
 
           {/* Nave */}

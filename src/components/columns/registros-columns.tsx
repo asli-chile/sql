@@ -72,15 +72,19 @@ export const createRegistrosColumns = (
       id: 'select',
       header: () => null,
       cell: ({ row }: any) => {
-        const isSelected = selectedRows?.has(row.original.id || '');
+        const rowId = row.original.id || '';
+        const isSelected = selectedRows?.has(rowId) || false;
         const rowIndex = row.index;
         return (
-          <div className="flex items-center">
+          <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
             <input
               type="checkbox"
-              checked={isSelected || false}
-              onChange={(e) => onToggleRowSelection?.(row.original.id || '', rowIndex, e as any)}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              checked={isSelected}
+              onChange={(e) => {
+                e.stopPropagation();
+                onToggleRowSelection?.(rowId, rowIndex, e as any);
+              }}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
             />
           </div>
         );

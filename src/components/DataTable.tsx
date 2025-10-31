@@ -31,6 +31,7 @@ interface DataTableProps {
   onAdd?: () => void;
   onEdit?: (record: Registro) => void;
   onEditNaveViaje?: (record: Registro) => void;
+  onBulkEditNaveViaje?: (records: Registro[]) => void;
   onDelete?: (record: Registro) => void;
   onExport?: (filteredData?: Registro[]) => void;
   // Props para selección múltiple
@@ -57,6 +58,7 @@ export function DataTable({
   onAdd,
   onEdit,
   onEditNaveViaje,
+  onBulkEditNaveViaje,
   onDelete,
   onExport,
   selectedRows = new Set(),
@@ -1041,7 +1043,7 @@ export function DataTable({
                                    return (
                     <tr 
                       key={row.id} 
-                      className={`${bgClass} ${hoverClass} transition-colors`}
+                      className={`${bgClass} ${hoverClass}`}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
@@ -1054,22 +1056,21 @@ export function DataTable({
                        const isSelectColumn = cell.column.id === 'select';
                        const isRefAsliColumn = cell.column.id === 'refAsli';
                        
+                       // Pre-calcular bgColor para sticky columns (fuera del condicional)
+                       const rowBgColor = theme === 'dark' 
+                         ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
+                         : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
+                       
                        // Clases para sticky
                        let stickyClasses = '';
                        let stickyStyles: React.CSSProperties = {};
                        
                       if (isSelectColumn) {
                         stickyClasses = `sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        const bgColor = theme === 'dark' 
-                          ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
-                          : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
-                        stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: bgColor };
+                        stickyStyles = { left: 0, width: '36px', minWidth: '36px', maxWidth: '36px', backgroundColor: rowBgColor };
                       } else if (isRefAsliColumn) {
                         stickyClasses = `sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        const bgColor = theme === 'dark'
-                          ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
-                          : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
-                        stickyStyles = { left: '36px', backgroundColor: bgColor }; // Ancho exacto de checkbox
+                        stickyStyles = { left: '36px', backgroundColor: rowBgColor };
                       }
                        
                        return (
@@ -1334,16 +1335,27 @@ export function DataTable({
              top: `${contextMenu.y}px`,
            }}
          >
-           {onEditNaveViaje && (
+           {((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje) && (
              <button
                onClick={() => {
-                 onEditNaveViaje(contextMenu.record);
+                 if (selectedRows.size > 0 && onBulkEditNaveViaje) {
+                   // Obtener los registros seleccionados
+                   const selectedRecords = data.filter(r => r.id && selectedRows.has(r.id));
+                   onBulkEditNaveViaje(selectedRecords);
+                 } else if (onEditNaveViaje) {
+                   onEditNaveViaje(contextMenu.record);
+                 }
                  setContextMenu(null);
                }}
                className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center space-x-2"
              >
                <Edit className="h-4 w-4" />
-               <span>Editar Nave y Viaje</span>
+               <span>
+                 {selectedRows.size > 0 
+                   ? `Editar Nave y Viaje (${selectedRows.size})`
+                   : 'Editar Nave y Viaje'
+                 }
+               </span>
              </button>
            )}
            {canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete) && (

@@ -82,6 +82,7 @@ export default function RegistrosPage() {
   const [selectedRegistroForHistorial, setSelectedRegistroForHistorial] = useState<Registro | null>(null);
   const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
   const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
+  const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
   
   // Estado para preservar filtros del DataTable
   const [preservedFilters, setPreservedFilters] = useState({
@@ -467,6 +468,7 @@ export default function RegistrosPage() {
   const handleCloseNaveViajeModal = () => {
     setIsEditNaveViajeModalOpen(false);
     setSelectedRegistroForNaveViaje(null);
+    setSelectedRecordsForNaveViaje([]);
   };
 
   const handleSaveNaveViaje = async (nave: string, viaje: string) => {
@@ -491,6 +493,43 @@ export default function RegistrosPage() {
       if (error) throw error;
 
       success('Nave y viaje actualizados correctamente');
+      await loadRegistros();
+      handleCloseNaveViajeModal();
+    } catch (err: any) {
+      error('Error al actualizar nave y viaje: ' + (err.message || 'Error desconocido'));
+    }
+  };
+
+  const handleBulkEditNaveViaje = (records: Registro[]) => {
+    setSelectedRegistroForNaveViaje(null);
+    setSelectedRecordsForNaveViaje(records);
+    setIsEditNaveViajeModalOpen(true);
+  };
+
+  const handleBulkSaveNaveViaje = async (nave: string, viaje: string, records: Registro[]) => {
+    try {
+      const supabase = createClient();
+      
+      // Construir el nombre completo de la nave con viaje
+      const naveCompleta = nave && viaje.trim() 
+        ? `${nave} [${viaje.trim()}]` 
+        : nave || '';
+
+      const recordIds = records.map(r => r.id).filter((id): id is string => Boolean(id));
+      
+      if (recordIds.length === 0) return;
+
+      const { error } = await supabase
+        .from('registros')
+        .update({
+          nave_inicial: naveCompleta,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', recordIds);
+
+      if (error) throw error;
+
+      success(`${records.length} registro(s) actualizado(s) correctamente`);
       await loadRegistros();
       handleCloseNaveViajeModal();
     } catch (err: any) {
@@ -1211,6 +1250,7 @@ export default function RegistrosPage() {
             onAdd={handleAdd}
             onEdit={handleEdit}
             onEditNaveViaje={handleEditNaveViaje}
+            onBulkEditNaveViaje={handleBulkEditNaveViaje}
             onDelete={handleDelete}
             onExport={handleExport}
             selectedRows={selectedRows}
@@ -1279,13 +1319,15 @@ export default function RegistrosPage() {
         />
       )}
 
-      {selectedRegistroForNaveViaje && (
+      {(selectedRegistroForNaveViaje || selectedRecordsForNaveViaje.length > 0) && (
         <EditNaveViajeModal
           isOpen={isEditNaveViajeModalOpen}
           onClose={handleCloseNaveViajeModal}
           record={selectedRegistroForNaveViaje}
+          records={selectedRecordsForNaveViaje.length > 0 ? selectedRecordsForNaveViaje : undefined}
           navesUnicas={navesUnicas}
           onSave={handleSaveNaveViaje}
+          onBulkSave={handleBulkSaveNaveViaje}
         />
       )}
 
