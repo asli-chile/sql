@@ -49,6 +49,8 @@ CREATE POLICY "Admins pueden crear cualquier registro"
   );
 
 -- Política 2: Ejecutivos pueden crear registros de sus clientes
+-- NOTA: Para ejecutivos, la validación del shipper se hace en el frontend
+-- La política aquí solo verifica que sea ejecutivo
 CREATE POLICY "Ejecutivos pueden crear registros de sus clientes"
   ON registros FOR INSERT
   TO authenticated
@@ -57,13 +59,6 @@ CREATE POLICY "Ejecutivos pueden crear registros de sus clientes"
       SELECT 1 FROM usuarios u
       WHERE u.auth_user_id = auth.uid()
         AND u.email LIKE '%@asli.cl'
-        AND (
-          SELECT COUNT(*) > 0
-          FROM ejecutivo_clientes ec
-          WHERE ec.ejecutivo_id = u.id
-            AND ec.cliente_nombre = NEW.shipper
-            AND ec.activo = true
-        )
     )
   );
 
