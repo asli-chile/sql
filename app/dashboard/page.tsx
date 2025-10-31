@@ -117,44 +117,48 @@ export default function DashboardPage() {
           });
         }
 
-        // Contar contenedores (separados por espacios)
+        // Contar contenedores
         if (registro.contenedor) {
-          let contenedorStr = '';
+          let cantidadContenedores = 0;
           
-          // Convertir a string si viene como array
+          // Si ya es un array, contar directamente
           if (Array.isArray(registro.contenedor)) {
-            contenedorStr = registro.contenedor.join(' ');
-          } else if (typeof registro.contenedor === 'string') {
-            // Si viene como JSON string, intentar parsearlo
+            cantidadContenedores = registro.contenedor.length;
+            
+            if (ejemplosMostrados < maxEjemplos) {
+              console.log(`\n📦 Ejemplo ${ejemplosMostrados + 1}:`);
+              console.log(`   REF ASLI: ${refAsli}`);
+              console.log(`   Tipo: Array`);
+              console.log(`   Contenedores:`, registro.contenedor);
+              console.log(`   ✅ Cantidad: ${cantidadContenedores}`);
+              ejemplosMostrados++;
+            }
+          } 
+          // Si es string, intentar parsearlo como JSON array
+          else if (typeof registro.contenedor === 'string') {
             try {
               const parsed = JSON.parse(registro.contenedor);
               if (Array.isArray(parsed)) {
-                contenedorStr = parsed.join(' ');
+                cantidadContenedores = parsed.length;
+                
+                if (ejemplosMostrados < maxEjemplos) {
+                  console.log(`\n📦 Ejemplo ${ejemplosMostrados + 1}:`);
+                  console.log(`   REF ASLI: ${refAsli}`);
+                  console.log(`   Tipo: JSON string`);
+                  console.log(`   Contenedores:`, parsed);
+                  console.log(`   ✅ Cantidad: ${cantidadContenedores}`);
+                  ejemplosMostrados++;
+                }
               } else {
-                contenedorStr = registro.contenedor;
+                cantidadContenedores = 1;
               }
             } catch {
-              // No es JSON, usar como string directo
-              contenedorStr = registro.contenedor;
+              // No es JSON válido, contar como 1 contenedor
+              cantidadContenedores = 1;
             }
           }
           
-          // Dividir por espacios y contar elementos no vacíos
-          const contenedores = contenedorStr.trim().split(/\s+/).filter(c => c.length > 0);
-          
-          // Mostrar solo los primeros ejemplos
-          if (ejemplosMostrados < maxEjemplos) {
-            console.log(`\n📦 Ejemplo ${ejemplosMostrados + 1}:`);
-            console.log(`   REF ASLI: ${refAsli}`);
-            console.log(`   Tipo: ${typeof registro.contenedor}`);
-            console.log(`   Valor original: "${registro.contenedor}"`);
-            console.log(`   String procesado: "${contenedorStr}"`);
-            console.log(`   Array después de split:`, contenedores);
-            console.log(`   ✅ Cantidad: ${contenedores.length}`);
-            ejemplosMostrados++;
-          }
-          
-          totalContenedores += contenedores.length;
+          totalContenedores += cantidadContenedores;
         }
       });
       
