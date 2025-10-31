@@ -431,11 +431,17 @@ export default function RegistrosPage() {
   };
 
   const handleDelete = async (registro: Registro) => {
-    // Validar que el ejecutivo solo pueda eliminar registros de sus clientes
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      if (!clientesAsignados.includes(registro.shipper || '')) {
-        error('No tienes permiso para eliminar este registro');
-        return;
+    // Los admins pueden borrar cualquier registro (sin restricciones)
+    const esAdmin = currentUser?.rol === 'admin';
+    
+    // Si NO es admin, validar permisos de ejecutivo
+    if (!esAdmin) {
+      // Validar que el ejecutivo solo pueda eliminar registros de sus clientes
+      if (isEjecutivo && clientesAsignados.length > 0) {
+        if (!clientesAsignados.includes(registro.shipper || '')) {
+          error('No tienes permiso para eliminar este registro');
+          return;
+        }
       }
     }
 
@@ -749,19 +755,25 @@ export default function RegistrosPage() {
   const handleBulkDelete = async () => {
     if (selectedRows.size === 0) return;
     
+    // Los admins pueden borrar cualquier registro (sin restricciones)
+    const esAdmin = currentUser?.rol === 'admin';
+    
     // Obtener registros seleccionados
     const registrosSeleccionados = registros.filter(r => r.id && selectedRows.has(r.id));
     
-    // Si es ejecutivo, filtrar solo registros de sus clientes
+    // Si NO es admin, validar permisos de ejecutivo
     let registrosParaEliminar = registrosSeleccionados;
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      registrosParaEliminar = registrosSeleccionados.filter(r => 
-        clientesAsignados.includes(r.shipper || '')
-      );
-      
-      if (registrosParaEliminar.length !== registrosSeleccionados.length) {
-        error('No tienes permiso para eliminar algunos de los registros seleccionados');
-        return;
+    if (!esAdmin) {
+      // Si es ejecutivo, filtrar solo registros de sus clientes
+      if (isEjecutivo && clientesAsignados.length > 0) {
+        registrosParaEliminar = registrosSeleccionados.filter(r => 
+          clientesAsignados.includes(r.shipper || '')
+        );
+        
+        if (registrosParaEliminar.length !== registrosSeleccionados.length) {
+          error('No tienes permiso para eliminar algunos de los registros seleccionados');
+          return;
+        }
       }
     }
     
