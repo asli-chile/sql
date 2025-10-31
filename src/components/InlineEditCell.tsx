@@ -68,6 +68,11 @@ export function InlineEditCell({
   
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
+  
+  // Debug: verificar que lleguen las opciones
+  if (type === 'select') {
+    console.log(`📋 Campo: ${field} | Type: ${type} | Options:`, options, '| Length:', options?.length || 0);
+  }
 
   // Detectar si es un dispositivo táctil
   useEffect(() => {
