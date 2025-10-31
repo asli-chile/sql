@@ -27,6 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { QRGenerator } from '@/components/QRGenerator';
 
 interface User {
   id: string;
@@ -1235,6 +1236,7 @@ export default function RegistrosPage() {
 
             {/* User menu */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <QRGenerator />
               <ThemeToggle />
               <ThemeTest />
               <div className="flex items-center space-x-2">
