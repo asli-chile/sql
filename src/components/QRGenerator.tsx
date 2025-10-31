@@ -40,38 +40,17 @@ export function QRGenerator() {
       const img = new Image();
       
       img.onload = () => {
+        // Fondo blanco
         ctx.fillStyle = '#FFFFFF';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Dibujar el QR
         ctx.drawImage(img, 0, 0, size, size);
         
-        canvas.toBlob((blob) => {
-          if (!blob) return;
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `qrcode-${Date.now()}.png`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-        }, 'image/png');
-      };
-      
-      img.onerror = () => {
-        console.error('Error al cargar la imagen SVG');
-      };
-      
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-      const url = URL.createObjectURL(svgBlob);
-      img.src = url;
-      
-      // Limpiar URL después de cargar
-      img.onload = () => {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, size, size);
-        URL.revokeObjectURL(url);
+        // Limpiar URL del SVG
+        URL.revokeObjectURL(img.src);
         
+        // Descargar
         canvas.toBlob((blob) => {
           if (!blob) return;
           const downloadUrl = URL.createObjectURL(blob);
@@ -84,6 +63,14 @@ export function QRGenerator() {
           URL.revokeObjectURL(downloadUrl);
         }, 'image/png');
       };
+      
+      img.onerror = () => {
+        console.error('Error al cargar la imagen SVG');
+      };
+      
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+      img.src = url;
     } catch (error) {
       console.error('Error al descargar QR:', error);
     }
