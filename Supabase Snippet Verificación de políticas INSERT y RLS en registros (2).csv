@@ -1,0 +1,10 @@
+tipo,id,nombre,email,rol,auth_user_id,activo,created_at
+Usuarios en BD,abc876cb-e44d-4678-8b28-e64cc19043dc,roodericus7,roodericus7@gmail.com,usuario,9e4982f3-8c73-4d35-be0c-681a9dbf7e24,true,2025-10-31 18:31:57.459493+00
+Usuarios en BD,48415f2a-0018-4d9d-bba6-da404c7e3f68,ignacio.caceres94,ignacio.caceres94@outlook.com,usuario,564fe5a0-c8ec-4163-abec-597f79e3a0a3,true,2025-10-28 19:59:38.71971+00
+Usuarios en BD,d9b76768-4dbb-444d-b540-945154bd5016,rocio.villarroel,rocio.villarroel@asli.cl,usuario,2fa37eac-dc4d-41c9-9595-40639d47c170,true,2025-10-28 16:33:49.138975+00
+Usuarios en BD,e99b8d51-983f-45df-bc89-0198cfbb5015,hans.vasquez,hans.vasquez@asli.cl,admin,31b88bce-9ab2-4ceb-baa2-aa902c497e53,true,2025-10-28 16:11:02.754751+00
+Usuarios en BD,285a97a0-92a9-43f4-8cf8-e8de2bd964ac,Rodrigo Cáceres,rodrigo.caceres@asli.cl,admin,19905126-6d19-41b8-9d99-a62ed1b2eb16,true,2025-10-27 03:20:31.12225+00
+Usuarios en BD,602c7c06-dec9-4bc7-a6d1-2134cf089f1a,Lector Auditoría,auditor@asli.com,lector,null,true,2025-10-27 02:20:40.92701+00
+Usuarios en BD,ee3fb092-d4cc-45b5-adf3-12f4beeb5eb0,Usuario Operativo,usuario@asli.com,usuario,null,true,2025-10-27 02:20:40.92701+00
+Usuarios en BD,8b19e867-9d17-48ca-8a6e-a7d01e32c1ef,Supervisor Operaciones,supervisor@asli.com,supervisor,null,true,2025-10-27 02:20:40.92701+00
+Usuarios en BD,0c038750-47f5-4b0b-836f-d1bc741232a9,Administrador Sistema,admin@asli.com,admin,null,true,2025-10-27 02:20:40.92701+00
