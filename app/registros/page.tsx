@@ -1524,6 +1524,8 @@ export default function RegistrosPage() {
           record={selectedRegistroForNaveViaje}
           records={selectedRecordsForNaveViaje.length > 0 ? selectedRecordsForNaveViaje : undefined}
           navesUnicas={navesUnicas}
+          navierasNavesMapping={navierasNavesMappingCatalog}
+          consorciosNavesMapping={consorciosNavesMappingCatalog}
           onSave={handleSaveNaveViaje}
           onBulkSave={handleBulkSaveNaveViaje}
         />

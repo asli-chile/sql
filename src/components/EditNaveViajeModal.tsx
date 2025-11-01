@@ -11,6 +11,8 @@ interface EditNaveViajeModalProps {
   record: Registro | null;
   records?: Registro[]; // Para edición múltiple
   navesUnicas: string[];
+  navierasNavesMapping: Record<string, string[]>;
+  consorciosNavesMapping: Record<string, string[]>;
   onSave: (nave: string, viaje: string) => Promise<void>;
   onBulkSave?: (nave: string, viaje: string, records: Registro[]) => Promise<void>;
 }
@@ -21,6 +23,8 @@ export function EditNaveViajeModal({
   record,
   records,
   navesUnicas,
+  navierasNavesMapping,
+  consorciosNavesMapping,
   onSave,
   onBulkSave
 }: EditNaveViajeModalProps) {
@@ -54,6 +58,46 @@ export function EditNaveViajeModal({
     }
     setError('');
   }, [record, isBulkEdit]);
+
+  // Obtener naves disponibles según la naviera del registro
+  const getAvailableNaves = () => {
+    // Para edición múltiple, usar todas las naves (o la naviera común si todos tienen la misma)
+    if (isBulkEdit && records && records.length > 0) {
+      // Si todos los registros tienen la misma naviera, usar esa
+      const navierasUnicas = [...new Set(records.map(r => r.naviera).filter(Boolean))];
+      if (navierasUnicas.length === 1) {
+        const navieraComun = navierasUnicas[0];
+        // Si es consorcio
+        if (navieraComun.includes('/')) {
+          const navesConsorcio = consorciosNavesMapping[navieraComun] || [];
+          return navesConsorcio.length > 0 ? navesConsorcio.sort() : navesUnicas;
+        }
+        // Si es naviera individual
+        const navesNaviera = navierasNavesMapping[navieraComun] || [];
+        return navesNaviera.length > 0 ? navesNaviera.sort() : navesUnicas;
+      }
+      // Si hay múltiples navieras diferentes, mostrar todas las naves
+      return navesUnicas;
+    }
+    
+    // Para edición individual, usar la naviera del registro
+    if (record && record.naviera) {
+      const naviera = record.naviera;
+      
+      // Si es un consorcio, buscar en consorciosNavesMapping
+      if (naviera.includes('/')) {
+        const navesConsorcio = consorciosNavesMapping[naviera] || [];
+        return navesConsorcio.length > 0 ? navesConsorcio.sort() : navesUnicas;
+      }
+      
+      // Si es naviera individual, buscar en navierasNavesMapping
+      const navesNaviera = navierasNavesMapping[naviera] || [];
+      return navesNaviera.length > 0 ? navesNaviera.sort() : navesUnicas;
+    }
+    
+    // Si no hay naviera, mostrar todas las naves
+    return navesUnicas;
+  };
 
   if (!isOpen || (!record && !records?.length)) return null;
 
@@ -163,7 +207,7 @@ export function EditNaveViajeModal({
               required
             >
               <option value="">Seleccionar nave</option>
-              {navesUnicas.map((nav) => (
+              {getAvailableNaves().map((nav) => (
                 <option key={nav} value={nav}>
                   {nav}
                 </option>
