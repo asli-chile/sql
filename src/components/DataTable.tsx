@@ -1077,7 +1077,14 @@ export function DataTable({
                     }}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
+                      // Verificar si hay opciones disponibles antes de mostrar el menú
+                      const hasEditNaveViaje = currentUser?.rol === 'admin' && ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
+                      const hasDelete = canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete);
+                      
+                      // Solo mostrar el menú si hay al menos una opción disponible
+                      if (hasEditNaveViaje || hasDelete) {
+                        setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
+                      }
                     }}
                   >
                     {row.getVisibleCells().map((cell) => {
