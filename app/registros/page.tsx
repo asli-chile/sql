@@ -158,9 +158,10 @@ export default function RegistrosPage() {
         
         if (emailEsEjecutivo) {
           // Cargar clientes asignados al ejecutivo ANTES de cargar catálogos y registros
-          await loadClientesAsignados(userData.id);
+          await loadClientesAsignados(userData.id, userData.nombre);
         } else {
-          setClientesAsignados([]);
+          // Para usuarios no ejecutivos, verificar si su nombre coincide con un cliente
+          await loadClientesAsignados(userData.id, userData.nombre);
         }
         
         console.log('✅ Usuario establecido en contexto:', {
@@ -198,24 +199,57 @@ export default function RegistrosPage() {
   };
 
   // Función para cargar clientes asignados a un ejecutivo
-  const loadClientesAsignados = async (ejecutivoId: string) => {
+  // También verifica si el nombre de usuario coincide con un cliente
+  const loadClientesAsignados = async (ejecutivoId: string, nombreUsuario?: string) => {
     try {
       const supabase = createClient();
+      const clientesAsignadosSet = new Set<string>();
+      
+      // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
       const { data, error } = await supabase
         .from('ejecutivo_clientes')
         .select('cliente_nombre')
         .eq('ejecutivo_id', ejecutivoId)
         .eq('activo', true);
 
-      if (error) {
-        console.error('Error cargando clientes asignados:', error);
-        setClientesAsignados([]);
-        return;
+      if (!error && data) {
+        data.forEach(item => clientesAsignadosSet.add(item.cliente_nombre));
+        console.log('📋 Clientes asignados desde ejecutivo_clientes:', data.map(item => item.cliente_nombre));
       }
 
-      const clientes = data?.map(item => item.cliente_nombre) || [];
-      setClientesAsignados(clientes);
-      console.log('📋 Clientes asignados al ejecutivo:', clientes);
+      // 2. Si el nombre de usuario coincide con un cliente, agregarlo también
+      if (nombreUsuario) {
+        // Buscar en catalogos si existe un cliente con ese nombre
+        const { data: catalogoClientes, error: catalogoError } = await supabase
+          .from('catalogos')
+          .select('valores')
+          .eq('categoria', 'clientes')
+          .single();
+
+        if (!catalogoError && catalogoClientes?.valores) {
+          const valores = Array.isArray(catalogoClientes.valores) 
+            ? catalogoClientes.valores 
+            : typeof catalogoClientes.valores === 'string'
+              ? JSON.parse(catalogoClientes.valores)
+              : [];
+          
+          // Verificar si el nombre de usuario coincide con algún cliente (comparación case-insensitive)
+          const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
+          const clienteCoincidente = valores.find((cliente: string) => 
+            cliente.toUpperCase().trim() === nombreUsuarioUpper
+          );
+          
+          if (clienteCoincidente) {
+            clientesAsignadosSet.add(clienteCoincidente); // Usar el nombre exacto del catálogo
+            console.log(`✅ Cliente agregado automáticamente (coincidencia con nombre de usuario): ${clienteCoincidente}`);
+          }
+        }
+      }
+
+      const clientesFinales = Array.from(clientesAsignadosSet);
+      setClientesAsignados(clientesFinales);
+      
+      console.log('✅ Total de clientes asignados (incluyendo coincidencias):', clientesFinales);
     } catch (error) {
       console.error('Error loading clientes asignados:', error);
       setClientesAsignados([]);
@@ -231,10 +265,12 @@ export default function RegistrosPage() {
         .select('*')
         .is('deleted_at', null);
 
-      // Si es ejecutivo, filtrar solo sus clientes asignados
-      // NOTA: Los usuarios normales (rol 'usuario') NO se filtran aquí porque
-      // la RLS ya filtra automáticamente por created_by/usuario = su nombre
-      if (isEjecutivo && clientesAsignados.length > 0) {
+      // Filtrar por clientes asignados si hay alguno
+      // Esto aplica tanto para ejecutivos como para usuarios cuyo nombre coincide con un cliente
+      // NOTA: Los usuarios normales sin coincidencia seguirán viendo solo sus registros por RLS
+      const esAdmin = currentUser?.rol === 'admin';
+      if (!esAdmin && clientesAsignados.length > 0) {
+        // Si tiene clientes asignados (por asignación o coincidencia de nombre), filtrar por esos clientes
         query = query.in('shipper', clientesAsignados);
       }
 
