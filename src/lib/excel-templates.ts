@@ -136,7 +136,7 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
   // Lista de URLs a intentar (primero local, luego externa)
   const logoUrls = [
     '/logo-asli.png', // Logo local desde public
-    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png' // Logo externo
+    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20AZUL.png' // Logo externo azul
   ];
   
   for (const logoUrl of logoUrls) {
