@@ -670,14 +670,26 @@ export default function RegistrosPage() {
     setSelectedRows(newSelectedRows);
   }, [selectedRows, registros]);
 
-  const handleSelectAll = () => {
-    if (selectedRows.size === registros.length) {
-      setSelectedRows(new Set());
+  const handleSelectAll = (filteredRecords: Registro[]) => {
+    // Obtener IDs de los registros filtrados/visibles
+    const filteredIds = new Set(filteredRecords.map(r => r.id).filter((id): id is string => Boolean(id)));
+    
+    // Verificar si todos los registros visibles ya están seleccionados
+    const allVisibleSelected = filteredIds.size > 0 && Array.from(filteredIds).every(id => selectedRows.has(id));
+    
+    if (allVisibleSelected) {
+      // Deseleccionar solo los registros visibles
+      const newSelectedRows = new Set(selectedRows);
+      filteredIds.forEach(id => newSelectedRows.delete(id));
+      setSelectedRows(newSelectedRows);
       lastSelectedRowIndex.current = null;
     } else {
-      setSelectedRows(new Set(registros.map(r => r.id).filter((id): id is string => Boolean(id))));
-      // Guardar el índice de la última fila cuando se selecciona todo
-      lastSelectedRowIndex.current = registros.length - 1;
+      // Seleccionar todos los registros visibles (manteniendo los que ya estaban seleccionados)
+      const newSelectedRows = new Set(selectedRows);
+      filteredIds.forEach(id => newSelectedRows.add(id));
+      setSelectedRows(newSelectedRows);
+      // Guardar el índice de la última fila visible cuando se selecciona todo
+      lastSelectedRowIndex.current = filteredRecords.length - 1;
     }
   };
 

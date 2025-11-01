@@ -37,7 +37,7 @@ interface DataTableProps {
   // Props para selección múltiple
   selectedRows?: Set<string>;
   onToggleRowSelection?: (recordId: string) => void;
-  onSelectAll?: () => void;
+  onSelectAll?: (filteredRecords: Registro[]) => void;
   onClearSelection?: () => void;
   onBulkDelete?: () => void;
   // Prop para mantener filtros
@@ -478,19 +478,22 @@ export function DataTable({
             {/* Seleccionar todos */}
             {onSelectAll && filteredData.length > 0 && (
               <button
-                onClick={onSelectAll}
+                onClick={() => {
+                  const visibleRows = table.getFilteredRowModel().rows.map(row => row.original);
+                  onSelectAll(visibleRows);
+                }}
                 className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                   theme === 'dark'
                     ? 'bg-purple-600 text-white hover:bg-purple-700'
                     : 'bg-purple-600 text-white hover:bg-purple-700'
                 }`}
-                title={selectedRows.size === filteredData.length ? 'Deseleccionar todos' : 'Seleccionar todos los registros visibles'}
+                title={selectedRows.size === table.getFilteredRowModel().rows.length ? 'Deseleccionar todos' : 'Seleccionar todos los registros visibles'}
               >
                 <CheckSquare className="h-4 w-4" />
                 <span className="hidden xs:inline">
-                  {selectedRows.size === filteredData.length ? 'Deseleccionar' : 'Seleccionar todos'}
+                  {selectedRows.size === table.getFilteredRowModel().rows.length ? 'Deseleccionar' : 'Seleccionar todos'}
                 </span>
-                <span className="xs:hidden">{selectedRows.size === filteredData.length ? 'Des.' : 'Sel.'}</span>
+                <span className="xs:hidden">{selectedRows.size === table.getFilteredRowModel().rows.length ? 'Des.' : 'Sel.'}</span>
               </button>
             )}
 
@@ -994,13 +997,14 @@ export function DataTable({
                              <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                <input
                                  type="checkbox"
-                                 checked={selectedRows.size > 0 && selectedRows.size === filteredData.length}
+                                 checked={selectedRows.size > 0 && selectedRows.size === table.getFilteredRowModel().rows.length}
                                  onChange={(e) => {
                                    e.stopPropagation();
-                                   onSelectAll();
+                                   const visibleRows = table.getFilteredRowModel().rows.map(row => row.original);
+                                   onSelectAll(visibleRows);
                                  }}
                                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                                 title={selectedRows.size === filteredData.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                                 title={selectedRows.size === table.getFilteredRowModel().rows.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
                                />
                              </div>
                            ) : header.isPlaceholder ? null : (
