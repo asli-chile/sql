@@ -92,26 +92,49 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
     
     if (response.ok) {
       const arrayBuffer = await response.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
       
-      const imageId = workbook.addImage({
-        buffer: uint8Array,
-        extension: 'png',
-      });
+      // Convertir ArrayBuffer a Buffer
+      // En Node.js tenemos Buffer disponible, en el navegador debemos crearlo
+      let buffer: Buffer;
+      if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+        // Entorno Node.js - usar Buffer nativo
+        buffer = Buffer.from(arrayBuffer);
+      } else {
+        // Entorno navegador - convertir Uint8Array a Buffer-like
+        // ExcelJS internamente maneja esto, pero necesitamos el tipo correcto
+        const uint8Array = new Uint8Array(arrayBuffer);
+        // En el navegador, ExcelJS puede trabajar con Uint8Array en algunas versiones
+        // Si no funciona, simplemente no agregamos el logo
+        // @ts-expect-error - ExcelJS puede aceptar Uint8Array pero TypeScript espera Buffer
+        buffer = uint8Array;
+      }
       
-      // Centrar el logo calculando la columna media
-      const startCol = Math.floor((colSpan - 2) / 2);
-      
-      // Agregar la imagen
-      worksheet.addImage(imageId, {
-        tl: { col: startCol, row: rowIndex },
-        ext: { width: 150, height: 60 },
-      });
-      
-      return true;
+      try {
+        const imageId = workbook.addImage({
+          // @ts-expect-error - ExcelJS puede aceptar Uint8Array en runtime pero TypeScript espera Buffer
+          buffer: buffer as Buffer,
+          extension: 'png',
+        });
+        
+        // Centrar el logo calculando la columna media
+        const startCol = Math.max(0, Math.floor((colSpan - 2) / 2));
+        
+        // Agregar la imagen
+        worksheet.addImage(imageId, {
+          tl: { col: startCol, row: rowIndex },
+          ext: { width: 150, height: 60 },
+        });
+        
+        return true;
+      } catch (imageError) {
+        // Si hay error agregando la imagen, simplemente continuar sin logo
+        console.warn('Error al agregar imagen al Excel (continuando sin logo):', imageError);
+        return false;
+      }
     }
   } catch (error) {
-    console.warn('No se pudo cargar el logo:', error);
+    // Si hay error cargando el logo, simplemente continuar sin logo
+    console.warn('No se pudo cargar el logo (continuando sin logo):', error);
   }
   return false;
 };
