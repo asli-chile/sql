@@ -197,14 +197,12 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
 };
 
 // Función para configurar la página del worksheet (evita que Excel se congele al editar)
+// IMPORTANTE: Usar solo propiedades esenciales y compatibles para evitar conflictos
 const configurarPagina = (worksheet: ExcelJS.Worksheet) => {
-  // Configurar orientación y propiedades de página
+  // Configuración simplificada y compatible con todas las versiones de Excel
   worksheet.pageSetup = {
     orientation: 'landscape', // Horizontal por defecto
-    paperSize: 9, // A4 (9 = A4 en ExcelJS)
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: 0, // 0 = sin límite de altura
+    paperSize: 9, // A4
     margins: {
       left: 0.7,
       right: 0.7,
@@ -213,15 +211,16 @@ const configurarPagina = (worksheet: ExcelJS.Worksheet) => {
       header: 0.3,
       footer: 0.3
     },
-    printArea: undefined, // Permitir que el usuario defina su propia área de impresión
-    showGridLines: true
+    // NO usar fitToPage, fitToWidth, fitToHeight - pueden causar que Excel se congele
+    // NO usar printArea - dejar que Excel lo maneje por defecto
+    // NO usar showGridLines aquí - se controla desde las opciones de visualización
   };
 
-  // Configurar header y footer básicos
+  // Headers y footers simplificados (sin formato complejo que pueda causar problemas)
   worksheet.headerFooter = {
-    oddHeader: '&C&B&12&U' + worksheet.name,
+    oddHeader: '&C' + worksheet.name,
     oddFooter: '&C&F',
-    evenHeader: '&C&B&12&U' + worksheet.name,
+    evenHeader: '&C' + worksheet.name,
     evenFooter: '&C&F'
   };
 };
