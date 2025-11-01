@@ -171,11 +171,14 @@ export async function generarGuiaDespachoPDF(registros: Registro[]): Promise<Uin
     const headers = ['REF ASLI', 'Cliente', 'Contenedor', 'Naviera', 'Nave', 'Origen', 'Destino', 'ETD', 'ETA', 'Estado'];
     
     const datos: (string | number | null | undefined)[][] = registros.map(registro => {
-      const contenedores = Array.isArray(registro.contenedor) 
-        ? registro.contenedor.join(', ')
-        : typeof registro.contenedor === 'string' 
-          ? registro.contenedor.split(/\s+/).filter(c => c.trim()).join(', ')
-          : registro.contenedor?.toString() || '-';
+      let contenedores: string;
+      if (Array.isArray(registro.contenedor)) {
+        contenedores = registro.contenedor.join(', ');
+      } else if (typeof registro.contenedor === 'string' && registro.contenedor.trim()) {
+        contenedores = registro.contenedor.split(/\s+/).filter(c => c.trim()).join(', ');
+      } else {
+        contenedores = '-';
+      }
       
       return [
         registro.refAsli,
@@ -294,11 +297,14 @@ export async function generarReservaConfirmadaPDF(registros: Registro[]): Promis
     ];
     
     const datos: (string | number | null | undefined)[][] = registros.map(registro => {
-      const contenedores = Array.isArray(registro.contenedor)
-        ? registro.contenedor.join(', ')
-        : typeof registro.contenedor === 'string'
-          ? registro.contenedor.split(/\s+/).filter(c => c.trim()).join(', ')
-          : registro.contenedor?.toString() || '-';
+      let contenedores: string;
+      if (Array.isArray(registro.contenedor)) {
+        contenedores = registro.contenedor.join(', ');
+      } else if (typeof registro.contenedor === 'string' && registro.contenedor.trim()) {
+        contenedores = registro.contenedor.split(/\s+/).filter(c => c.trim()).join(', ');
+      } else {
+        contenedores = '-';
+      }
       
       return [
         registro.refAsli,
