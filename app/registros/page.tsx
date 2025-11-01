@@ -26,7 +26,6 @@ import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText } from 'lucide-react';
-import * as XLSX from 'xlsx';
 import { QRGenerator } from '@/components/QRGenerator';
 import { ReportGenerator } from '@/components/ReportGenerator';
 
@@ -461,50 +460,6 @@ export default function RegistrosPage() {
     }
   };
 
-  const handleExport = (filteredData?: Registro[]) => {
-    const dataToExport = filteredData || registros;
-    
-    if (dataToExport.length === 0) {
-      alert('No hay datos para exportar');
-      return;
-    }
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport.map(record => ({
-      'REF ASLI': record.refAsli,
-      'Cliente': record.shipper,
-      'Booking': record.booking,
-      'Contenedor': record.contenedor,
-      'Naviera': record.naviera,
-      'Nave': record.naveInicial,
-      'Especie': record.especie,
-      'Temperatura': record.temperatura,
-      'CBM': record.cbm,
-      'CO2': record.co2,
-      'O2': record.o2,
-      'POL': record.pol,
-      'POD': record.pod,
-      'Depósito': record.deposito,
-      'ETD': record.etd ? new Date(record.etd).toLocaleDateString('es-CL') : '',
-      'ETA': record.eta ? new Date(record.eta).toLocaleDateString('es-CL') : '',
-      'TT': record.tt,
-      'Flete': record.flete,
-      'Ejecutivo': record.ejecutivo,
-      'Estado': record.estado,
-      'Tipo Ingreso': record.tipoIngreso,
-      'Contrato': record.contrato,
-      'Comentario': record.comentario
-    })));
-
-    // Aplicar estilos
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Registros');
-
-    // Generar nombre de archivo con fecha
-    const fecha = new Date().toISOString().split('T')[0];
-    const filename = `registros_asli_${fecha}.xlsx`;
-
-    XLSX.writeFile(wb, filename);
-  };
 
   const handleShowHistorial = (registro: Registro) => {
     setSelectedRegistroForHistorial(registro);
@@ -1416,7 +1371,6 @@ export default function RegistrosPage() {
             onEditNaveViaje={handleEditNaveViaje}
             onBulkEditNaveViaje={handleBulkEditNaveViaje}
             onDelete={handleDelete}
-            onExport={handleExport}
             selectedRows={selectedRows}
             onToggleRowSelection={handleToggleRowSelection}
             onSelectAll={handleSelectAll}

@@ -34,7 +34,6 @@ interface DataTableProps {
   onEditNaveViaje?: (record: Registro) => void;
   onBulkEditNaveViaje?: (records: Registro[]) => void;
   onDelete?: (record: Registro) => void;
-  onExport?: (filteredData?: Registro[]) => void;
   // Props para selección múltiple
   selectedRows?: Set<string>;
   onToggleRowSelection?: (recordId: string) => void;
@@ -61,7 +60,6 @@ export function DataTable({
   onEditNaveViaje,
   onBulkEditNaveViaje,
   onDelete,
-  onExport,
   selectedRows = new Set(),
   onToggleRowSelection,
   onSelectAll,
@@ -90,7 +88,6 @@ export function DataTable({
     onAdd: !!onAdd,
     onEdit: !!onEdit,
     onDelete: !!onDelete,
-    onExport: !!onExport,
     dataLength: data.length
   });
   
@@ -480,21 +477,6 @@ export function DataTable({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
 
 
-            {/* Exportar */}
-            {onExport && canExport && (
-              <button
-                onClick={() => {
-                  const actualFilteredData = table.getFilteredRowModel().rows.map(row => row.original);
-                  onExport(actualFilteredData);
-                }}
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm"
-                title="Exportar registros filtrados a Excel (solo los datos visibles actualmente)"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden xs:inline">Exportar</span>
-              </button>
-            )}
-            
             {/* Agregar */}
             {onAdd && canAdd && (
               <button
