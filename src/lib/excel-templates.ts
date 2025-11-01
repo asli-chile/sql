@@ -162,10 +162,10 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
         
         console.log('✅ Imagen agregada al workbook, ID:', imageId);
         
-        // Centrar el logo calculando la columna media
-        const startCol = Math.max(0, Math.floor((colSpan - 2) / 2));
+        // Posicionar el logo en la esquina superior izquierda (columna 0 = columna A)
+        const startCol = 0;
         
-        console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol);
+        console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol, '(esquina superior izquierda)');
         
         // Agregar la imagen al worksheet
         worksheet.addImage(imageId, {
