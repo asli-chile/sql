@@ -109,7 +109,8 @@ const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
       const uint8Array = new Uint8Array(arrayBuffer);
       // Crear un Buffer compatible usando Array.from
       const bufferArray = Array.from(uint8Array);
-      // @ts-expect-error - Crear un objeto compatible con Buffer
+      // Crear un objeto compatible con Buffer
+      // @ts-ignore - TypeScript no reconoce este objeto como Buffer pero ExcelJS lo acepta
       return {
         data: bufferArray,
         length: bufferArray.length,
@@ -122,7 +123,7 @@ const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
             readUInt8: (offset: number) => sliced[offset],
           };
         }
-      } as any;
+      };
     }
   } catch (error) {
     console.warn(`⚠️ Error al cargar ${url}:`, error);
