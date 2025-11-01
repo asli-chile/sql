@@ -196,6 +196,36 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
   return false;
 };
 
+// Función para configurar la página del worksheet (evita que Excel se congele al editar)
+const configurarPagina = (worksheet: ExcelJS.Worksheet) => {
+  // Configurar orientación y propiedades de página
+  worksheet.pageSetup = {
+    orientation: 'landscape', // Horizontal por defecto
+    paperSize: 9, // A4 (9 = A4 en ExcelJS)
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 0, // 0 = sin límite de altura
+    margins: {
+      left: 0.7,
+      right: 0.7,
+      top: 0.75,
+      bottom: 0.75,
+      header: 0.3,
+      footer: 0.3
+    },
+    printArea: undefined, // Permitir que el usuario defina su propia área de impresión
+    showGridLines: true
+  };
+
+  // Configurar header y footer básicos
+  worksheet.headerFooter = {
+    oddHeader: '&C&B&12&U' + worksheet.name,
+    oddFooter: '&C&F',
+    evenHeader: '&C&B&12&U' + worksheet.name,
+    evenFooter: '&C&F'
+  };
+};
+
 // Función para agregar pie de página
 const agregarPieDePagina = (worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
   // Dejar una fila en blanco antes del footer
@@ -266,6 +296,10 @@ const crearEstilos = () => {
 export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Factura');
+  
+  // Configurar página ANTES de agregar contenido (evita que Excel se congele)
+  configurarPagina(worksheet);
+  
   const estilos = crearEstilos();
   const colSpan = 8;
 
@@ -337,6 +371,10 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
 export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Guía de Despacho');
+  
+  // Configurar página ANTES de agregar contenido (evita que Excel se congele)
+  configurarPagina(worksheet);
+  
   const estilos = crearEstilos();
   const colSpan = 10;
 
@@ -405,6 +443,10 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
 export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Zarpe');
+  
+  // Configurar página ANTES de agregar contenido (evita que Excel se congele)
+  configurarPagina(worksheet);
+  
   const estilos = crearEstilos();
   const colSpan = 9;
 
@@ -465,6 +507,10 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
 export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Arribo');
+  
+  // Configurar página ANTES de agregar contenido (evita que Excel se congele)
+  configurarPagina(worksheet);
+  
   const estilos = crearEstilos();
   const colSpan = 9;
 
@@ -532,6 +578,10 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
 export async function generarReservaConfirmada(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Reserva Confirmada');
+  
+  // Configurar página ANTES de agregar contenido (evita que Excel se congele)
+  configurarPagina(worksheet);
+  
   const estilos = crearEstilos();
   const colSpan = 11;
 
