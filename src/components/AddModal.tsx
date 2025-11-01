@@ -27,6 +27,7 @@ interface AddModalProps {
   contratosUnicos: string[];
   co2sUnicos: string[];
   o2sUnicos: string[];
+  clienteFijadoPorCoincidencia?: string; // Cliente que debe estar preseleccionado y bloqueado
 }
 
 export function AddModal({ 
@@ -48,6 +49,7 @@ export function AddModal({
   contratosUnicos,
   co2sUnicos,
   o2sUnicos,
+  clienteFijadoPorCoincidencia,
 }: AddModalProps) {
   
   const { theme } = useTheme();
@@ -100,25 +102,34 @@ export function AddModal({
   const [generatingRef, setGeneratingRef] = useState(true);
   const [numberOfCopies, setNumberOfCopies] = useState(1);
 
-  // Generar REF ASLI automáticamente al abrir el modal
+  // Generar REF ASLI automáticamente al abrir el modal y pre-seleccionar cliente si hay coincidencia
   useEffect(() => {
-    const generateRefAsli = async () => {
+    const initializeModal = async () => {
       if (!isOpen) return;
       
       setGeneratingRef(true);
       try {
         const newRefAsli = await generateUniqueRefAsli();
-        setFormData(prev => ({ ...prev, refAsli: newRefAsli }));
+        setFormData(prev => ({ 
+          ...prev, 
+          refAsli: newRefAsli,
+          // Pre-seleccionar cliente si hay coincidencia con nombre de usuario
+          shipper: clienteFijadoPorCoincidencia || prev.shipper
+        }));
         setGeneratingRef(false);
       } catch (error) {
         console.error('Error generando REF ASLI:', error);
-        setFormData(prev => ({ ...prev, refAsli: 'A0001' }));
+        setFormData(prev => ({ 
+          ...prev, 
+          refAsli: 'A0001',
+          shipper: clienteFijadoPorCoincidencia || prev.shipper
+        }));
         setGeneratingRef(false);
       }
     };
 
-    generateRefAsli();
-  }, [isOpen]);
+    initializeModal();
+  }, [isOpen, clienteFijadoPorCoincidencia]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -433,13 +444,24 @@ export function AddModal({
             <div className="space-y-2">
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Cliente *
+                {clienteFijadoPorCoincidencia && (
+                  <span className="ml-2 text-xs text-blue-600 font-normal">
+                    (Fijado por coincidencia con tu nombre)
+                  </span>
+                )}
               </label>
               <select
                 name="shipper"
                 value={formData.shipper}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                className={clienteFijadoPorCoincidencia 
+                  ? theme === 'dark'
+                    ? 'w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-400 cursor-not-allowed'
+                    : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed'
+                  : getSelectStyles()
+                }
                 required
+                disabled={!!clienteFijadoPorCoincidencia}
               >
                 <option value="">Seleccionar cliente</option>
                 {clientesUnicos.map(cliente => (

@@ -1481,6 +1481,13 @@ export default function RegistrosPage() {
         contratosUnicos={contratosUnicos}
         co2sUnicos={co2sUnicos}
         o2sUnicos={o2sUnicos}
+        clienteFijadoPorCoincidencia={
+          // Si el usuario NO es ejecutivo y tiene exactamente 1 cliente asignado,
+          // significa que fue agregado por coincidencia de nombre
+          !isEjecutivo && clientesAsignados.length === 1 
+            ? clientesAsignados[0] 
+            : undefined
+        }
       />
 
       <EditModal
