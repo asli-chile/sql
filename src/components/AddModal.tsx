@@ -24,6 +24,9 @@ interface AddModalProps {
   consorciosNavesMapping: Record<string, string[]>;
   cbmUnicos: string[];
   fletesUnicos: string[];
+  contratosUnicos: string[];
+  co2sUnicos: string[];
+  o2sUnicos: string[];
 }
 
 export function AddModal({ 
@@ -42,18 +45,11 @@ export function AddModal({
   consorciosNavesMapping,
   cbmUnicos,
   fletesUnicos,
+  contratosUnicos,
+  co2sUnicos,
+  o2sUnicos,
 }: AddModalProps) {
   
-  // Función para procesar contenedores múltiples
-  const processContainers = (containerValue: string): string => {
-    if (!containerValue || containerValue.trim() === '') {
-      return '';
-    }
-    
-    // Siempre devolver como texto plano con espacios
-    // Limpiar espacios múltiples y mantener formato: "cont1 cont2 cont3"
-    return containerValue.trim().split(/\s+/).join(' ');
-  };
   const { theme } = useTheme();
   
   // Helper para obtener estilos de select según el tema
@@ -92,7 +88,12 @@ export function AddModal({
     tipoIngreso: 'NORMAL',
     flete: '',
     comentario: '',
-    contenedor: '',
+    etd: '',
+    eta: '',
+    consignatario: '',
+    contrato: '',
+    co2: '',
+    o2: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -168,15 +169,15 @@ export function AddModal({
         tipo_ingreso: formData.tipoIngreso,
         flete: formData.flete,
         comentario: formData.comentario,
-        contenedor: formData.contenedor ? processContainers(formData.contenedor) : '',
+        contenedor: '',
         ct: '',
-        co2: null,
-        o2: null,
+        co2: formData.co2 ? parseFloat(formData.co2) : null,
+        o2: formData.o2 ? parseFloat(formData.o2) : null,
         tt: null,
         roleada_desde: '',
         numero_bl: '',
         estado_bl: '',
-        contrato: '',
+        contrato: formData.contrato || '',
         facturacion: '',
         booking_pdf: '',
         observacion: '',
@@ -187,8 +188,8 @@ export function AddModal({
         semana_arribo: null,
         mes_arribo: null,
         ingresado: new Date().toISOString(),
-        etd: null,
-        eta: null,
+        etd: formData.etd ? new Date(formData.etd).toISOString() : null,
+        eta: formData.eta ? new Date(formData.eta).toISOString() : null,
         ingreso_stacking: null,
         booking: '',
         created_at: new Date().toISOString(),
@@ -253,7 +254,12 @@ export function AddModal({
         tipoIngreso: 'NORMAL',
         flete: '',
         comentario: '',
-        contenedor: '',
+        etd: '',
+        eta: '',
+        consignatario: '',
+        contrato: '',
+        co2: '',
+        o2: '',
       });
     } catch (err) {
       console.error('Error al crear registro:', err);
@@ -761,22 +767,101 @@ export function AddModal({
             />
           </div>
 
-          {/* Contenedor */}
+          {/* ETD */}
           <div className="mt-4 space-y-2">
-            <label className="block text-sm font-medium text-gray-900">
-              Contenedor
+            <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              ETD
+            </label>
+            <input
+              type="date"
+              name="etd"
+              value={formData.etd}
+              onChange={handleChange}
+              className={getInputStyles()}
+            />
+          </div>
+
+          {/* ETA */}
+          <div className="mt-4 space-y-2">
+            <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              ETA
+            </label>
+            <input
+              type="date"
+              name="eta"
+              value={formData.eta}
+              onChange={handleChange}
+              className={getInputStyles()}
+            />
+          </div>
+
+          {/* Consignatario */}
+          <div className="mt-4 space-y-2">
+            <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              Consignatario
             </label>
             <input
               type="text"
-              name="contenedor"
-              value={formData.contenedor}
+              name="consignatario"
+              value={formData.consignatario}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-500"
-              placeholder="Ej: MNBU3612662 MNBU4269429 MNBU3121648"
+              className={getInputStyles()}
+              placeholder="Nombre del consignatario"
             />
-            <p className="text-xs text-gray-500">
-              Múltiples contenedores separados por espacios
-            </p>
+          </div>
+
+          {/* Contrato */}
+          <div className="mt-4 space-y-2">
+            <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              Contrato
+            </label>
+            <select
+              name="contrato"
+              value={formData.contrato}
+              onChange={handleChange}
+              className={getSelectStyles()}
+            >
+              <option value="">Seleccionar contrato</option>
+              {contratosUnicos.map(contrato => (
+                <option key={contrato} value={contrato}>{contrato}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* CO2 */}
+          <div className="mt-4 space-y-2">
+            <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              CO2
+            </label>
+            <select
+              name="co2"
+              value={formData.co2}
+              onChange={handleChange}
+              className={getSelectStyles()}
+            >
+              <option value="">Seleccionar CO2</option>
+              {co2sUnicos.map(co2 => (
+                <option key={co2} value={co2}>{co2}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* O2 */}
+          <div className="mt-4 space-y-2">
+            <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              O2
+            </label>
+            <select
+              name="o2"
+              value={formData.o2}
+              onChange={handleChange}
+              className={getSelectStyles()}
+            >
+              <option value="">Seleccionar O2</option>
+              {o2sUnicos.map(o2 => (
+                <option key={o2} value={o2}>{o2}</option>
+              ))}
+            </select>
           </div>
         </form>
 

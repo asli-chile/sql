@@ -1478,6 +1478,9 @@ export default function RegistrosPage() {
         consorciosNavesMapping={consorciosNavesMappingCatalog}
         cbmUnicos={cbmUnicos}
         fletesUnicos={fletesUnicos}
+        contratosUnicos={contratosUnicos}
+        co2sUnicos={co2sUnicos}
+        o2sUnicos={o2sUnicos}
       />
 
       <EditModal
