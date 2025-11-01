@@ -83,119 +83,6 @@ const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, 
   }
 };
 
-// Función helper para cargar imagen como Buffer
-const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
-  try {
-    const response = await fetch(url, {
-      mode: 'cors',
-      cache: 'no-cache'
-    });
-    
-    if (!response.ok) {
-      console.warn(`⚠️ No se pudo cargar ${url}:`, response.status);
-      return null;
-    }
-    
-    const arrayBuffer = await response.arrayBuffer();
-    
-    // Convertir ArrayBuffer a Buffer para ExcelJS
-    // ExcelJS requiere Buffer, así que creamos uno compatible
-    if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
-      // Entorno Node.js - Buffer nativo
-      return Buffer.from(arrayBuffer);
-    } else {
-      // Entorno navegador - crear Buffer compatible
-      // Convertir Uint8Array a Array y crear Buffer desde ahí
-      const uint8Array = new Uint8Array(arrayBuffer);
-      // Crear un Buffer compatible usando Array.from
-      const bufferArray = Array.from(uint8Array);
-      // Crear un objeto compatible con Buffer
-      // @ts-ignore - TypeScript no reconoce este objeto como Buffer pero ExcelJS lo acepta
-      return {
-        data: bufferArray,
-        length: bufferArray.length,
-        readUInt8: (offset: number) => bufferArray[offset],
-        slice: (start?: number, end?: number) => {
-          const sliced = bufferArray.slice(start, end);
-          return {
-            data: sliced,
-            length: sliced.length,
-            readUInt8: (offset: number) => sliced[offset],
-          };
-        }
-      } as any as Buffer;
-    }
-  } catch (error) {
-    console.warn(`⚠️ Error al cargar ${url}:`, error);
-    return null;
-  }
-};
-
-// Función para agregar el logo de ASLI
-const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
-  // Intentar primero logo local azul, luego URL externa como fallback
-  const logoUrls = [
-    '/logo-asli-azul.png', // Logo local azul marino (prioritario, rápido)
-    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20AZUL.png', // Logo externo azul marino (fallback - esta URL funciona)
-    'https://asli.cl/img/logo%20asli%20azul%20sin%20fondo.png' // URL alternativa
-  ];
-  
-  for (const logoUrl of logoUrls) {
-    try {
-      console.log('🖼️ Intentando cargar logo AZUL desde:', logoUrl);
-      
-      const buffer = await loadImageAsBuffer(logoUrl);
-      
-      if (!buffer) {
-        console.warn(`⚠️ No se pudo cargar buffer desde ${logoUrl}`);
-        continue; // Intentar siguiente URL
-      }
-      
-      console.log('✅ Buffer obtenido, tamaño:', buffer.length || (buffer as any).length, 'bytes');
-      
-      try {
-        // Intentar agregar la imagen al workbook
-        // ExcelJS acepta el buffer aunque TypeScript no lo reconozca como Buffer completo
-        const imageId = workbook.addImage({
-          buffer: buffer as any,
-          extension: 'png',
-        });
-        
-        console.log('✅ Imagen agregada al workbook, ID:', imageId);
-        
-        // Posicionar el logo en la esquina superior izquierda (columna 0 = columna A)
-        // Usar offset para evitar superposiciones con las celdas
-        const startCol = 0;
-        
-        console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol, '(esquina superior izquierda, tamaño reducido)');
-        
-        // Agregar la imagen al worksheet con tamaño reducido y mejor posicionamiento
-        // Tamaño más pequeño para evitar superposiciones y mantener proporción
-        worksheet.addImage(imageId, {
-          tl: { col: startCol, row: rowIndex },
-          ext: { width: 100, height: 40 }, // Tamaño más pequeño y proporcional
-        });
-        
-        // Ajustar altura de la fila del logo para que no se superponga
-        const logoRow = worksheet.getRow(rowIndex + 1);
-        logoRow.height = 35; // Altura suficiente para el logo
-        
-        console.log('✅ Logo AZUL agregado exitosamente al Excel desde:', logoUrl);
-        return true;
-      } catch (imageError) {
-        console.error(`❌ Error al agregar imagen al Excel desde ${logoUrl}:`, imageError);
-        continue; // Intentar siguiente URL
-      }
-    } catch (error) {
-      console.error(`❌ Error general al procesar ${logoUrl}:`, error);
-      continue; // Intentar siguiente URL
-    }
-  }
-  
-  console.warn('⚠️ No se pudo cargar el logo AZUL desde ninguna fuente');
-  return false;
-};
-
 // Función para configurar la página del worksheet (evita que Excel se congele al editar)
 // IMPORTANTE: Usar solo propiedades esenciales y compatibles para evitar conflictos
 const configurarPagina = (worksheet: ExcelJS.Worksheet) => {
@@ -302,19 +189,14 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
   const estilos = crearEstilos();
   const colSpan = 8;
 
-  // Logo en la fila 1 (rowIndex 0) - pegada al borde superior, logo azul marino
-  await agregarLogo(workbook, worksheet, 0, colSpan);
-  
-  // Dejar una fila vacía después del logo
-  
-  // Título en la fila 3 (rowIndex 2)
-  worksheet.mergeCells('A3:H3');
-  const tituloCell = worksheet.getCell('A3');
+  // Título en la fila 1 (rowIndex 0)
+  worksheet.mergeCells('A1:H1');
+  const tituloCell = worksheet.getCell('A1');
   tituloCell.value = 'FACTURA COMERCIAL';
   tituloCell.style = estilos.titulo;
 
-  // Datos de cada registro empezando en la fila 4 (rowIndex 3)
-  let rowIndex = 4;
+  // Datos de cada registro empezando en la fila 2 (rowIndex 1)
+  let rowIndex = 2;
   
   registros.forEach((registro, index) => {
     // Encabezado del registro
@@ -377,21 +259,16 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
   const estilos = crearEstilos();
   const colSpan = 10;
 
-  // Logo en la fila 1 (rowIndex 0) - pegada al borde superior, logo azul marino
-  await agregarLogo(workbook, worksheet, 0, colSpan);
-  
-  // Dejar una fila vacía después del logo
-  
-  // Título en la fila 3 (rowIndex 2)
-  worksheet.mergeCells('A3:J3');
-  const tituloCell = worksheet.getCell('A3');
+  // Título en la fila 1 (rowIndex 0)
+  worksheet.mergeCells('A1:J1');
+  const tituloCell = worksheet.getCell('A1');
   tituloCell.value = 'GUÍA DE DESPACHO';
   tituloCell.style = estilos.titulo;
 
-  // Encabezado de la tabla en la fila 4 (rowIndex 3)
+  // Encabezado de la tabla en la fila 2 (rowIndex 1)
   const headers = ['REF ASLI', 'Cliente', 'Contenedor', 'Naviera', 'Nave', 'Origen', 'Destino', 'ETD', 'ETA', 'Estado'];
   headers.forEach((header, index) => {
-    const cell = worksheet.getCell(4, index + 1);
+    const cell = worksheet.getCell(2, index + 1);
     cell.value = header;
     cell.style = estilos.header;
   });
