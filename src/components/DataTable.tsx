@@ -1389,7 +1389,8 @@ export function DataTable({
              top: `${contextMenu.y}px`,
            }}
          >
-           {((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje) && (
+           {/* Solo mostrar opción de editar Nave y Viaje si el usuario es admin */}
+           {currentUser?.rol === 'admin' && ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje) && (
              <button
                onClick={() => {
                  if (selectedRows.size > 0 && onBulkEditNaveViaje) {
