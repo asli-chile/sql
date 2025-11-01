@@ -133,10 +133,11 @@ const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
 
 // Función para agregar el logo de ASLI
 const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
-  // Usar SOLO el logo azul marino (sin intentar logos locales que pueden ser blancos)
+  // Intentar primero logo local azul, luego URL externa como fallback
   const logoUrls = [
-    'https://asli.cl/img/logo%20asli%20azul%20sin%20fondo.png', // Logo azul marino (prioritario)
-    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20AZUL.png' // URL alternativa con mayúsculas
+    '/logo-asli-azul.png', // Logo local azul marino (prioritario, rápido)
+    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20AZUL.png', // Logo externo azul marino (fallback - esta URL funciona)
+    'https://asli.cl/img/logo%20asli%20azul%20sin%20fondo.png' // URL alternativa
   ];
   
   for (const logoUrl of logoUrls) {
