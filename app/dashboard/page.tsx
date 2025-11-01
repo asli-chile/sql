@@ -59,6 +59,7 @@ export default function DashboardPage() {
       setUser(user);
 
       // Obtener información del usuario desde la tabla usuarios
+      // SIEMPRE cargar datos frescos desde Supabase para evitar datos obsoletos
       const { data: userData, error: userError } = await supabase
         .from('usuarios')
         .select('*')
@@ -67,12 +68,14 @@ export default function DashboardPage() {
 
       if (userError) {
         console.error('Error obteniendo información del usuario:', userError);
-        // Si no se encuentra en la tabla usuarios, usar datos de auth
+        // Si no se encuentra en la tabla usuarios, intentar usar datos de auth como fallback
         setUserInfo({
-          nombre: user.user_metadata?.full_name || user.email?.split('@')[0],
-          email: user.email
+          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
+          email: user.email || ''
         });
       } else {
+        // Usar datos de la tabla usuarios (fuente de verdad)
+        console.log('✅ Usuario cargado desde BD (dashboard):', userData);
         setUserInfo(userData);
       }
     } catch (error) {
@@ -340,8 +343,8 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome section */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            ¡Bienvenido, {user.user_metadata?.full_name?.split(' ')[0] || 'Usuario'}!
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            ¡Bienvenido, {userInfo?.nombre?.split(' ')[0] || user.user_metadata?.full_name?.split(' ')[0] || 'Usuario'}!
           </h2>
           <p className="text-gray-600">
             Selecciona el módulo al que deseas acceder

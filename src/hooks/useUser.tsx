@@ -26,27 +26,38 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Cargar usuario desde localStorage al inicializar
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('currentUser');
-      }
-    }
+    // NO cargar desde localStorage - siempre cargar desde Supabase
+    // Esto asegura que los datos siempre estén sincronizados con la base de datos
+    loadUserFromSupabase();
   }, []);
+
+  const loadUserFromSupabase = async () => {
+    try {
+      // Limpiar localStorage para evitar datos obsoletos
+      localStorage.removeItem('currentUser');
+      
+      // Solo inicializar como null - cada página cargará sus propios datos frescos
+      setCurrentUser(null);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading user from Supabase:', error);
+      setIsLoading(false);
+    }
+  };
 
   const handleSetCurrentUser = (usuario: Usuario | null) => {
     setCurrentUser(usuario);
+    // Sincronizar con localStorage SOLO cuando se establece explícitamente desde Supabase
     if (usuario) {
       localStorage.setItem('currentUser', JSON.stringify(usuario));
+      // Agregar timestamp para verificar si los datos están actualizados
+      localStorage.setItem('currentUserTimestamp', Date.now().toString());
     } else {
       localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUserTimestamp');
     }
   };
 

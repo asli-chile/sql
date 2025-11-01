@@ -121,6 +121,11 @@ export default function RegistrosPage() {
 
       setUser(user);
       
+      // SIEMPRE cargar datos frescos desde Supabase (fuente de verdad)
+      // Limpiar localStorage para evitar datos obsoletos
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUserTimestamp');
+      
       // Cargar datos del usuario desde la tabla usuarios
       const { data: userData, error: userError } = await supabase
         .from('usuarios')
@@ -133,7 +138,7 @@ export default function RegistrosPage() {
         // Si no existe en la tabla usuarios, crear un usuario básico
         const basicUser = {
           id: user.id,
-          nombre: user.email?.split('@')[0] || 'Usuario',
+          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
           email: user.email || '',
           rol: 'usuario',
           activo: true
@@ -142,29 +147,25 @@ export default function RegistrosPage() {
         setIsEjecutivo(false);
         setClientesAsignados([]);
       } else {
-        // Establecer el usuario en el contexto
-        console.log('🔍 Usuario cargado desde BD:', userData);
-        setCurrentUser({
+        // Establecer el usuario en el contexto con datos FRESCOS desde Supabase
+        console.log('🔍 Usuario cargado desde BD (registros):', userData);
+        const usuarioActualizado = {
           id: userData.id,
-          nombre: userData.nombre,
+          nombre: userData.nombre, // Nombre desde BD (fuente de verdad)
           email: userData.email,
           rol: userData.rol,
           activo: userData.activo
-        });
+        };
+        setCurrentUser(usuarioActualizado);
         
         // Verificar si es ejecutivo (@asli.cl) y cargar sus clientes asignados
         const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
         setIsEjecutivo(emailEsEjecutivo);
         
-        if (emailEsEjecutivo) {
-          // Cargar clientes asignados al ejecutivo ANTES de cargar catálogos y registros
-          await loadClientesAsignados(userData.id, userData.nombre);
-        } else {
-          // Para usuarios no ejecutivos, verificar si su nombre coincide con un cliente
-          await loadClientesAsignados(userData.id, userData.nombre);
-        }
+        // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
+        await loadClientesAsignados(userData.id, userData.nombre);
         
-        console.log('✅ Usuario establecido en contexto:', {
+        console.log('✅ Usuario establecido en contexto (datos frescos desde BD):', {
           id: userData.id,
           nombre: userData.nombre,
           email: userData.email,
@@ -334,8 +335,8 @@ export default function RegistrosPage() {
               setClientesUnicos(clientesFiltrados);
               setClientesFiltro(clientesFiltrados);
             } else {
-              setClientesUnicos(valores);
-              setClientesFiltro(valores);
+            setClientesUnicos(valores);
+            setClientesFiltro(valores);
             }
             break;
           case 'pols':
@@ -512,8 +513,8 @@ export default function RegistrosPage() {
     if (isEjecutivo && clientesAsignados.length > 0) {
       if (!clientesAsignados.includes(registro.shipper || '')) {
         error('No tienes permiso para editar este registro');
-        return;
-      }
+      return;
+    }
     }
 
     // Extraer nave y viaje si viene en formato "NAVE [VIAJE]"
@@ -694,13 +695,13 @@ export default function RegistrosPage() {
       lastSelectedRowIndex.current = currentIndex;
     } else {
       // Comportamiento normal: toggle de la fila individual
-      if (newSelectedRows.has(recordId)) {
-        newSelectedRows.delete(recordId);
+    if (newSelectedRows.has(recordId)) {
+      newSelectedRows.delete(recordId);
         lastSelectedRowIndex.current = null;
-      } else {
-        newSelectedRows.add(recordId);
+    } else {
+      newSelectedRows.add(recordId);
         lastSelectedRowIndex.current = currentIndex;
-      }
+    }
     }
     
     setSelectedRows(newSelectedRows);
@@ -1195,12 +1196,12 @@ export default function RegistrosPage() {
 
   return (
     <EditingCellProvider>
-      <div 
-        className="min-h-screen transition-colors"
-        style={{
-          backgroundColor: theme === 'dark' ? '#0a0a0a' : '#f9fafb'
-        }}
-      >
+    <div 
+      className="min-h-screen transition-colors"
+      style={{
+        backgroundColor: theme === 'dark' ? '#0a0a0a' : '#f9fafb'
+      }}
+    >
       {/* Header */}
       <header 
         className="shadow-sm border-b transition-colors"
