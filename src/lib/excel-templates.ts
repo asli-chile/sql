@@ -402,27 +402,27 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
   const estilos = crearEstilos();
   const colSpan = 9;
 
-  // Dejar dos filas vacías al inicio (filas 1 y 2)
+  // Logo en la fila 1 (rowIndex 0) - más arriba y con mejor contraste
+  await agregarLogo(workbook, worksheet, 0, colSpan);
   
-  // Logo en la fila 3 (rowIndex 2)
-  await agregarLogo(workbook, worksheet, 2, colSpan);
-
-  // Título en la fila 4
-  worksheet.mergeCells('A4:I4');
-  const tituloCell = worksheet.getCell('A4');
+  // Dejar una fila vacía después del logo
+  
+  // Título en la fila 3 (rowIndex 2)
+  worksheet.mergeCells('A3:I3');
+  const tituloCell = worksheet.getCell('A3');
   tituloCell.value = 'DOCUMENTO DE ZARPE';
   tituloCell.style = estilos.titulo;
 
-  // Encabezado en la fila 5
+  // Encabezado en la fila 4 (rowIndex 3)
   const headers = ['REF ASLI', 'Naviera', 'Nave', 'Contenedores', 'Origen (POL)', 'Destino (POD)', 'ETD', 'Especie', 'Estado'];
   headers.forEach((header, index) => {
-    const cell = worksheet.getCell(5, index + 1);
+    const cell = worksheet.getCell(4, index + 1);
     cell.value = header;
     cell.style = estilos.header;
   });
 
-  // Datos empezando en la fila 6
-  let rowIndex = 6;
+  // Datos empezando en la fila 5 (rowIndex 4)
+  let rowIndex = 5;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
