@@ -50,11 +50,11 @@ export const tiposReportes: OpcionReporte[] = [
 ];
 
 // Función helper para calcular el ancho de columna basado en el contenido
-const calcularAnchoColumna = (valor: string | number | null | undefined, anchoMinimo: number = 10, anchoMaximo: number = 50): number => {
+const calcularAnchoColumna = (valor: string | number | null | undefined, anchoMinimo: number = 8, anchoMaximo: number = 20): number => {
   if (!valor) return anchoMinimo;
   const texto = String(valor);
   // Aproximación: ~1.2 caracteres por unidad de ancho en Excel
-  const anchoCalculado = Math.max(texto.length * 1.2 + 2, anchoMinimo);
+  const anchoCalculado = Math.max(texto.length * 1.1 + 1, anchoMinimo);
   return Math.min(anchoCalculado, anchoMaximo);
 };
 
@@ -63,13 +63,13 @@ const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, 
   const maxRow = endRow || worksheet.rowCount || startRow;
   
   for (let col = 1; col <= numColumns; col++) {
-    let maxWidth = 10;
+    let maxWidth = 8;
     
     for (let row = startRow; row <= maxRow; row++) {
       const cell = worksheet.getCell(row, col);
       if (cell.value !== null && cell.value !== undefined) {
         const cellValue = String(cell.value);
-        const width = calcularAnchoColumna(cellValue, 10, 50);
+        const width = calcularAnchoColumna(cellValue, 8, 20);
         if (width > maxWidth) {
           maxWidth = width;
         }
@@ -86,8 +86,8 @@ const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, 
 // Función para agregar el logo de ASLI
 const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
   try {
-    // Intentar cargar el logo desde la URL pública
-    const logoUrl = '/logo-asli.png';
+    // Intentar cargar el logo desde la URL externa (logo blanco)
+    const logoUrl = 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png';
     const response = await fetch(logoUrl);
     
     if (response.ok) {
