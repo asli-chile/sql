@@ -379,16 +379,40 @@ export default function RegistrosPage() {
             setFacturacionesUnicas(valores);
             break;
           
-          // CARGAR MAPPINGS DESDE EL CATÁLOGO
+          // CARGAR MAPPINGS DESDE EL CATÁLOGO (SOLO para AddModal - sin números de viaje)
           case 'navierasNavesMapping':
             if (mapping && typeof mapping === 'object') {
-              setNavierasNavesMapping(mapping as Record<string, string[]>);
+              // Limpiar números de viaje si los hubiera en el catálogo
+              const cleanMapping: Record<string, string[]> = {};
+              Object.keys(mapping).forEach(key => {
+                const naves = mapping[key] || [];
+                // Remover números de viaje del formato "NAVE123 [001E]" -> "NAVE123"
+                cleanMapping[key] = naves.map(nave => {
+                  // Si tiene formato "NAVE [VIAJE]", extraer solo la nave
+                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                  return match ? match[1].trim() : nave.trim();
+                });
+              });
+              setNavierasNavesMappingCatalog(cleanMapping);
+              console.log('✅ Mappings de navieras cargados desde catálogo (limpios):', cleanMapping);
             }
             break;
             
           case 'consorciosNavesMapping':
             if (mapping && typeof mapping === 'object') {
-              setConsorciosNavesMapping(mapping as Record<string, string[]>);
+              // Limpiar números de viaje si los hubiera en el catálogo
+              const cleanMapping: Record<string, string[]> = {};
+              Object.keys(mapping).forEach(key => {
+                const naves = mapping[key] || [];
+                // Remover números de viaje del formato "NAVE123 [001E]" -> "NAVE123"
+                cleanMapping[key] = naves.map(nave => {
+                  // Si tiene formato "NAVE [VIAJE]", extraer solo la nave
+                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                  return match ? match[1].trim() : nave.trim();
+                });
+              });
+              setConsorciosNavesMappingCatalog(cleanMapping);
+              console.log('✅ Mappings de consorcios cargados desde catálogo (limpios):', cleanMapping);
             }
             break;
         }
