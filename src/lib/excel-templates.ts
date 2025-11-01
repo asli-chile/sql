@@ -123,7 +123,7 @@ const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
             readUInt8: (offset: number) => sliced[offset],
           };
         }
-      };
+      } as any as Buffer;
     }
   } catch (error) {
     console.warn(`⚠️ Error al cargar ${url}:`, error);
