@@ -444,11 +444,6 @@ export function AddModal({
             <div className="space-y-2">
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Cliente *
-                {clienteFijadoPorCoincidencia && (
-                  <span className="ml-2 text-xs text-blue-600 font-normal">
-                    (Fijado por coincidencia con tu nombre)
-                  </span>
-                )}
               </label>
               <select
                 name="shipper"
