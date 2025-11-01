@@ -273,8 +273,8 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
     cell.style = estilos.header;
   });
 
-  // Datos empezando en la fila 5 (rowIndex 4)
-  let rowIndex = 5;
+  // Datos empezando en la fila 3 (rowIndex 2)
+  let rowIndex = 3;
   registros.forEach(registro => {
     const contenedores = Array.isArray(registro.contenedor) 
       ? registro.contenedor 
@@ -340,8 +340,8 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
     cell.style = estilos.header;
   });
 
-  // Datos empezando en la fila 5 (rowIndex 4)
-  let rowIndex = 5;
+  // Datos empezando en la fila 3 (rowIndex 2)
+  let rowIndex = 3;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
@@ -406,8 +406,8 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
     };
   });
 
-  // Datos empezando en la fila 5 (rowIndex 4)
-  let rowIndex = 5;
+  // Datos empezando en la fila 3 (rowIndex 2)
+  let rowIndex = 3;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
@@ -476,8 +476,8 @@ export async function generarReservaConfirmada(registros: Registro[]): Promise<E
     };
   });
 
-  // Datos empezando en la fila 5 (rowIndex 4)
-  let rowIndex = 5;
+  // Datos empezando en la fila 3 (rowIndex 2)
+  let rowIndex = 3;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
