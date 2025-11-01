@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit } from 'lucide-react';
+import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare } from 'lucide-react';
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -475,7 +475,24 @@ export function DataTable({
 
           {/* Botones de acción */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-
+            {/* Seleccionar todos */}
+            {onSelectAll && filteredData().length > 0 && (
+              <button
+                onClick={onSelectAll}
+                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-purple-600 text-white hover:bg-purple-700'
+                    : 'bg-purple-600 text-white hover:bg-purple-700'
+                }`}
+                title={selectedRows.size === filteredData().length ? 'Deseleccionar todos' : 'Seleccionar todos los registros visibles'}
+              >
+                <CheckSquare className="h-4 w-4" />
+                <span className="hidden xs:inline">
+                  {selectedRows.size === filteredData().length ? 'Deseleccionar' : 'Seleccionar todos'}
+                </span>
+                <span className="xs:hidden">{selectedRows.size === filteredData().length ? 'Des.' : 'Sel.'}</span>
+              </button>
+            )}
 
             {/* Agregar */}
             {onAdd && canAdd && (
@@ -973,13 +990,26 @@ export function DataTable({
                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                        >
                          <div className="flex items-center justify-center gap-1">
-                           {header.isPlaceholder
-                             ? null
-                             : flexRender(
-                                 header.column.columnDef.header,
-                                 header.getContext()
-                               )}
-                           {canSort && (
+                           {isSelectColumn && onSelectAll ? (
+                             <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                               <input
+                                 type="checkbox"
+                                 checked={selectedRows.size > 0 && selectedRows.size === filteredData().length}
+                                 onChange={(e) => {
+                                   e.stopPropagation();
+                                   onSelectAll();
+                                 }}
+                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                                 title={selectedRows.size === filteredData().length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                               />
+                             </div>
+                           ) : header.isPlaceholder ? null : (
+                             flexRender(
+                               header.column.columnDef.header,
+                               header.getContext()
+                             )
+                           )}
+                           {canSort && !isSelectColumn && (
                              <span className="inline-flex flex-col ml-1">
                                {sortDirection === 'asc' && (
                                  <ArrowUp className="h-3 w-3" />
