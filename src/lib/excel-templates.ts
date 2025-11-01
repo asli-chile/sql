@@ -50,16 +50,16 @@ export const tiposReportes: OpcionReporte[] = [
 ];
 
 // Estilos comunes
-const crearEstilos = (workbook: ExcelJS.Workbook) => {
+const crearEstilos = () => {
   return {
     header: {
       font: { bold: true, size: 14, color: { argb: 'FFFFFFFF' } },
       fill: {
-        type: 'pattern',
-        pattern: 'solid',
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
         fgColor: { argb: 'FF1e3a8a' }
       },
-      alignment: { horizontal: 'center', vertical: 'middle' as const },
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const },
       border: {
         top: { style: 'thin' as const, color: { argb: 'FF000000' } },
         left: { style: 'thin' as const, color: { argb: 'FF000000' } },
@@ -74,8 +74,8 @@ const crearEstilos = (workbook: ExcelJS.Workbook) => {
     subtitulo: {
       font: { bold: true, size: 12 },
       fill: {
-        type: 'pattern',
-        pattern: 'solid',
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
         fgColor: { argb: 'FFF3F4F6' }
       }
     },
@@ -91,8 +91,8 @@ const crearEstilos = (workbook: ExcelJS.Workbook) => {
     total: {
       font: { bold: true, size: 12 },
       fill: {
-        type: 'pattern',
-        pattern: 'solid',
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
         fgColor: { argb: 'FFE0E7FF' }
       }
     }
@@ -103,7 +103,7 @@ const crearEstilos = (workbook: ExcelJS.Workbook) => {
 export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Factura');
-  const estilos = crearEstilos(workbook);
+  const estilos = crearEstilos();
 
   // Título
   worksheet.mergeCells('A1:H1');
@@ -161,7 +161,7 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
 export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Guía de Despacho');
-  const estilos = crearEstilos(workbook);
+  const estilos = crearEstilos();
 
   // Título
   worksheet.mergeCells('A1:J1');
@@ -218,7 +218,7 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
 export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Zarpe');
-  const estilos = crearEstilos(workbook);
+  const estilos = crearEstilos();
 
   // Título
   worksheet.mergeCells('A1:I1');
@@ -266,7 +266,7 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
 export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Arribo');
-  const estilos = crearEstilos(workbook);
+  const estilos = crearEstilos();
 
   // Título
   worksheet.mergeCells('A1:I1');
@@ -280,7 +280,11 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
     cell.value = header;
     cell.style = {
       ...estilos.header,
-      fill: { ...estilos.header.fill, fgColor: { argb: 'FF059669' } }
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF059669' }
+      }
     };
   });
 
@@ -317,7 +321,7 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
 export async function generarReservaConfirmada(registros: Registro[]): Promise<ExcelJS.Buffer> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Reserva Confirmada');
-  const estilos = crearEstilos(workbook);
+  const estilos = crearEstilos();
 
   // Título
   worksheet.mergeCells('A1:K1');
