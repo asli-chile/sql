@@ -28,6 +28,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { QRGenerator } from '@/components/QRGenerator';
+import { ReportGenerator } from '@/components/ReportGenerator';
 
 interface User {
   id: string;
@@ -84,6 +85,7 @@ export default function RegistrosPage() {
   const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
   const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
   const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
+  const [isReportGeneratorOpen, setIsReportGeneratorOpen] = useState(false);
   
   // Estado para preservar filtros del DataTable
   const [preservedFilters, setPreservedFilters] = useState({
@@ -1236,6 +1238,16 @@ export default function RegistrosPage() {
 
             {/* User menu */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              {selectedRows.size > 0 && (
+                <button
+                  onClick={() => setIsReportGeneratorOpen(true)}
+                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg transition-colors bg-green-600 text-white hover:bg-green-700"
+                  title={`Generar reporte para ${selectedRows.size} registro(s)`}
+                >
+                  <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="text-xs sm:text-sm">Enviar a ({selectedRows.size})</span>
+                </button>
+              )}
               <QRGenerator />
               <ThemeToggle />
               <ThemeTest />
@@ -1485,6 +1497,13 @@ export default function RegistrosPage() {
 
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Report Generator Modal */}
+      <ReportGenerator
+        registros={registros.filter(r => r.id && selectedRows.has(r.id))}
+        isOpen={isReportGeneratorOpen}
+        onClose={() => setIsReportGeneratorOpen(false)}
+      />
     </div>
     </EditingCellProvider>
   );
