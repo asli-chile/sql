@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, X, Loader2, FileSpreadsheet, File } from 'lucide-react';
+import { FileText, X, Loader2 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { tiposReportes, TipoReporte, generarReporte, descargarExcel } from '@/lib/excel-templates';
 import { useTheme } from '@/contexts/ThemeContext';
-
-type FormatoReporte = 'excel' | 'pdf';
 
 interface ReportGeneratorProps {
   registros: Registro[];
@@ -16,7 +14,6 @@ interface ReportGeneratorProps {
 
 export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorProps) {
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoReporte | null>(null);
-  const [formatoSeleccionado, setFormatoSeleccionado] = useState<FormatoReporte>('excel');
   const [generando, setGenerando] = useState(false);
   const { theme } = useTheme();
 
@@ -25,52 +22,16 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
 
     setGenerando(true);
     try {
+      const buffer = await generarReporte(tipoSeleccionado, registros);
       const nombreReporte = tiposReportes.find(r => r.id === tipoSeleccionado)?.nombre || 'reporte';
+      descargarExcel(buffer, nombreReporte);
       
-      if (formatoSeleccionado === 'excel') {
-        const buffer = await generarReporte(tipoSeleccionado, registros);
-        descargarExcel(buffer, nombreReporte);
-        
-        // Cerrar modal después de descargar
-        setTimeout(() => {
-          onClose();
-          setTipoSeleccionado(null);
-          setGenerando(false);
-        }, 500);
-      } else {
-        // Generar PDF en el servidor mediante API route
-        const response = await fetch('/api/generar-pdf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            tipo: tipoSeleccionado,
-            registros: registros,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Error al generar PDF');
-        }
-
-        const blob = await response.blob();
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${nombreReporte}-${new Date().toISOString().split('T')[0]}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        
-        // Cerrar modal después de descargar
-        setTimeout(() => {
-          onClose();
-          setTipoSeleccionado(null);
-          setGenerando(false);
-        }, 500);
-      }
+      // Cerrar modal después de descargar
+      setTimeout(() => {
+        onClose();
+        setTipoSeleccionado(null);
+        setGenerando(false);
+      }, 500);
     } catch (error) {
       console.error('Error al generar reporte:', error);
       alert('Error al generar el reporte. Por favor, intenta nuevamente.');
@@ -125,53 +86,6 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
             <p className={`text-sm ${theme === 'dark' ? 'text-blue-200' : 'text-blue-800'}`}>
               <strong>{registros.length}</strong> registro(s) seleccionado(s) para el reporte
             </p>
-          </div>
-
-          {/* Selector de formato */}
-          <div className="mb-6">
-            <label
-              className={`block text-sm font-medium mb-3 ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-              }`}
-            >
-              Formato del reporte:
-            </label>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setFormatoSeleccionado('excel')}
-                className={`flex-1 p-3 rounded-lg border-2 transition-all flex items-center justify-center space-x-2 ${
-                  formatoSeleccionado === 'excel'
-                    ? theme === 'dark'
-                      ? 'border-blue-500 bg-blue-900/30'
-                      : 'border-blue-500 bg-blue-50'
-                    : theme === 'dark'
-                    ? 'border-gray-700 hover:border-gray-600 hover:bg-gray-700/50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <FileSpreadsheet className={`w-5 h-5 ${formatoSeleccionado === 'excel' ? 'text-blue-500' : ''}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Excel
-                </span>
-              </button>
-              <button
-                onClick={() => setFormatoSeleccionado('pdf')}
-                className={`flex-1 p-3 rounded-lg border-2 transition-all flex items-center justify-center space-x-2 ${
-                  formatoSeleccionado === 'pdf'
-                    ? theme === 'dark'
-                      ? 'border-blue-500 bg-blue-900/30'
-                      : 'border-blue-500 bg-blue-50'
-                    : theme === 'dark'
-                    ? 'border-gray-700 hover:border-gray-600 hover:bg-gray-700/50'
-                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                <File className={`w-5 h-5 ${formatoSeleccionado === 'pdf' ? 'text-blue-500' : ''}`} />
-                <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  PDF
-                </span>
-              </button>
-            </div>
           </div>
 
           <div className="space-y-3">
