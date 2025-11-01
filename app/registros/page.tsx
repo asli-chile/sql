@@ -403,9 +403,9 @@ export default function RegistrosPage() {
               // Limpiar números de viaje si los hubiera en el catálogo
               const cleanMapping: Record<string, string[]> = {};
               Object.keys(mapping).forEach(key => {
-                const naves = mapping[key] || [];
+                const naves = (mapping[key] || []) as string[];
                 // Remover números de viaje del formato "NAVE123 [001E]" -> "NAVE123"
-                cleanMapping[key] = naves.map(nave => {
+                cleanMapping[key] = naves.map((nave: string) => {
                   // Si tiene formato "NAVE [VIAJE]", extraer solo la nave
                   const match = nave.match(/^(.+?)\s*\[.+\]$/);
                   return match ? match[1].trim() : nave.trim();
