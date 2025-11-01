@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { FileText, X, Loader2, FileSpreadsheet, File } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { tiposReportes, TipoReporte, generarReporte, descargarExcel } from '@/lib/excel-templates';
-import { generarReportePDF, descargarPDF } from '@/lib/pdf-templates';
 import { useTheme } from '@/contexts/ThemeContext';
 
 type FormatoReporte = 'excel' | 'pdf';
@@ -31,17 +30,47 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
       if (formatoSeleccionado === 'excel') {
         const buffer = await generarReporte(tipoSeleccionado, registros);
         descargarExcel(buffer, nombreReporte);
+        
+        // Cerrar modal después de descargar
+        setTimeout(() => {
+          onClose();
+          setTipoSeleccionado(null);
+          setGenerando(false);
+        }, 500);
       } else {
-        const buffer = await generarReportePDF(tipoSeleccionado, registros);
-        descargarPDF(buffer, nombreReporte);
+        // Generar PDF en el servidor mediante API route
+        const response = await fetch('/api/generar-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tipo: tipoSeleccionado,
+            registros: registros,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al generar PDF');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${nombreReporte}-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        // Cerrar modal después de descargar
+        setTimeout(() => {
+          onClose();
+          setTipoSeleccionado(null);
+          setGenerando(false);
+        }, 500);
       }
-      
-      // Cerrar modal después de descargar
-      setTimeout(() => {
-        onClose();
-        setTipoSeleccionado(null);
-        setGenerando(false);
-      }, 500);
     } catch (error) {
       console.error('Error al generar reporte:', error);
       alert('Error al generar el reporte. Por favor, intenta nuevamente.');
