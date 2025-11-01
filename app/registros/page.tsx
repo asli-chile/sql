@@ -925,7 +925,11 @@ export default function RegistrosPage() {
     }
   }, [success, error, isEjecutivo, clientesAsignados]);
 
-  // Estado para los mapeos de naves
+  // Estado para los mapeos de naves desde el CATÁLOGO (SOLO para AddModal - sin números de viaje)
+  const [navierasNavesMappingCatalog, setNavierasNavesMappingCatalog] = useState<Record<string, string[]>>({});
+  const [consorciosNavesMappingCatalog, setConsorciosNavesMappingCatalog] = useState<Record<string, string[]>>({});
+  
+  // Estado para los mapeos de naves desde REGISTROS (para filtros - puede incluir números de viaje)
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
   const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
 
@@ -1446,8 +1450,8 @@ export default function RegistrosPage() {
         destinosUnicos={destinosUnicos}
         depositosUnicos={depositosUnicos}
         navesUnicas={navesUnicas}
-        navierasNavesMapping={navierasNavesMapping}
-        consorciosNavesMapping={consorciosNavesMapping}
+        navierasNavesMapping={navierasNavesMappingCatalog}
+        consorciosNavesMapping={consorciosNavesMappingCatalog}
         cbmUnicos={cbmUnicos}
         fletesUnicos={fletesUnicos}
       />
