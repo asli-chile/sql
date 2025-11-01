@@ -83,79 +83,107 @@ const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, 
   }
 };
 
-// Función para agregar el logo de ASLI
-const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
+// Función helper para cargar imagen como Buffer
+const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
   try {
-    // Intentar cargar el logo desde la URL externa (logo blanco)
-    // URL codificada correctamente (los espacios como %20)
-    const logoUrl = 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png';
-    
-    console.log('🖼️ Intentando cargar logo desde:', logoUrl);
-    const response = await fetch(logoUrl, {
+    const response = await fetch(url, {
       mode: 'cors',
       cache: 'no-cache'
     });
     
-    console.log('📥 Respuesta del fetch:', response.status, response.statusText);
-    
     if (!response.ok) {
-      console.warn('⚠️ Error al cargar logo:', response.status, response.statusText);
-      return false;
+      console.warn(`⚠️ No se pudo cargar ${url}:`, response.status);
+      return null;
     }
     
     const arrayBuffer = await response.arrayBuffer();
-    console.log('✅ Logo cargado, tamaño:', arrayBuffer.byteLength, 'bytes');
     
-    // Convertir ArrayBuffer a Buffer
-    // En Node.js tenemos Buffer disponible, en el navegador debemos crearlo
-    let buffer: Buffer;
+    // Convertir ArrayBuffer a Buffer para ExcelJS
+    // ExcelJS requiere Buffer, así que creamos uno compatible
     if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
-      // Entorno Node.js - usar Buffer nativo
-      buffer = Buffer.from(arrayBuffer);
-      console.log('✅ Buffer creado en Node.js');
+      // Entorno Node.js - Buffer nativo
+      return Buffer.from(arrayBuffer);
     } else {
-      // Entorno navegador - convertir Uint8Array a Buffer-like
-      // ExcelJS internamente maneja esto, pero necesitamos el tipo correcto
+      // Entorno navegador - crear Buffer compatible
+      // Convertir Uint8Array a Array y crear Buffer desde ahí
       const uint8Array = new Uint8Array(arrayBuffer);
-      // En el navegador, ExcelJS puede trabajar con Uint8Array en algunas versiones
-      // Si no funciona, simplemente no agregamos el logo
-      // @ts-expect-error - ExcelJS puede aceptar Uint8Array pero TypeScript espera Buffer
-      buffer = uint8Array;
-      console.log('✅ Uint8Array creado para navegador');
-    }
-    
-    try {
-      console.log('🖼️ Agregando imagen al workbook...');
-      const imageId = workbook.addImage({
-        // @ts-expect-error - ExcelJS puede aceptar Uint8Array en runtime pero TypeScript espera Buffer
-        buffer: buffer as Buffer,
-        extension: 'png',
-      });
-      
-      console.log('✅ Imagen agregada al workbook, ID:', imageId);
-      
-      // Centrar el logo calculando la columna media
-      const startCol = Math.max(0, Math.floor((colSpan - 2) / 2));
-      
-      console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol);
-      
-      // Agregar la imagen
-      worksheet.addImage(imageId, {
-        tl: { col: startCol, row: rowIndex },
-        ext: { width: 150, height: 60 },
-      });
-      
-      console.log('✅ Logo agregado exitosamente al Excel');
-      return true;
-    } catch (imageError) {
-      // Si hay error agregando la imagen, simplemente continuar sin logo
-      console.error('❌ Error al agregar imagen al Excel:', imageError);
-      return false;
+      // Crear un Buffer compatible usando Array.from
+      const bufferArray = Array.from(uint8Array);
+      // @ts-expect-error - Crear un objeto compatible con Buffer
+      return {
+        data: bufferArray,
+        length: bufferArray.length,
+        readUInt8: (offset: number) => bufferArray[offset],
+        slice: (start?: number, end?: number) => {
+          const sliced = bufferArray.slice(start, end);
+          return {
+            data: sliced,
+            length: sliced.length,
+            readUInt8: (offset: number) => sliced[offset],
+          };
+        }
+      } as any;
     }
   } catch (error) {
-    // Si hay error cargando el logo, simplemente continuar sin logo
-    console.error('❌ Error al cargar el logo:', error);
+    console.warn(`⚠️ Error al cargar ${url}:`, error);
+    return null;
   }
+};
+
+// Función para agregar el logo de ASLI
+const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
+  // Lista de URLs a intentar (primero local, luego externa)
+  const logoUrls = [
+    '/logo-asli.png', // Logo local desde public
+    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png' // Logo externo
+  ];
+  
+  for (const logoUrl of logoUrls) {
+    try {
+      console.log('🖼️ Intentando cargar logo desde:', logoUrl);
+      
+      const buffer = await loadImageAsBuffer(logoUrl);
+      
+      if (!buffer) {
+        console.warn(`⚠️ No se pudo cargar buffer desde ${logoUrl}`);
+        continue; // Intentar siguiente URL
+      }
+      
+      console.log('✅ Buffer obtenido, tamaño:', buffer.length || (buffer as any).length, 'bytes');
+      
+      try {
+        // Intentar agregar la imagen al workbook
+        const imageId = workbook.addImage({
+          buffer: buffer as Buffer,
+          extension: 'png',
+        });
+        
+        console.log('✅ Imagen agregada al workbook, ID:', imageId);
+        
+        // Centrar el logo calculando la columna media
+        const startCol = Math.max(0, Math.floor((colSpan - 2) / 2));
+        
+        console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol);
+        
+        // Agregar la imagen al worksheet
+        worksheet.addImage(imageId, {
+          tl: { col: startCol, row: rowIndex },
+          ext: { width: 150, height: 60 },
+        });
+        
+        console.log('✅ Logo agregado exitosamente al Excel desde:', logoUrl);
+        return true;
+      } catch (imageError) {
+        console.error(`❌ Error al agregar imagen al Excel desde ${logoUrl}:`, imageError);
+        continue; // Intentar siguiente URL
+      }
+    } catch (error) {
+      console.error(`❌ Error general al procesar ${logoUrl}:`, error);
+      continue; // Intentar siguiente URL
+    }
+  }
+  
+  console.warn('⚠️ No se pudo cargar el logo desde ninguna fuente');
   return false;
 };
 
