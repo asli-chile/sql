@@ -105,9 +105,11 @@ const agregarPieDePagina = (
     .fillColor('#666666')
     .text(
       'Asesorías y Servicios Logísticos Integrales Ltda.',
+      50,
+      y,
       {
         align: 'center',
-        y: y
+        width: 500
       }
     );
 };
