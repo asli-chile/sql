@@ -1257,8 +1257,8 @@ export default function RegistrosPage() {
               <ThemeTest />
               <div className="flex items-center space-x-2">
                 <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-400" />
-                <span className="text-xs sm:text-sm text-gray-800">
-                  {user.user_metadata?.full_name || user.email}
+                <span className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
+                  {currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}
                 </span>
               </div>
               <button
