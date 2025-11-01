@@ -1,4 +1,5 @@
 import PDFDocument from 'pdfkit';
+import blobStream from 'blob-stream';
 import { Registro } from '@/types/registros';
 import { tiposReportes, TipoReporte } from './excel-templates';
 
