@@ -87,54 +87,74 @@ const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, 
 const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
   try {
     // Intentar cargar el logo desde la URL externa (logo blanco)
-    const logoUrl = 'https://asli.cl/img/LOGO ASLI SIN FONDO BLLANCO.png';
-    const response = await fetch(logoUrl);
+    // URL codificada correctamente (los espacios como %20)
+    const logoUrl = 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png';
     
-    if (response.ok) {
-      const arrayBuffer = await response.arrayBuffer();
+    console.log('🖼️ Intentando cargar logo desde:', logoUrl);
+    const response = await fetch(logoUrl, {
+      mode: 'cors',
+      cache: 'no-cache'
+    });
+    
+    console.log('📥 Respuesta del fetch:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      console.warn('⚠️ Error al cargar logo:', response.status, response.statusText);
+      return false;
+    }
+    
+    const arrayBuffer = await response.arrayBuffer();
+    console.log('✅ Logo cargado, tamaño:', arrayBuffer.byteLength, 'bytes');
+    
+    // Convertir ArrayBuffer a Buffer
+    // En Node.js tenemos Buffer disponible, en el navegador debemos crearlo
+    let buffer: Buffer;
+    if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+      // Entorno Node.js - usar Buffer nativo
+      buffer = Buffer.from(arrayBuffer);
+      console.log('✅ Buffer creado en Node.js');
+    } else {
+      // Entorno navegador - convertir Uint8Array a Buffer-like
+      // ExcelJS internamente maneja esto, pero necesitamos el tipo correcto
+      const uint8Array = new Uint8Array(arrayBuffer);
+      // En el navegador, ExcelJS puede trabajar con Uint8Array en algunas versiones
+      // Si no funciona, simplemente no agregamos el logo
+      // @ts-expect-error - ExcelJS puede aceptar Uint8Array pero TypeScript espera Buffer
+      buffer = uint8Array;
+      console.log('✅ Uint8Array creado para navegador');
+    }
+    
+    try {
+      console.log('🖼️ Agregando imagen al workbook...');
+      const imageId = workbook.addImage({
+        // @ts-expect-error - ExcelJS puede aceptar Uint8Array en runtime pero TypeScript espera Buffer
+        buffer: buffer as Buffer,
+        extension: 'png',
+      });
       
-      // Convertir ArrayBuffer a Buffer
-      // En Node.js tenemos Buffer disponible, en el navegador debemos crearlo
-      let buffer: Buffer;
-      if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
-        // Entorno Node.js - usar Buffer nativo
-        buffer = Buffer.from(arrayBuffer);
-      } else {
-        // Entorno navegador - convertir Uint8Array a Buffer-like
-        // ExcelJS internamente maneja esto, pero necesitamos el tipo correcto
-        const uint8Array = new Uint8Array(arrayBuffer);
-        // En el navegador, ExcelJS puede trabajar con Uint8Array en algunas versiones
-        // Si no funciona, simplemente no agregamos el logo
-        // @ts-expect-error - ExcelJS puede aceptar Uint8Array pero TypeScript espera Buffer
-        buffer = uint8Array;
-      }
+      console.log('✅ Imagen agregada al workbook, ID:', imageId);
       
-      try {
-        const imageId = workbook.addImage({
-          // @ts-expect-error - ExcelJS puede aceptar Uint8Array en runtime pero TypeScript espera Buffer
-          buffer: buffer as Buffer,
-          extension: 'png',
-        });
-        
-        // Centrar el logo calculando la columna media
-        const startCol = Math.max(0, Math.floor((colSpan - 2) / 2));
-        
-        // Agregar la imagen
-        worksheet.addImage(imageId, {
-          tl: { col: startCol, row: rowIndex },
-          ext: { width: 150, height: 60 },
-        });
-        
-        return true;
-      } catch (imageError) {
-        // Si hay error agregando la imagen, simplemente continuar sin logo
-        console.warn('Error al agregar imagen al Excel (continuando sin logo):', imageError);
-        return false;
-      }
+      // Centrar el logo calculando la columna media
+      const startCol = Math.max(0, Math.floor((colSpan - 2) / 2));
+      
+      console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol);
+      
+      // Agregar la imagen
+      worksheet.addImage(imageId, {
+        tl: { col: startCol, row: rowIndex },
+        ext: { width: 150, height: 60 },
+      });
+      
+      console.log('✅ Logo agregado exitosamente al Excel');
+      return true;
+    } catch (imageError) {
+      // Si hay error agregando la imagen, simplemente continuar sin logo
+      console.error('❌ Error al agregar imagen al Excel:', imageError);
+      return false;
     }
   } catch (error) {
     // Si hay error cargando el logo, simplemente continuar sin logo
-    console.warn('No se pudo cargar el logo (continuando sin logo):', error);
+    console.error('❌ Error al cargar el logo:', error);
   }
   return false;
 };
