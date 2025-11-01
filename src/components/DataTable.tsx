@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Download, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit } from 'lucide-react';
+import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit } from 'lucide-react';
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
