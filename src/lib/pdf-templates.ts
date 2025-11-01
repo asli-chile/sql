@@ -13,13 +13,14 @@ const agregarHeader = (
   y: number = 50
 ): number => {
   // Título centrado
+  // En PDFKit, y debe pasarse como parámetro separado, no en las opciones
   doc
     .fontSize(20)
     .font('Helvetica-Bold')
     .fillColor('#11224E') // Dark Blue
-    .text(titulo, {
+    .text(titulo, 50, y, {
       align: 'center',
-      y: y
+      width: 500
     });
   
   return y + 40;
