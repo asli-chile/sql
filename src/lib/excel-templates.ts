@@ -339,7 +339,11 @@ export async function generarReservaConfirmada(registros: Registro[]): Promise<E
     cell.value = header;
     cell.style = {
       ...estilos.header,
-      fill: { ...estilos.header.fill, fgColor: { argb: 'FF10B981' } }
+      fill: {
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
+        fgColor: { argb: 'FF10B981' }
+      }
     };
   });
 
