@@ -33,15 +33,14 @@ CREATE POLICY "Usuarios pueden ver registros de cliente con su nombre"
         AND registros.shipper IS NOT NULL
         AND u.nombre IS NOT NULL
         -- Verificar que el nombre existe en el catálogo de clientes
+        -- valores es TEXT[], así que usamos operadores de array de PostgreSQL
         AND EXISTS (
           SELECT 1 FROM catalogos c
           WHERE c.categoria = 'clientes'
-            AND (
-              -- Si valores es un array JSONB, buscar en el array
-              (jsonb_typeof(c.valores) = 'array' AND c.valores::text LIKE '%' || u.nombre || '%')
-              OR
-              -- Si valores es texto, buscar como substring
-              (jsonb_typeof(c.valores) != 'array' AND c.valores::text LIKE '%' || u.nombre || '%')
+            -- Verificar si el nombre del usuario está en el array de valores
+            -- Usamos comparación case-insensitive con ANY
+            AND UPPER(TRIM(u.nombre)) = ANY(
+              SELECT UPPER(TRIM(unnest(c.valores)))
             )
         )
     )
