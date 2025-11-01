@@ -87,7 +87,7 @@ const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, 
 const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
   try {
     // Intentar cargar el logo desde la URL externa (logo blanco)
-    const logoUrl = 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png';
+    const logoUrl = 'https://asli.cl/img/LOGO ASLI SIN FONDO BLLANCO.png';
     const response = await fetch(logoUrl);
     
     if (response.ok) {
@@ -141,6 +141,9 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
 
 // Función para agregar pie de página
 const agregarPieDePagina = (worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
+  // Dejar una fila en blanco antes del footer
+  rowIndex++;
+  
   worksheet.mergeCells(rowIndex, 1, rowIndex, colSpan);
   const pieCell = worksheet.getCell(rowIndex, 1);
   pieCell.value = 'Asesorías y Servicios Logísticos Integrales Ltda.';
@@ -209,17 +212,19 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
   const estilos = crearEstilos();
   const colSpan = 8;
 
-  // Logo
-  await agregarLogo(workbook, worksheet, 0, colSpan);
+  // Dejar dos filas vacías al inicio (filas 1 y 2)
   
-  // Título
-  worksheet.mergeCells('A2:H2');
-  const tituloCell = worksheet.getCell('A2');
+  // Logo en la fila 3 (rowIndex 2)
+  await agregarLogo(workbook, worksheet, 2, colSpan);
+  
+  // Título en la fila 4
+  worksheet.mergeCells('A4:H4');
+  const tituloCell = worksheet.getCell('A4');
   tituloCell.value = 'FACTURA COMERCIAL';
   tituloCell.style = estilos.titulo;
 
-  // Datos de cada registro
-  let rowIndex = 4;
+  // Datos de cada registro empezando en la fila 6
+  let rowIndex = 6;
   
   registros.forEach((registro, index) => {
     // Encabezado del registro
@@ -278,25 +283,27 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
   const estilos = crearEstilos();
   const colSpan = 10;
 
-  // Logo
-  await agregarLogo(workbook, worksheet, 0, colSpan);
+  // Dejar dos filas vacías al inicio (filas 1 y 2)
+  
+  // Logo en la fila 3 (rowIndex 2)
+  await agregarLogo(workbook, worksheet, 2, colSpan);
 
-  // Título
-  worksheet.mergeCells('A2:J2');
-  const tituloCell = worksheet.getCell('A2');
+  // Título en la fila 4
+  worksheet.mergeCells('A4:J4');
+  const tituloCell = worksheet.getCell('A4');
   tituloCell.value = 'GUÍA DE DESPACHO';
   tituloCell.style = estilos.titulo;
 
-  // Encabezado de la tabla
+  // Encabezado de la tabla en la fila 5
   const headers = ['REF ASLI', 'Cliente', 'Contenedor', 'Naviera', 'Nave', 'Origen', 'Destino', 'ETD', 'ETA', 'Estado'];
   headers.forEach((header, index) => {
-    const cell = worksheet.getCell(3, index + 1);
+    const cell = worksheet.getCell(5, index + 1);
     cell.value = header;
     cell.style = estilos.header;
   });
 
-  // Datos
-  let rowIndex = 4;
+  // Datos empezando en la fila 6
+  let rowIndex = 6;
   registros.forEach(registro => {
     const contenedores = Array.isArray(registro.contenedor) 
       ? registro.contenedor 
@@ -344,25 +351,27 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
   const estilos = crearEstilos();
   const colSpan = 9;
 
-  // Logo
-  await agregarLogo(workbook, worksheet, 0, colSpan);
+  // Dejar dos filas vacías al inicio (filas 1 y 2)
+  
+  // Logo en la fila 3 (rowIndex 2)
+  await agregarLogo(workbook, worksheet, 2, colSpan);
 
-  // Título
-  worksheet.mergeCells('A2:I2');
-  const tituloCell = worksheet.getCell('A2');
+  // Título en la fila 4
+  worksheet.mergeCells('A4:I4');
+  const tituloCell = worksheet.getCell('A4');
   tituloCell.value = 'DOCUMENTO DE ZARPE';
   tituloCell.style = estilos.titulo;
 
-  // Encabezado
+  // Encabezado en la fila 5
   const headers = ['REF ASLI', 'Naviera', 'Nave', 'Contenedores', 'Origen (POL)', 'Destino (POD)', 'ETD', 'Especie', 'Estado'];
   headers.forEach((header, index) => {
-    const cell = worksheet.getCell(3, index + 1);
+    const cell = worksheet.getCell(5, index + 1);
     cell.value = header;
     cell.style = estilos.header;
   });
 
-  // Datos
-  let rowIndex = 4;
+  // Datos empezando en la fila 6
+  let rowIndex = 6;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
@@ -402,19 +411,21 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
   const estilos = crearEstilos();
   const colSpan = 9;
 
-  // Logo
-  await agregarLogo(workbook, worksheet, 0, colSpan);
+  // Dejar dos filas vacías al inicio (filas 1 y 2)
+  
+  // Logo en la fila 3 (rowIndex 2)
+  await agregarLogo(workbook, worksheet, 2, colSpan);
 
-  // Título
-  worksheet.mergeCells('A2:I2');
-  const tituloCell = worksheet.getCell('A2');
+  // Título en la fila 4
+  worksheet.mergeCells('A4:I4');
+  const tituloCell = worksheet.getCell('A4');
   tituloCell.value = 'DOCUMENTO DE ARRIBO';
   tituloCell.style = { ...estilos.titulo, font: { ...estilos.titulo.font, color: { argb: 'FF059669' } } };
 
-  // Encabezado
+  // Encabezado en la fila 5
   const headers = ['REF ASLI', 'Naviera', 'Nave', 'Contenedores', 'Origen', 'Destino (POD)', 'ETA', 'Especie', 'Estado'];
   headers.forEach((header, index) => {
-    const cell = worksheet.getCell(3, index + 1);
+    const cell = worksheet.getCell(5, index + 1);
     cell.value = header;
     cell.style = {
       ...estilos.header,
@@ -426,8 +437,8 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
     };
   });
 
-  // Datos
-  let rowIndex = 4;
+  // Datos empezando en la fila 6
+  let rowIndex = 6;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
@@ -467,23 +478,25 @@ export async function generarReservaConfirmada(registros: Registro[]): Promise<E
   const estilos = crearEstilos();
   const colSpan = 11;
 
-  // Logo
-  await agregarLogo(workbook, worksheet, 0, colSpan);
+  // Dejar dos filas vacías al inicio (filas 1 y 2)
+  
+  // Logo en la fila 3 (rowIndex 2)
+  await agregarLogo(workbook, worksheet, 2, colSpan);
 
-  // Título
-  worksheet.mergeCells('A2:K2');
-  const tituloCell = worksheet.getCell('A2');
+  // Título en la fila 4
+  worksheet.mergeCells('A4:K4');
+  const tituloCell = worksheet.getCell('A4');
   tituloCell.value = 'RESERVA CONFIRMADA';
   tituloCell.style = { ...estilos.titulo, font: { ...estilos.titulo.font, color: { argb: 'FF10B981' } } };
 
-  // Encabezado
+  // Encabezado en la fila 5
   const headers = [
     'REF ASLI', 'Cliente', 'Ejecutivo', 'Booking', 'Contenedores', 
     'Naviera', 'Nave', 'Origen', 'Destino', 'ETD', 'Estado'
   ];
   
   headers.forEach((header, index) => {
-    const cell = worksheet.getCell(3, index + 1);
+    const cell = worksheet.getCell(5, index + 1);
     cell.value = header;
     cell.style = {
       ...estilos.header,
@@ -495,8 +508,8 @@ export async function generarReservaConfirmada(registros: Registro[]): Promise<E
     };
   });
 
-  // Datos
-  let rowIndex = 4;
+  // Datos empezando en la fila 6
+  let rowIndex = 6;
   registros.forEach(registro => {
     const row = worksheet.getRow(rowIndex);
     
