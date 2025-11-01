@@ -292,12 +292,17 @@ export function AddModal({
   const getAvailableNaves = () => {
     if (!formData.naviera) return [];
     
+    console.log('🔍 getAvailableNaves - Naviera seleccionada:', formData.naviera);
+    console.log('📋 navierasNavesMapping keys:', Object.keys(navierasNavesMapping));
+    console.log('📋 consorciosNavesMapping keys:', Object.keys(consorciosNavesMapping));
+    
     // Si es un consorcio, buscar en consorciosNavesMapping
     if (formData.naviera.includes('/')) {
       const navesConsorcio = consorciosNavesMapping[formData.naviera] || [];
+      console.log(`🛳️ Consorcio "${formData.naviera}": ${navesConsorcio.length} naves encontradas`);
       
       if (navesConsorcio.length === 0) {
-        console.error('❌ Keys disponibles:', Object.keys(consorciosNavesMapping));
+        console.error('❌ Keys disponibles en consorciosNavesMapping:', Object.keys(consorciosNavesMapping));
         console.warn('⚠️ NO se usará fallback. Por favor configura el mapping para este consorcio.');
         return [];
       }
@@ -307,9 +312,10 @@ export function AddModal({
     
     // Si es naviera individual, buscar en navierasNavesMapping
     const navesNaviera = navierasNavesMapping[formData.naviera] || [];
+    console.log(`🛳️ Naviera "${formData.naviera}": ${navesNaviera.length} naves encontradas`);
     
     if (navesNaviera.length === 0) {
-      console.error('❌ Keys disponibles:', Object.keys(navierasNavesMapping));
+      console.error('❌ Keys disponibles en navierasNavesMapping:', Object.keys(navierasNavesMapping));
       console.error('❌ Comparación de keys:');
       Object.keys(navierasNavesMapping).forEach(key => {
         console.error(`  - "${key}" === "${formData.naviera}": ${key === formData.naviera}`);
