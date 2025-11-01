@@ -154,8 +154,9 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
       
       try {
         // Intentar agregar la imagen al workbook
+        // @ts-ignore - ExcelJS acepta el buffer aunque TypeScript no lo reconozca como Buffer completo
         const imageId = workbook.addImage({
-          buffer: buffer as Buffer,
+          buffer: buffer,
           extension: 'png',
         });
         
