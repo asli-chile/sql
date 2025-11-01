@@ -133,16 +133,15 @@ const loadImageAsBuffer = async (url: string): Promise<Buffer | null> => {
 
 // Función para agregar el logo de ASLI
 const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
-  // Lista de URLs a intentar (primero local, luego externa)
-  // Usar el logo azul marino con mejor contraste
+  // Usar SOLO el logo azul marino (sin intentar logos locales que pueden ser blancos)
   const logoUrls = [
-    '/logo-asli.png', // Logo local desde public
-    'https://asli.cl/img/logo%20asli%20azul%20sin%20fondo.png' // Logo externo azul marino
+    'https://asli.cl/img/logo%20asli%20azul%20sin%20fondo.png', // Logo azul marino (prioritario)
+    'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20AZUL.png' // URL alternativa con mayúsculas
   ];
   
   for (const logoUrl of logoUrls) {
     try {
-      console.log('🖼️ Intentando cargar logo desde:', logoUrl);
+      console.log('🖼️ Intentando cargar logo AZUL desde:', logoUrl);
       
       const buffer = await loadImageAsBuffer(logoUrl);
       
@@ -164,17 +163,23 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
         console.log('✅ Imagen agregada al workbook, ID:', imageId);
         
         // Posicionar el logo en la esquina superior izquierda (columna 0 = columna A)
+        // Usar offset para evitar superposiciones con las celdas
         const startCol = 0;
         
-        console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol, '(esquina superior izquierda)');
+        console.log('📍 Posicionando logo en fila:', rowIndex, 'columna:', startCol, '(esquina superior izquierda, tamaño reducido)');
         
-        // Agregar la imagen al worksheet con mejor tamaño y contraste
+        // Agregar la imagen al worksheet con tamaño reducido y mejor posicionamiento
+        // Tamaño más pequeño para evitar superposiciones y mantener proporción
         worksheet.addImage(imageId, {
           tl: { col: startCol, row: rowIndex },
-          ext: { width: 200, height: 80 }, // Tamaño más grande para mejor visibilidad
+          ext: { width: 100, height: 40 }, // Tamaño más pequeño y proporcional
         });
         
-        console.log('✅ Logo agregado exitosamente al Excel desde:', logoUrl);
+        // Ajustar altura de la fila del logo para que no se superponga
+        const logoRow = worksheet.getRow(rowIndex + 1);
+        logoRow.height = 35; // Altura suficiente para el logo
+        
+        console.log('✅ Logo AZUL agregado exitosamente al Excel desde:', logoUrl);
         return true;
       } catch (imageError) {
         console.error(`❌ Error al agregar imagen al Excel desde ${logoUrl}:`, imageError);
@@ -186,7 +191,7 @@ const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksh
     }
   }
   
-  console.warn('⚠️ No se pudo cargar el logo desde ninguna fuente');
+  console.warn('⚠️ No se pudo cargar el logo AZUL desde ninguna fuente');
   return false;
 };
 
