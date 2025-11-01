@@ -49,6 +49,84 @@ export const tiposReportes: OpcionReporte[] = [
   }
 ];
 
+// Función helper para calcular el ancho de columna basado en el contenido
+const calcularAnchoColumna = (valor: string | number | null | undefined, anchoMinimo: number = 10, anchoMaximo: number = 50): number => {
+  if (!valor) return anchoMinimo;
+  const texto = String(valor);
+  // Aproximación: ~1.2 caracteres por unidad de ancho en Excel
+  const anchoCalculado = Math.max(texto.length * 1.2 + 2, anchoMinimo);
+  return Math.min(anchoCalculado, anchoMaximo);
+};
+
+// Función helper para ajustar automáticamente el ancho de columnas
+const ajustarAnchoColumnas = (worksheet: ExcelJS.Worksheet, numColumns: number, startRow: number = 1, endRow?: number) => {
+  const maxRow = endRow || worksheet.rowCount || startRow;
+  
+  for (let col = 1; col <= numColumns; col++) {
+    let maxWidth = 10;
+    
+    for (let row = startRow; row <= maxRow; row++) {
+      const cell = worksheet.getCell(row, col);
+      if (cell.value !== null && cell.value !== undefined) {
+        const cellValue = String(cell.value);
+        const width = calcularAnchoColumna(cellValue, 10, 50);
+        if (width > maxWidth) {
+          maxWidth = width;
+        }
+      }
+    }
+    
+    const column = worksheet.getColumn(col);
+    if (column) {
+      column.width = maxWidth;
+    }
+  }
+};
+
+// Función para agregar el logo de ASLI
+const agregarLogo = async (workbook: ExcelJS.Workbook, worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
+  try {
+    // Intentar cargar el logo desde la URL pública
+    const logoUrl = '/logo-asli.png';
+    const response = await fetch(logoUrl);
+    
+    if (response.ok) {
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      const imageId = workbook.addImage({
+        buffer: uint8Array,
+        extension: 'png',
+      });
+      
+      // Centrar el logo calculando la columna media
+      const startCol = Math.floor((colSpan - 2) / 2);
+      
+      // Agregar la imagen
+      worksheet.addImage(imageId, {
+        tl: { col: startCol, row: rowIndex },
+        ext: { width: 150, height: 60 },
+      });
+      
+      return true;
+    }
+  } catch (error) {
+    console.warn('No se pudo cargar el logo:', error);
+  }
+  return false;
+};
+
+// Función para agregar pie de página
+const agregarPieDePagina = (worksheet: ExcelJS.Worksheet, rowIndex: number, colSpan: number) => {
+  worksheet.mergeCells(rowIndex, 1, rowIndex, colSpan);
+  const pieCell = worksheet.getCell(rowIndex, 1);
+  pieCell.value = 'Asesorías y Servicios Logísticos Integrales Ltda.';
+  pieCell.style = {
+    font: { size: 10, italic: true },
+    alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
+  };
+};
+
 // Estilos comunes
 const crearEstilos = () => {
   return {
@@ -106,28 +184,26 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Factura');
   const estilos = crearEstilos();
+  const colSpan = 8;
 
+  // Logo
+  await agregarLogo(workbook, worksheet, 0, colSpan);
+  
   // Título
-  worksheet.mergeCells('A1:H1');
-  worksheet.getCell('A1').value = 'FACTURA COMERCIAL';
-  worksheet.getCell('A1').style = estilos.titulo;
-
-  // Información de la empresa
-  worksheet.mergeCells('A3:B3');
-  worksheet.getCell('A3').value = 'Asesorías y Servicios Logísticos Integrales Ltda.';
-  worksheet.getCell('A3').style = { 
-    font: { bold: true },
-    alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
-  };
+  worksheet.mergeCells('A2:H2');
+  const tituloCell = worksheet.getCell('A2');
+  tituloCell.value = 'FACTURA COMERCIAL';
+  tituloCell.style = estilos.titulo;
 
   // Datos de cada registro
-  let rowIndex = 5;
+  let rowIndex = 4;
   
   registros.forEach((registro, index) => {
     // Encabezado del registro
-    worksheet.mergeCells(`A${rowIndex}:H${rowIndex}`);
-    worksheet.getCell(`A${rowIndex}`).value = `Registro ${index + 1}: ${registro.refAsli}`;
-    worksheet.getCell(`A${rowIndex}`).style = estilos.subtitulo;
+    worksheet.mergeCells(rowIndex, 1, rowIndex, colSpan);
+    const subtituloCell = worksheet.getCell(rowIndex, 1);
+    subtituloCell.value = `Registro ${index + 1}: ${registro.refAsli}`;
+    subtituloCell.style = estilos.subtitulo;
     rowIndex++;
 
     // Datos del registro
@@ -142,22 +218,32 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
       { label: 'Ejecutivo', value: registro.ejecutivo }
     ];
 
-    datos.forEach((dato, i) => {
-      worksheet.getCell(rowIndex, 1).value = dato.label;
-      worksheet.getCell(rowIndex, 1).style = { ...estilos.celda, font: { bold: true } };
-      worksheet.getCell(rowIndex, 2).value = dato.value || '-';
-      worksheet.getCell(rowIndex, 2).style = estilos.celda;
-      worksheet.mergeCells(rowIndex, 2, rowIndex, 8);
+    datos.forEach((dato) => {
+      const labelCell = worksheet.getCell(rowIndex, 1);
+      labelCell.value = dato.label;
+      labelCell.style = {
+        ...estilos.celda,
+        font: { bold: true, size: 11 }
+      };
+      
+      const valueCell = worksheet.getCell(rowIndex, 2);
+      valueCell.value = dato.value || '-';
+      valueCell.style = {
+        ...estilos.celda,
+        alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
+      };
+      worksheet.mergeCells(rowIndex, 2, rowIndex, colSpan);
       rowIndex++;
     });
 
     rowIndex++; // Espacio entre registros
   });
 
-  // Ajustar ancho de columnas
-  worksheet.columns.forEach(column => {
-    column.width = 15;
-  });
+  // Pie de página
+  agregarPieDePagina(worksheet, rowIndex, colSpan);
+
+  // Ajustar ancho de columnas automáticamente
+  ajustarAnchoColumnas(worksheet, colSpan, 1, rowIndex);
 
   return await workbook.xlsx.writeBuffer();
 }
@@ -167,11 +253,16 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Guía de Despacho');
   const estilos = crearEstilos();
+  const colSpan = 10;
+
+  // Logo
+  await agregarLogo(workbook, worksheet, 0, colSpan);
 
   // Título
-  worksheet.mergeCells('A1:J1');
-  worksheet.getCell('A1').value = 'GUÍA DE DESPACHO';
-  worksheet.getCell('A1').style = estilos.titulo;
+  worksheet.mergeCells('A2:J2');
+  const tituloCell = worksheet.getCell('A2');
+  tituloCell.value = 'GUÍA DE DESPACHO';
+  tituloCell.style = estilos.titulo;
 
   // Encabezado de la tabla
   const headers = ['REF ASLI', 'Cliente', 'Contenedor', 'Naviera', 'Nave', 'Origen', 'Destino', 'ETD', 'ETA', 'Estado'];
@@ -191,30 +282,34 @@ export async function generarGuiaDespacho(registros: Registro[]): Promise<ExcelJ
         : [registro.contenedor];
 
     contenedores.forEach(contenedor => {
-      worksheet.getCell(rowIndex, 1).value = registro.refAsli;
-      worksheet.getCell(rowIndex, 2).value = registro.shipper;
-      worksheet.getCell(rowIndex, 3).value = contenedor;
-      worksheet.getCell(rowIndex, 4).value = registro.naviera;
-      worksheet.getCell(rowIndex, 5).value = registro.naveInicial;
-      worksheet.getCell(rowIndex, 6).value = registro.pol;
-      worksheet.getCell(rowIndex, 7).value = registro.pod;
-      worksheet.getCell(rowIndex, 8).value = registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL') : '-';
-      worksheet.getCell(rowIndex, 9).value = registro.eta ? new Date(registro.eta).toLocaleDateString('es-CL') : '-';
-      worksheet.getCell(rowIndex, 10).value = registro.estado;
+      const row = worksheet.getRow(rowIndex);
+      
+      row.getCell(1).value = registro.refAsli;
+      row.getCell(2).value = registro.shipper;
+      row.getCell(3).value = contenedor;
+      row.getCell(4).value = registro.naviera;
+      row.getCell(5).value = registro.naveInicial;
+      row.getCell(6).value = registro.pol;
+      row.getCell(7).value = registro.pod;
+      row.getCell(8).value = registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL') : '-';
+      row.getCell(9).value = registro.eta ? new Date(registro.eta).toLocaleDateString('es-CL') : '-';
+      row.getCell(10).value = registro.estado;
 
-      // Aplicar estilos
-      for (let col = 1; col <= 10; col++) {
-        worksheet.getCell(rowIndex, col).style = estilos.celda;
+      // Aplicar estilos centrados a todas las celdas
+      for (let col = 1; col <= colSpan; col++) {
+        const cell = row.getCell(col);
+        cell.style = estilos.celda;
       }
 
       rowIndex++;
     });
   });
 
-  // Ajustar ancho de columnas
-  worksheet.columns.forEach(column => {
-    column.width = 15;
-  });
+  // Pie de página
+  agregarPieDePagina(worksheet, rowIndex, colSpan);
+
+  // Ajustar ancho de columnas automáticamente
+  ajustarAnchoColumnas(worksheet, colSpan, 1, rowIndex);
 
   return await workbook.xlsx.writeBuffer();
 }
@@ -224,11 +319,16 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Zarpe');
   const estilos = crearEstilos();
+  const colSpan = 9;
+
+  // Logo
+  await agregarLogo(workbook, worksheet, 0, colSpan);
 
   // Título
-  worksheet.mergeCells('A1:I1');
-  worksheet.getCell('A1').value = 'DOCUMENTO DE ZARPE';
-  worksheet.getCell('A1').style = estilos.titulo;
+  worksheet.mergeCells('A2:I2');
+  const tituloCell = worksheet.getCell('A2');
+  tituloCell.value = 'DOCUMENTO DE ZARPE';
+  tituloCell.style = estilos.titulo;
 
   // Encabezado
   const headers = ['REF ASLI', 'Naviera', 'Nave', 'Contenedores', 'Origen (POL)', 'Destino (POD)', 'ETD', 'Especie', 'Estado'];
@@ -241,28 +341,33 @@ export async function generarZarpe(registros: Registro[]): Promise<ExcelJS.Buffe
   // Datos
   let rowIndex = 4;
   registros.forEach(registro => {
-    worksheet.getCell(rowIndex, 1).value = registro.refAsli;
-    worksheet.getCell(rowIndex, 2).value = registro.naviera;
-    worksheet.getCell(rowIndex, 3).value = registro.naveInicial;
-    worksheet.getCell(rowIndex, 4).value = Array.isArray(registro.contenedor) 
+    const row = worksheet.getRow(rowIndex);
+    
+    row.getCell(1).value = registro.refAsli;
+    row.getCell(2).value = registro.naviera;
+    row.getCell(3).value = registro.naveInicial;
+    row.getCell(4).value = Array.isArray(registro.contenedor) 
       ? registro.contenedor.join(', ') 
       : registro.contenedor;
-    worksheet.getCell(rowIndex, 5).value = registro.pol;
-    worksheet.getCell(rowIndex, 6).value = registro.pod;
-    worksheet.getCell(rowIndex, 7).value = registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL') : '-';
-    worksheet.getCell(rowIndex, 8).value = registro.especie;
-    worksheet.getCell(rowIndex, 9).value = registro.estado;
+    row.getCell(5).value = registro.pol;
+    row.getCell(6).value = registro.pod;
+    row.getCell(7).value = registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL') : '-';
+    row.getCell(8).value = registro.especie;
+    row.getCell(9).value = registro.estado;
 
-    for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(rowIndex, col).style = estilos.celda;
+    for (let col = 1; col <= colSpan; col++) {
+      const cell = row.getCell(col);
+      cell.style = estilos.celda;
     }
 
     rowIndex++;
   });
 
-  worksheet.columns.forEach(column => {
-    column.width = 18;
-  });
+  // Pie de página
+  agregarPieDePagina(worksheet, rowIndex, colSpan);
+
+  // Ajustar ancho de columnas automáticamente
+  ajustarAnchoColumnas(worksheet, colSpan, 1, rowIndex);
 
   return await workbook.xlsx.writeBuffer();
 }
@@ -272,11 +377,16 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Arribo');
   const estilos = crearEstilos();
+  const colSpan = 9;
+
+  // Logo
+  await agregarLogo(workbook, worksheet, 0, colSpan);
 
   // Título
-  worksheet.mergeCells('A1:I1');
-  worksheet.getCell('A1').value = 'DOCUMENTO DE ARRIBO';
-  worksheet.getCell('A1').style = { ...estilos.titulo, font: { ...estilos.titulo.font, color: { argb: 'FF059669' } } };
+  worksheet.mergeCells('A2:I2');
+  const tituloCell = worksheet.getCell('A2');
+  tituloCell.value = 'DOCUMENTO DE ARRIBO';
+  tituloCell.style = { ...estilos.titulo, font: { ...estilos.titulo.font, color: { argb: 'FF059669' } } };
 
   // Encabezado
   const headers = ['REF ASLI', 'Naviera', 'Nave', 'Contenedores', 'Origen', 'Destino (POD)', 'ETA', 'Especie', 'Estado'];
@@ -296,28 +406,33 @@ export async function generarArribo(registros: Registro[]): Promise<ExcelJS.Buff
   // Datos
   let rowIndex = 4;
   registros.forEach(registro => {
-    worksheet.getCell(rowIndex, 1).value = registro.refAsli;
-    worksheet.getCell(rowIndex, 2).value = registro.naviera;
-    worksheet.getCell(rowIndex, 3).value = registro.naveInicial;
-    worksheet.getCell(rowIndex, 4).value = Array.isArray(registro.contenedor) 
+    const row = worksheet.getRow(rowIndex);
+    
+    row.getCell(1).value = registro.refAsli;
+    row.getCell(2).value = registro.naviera;
+    row.getCell(3).value = registro.naveInicial;
+    row.getCell(4).value = Array.isArray(registro.contenedor) 
       ? registro.contenedor.join(', ') 
       : registro.contenedor;
-    worksheet.getCell(rowIndex, 5).value = registro.pol;
-    worksheet.getCell(rowIndex, 6).value = registro.pod;
-    worksheet.getCell(rowIndex, 7).value = registro.eta ? new Date(registro.eta).toLocaleDateString('es-CL') : '-';
-    worksheet.getCell(rowIndex, 8).value = registro.especie;
-    worksheet.getCell(rowIndex, 9).value = registro.estado;
+    row.getCell(5).value = registro.pol;
+    row.getCell(6).value = registro.pod;
+    row.getCell(7).value = registro.eta ? new Date(registro.eta).toLocaleDateString('es-CL') : '-';
+    row.getCell(8).value = registro.especie;
+    row.getCell(9).value = registro.estado;
 
-    for (let col = 1; col <= 9; col++) {
-      worksheet.getCell(rowIndex, col).style = estilos.celda;
+    for (let col = 1; col <= colSpan; col++) {
+      const cell = row.getCell(col);
+      cell.style = estilos.celda;
     }
 
     rowIndex++;
   });
 
-  worksheet.columns.forEach(column => {
-    column.width = 18;
-  });
+  // Pie de página
+  agregarPieDePagina(worksheet, rowIndex, colSpan);
+
+  // Ajustar ancho de columnas automáticamente
+  ajustarAnchoColumnas(worksheet, colSpan, 1, rowIndex);
 
   return await workbook.xlsx.writeBuffer();
 }
@@ -327,11 +442,16 @@ export async function generarReservaConfirmada(registros: Registro[]): Promise<E
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Reserva Confirmada');
   const estilos = crearEstilos();
+  const colSpan = 11;
+
+  // Logo
+  await agregarLogo(workbook, worksheet, 0, colSpan);
 
   // Título
-  worksheet.mergeCells('A1:K1');
-  worksheet.getCell('A1').value = 'RESERVA CONFIRMADA';
-  worksheet.getCell('A1').style = { ...estilos.titulo, font: { ...estilos.titulo.font, color: { argb: 'FF10B981' } } };
+  worksheet.mergeCells('A2:K2');
+  const tituloCell = worksheet.getCell('A2');
+  tituloCell.value = 'RESERVA CONFIRMADA';
+  tituloCell.style = { ...estilos.titulo, font: { ...estilos.titulo.font, color: { argb: 'FF10B981' } } };
 
   // Encabezado
   const headers = [
@@ -355,30 +475,35 @@ export async function generarReservaConfirmada(registros: Registro[]): Promise<E
   // Datos
   let rowIndex = 4;
   registros.forEach(registro => {
-    worksheet.getCell(rowIndex, 1).value = registro.refAsli;
-    worksheet.getCell(rowIndex, 2).value = registro.shipper;
-    worksheet.getCell(rowIndex, 3).value = registro.ejecutivo;
-    worksheet.getCell(rowIndex, 4).value = registro.booking;
-    worksheet.getCell(rowIndex, 5).value = Array.isArray(registro.contenedor) 
+    const row = worksheet.getRow(rowIndex);
+    
+    row.getCell(1).value = registro.refAsli;
+    row.getCell(2).value = registro.shipper;
+    row.getCell(3).value = registro.ejecutivo;
+    row.getCell(4).value = registro.booking;
+    row.getCell(5).value = Array.isArray(registro.contenedor) 
       ? registro.contenedor.join(', ') 
       : registro.contenedor;
-    worksheet.getCell(rowIndex, 6).value = registro.naviera;
-    worksheet.getCell(rowIndex, 7).value = registro.naveInicial;
-    worksheet.getCell(rowIndex, 8).value = registro.pol;
-    worksheet.getCell(rowIndex, 9).value = registro.pod;
-    worksheet.getCell(rowIndex, 10).value = registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL') : '-';
-    worksheet.getCell(rowIndex, 11).value = registro.estado;
+    row.getCell(6).value = registro.naviera;
+    row.getCell(7).value = registro.naveInicial;
+    row.getCell(8).value = registro.pol;
+    row.getCell(9).value = registro.pod;
+    row.getCell(10).value = registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL') : '-';
+    row.getCell(11).value = registro.estado;
 
-    for (let col = 1; col <= 11; col++) {
-      worksheet.getCell(rowIndex, col).style = estilos.celda;
+    for (let col = 1; col <= colSpan; col++) {
+      const cell = row.getCell(col);
+      cell.style = estilos.celda;
     }
 
     rowIndex++;
   });
 
-  worksheet.columns.forEach(column => {
-    column.width = 15;
-  });
+  // Pie de página
+  agregarPieDePagina(worksheet, rowIndex, colSpan);
+
+  // Ajustar ancho de columnas automáticamente
+  ajustarAnchoColumnas(worksheet, colSpan, 1, rowIndex);
 
   return await workbook.xlsx.writeBuffer();
 }
@@ -418,4 +543,3 @@ export function descargarExcel(buffer: ExcelJS.Buffer, nombreArchivo: string) {
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
-
