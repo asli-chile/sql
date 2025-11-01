@@ -38,9 +38,10 @@ CREATE POLICY "Usuarios pueden ver registros de cliente con su nombre"
           SELECT 1 FROM catalogos c
           WHERE c.categoria = 'clientes'
             -- Verificar si el nombre del usuario está en el array de valores
-            -- Usamos comparación case-insensitive con ANY
-            AND UPPER(TRIM(u.nombre)) = ANY(
-              SELECT UPPER(TRIM(unnest(c.valores)))
+            -- Convertimos ambos a mayúsculas para comparación case-insensitive
+            AND EXISTS (
+              SELECT 1 FROM unnest(c.valores) AS cliente_valor
+              WHERE UPPER(TRIM(cliente_valor)) = UPPER(TRIM(u.nombre))
             )
         )
     )
