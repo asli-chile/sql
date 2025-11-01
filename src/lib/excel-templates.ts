@@ -77,7 +77,8 @@ const crearEstilos = () => {
         type: 'pattern' as const,
         pattern: 'solid' as const,
         fgColor: { argb: 'FFF3F4F6' }
-      }
+      },
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
     },
     celda: {
       border: {
@@ -86,7 +87,7 @@ const crearEstilos = () => {
         bottom: { style: 'thin' as const, color: { argb: 'FFE5E7EB' } },
         right: { style: 'thin' as const, color: { argb: 'FFE5E7EB' } }
       },
-      alignment: { vertical: 'middle' as const }
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
     },
     total: {
       font: { bold: true, size: 12 },
@@ -94,7 +95,8 @@ const crearEstilos = () => {
         type: 'pattern' as const,
         pattern: 'solid' as const,
         fgColor: { argb: 'FFE0E7FF' }
-      }
+      },
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
     }
   };
 };
@@ -113,7 +115,10 @@ export async function generarFactura(registros: Registro[]): Promise<ExcelJS.Buf
   // Información de la empresa
   worksheet.mergeCells('A3:B3');
   worksheet.getCell('A3').value = 'Asesorías y Servicios Logísticos Integrales Ltda.';
-  worksheet.getCell('A3').style = { font: { bold: true } };
+  worksheet.getCell('A3').style = { 
+    font: { bold: true },
+    alignment: { horizontal: 'center' as const, vertical: 'middle' as const }
+  };
 
   // Datos de cada registro
   let rowIndex = 5;
