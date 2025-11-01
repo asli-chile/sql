@@ -35,6 +35,7 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@types/blob-stream": "^0.1.33",
     "@types/node": "^20",
     "@types/pdfkit": "^0.17.3",
     "@types/react": "^18",
