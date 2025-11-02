@@ -168,11 +168,13 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   // Primera fila: Headers en español
   doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
   const spanishHeaders = ['FECHA EMBARQUE', 'MOTONAVE', 'N° VIAJE', 'MODALIDAD DE VENTA', 'CLÁUSULA DE VENTA'];
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, headerRowHeight);
-    doc.text(spanishHeaders[col], x + 1, currentY);
+    const textWidth = doc.getTextWidth(spanishHeaders[col]);
+    doc.text(spanishHeaders[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
   currentY += headerRowHeight;
 
@@ -183,11 +185,12 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, headerRowHeight);
-    doc.text(englishHeaders[col], x + 1, currentY);
+    const textWidth = doc.getTextWidth(englishHeaders[col]);
+    doc.text(englishHeaders[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
   currentY += headerRowHeight;
 
-  // Tercera fila: Valores
+  // Tercera fila: Valores (centrados)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   const values = [
@@ -200,7 +203,8 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, valueRowHeight);
-    doc.text(values[col], x + 1, currentY);
+    const textWidth = doc.getTextWidth(values[col]);
+    doc.text(values[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
   currentY += valueRowHeight + 1;
 
@@ -248,37 +252,37 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   currentY += valueRowHeight + 1;
 
   // Tercera sección: PESO NETO, PESO BRUTO, CONTENEDOR
+  // Primera fila: Headers en español
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
-  const section3Headers = [
-    'PESO NETO TOTAL\n(Total Net Weight)',
-    'PESO BRUTO TOTAL\n(Total Gross Weight)',
-    'CONTENEDOR / AWB\n(Container / AWB)',
-    '',
-    ''
-  ];
-  for (let col = 0; col < numCols; col++) {
-    if (section3Headers[col]) {
-      const x = margin + (col * colWidth);
-      const colspan = col === 2 ? 3 : 1;
-      const width = colWidth * colspan;
-      doc.rect(x, currentY - 4, width, headerRowHeight * 2);
-      const lines = section3Headers[col].split('\n');
-      let textY = currentY - 1;
-      lines.forEach((line, lineIndex) => {
-        if (lineIndex === 1) {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(6);
-        }
-        doc.text(line, x + 1, textY);
-        textY += 2.5;
-      });
-      if (col === 2) break; // Salir después del contenedor que ocupa 3 columnas
-    }
+  const section3SpanishHeaders = ['PESO NETO TOTAL', 'PESO BRUTO TOTAL', 'CONTENEDOR / AWB'];
+  for (let col = 0; col < 3; col++) {
+    const x = margin + (col * colWidth);
+    const colspan = col === 2 ? 3 : 1;
+    const width = colWidth * colspan;
+    doc.rect(x, currentY - 4, width, headerRowHeight);
+    const textWidth = doc.getTextWidth(section3SpanishHeaders[col]);
+    doc.text(section3SpanishHeaders[col], x + (width / 2) - (textWidth / 2), currentY);
+    if (col === 2) break; // Salir después del contenedor que ocupa 3 columnas
   }
-  currentY += headerRowHeight * 2;
+  currentY += headerRowHeight;
 
-  // Valores tercera sección
+  // Segunda fila: Headers en inglés
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  const section3EnglishHeaders = ['(Total Net Weight)', '(Total Gross Weight)', '(Container / AWB)'];
+  for (let col = 0; col < 3; col++) {
+    const x = margin + (col * colWidth);
+    const colspan = col === 2 ? 3 : 1;
+    const width = colWidth * colspan;
+    doc.rect(x, currentY - 4, width, headerRowHeight);
+    const textWidth = doc.getTextWidth(section3EnglishHeaders[col]);
+    doc.text(section3EnglishHeaders[col], x + (width / 2) - (textWidth / 2), currentY);
+    if (col === 2) break; // Salir después del contenedor que ocupa 3 columnas
+  }
+  currentY += headerRowHeight;
+
+  // Tercera fila: Valores (centrados)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   const pesoNeto = factura.embarque.pesoNetoTotal ? `${formatNumber(factura.embarque.pesoNetoTotal)} Kgs.` : '';
@@ -287,15 +291,18 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   
   // PESO NETO
   doc.rect(margin, currentY - 4, colWidth, valueRowHeight);
-  doc.text(pesoNeto, margin + 1, currentY);
+  const pesoNetoWidth = doc.getTextWidth(pesoNeto);
+  doc.text(pesoNeto, margin + (colWidth / 2) - (pesoNetoWidth / 2), currentY);
   
   // PESO BRUTO
   doc.rect(margin + colWidth, currentY - 4, colWidth, valueRowHeight);
-  doc.text(pesoBruto, margin + colWidth + 1, currentY);
+  const pesoBrutoWidth = doc.getTextWidth(pesoBruto);
+  doc.text(pesoBruto, margin + colWidth + (colWidth / 2) - (pesoBrutoWidth / 2), currentY);
   
   // CONTENEDOR (ocupa 3 columnas)
   doc.rect(margin + (colWidth * 2), currentY - 4, colWidth * 3, valueRowHeight);
-  doc.text(contenedor, margin + (colWidth * 2) + 1, currentY);
+  const contenedorWidth = doc.getTextWidth(contenedor);
+  doc.text(contenedor, margin + (colWidth * 2) + ((colWidth * 3) / 2) - (contenedorWidth / 2), currentY);
   
   currentY += valueRowHeight;
 
