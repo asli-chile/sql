@@ -77,35 +77,30 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     });
   }
 
-  // RUT e Invoice en caja - Centrado
-  y = 15;
+  // RUT e Invoice en caja a la derecha
+  let headerY = 15;
   const boxWidth = 65;
-  const boxX = margin + (contentWidth / 2) - (boxWidth / 2); // Centrado
+  const boxX = pageWidth - margin - boxWidth; // Alineado a la derecha del contenido
   
   // Dibujar borde del cuadro
-  doc.rect(boxX, y - 8, boxWidth, 12);
+  doc.rect(boxX, headerY - 8, boxWidth, 12);
   
-  let boxY = y - 5;
+  let boxY = headerY - 5;
   if (factura.exportador.rut) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    const rutText = `R.U.T ${factura.exportador.rut}`;
-    const rutWidth = doc.getTextWidth(rutText);
-    doc.text(rutText, boxX + (boxWidth / 2) - (rutWidth / 2), boxY);
+    doc.text(`R.U.T ${factura.exportador.rut}`, boxX + 3, boxY);
     boxY += 3.5;
   }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  const invoiceWidth = doc.getTextWidth('INVOICE');
-  doc.text('INVOICE', boxX + (boxWidth / 2) - (invoiceWidth / 2), boxY);
+  doc.text('INVOICE', boxX + 3, boxY);
   boxY += 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  const numInvoiceText = `N° ${factura.embarque.numeroInvoice}`;
-  const numInvoiceWidth = doc.getTextWidth(numInvoiceText);
-  doc.text(numInvoiceText, boxX + (boxWidth / 2) - (numInvoiceWidth / 2), boxY);
+  doc.text(`N° ${factura.embarque.numeroInvoice}`, boxX + 3, boxY);
 
-  // FECHA en caja - Centrado
+  // FECHA y EMBARQUE N° - Centrados horizontalmente
   y = 28;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);

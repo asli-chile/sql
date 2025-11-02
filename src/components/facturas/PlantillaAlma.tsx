@@ -65,14 +65,14 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           )}
         </div>
 
-        {/* Invoice Info - Cajas centradas */}
-        <div className="ml-4 flex justify-center">
+        {/* Invoice Info - Cajas a la derecha */}
+        <div className="ml-4">
           <div className="border border-black px-3 py-2 mb-2" style={{ borderWidth: '1px', minWidth: '200px' }}>
             {factura.exportador.rut && (
-              <div className="text-xs mb-1 text-center" style={{ fontSize: '8pt', textAlign: 'center' }}>R.U.T {factura.exportador.rut}</div>
+              <div className="text-xs mb-1 text-left" style={{ fontSize: '8pt', textAlign: 'left' }}>R.U.T {factura.exportador.rut}</div>
             )}
-            <div className="text-xs mb-1 text-center" style={{ fontSize: '8pt', textAlign: 'center' }}>INVOICE</div>
-            <div className="text-sm font-bold text-center" style={{ fontSize: '10pt', fontWeight: 'bold', textAlign: 'center' }}>
+            <div className="text-xs mb-1 text-left" style={{ fontSize: '8pt', textAlign: 'left' }}>INVOICE</div>
+            <div className="text-sm font-bold text-left" style={{ fontSize: '10pt', fontWeight: 'bold', textAlign: 'left' }}>
               N° {factura.embarque.numeroInvoice}
             </div>
           </div>
