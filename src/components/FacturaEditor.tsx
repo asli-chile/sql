@@ -966,9 +966,16 @@ function numberToWords(num: number): string {
 
   if (num === 0) return 'ZERO';
 
-  // Separar parte entera y decimal
-  const integerPart = Math.floor(num);
-  const decimalPart = Math.round((num - integerPart) * 100);
+  // Asegurar que num es un número válido
+  if (isNaN(num) || !isFinite(num)) {
+    return 'ZERO US Dollar';
+  }
+  
+  // Separar parte entera y decimal - usar Math.abs para evitar problemas de precisión
+  const integerPart = Math.floor(Math.abs(num));
+  const rawDecimal = Math.abs(num) - integerPart;
+  // Redondear a 2 decimales y luego multiplicar por 100 para evitar problemas de precisión
+  const decimalPart = Math.round(Math.round(rawDecimal * 10000) / 100);
 
   const parts = [];
   let workingNum = integerPart;
