@@ -677,13 +677,18 @@ function FormularioFactura({
 }
 
 // Función para extraer nombre de nave y viaje del formato "NAVE [VIAJE]"
-function extraerNaveYViaje(naveInicial: string, viaje?: string | null): { nave: string; viaje: string } {
-  let nave = naveInicial || '';
+function extraerNaveYViaje(naveInicial: string | undefined | null, viaje?: string | null): { nave: string; viaje: string } {
+  // Validar que naveInicial exista
+  if (!naveInicial) {
+    return { nave: '', viaje: viaje || '' };
+  }
+  
+  let nave = naveInicial;
   let viajeExtraido = viaje || '';
   
   // Si naveInicial contiene [VIAJE], extraerlo
   const matchNave = naveInicial.match(/^(.+?)\s*\[(.+?)\]$/);
-  if (matchNave) {
+  if (matchNave && matchNave.length >= 3) {
     nave = matchNave[1].trim();
     viajeExtraido = matchNave[2].trim();
   }
@@ -693,7 +698,7 @@ function extraerNaveYViaje(naveInicial: string, viaje?: string | null): { nave: 
     viajeExtraido = viaje;
   }
   
-  return { nave, viaje: viajeExtraido };
+  return { nave: nave.trim(), viaje: viajeExtraido.trim() };
 }
 
 // Función para inicializar factura desde registro
