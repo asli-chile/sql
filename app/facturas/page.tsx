@@ -44,16 +44,31 @@ export default function FacturasPage() {
 
       if (error) throw error;
 
-      const registrosData = (data || []).map((r: any) => ({
-        ...r,
-        refAsli: r.ref_asli || '',
-        ingresado: r.ingresado ? new Date(r.ingresado) : null,
-        etd: r.etd ? new Date(r.etd) : null,
-        eta: r.eta ? new Date(r.eta) : null,
-        ingresoStacking: r.ingreso_stacking ? new Date(r.ingreso_stacking) : null,
-        createdAt: r.created_at ? new Date(r.created_at) : undefined,
-        updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
-      })) as Registro[];
+      const registrosData = (data || []).map((r: any) => {
+        // Extraer nave y viaje si vienen en formato "NAVE [VIAJE]"
+        let naveInicial = r.nave_inicial || '';
+        let viaje = r.viaje || null;
+        
+        // Si nave_inicial tiene formato "NAVE [VIAJE]", extraerlo
+        const matchNave = naveInicial.match(/^(.+?)\s*\[(.+?)\]$/);
+        if (matchNave && matchNave.length >= 3) {
+          naveInicial = matchNave[1].trim();
+          viaje = matchNave[2].trim();
+        }
+        
+        return {
+          ...r,
+          refAsli: r.ref_asli || '',
+          naveInicial: naveInicial,
+          viaje: viaje,
+          ingresado: r.ingresado ? new Date(r.ingresado) : null,
+          etd: r.etd ? new Date(r.etd) : null,
+          eta: r.eta ? new Date(r.eta) : null,
+          ingresoStacking: r.ingreso_stacking ? new Date(r.ingreso_stacking) : null,
+          createdAt: r.created_at ? new Date(r.created_at) : undefined,
+          updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
+        };
+      }) as Registro[];
 
       setRegistros(registrosData);
     } catch (err: any) {

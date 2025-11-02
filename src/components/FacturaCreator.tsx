@@ -678,8 +678,11 @@ function FormularioFactura({
 
 // Función para extraer nombre de nave y viaje del formato "NAVE [VIAJE]"
 function extraerNaveYViaje(naveInicial: string | undefined | null, viaje?: string | null): { nave: string; viaje: string } {
+  console.log('🔍 Extrayendo nave y viaje:', { naveInicial, viaje });
+  
   // Validar que naveInicial exista
   if (!naveInicial) {
+    console.log('⚠️ naveInicial está vacío, usando viaje:', viaje);
     return { nave: '', viaje: viaje || '' };
   }
   
@@ -691,20 +694,33 @@ function extraerNaveYViaje(naveInicial: string | undefined | null, viaje?: strin
   if (matchNave && matchNave.length >= 3) {
     nave = matchNave[1].trim();
     viajeExtraido = matchNave[2].trim();
+    console.log('✅ Nave y viaje extraídos del formato [VIAJE]:', { nave, viaje: viajeExtraido });
+  } else {
+    console.log('ℹ️ No se encontró formato [VIAJE] en naveInicial');
   }
   
   // Si hay viaje separado pero no se extrajo de naveInicial, usarlo
   if (!viajeExtraido && viaje) {
     viajeExtraido = viaje;
+    console.log('✅ Usando viaje del campo separado:', viajeExtraido);
   }
   
-  return { nave: nave.trim(), viaje: viajeExtraido.trim() };
+  const resultado = { nave: nave.trim(), viaje: viajeExtraido.trim() };
+  console.log('✅ Resultado final:', resultado);
+  return resultado;
 }
 
 // Función para inicializar factura desde registro
 function initializeFacturaFromRegistro(registro: Registro): Factura {
+  console.log('📋 Inicializando factura desde registro:', registro);
+  console.log('📋 Registro naveInicial:', registro.naveInicial);
+  console.log('📋 Registro viaje:', registro.viaje);
+  
   // Extraer nave y viaje del registro
   const { nave, viaje } = extraerNaveYViaje(registro.naveInicial, registro.viaje);
+  
+  console.log('✅ Nave extraída:', nave);
+  console.log('✅ Viaje extraído:', viaje);
   
   return {
     registroId: registro.id || '',
