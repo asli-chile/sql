@@ -75,8 +75,22 @@ CREATE POLICY "Los usuarios pueden crear facturas para registros que pueden ver"
 CREATE POLICY "Los usuarios pueden actualizar facturas que crearon"
   ON facturas
   FOR UPDATE
-  USING (created_by = (SELECT email FROM auth.users WHERE id = auth.uid())::TEXT)
-  WITH CHECK (created_by = (SELECT email FROM auth.users WHERE id = auth.uid())::TEXT);
+  USING (
+    created_by = (SELECT email FROM auth.users WHERE id = auth.uid())::TEXT
+    OR EXISTS (
+      SELECT 1 FROM registros r
+      WHERE r.id = facturas.registro_id
+      AND r.deleted_at IS NULL
+    )
+  )
+  WITH CHECK (
+    created_by = (SELECT email FROM auth.users WHERE id = auth.uid())::TEXT
+    OR EXISTS (
+      SELECT 1 FROM registros r
+      WHERE r.id = facturas.registro_id
+      AND r.deleted_at IS NULL
+    )
+  );
 
 -- Trigger para actualizar updated_at
 CREATE OR REPLACE FUNCTION update_facturas_updated_at()
