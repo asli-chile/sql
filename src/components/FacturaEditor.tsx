@@ -106,9 +106,21 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
 
     setGuardando(true);
     try {
+      console.log('🔵 Iniciando actualización de factura...');
+      console.log('ID de factura:', facturaEditada.id);
+      console.log('Datos a actualizar:', {
+        exportador: facturaEditada.exportador,
+        consignatario: facturaEditada.consignatario,
+        embarque: facturaEditada.embarque,
+        productos: facturaEditada.productos,
+        totales: totalesCalculados,
+        cliente_plantilla: facturaEditada.clientePlantilla,
+      });
+
       // Obtener usuario actual
       const { data: userData } = await supabase.auth.getUser();
       const userEmail = userData?.user?.email || 'unknown';
+      console.log('Usuario actual:', userEmail);
 
       // Actualizar en Supabase
       const { data, error } = await supabase
@@ -126,6 +138,8 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
         .eq('id', facturaEditada.id)
         .select()
         .single();
+
+      console.log('Resultado de la actualización:', { data, error });
 
       if (error) {
         console.error('Error de Supabase:', error);
