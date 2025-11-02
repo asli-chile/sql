@@ -366,7 +366,8 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           </div>
           {factura.embarque.formaPago && (
             <div className="mt-2" style={{ fontSize: '8pt' }}>
-              <span className="font-bold" style={{ fontSize: '8pt', fontWeight: 'bold' }}>PLAZO DE PAGO:</span> <span style={{ fontSize: '8pt' }}>(PAYMENT TERMS:)</span>{' '}
+              <span className="font-bold" style={{ fontSize: '8pt', fontWeight: 'bold' }}>PLAZO DE PAGO:</span>{' '}
+              <span style={{ fontSize: '8pt' }}>(PAYMENT TERMS:)</span>{' '}
               <span style={{ fontSize: '8pt' }}>{factura.embarque.formaPago}</span>
             </div>
           )}

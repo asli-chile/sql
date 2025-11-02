@@ -489,9 +489,14 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   if (factura.embarque.formaPago) {
     doc.setFont('helvetica', 'bold');
-    doc.text('PLAZO DE PAGO: (PAYMENT TERMS:)', margin, y);
+    const plazoLabel = 'PLAZO DE PAGO:';
+    const paymentTermsLabel = '(PAYMENT TERMS:)';
+    const labelWidth = doc.getTextWidth(plazoLabel);
+    doc.text(plazoLabel, margin, y);
     doc.setFont('helvetica', 'normal');
-    doc.text(factura.embarque.formaPago, margin + 50, y);
+    doc.text(paymentTermsLabel, margin + labelWidth + 2, y);
+    const paymentTermsWidth = doc.getTextWidth(paymentTermsLabel);
+    doc.text(factura.embarque.formaPago, margin + labelWidth + paymentTermsWidth + 4, y);
     y += 6;
   }
 
