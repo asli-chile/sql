@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/useToast';
 export default function FacturasPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { currentUser, isLoading: userLoading } = useUser();
+  const { currentUser } = useUser();
   const { success, error: showError } = useToast();
   
   const [facturas, setFacturas] = useState<Factura[]>([]);
@@ -115,12 +115,12 @@ export default function FacturasPage() {
 
   // Filtrar registros que no tienen factura (DEBE estar antes de cualquier early return)
   const registrosSinFactura = useMemo(() => {
-    if (userLoading || loading) return [];
+    if (loading) return [];
     const facturasPorRegistro = new Set(facturas.map(f => f.registroId));
     return registros.filter(r => r.id && !facturasPorRegistro.has(r.id));
-  }, [registros, facturas, userLoading, loading]);
+  }, [registros, facturas, loading]);
 
-  if (userLoading || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0a1628' }}>
         <div className="text-center">
