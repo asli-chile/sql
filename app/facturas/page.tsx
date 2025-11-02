@@ -113,6 +113,13 @@ export default function FacturasPage() {
     success('Factura creada exitosamente');
   };
 
+  // Filtrar registros que no tienen factura (DEBE estar antes de cualquier early return)
+  const registrosSinFactura = useMemo(() => {
+    if (userLoading || loading) return [];
+    const facturasPorRegistro = new Set(facturas.map(f => f.registroId));
+    return registros.filter(r => r.id && !facturasPorRegistro.has(r.id));
+  }, [registros, facturas, userLoading, loading]);
+
   if (userLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: '#0a1628' }}>
@@ -125,12 +132,6 @@ export default function FacturasPage() {
       </div>
     );
   }
-
-  // Filtrar registros que no tienen factura
-  const registrosSinFactura = useMemo(() => {
-    const facturasPorRegistro = new Set(facturas.map(f => f.registroId));
-    return registros.filter(r => r.id && !facturasPorRegistro.has(r.id));
-  }, [registros, facturas]);
 
   return (
     <div className={`min-h-screen ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
