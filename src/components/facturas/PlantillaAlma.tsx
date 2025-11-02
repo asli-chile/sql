@@ -91,7 +91,9 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
         <div className="text-xs" style={{ fontSize: '11px' }}>
           <div className="font-bold mb-1" style={{ fontWeight: 'bold' }}>{factura.consignatario.nombre}</div>
           {factura.consignatario.direccion && (
-            <div className="mb-1">Address: {factura.consignatario.direccion}</div>
+            <div className="mb-1 whitespace-pre-line" style={{ whiteSpace: 'pre-line' }}>
+              Address: {factura.consignatario.direccion}
+            </div>
           )}
           {(factura.consignatario.email || factura.consignatario.telefono) && (
             <div className="mb-1">
