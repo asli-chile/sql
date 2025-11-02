@@ -47,6 +47,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
   const contentWidth = pageWidth - (margin * 2);
+  const tableWidth = 175; // Ancho total de las tablas (5 columnas * 35mm = 175mm)
 
   // Header - Exportador centrado a la izquierda
   doc.setFont('helvetica', 'bold');
@@ -102,7 +103,6 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   y = 28;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  const tableWidth = 175; // Ancho total de las tablas (5 columnas * 35mm)
   const tableRightEdge = margin + tableWidth;
   const fechaBoxWidth = 35;
   const fechaBoxX = tableRightEdge - fechaBoxWidth;
@@ -328,8 +328,6 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   // Tabla de productos con bordes - Mismo ancho que la tabla de embarque
   const productTableStartY = y;
-  // Ancho total de las tablas (5 columnas * 35mm = 175mm)
-  const tableWidth = 175;
   // Anchuras originales proporcionales
   const originalColWidths = [18, 20, 25, 18, 20, 18, 25, 25, 22];
   const originalTotal = originalColWidths.reduce((a, b) => a + b, 0);
