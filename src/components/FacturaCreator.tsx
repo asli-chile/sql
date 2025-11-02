@@ -507,6 +507,42 @@ function FormularioFactura({
           }`}
           placeholder="N° Embarque"
         />
+        {/* Nave - Solo lectura (viene del registro) */}
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Nave (automático)
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.motonave}
+            readOnly
+            disabled
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed'
+            }`}
+            placeholder="Nave"
+          />
+        </div>
+        {/* Número de Viaje - Solo lectura (viene del registro) */}
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            N° Viaje (automático)
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.numeroViaje}
+            readOnly
+            disabled
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-700 border-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-100 border-gray-300 text-gray-600 cursor-not-allowed'
+            }`}
+            placeholder="N° Viaje"
+          />
+        </div>
         <input
           type="text"
           value={factura.embarque.clausulaVenta}
@@ -640,8 +676,31 @@ function FormularioFactura({
   );
 }
 
+// Función para extraer nombre de nave y viaje del formato "NAVE [VIAJE]"
+function extraerNaveYViaje(naveInicial: string, viaje?: string | null): { nave: string; viaje: string } {
+  let nave = naveInicial || '';
+  let viajeExtraido = viaje || '';
+  
+  // Si naveInicial contiene [VIAJE], extraerlo
+  const matchNave = naveInicial.match(/^(.+?)\s*\[(.+?)\]$/);
+  if (matchNave) {
+    nave = matchNave[1].trim();
+    viajeExtraido = matchNave[2].trim();
+  }
+  
+  // Si hay viaje separado pero no se extrajo de naveInicial, usarlo
+  if (!viajeExtraido && viaje) {
+    viajeExtraido = viaje;
+  }
+  
+  return { nave, viaje: viajeExtraido };
+}
+
 // Función para inicializar factura desde registro
 function initializeFacturaFromRegistro(registro: Registro): Factura {
+  // Extraer nave y viaje del registro
+  const { nave, viaje } = extraerNaveYViaje(registro.naveInicial, registro.viaje);
+  
   return {
     registroId: registro.id || '',
     refAsli: registro.refAsli,
@@ -660,8 +719,8 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
       fechaFactura: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       numeroEmbarque: registro.booking || '',
       fechaEmbarque: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : '',
-      motonave: registro.naveInicial || '',
-      numeroViaje: registro.viaje || '',
+      motonave: nave, // Nave extraída sin el viaje
+      numeroViaje: viaje, // Viaje extraído
       clausulaVenta: 'FOB',
       paisOrigen: 'CHILE',
       puertoEmbarque: registro.pol || '',
