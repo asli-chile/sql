@@ -1,25 +1,35 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Download, Eye } from 'lucide-react';
+import { X, Download, Edit } from 'lucide-react';
 import { Factura } from '@/types/factura';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
 import { PlantillaAlma } from '@/components/facturas/PlantillaAlma';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
+import { FacturaEditor } from '@/components/FacturaEditor';
 
 interface FacturaViewerProps {
   factura: Factura;
   isOpen: boolean;
   onClose: () => void;
+  onUpdate?: () => void;
 }
 
-export function FacturaViewer({ factura, isOpen, onClose }: FacturaViewerProps) {
+export function FacturaViewer({ factura, isOpen, onClose, onUpdate }: FacturaViewerProps) {
   const { theme } = useTheme();
   const { success, error: showError } = useToast();
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+
+  const handleFacturaActualizada = () => {
+    setIsEditorOpen(false);
+    if (onUpdate) {
+      onUpdate();
+    }
+  };
 
   const handleDownloadPDF = async () => {
     setDescargandoPDF(true);
@@ -74,6 +84,13 @@ export function FacturaViewer({ factura, isOpen, onClose }: FacturaViewerProps) 
           </div>
           <div className="flex items-center space-x-2">
             <button
+              onClick={() => setIsEditorOpen(true)}
+              className="px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 bg-blue-600 text-white hover:bg-blue-700"
+            >
+              <Edit className="w-4 h-4" />
+              <span>Editar</span>
+            </button>
+            <button
               onClick={handleDownloadPDF}
               disabled={descargandoPDF}
               className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
@@ -115,6 +132,15 @@ export function FacturaViewer({ factura, isOpen, onClose }: FacturaViewerProps) 
           <PlantillaAlma factura={factura} />
         </div>
       </div>
+      {/* Modal de edición */}
+      {isEditorOpen && factura.id && (
+        <FacturaEditor
+          factura={factura}
+          isOpen={isEditorOpen}
+          onClose={() => setIsEditorOpen(false)}
+          onSave={handleFacturaActualizada}
+        />
+      )}
     </div>
   );
 }

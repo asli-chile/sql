@@ -460,6 +460,9 @@ export default function FacturasPage() {
             setIsViewerOpen(false);
             setFacturaSeleccionada(null);
           }}
+          onUpdate={() => {
+            loadFacturas();
+          }}
         />
       )}
     </div>
