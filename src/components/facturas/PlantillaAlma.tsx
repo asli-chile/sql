@@ -254,7 +254,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                 <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Specie)</div>
               </th>
               <th className="border border-black px-1 py-1 font-bold text-center" colSpan={8} style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
-                {transformVariety(factura.productos[0]?.variedad || '')}
+                {transformVariety(factura.productos[0]?.especie || '')}
               </th>
             </tr>
             <tr>

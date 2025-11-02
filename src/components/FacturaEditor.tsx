@@ -318,6 +318,7 @@ function FormularioFactura({
         {
           cantidad: 0,
           tipoEnvase: 'CASES',
+          especie: prev.productos[0]?.especie || '',
           variedad: '',
           categoria: 'CAT 1',
           etiqueta: prev.exportador.nombre,
@@ -853,6 +854,17 @@ function FormularioFactura({
                   <option value="2.5KG">2.5KG</option>
                 </select>
               </div>
+              <input
+                type="text"
+                value={producto.especie || ''}
+                onChange={e => updateProducto(index, 'especie', e.target.value)}
+                placeholder="Especie"
+                className={`w-full px-2 py-1 rounded border ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-gray-50 border-gray-300 text-gray-900'
+                }`}
+              />
               <input
                 type="text"
                 value={producto.variedad}

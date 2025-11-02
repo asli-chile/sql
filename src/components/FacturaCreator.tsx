@@ -332,6 +332,7 @@ function FormularioFactura({
         {
           cantidad: 0,
           tipoEnvase: 'CASES',
+          especie: prev.productos[0]?.especie || '',
           variedad: '',
           categoria: 'CAT 1',
           etiqueta: prev.exportador.nombre,
@@ -862,6 +863,17 @@ function FormularioFactura({
               </div>
               <input
                 type="text"
+                value={producto.especie || ''}
+                onChange={e => updateProducto(index, 'especie', e.target.value)}
+                placeholder="Especie"
+                className={`w-full px-2 py-1 rounded border ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-gray-50 border-gray-300 text-gray-900'
+                }`}
+              />
+              <input
+                type="text"
                 value={producto.variedad}
                 onChange={e => updateProducto(index, 'variedad', e.target.value)}
                 placeholder="Variedad"
@@ -1036,7 +1048,8 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
       {
         cantidad: 0,
         tipoEnvase: 'CASES',
-        variedad: registro.especie || '',
+        especie: registro.especie || '',
+        variedad: '',
         categoria: 'CAT 1',
         etiqueta: registro.shipper,
         calibre: '',

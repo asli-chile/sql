@@ -69,6 +69,7 @@ export interface Factura {
 export interface ProductoFactura {
   cantidad: number;
   tipoEnvase: string; // "CASES"
+  especie?: string; // "CEREZA" (independiente de variedad)
   variedad: string; // "RED CHERRIES"
   categoria: string; // "CAT 1"
   etiqueta: string; // "ALMAFRUIT"
