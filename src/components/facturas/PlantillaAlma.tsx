@@ -23,7 +23,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               <div className="text-sm text-gray-900 font-medium">{factura.exportador.direccion}</div>
             )}
             {factura.refAsli && (
-              <div className="text-sm text-gray-700 mt-1">
+              <div className="text-sm text-gray-900 font-medium mt-1">
                 <span className="font-semibold">REF ASLI:</span> {factura.refAsli}
               </div>
             )}
@@ -47,32 +47,32 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
         <div className="text-sm">
           <div className="font-semibold">{factura.consignatario.nombre}</div>
           {factura.consignatario.direccion && (
-            <div className="text-gray-700">{factura.consignatario.direccion}</div>
+            <div className="text-gray-900 font-medium">{factura.consignatario.direccion}</div>
           )}
           {(factura.consignatario.email || factura.consignatario.telefono) && (
-            <div className="text-gray-700">
+            <div className="text-gray-900 font-medium">
               {factura.consignatario.email || ''}
               {factura.consignatario.email && factura.consignatario.telefono ? ' / ' : ''}
               {factura.consignatario.telefono || ''}
             </div>
           )}
           {factura.consignatario.contacto && (
-            <div className="text-gray-700">
+            <div className="text-gray-900 font-medium">
               Contact Person: {factura.consignatario.contacto}
               {factura.consignatario.telefonoContacto && `, Telephone: ${factura.consignatario.telefonoContacto}`}
             </div>
           )}
           {factura.consignatario.usci && (
-            <div className="text-gray-700">
+            <div className="text-gray-900 font-medium">
               <span className="font-semibold">USCI:</span> {factura.consignatario.usci}
             </div>
           )}
           {factura.consignatario.codigoPostal && (
-            <div className="text-gray-700">
+            <div className="text-gray-900 font-medium">
               <span className="font-semibold">Postal Code:</span> {factura.consignatario.codigoPostal}
             </div>
           )}
-          <div className="text-gray-700">
+          <div className="text-gray-900 font-medium">
             <span className="font-semibold">Country:</span> {factura.consignatario.pais}
           </div>
         </div>
