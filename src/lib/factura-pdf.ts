@@ -308,30 +308,31 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   y = currentY + 5;
 
-  // ESPECIE en caja
-  const especieY = y;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  const especieLabelWidth = doc.getTextWidth('ESPECIE');
-  doc.text('ESPECIE', margin + (contentWidth / 2) - (especieLabelWidth / 2), especieY);
-  y += 4;
-  
-  const especieBoxWidth = 40;
-  const especieBoxX = margin + (contentWidth / 2) - (especieBoxWidth / 2);
-  doc.rect(especieBoxX, especieY, especieBoxWidth, 5);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  const especieValue = factura.productos[0]?.variedad || '';
-  const especieValueWidth = doc.getTextWidth(especieValue);
-  doc.text(especieValue, margin + (contentWidth / 2) - (especieValueWidth / 2), especieY + 3.5);
-  
-  y += 8;
-
   // Tabla de productos con bordes
   const productTableStartY = y;
   const productColWidths = [18, 20, 25, 18, 20, 18, 25, 25, 22];
   const productRowHeight = 5;
   const totalProductColWidth = productColWidths.reduce((a, b) => a + b, 0);
+
+  // Fila ESPECIE
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  // Primera columna: ESPECIE header
+  doc.rect(margin, productTableStartY - 4, productColWidths[0], productRowHeight * 2);
+  doc.text('ESPECIE', margin + (productColWidths[0] / 2) - (doc.getTextWidth('ESPECIE') / 2), productTableStartY);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.text('(Specie)', margin + (productColWidths[0] / 2) - (doc.getTextWidth('(Specie)') / 2), productTableStartY + 3);
+  
+  // Resto de columnas con variedad (colSpan 8)
+  const variedadColSpan = productColWidths.slice(1).reduce((a, b) => a + b, 0);
+  doc.rect(margin + productColWidths[0], productTableStartY - 4, variedadColSpan, productRowHeight * 2);
+  const especieValue = factura.productos[0]?.variedad || '';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(especieValue, margin + productColWidths[0] + (variedadColSpan / 2) - (doc.getTextWidth(especieValue) / 2), productTableStartY + 1);
+
+  y = productTableStartY + (productRowHeight * 2) + 1;
 
   // Headers de productos
   doc.setFontSize(6);
@@ -349,10 +350,10 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   let productX = margin;
   productHeaders.forEach((header, index) => {
-    doc.rect(productX, productTableStartY - 4, productColWidths[index], productRowHeight * 2);
+    doc.rect(productX, y - 4, productColWidths[index], productRowHeight * 2);
     doc.setFont('helvetica', 'bold');
     const headerLines = header.split('\n');
-    let headerY = productTableStartY - 1;
+    let headerY = y - 1;
     headerLines.forEach((line, lineIndex) => {
       doc.text(line, productX + 1, headerY);
       headerY += 2.5;
@@ -360,7 +361,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     productX += productColWidths[index];
   });
 
-  y = productTableStartY + (productRowHeight * 2);
+  y += (productRowHeight * 2);
 
   // Filas de productos
   doc.setFont('helvetica', 'normal');
@@ -393,6 +394,13 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
         doc.setFont('helvetica', 'bold');
         const textWidth = doc.getTextWidth(data);
         doc.text(data, productX + productColWidths[index] - textWidth - 1, y);
+      } else if (index === 4) {
+        // ETIQUETA: usar splitTextToSize para manejar texto largo
+        doc.setFont('helvetica', 'normal');
+        const labelLines = doc.splitTextToSize(data, productColWidths[index] - 2);
+        labelLines.forEach((line: string, lineIndex: number) => {
+          doc.text(line, productX + 1, y + (lineIndex * 2.5));
+        });
       } else {
         doc.setFont('helvetica', 'normal');
         doc.text(data, productX + 1, y);
