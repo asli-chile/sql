@@ -67,8 +67,43 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
   }, [totalesCalculados]);
 
   const handleSave = async () => {
+    // Validaciones básicas
+    if (!factura.exportador.nombre || !factura.exportador.nombre.trim()) {
+      showError('El nombre del exportador es obligatorio');
+      return;
+    }
+
+    if (!factura.consignatario.nombre || !factura.consignatario.nombre.trim()) {
+      showError('El nombre del consignatario es obligatorio');
+      return;
+    }
+
+    if (!factura.embarque.numeroEmbarque || !factura.embarque.numeroEmbarque.trim()) {
+      showError('El número de embarque es obligatorio');
+      return;
+    }
+
+    if (factura.productos.length === 0) {
+      showError('Debe agregar al menos un producto');
+      return;
+    }
+
+    // Validar que todos los productos tengan datos válidos
+    const productosInvalidos = factura.productos.some(
+      (p) => !p.cantidad || p.cantidad <= 0 || !p.precioPorCaja || p.precioPorCaja <= 0
+    );
+
+    if (productosInvalidos) {
+      showError('Todos los productos deben tener cantidad y precio válidos');
+      return;
+    }
+
     setGuardando(true);
     try {
+      // Obtener usuario actual
+      const { data: userData } = await supabase.auth.getUser();
+      const userEmail = userData?.user?.email || 'unknown';
+
       // Guardar en Supabase
       const { data, error } = await supabase
         .from('facturas')
@@ -81,18 +116,27 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
           productos: factura.productos,
           totales: totalesCalculados,
           cliente_plantilla: factura.clientePlantilla,
-          created_by: (await supabase.auth.getUser()).data.user?.email || 'unknown'
+          created_by: userEmail,
         })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error de Supabase:', error);
+        throw error;
+      }
 
+      console.log('✅ Factura guardada exitosamente:', data);
       success('Factura guardada exitosamente');
-      onSave();
+      
+      // Cerrar modal después de un pequeño delay para que se vea el mensaje de éxito
+      setTimeout(() => {
+        onSave();
+      }, 500);
     } catch (err: any) {
       console.error('Error guardando factura:', err);
-      showError('Error al guardar la factura: ' + err.message);
+      const errorMessage = err.message || 'Error desconocido al guardar la factura';
+      showError(`Error al guardar la factura: ${errorMessage}`);
     } finally {
       setGuardando(false);
     }
