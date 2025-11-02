@@ -76,7 +76,13 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               N° {factura.embarque.numeroInvoice}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+        </div>
+      </div>
+
+      {/* FECHA y EMBARQUE N° - Alineados con el borde derecho de las tablas */}
+      <div className="mb-4">
+        <div className="w-full">
+          <div className="flex items-center justify-end gap-4 mb-3">
             <span className="text-xs" style={{ fontSize: '8pt' }}>FECHA:</span>
             <div className="border border-black px-3 py-1 inline-block" style={{ borderWidth: '1px' }}>
               <span className="text-xs" style={{ fontSize: '8pt' }}>
@@ -84,7 +90,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-4 mt-3">
+          <div className="flex items-center justify-end gap-4">
             <span className="text-xs" style={{ fontSize: '8pt' }}>EMBARQUE N°</span>
             <div className="border border-black px-3 py-1 inline-block" style={{ borderWidth: '1px' }}>
               <span className="text-xs" style={{ fontSize: '8pt' }}>
