@@ -205,33 +205,31 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   currentY += valueRowHeight + 1;
 
   // Segunda sección: PAIS ORIGEN, PTO EMBARQUE, etc.
-  // Headers con español e inglés juntos
+  // Primera fila: Headers en español
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
-  const section2Headers = [
-    'PAIS ORIGEN\n(Country of Origin)',
-    'PTO EMBARQUE\n(Loading Port)',
-    'PTO DESTINO\n(Destination Port)',
-    'PAIS DESTINO FINAL\n(Country of Destination)',
-    'FORMA DE PAGO\n(Payment Terms)'
-  ];
+  const section2SpanishHeaders = ['PAIS ORIGEN', 'PTO EMBARQUE', 'PTO DESTINO', 'PAIS DESTINO FINAL', 'FORMA DE PAGO'];
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
-    doc.rect(x, currentY - 4, colWidth, headerRowHeight * 2);
-    const lines = section2Headers[col].split('\n');
-    let textY = currentY - 1;
-    lines.forEach((line, lineIndex) => {
-      if (lineIndex === 1) {
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(6);
-      }
-      doc.text(line, x + 1, textY);
-      textY += 2.5;
-    });
+    doc.rect(x, currentY - 4, colWidth, headerRowHeight);
+    const textWidth = doc.getTextWidth(section2SpanishHeaders[col]);
+    doc.text(section2SpanishHeaders[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
-  currentY += headerRowHeight * 2;
+  currentY += headerRowHeight;
 
-  // Valores segunda sección
+  // Segunda fila: Headers en inglés
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  const section2EnglishHeaders = ['(Country of Origin)', '(Loading Port)', '(Destination Port)', '(Country of Destination)', '(Payment Terms)'];
+  for (let col = 0; col < numCols; col++) {
+    const x = margin + (col * colWidth);
+    doc.rect(x, currentY - 4, colWidth, headerRowHeight);
+    const textWidth = doc.getTextWidth(section2EnglishHeaders[col]);
+    doc.text(section2EnglishHeaders[col], x + (colWidth / 2) - (textWidth / 2), currentY);
+  }
+  currentY += headerRowHeight;
+
+  // Tercera fila: Valores (centrados)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   const values2 = [
@@ -244,7 +242,8 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, valueRowHeight);
-    doc.text(values2[col], x + 1, currentY);
+    const textWidth = doc.getTextWidth(values2[col]);
+    doc.text(values2[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
   currentY += valueRowHeight + 1;
 

@@ -178,43 +178,57 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                 {factura.embarque.clausulaVenta}
               </td>
             </tr>
-            {/* Segunda fila de campos */}
+            {/* Segunda fila de campos - Headers en español */}
             <tr>
-              <th className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+              <th className="border border-black px-2 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
                 PAIS ORIGEN
-                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Country of Origin)</div>
               </th>
-              <th className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+              <th className="border border-black px-2 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
                 PTO EMBARQUE
-                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Loading Port)</div>
               </th>
-              <th className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+              <th className="border border-black px-2 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
                 PTO DESTINO
-                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Destination Port)</div>
               </th>
-              <th className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+              <th className="border border-black px-2 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
                 PAIS DESTINO FINAL
-                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Country of Destination)</div>
               </th>
-              <th className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+              <th className="border border-black px-2 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
                 FORMA DE PAGO
-                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Payment Terms)</div>
               </th>
             </tr>
+            {/* Headers en inglés */}
             <tr>
-              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+              <th className="border border-black px-2 py-1 font-normal text-center" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
+                (Country of Origin)
+              </th>
+              <th className="border border-black px-2 py-1 font-normal text-center" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
+                (Loading Port)
+              </th>
+              <th className="border border-black px-2 py-1 font-normal text-center" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
+                (Destination Port)
+              </th>
+              <th className="border border-black px-2 py-1 font-normal text-center" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
+                (Country of Destination)
+              </th>
+              <th className="border border-black px-2 py-1 font-normal text-center" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
+                (Payment Terms)
+              </th>
+            </tr>
+            {/* Valores */}
+            <tr>
+              <td className="border border-black px-2 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
                 {factura.embarque.paisOrigen}
               </td>
-              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+              <td className="border border-black px-2 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
                 {factura.embarque.puertoEmbarque}
               </td>
-              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+              <td className="border border-black px-2 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
                 {factura.embarque.puertoDestino}
               </td>
-              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+              <td className="border border-black px-2 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
                 {factura.embarque.paisDestinoFinal}
               </td>
-              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+              <td className="border border-black px-2 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
                 {factura.embarque.formaPago || ''}
               </td>
             </tr>
