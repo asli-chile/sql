@@ -28,6 +28,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText, Receipt } from 'lucide-react';
 import { QRGenerator } from '@/components/QRGenerator';
 import { ReportGenerator } from '@/components/ReportGenerator';
+import { Factura } from '@/types/factura';
+import { FacturaViewer } from '@/components/FacturaViewer';
 
 interface User {
   id: string;
@@ -85,6 +87,11 @@ export default function RegistrosPage() {
   const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
   const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
   const [isReportGeneratorOpen, setIsReportGeneratorOpen] = useState(false);
+  
+  // Estados para facturas
+  const [facturas, setFacturas] = useState<Factura[]>([]);
+  const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
+  const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
   
   // Estado para preservar filtros del DataTable
   const [preservedFilters, setPreservedFilters] = useState({
@@ -180,6 +187,7 @@ export default function RegistrosPage() {
       
       // Cargar registros (depende de clientes asignados si es ejecutivo)
       await loadRegistros();
+      await loadFacturas();
     } catch (error) {
       console.error('Error checking user:', error);
       router.push('/auth');
@@ -288,6 +296,38 @@ export default function RegistrosPage() {
       console.error('Error loading registros:', error);
     }
   }, [isEjecutivo, clientesAsignados]);
+
+  const loadFacturas = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('facturas')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Mapear datos de Supabase a tipo Factura
+      const facturasData = (data || []).map((f: any) => ({
+        id: f.id,
+        registroId: f.registro_id,
+        refAsli: f.ref_asli,
+        exportador: f.exportador || {},
+        consignatario: f.consignatario || {},
+        embarque: f.embarque || {},
+        productos: f.productos || [],
+        totales: f.totales || { cantidadTotal: 0, valorTotal: 0, valorTotalTexto: '' },
+        clientePlantilla: f.cliente_plantilla || 'ALMAFRUIT',
+        created_at: f.created_at,
+        updated_at: f.updated_at,
+        created_by: f.created_by,
+      })) as Factura[];
+
+      setFacturas(facturasData);
+    } catch (error) {
+      console.error('Error loading facturas:', error);
+    }
+  }, []);
 
   const loadCatalogos = async () => {
     try {
@@ -1140,6 +1180,23 @@ export default function RegistrosPage() {
     }
   }, [registrosLength, registros, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
 
+  // Crear mapeo de registroId a factura
+  const facturasPorRegistro = useMemo(() => {
+    const mapa = new Map<string, Factura>();
+    facturas.forEach(factura => {
+      if (factura.registroId) {
+        mapa.set(factura.registroId, factura);
+      }
+    });
+    return mapa;
+  }, [facturas]);
+
+  // Handler para ver factura
+  const handleViewFactura = useCallback((factura: Factura) => {
+    setFacturaSeleccionada(factura);
+    setIsFacturaViewerOpen(true);
+  }, []);
+
   // Memoizar las columnas para evitar recrearlas en cada render
   const columns = useMemo(() => createRegistrosColumns(
     registros, // data
@@ -1164,7 +1221,9 @@ export default function RegistrosPage() {
     co2sUnicos,
     o2sUnicos,
     facturacionesUnicas,
-    handleShowHistorial
+    handleShowHistorial,
+    facturasPorRegistro,
+    handleViewFactura
   ), [
     registros,
     selectedRows,
@@ -1188,7 +1247,9 @@ export default function RegistrosPage() {
     co2sUnicos,
     o2sUnicos,
     facturacionesUnicas,
-    handleShowHistorial
+    handleShowHistorial,
+    facturasPorRegistro,
+    handleViewFactura
   ]);
 
   if (loading) {
@@ -1529,6 +1590,18 @@ export default function RegistrosPage() {
           onClose={handleCloseHistorial}
           registroId={selectedRegistroForHistorial.id || ''}
           registroRefAsli={selectedRegistroForHistorial.refAsli}
+        />
+      )}
+
+      {facturaSeleccionada && (
+        <FacturaViewer
+          factura={facturaSeleccionada}
+          isOpen={isFacturaViewerOpen}
+          onClose={() => {
+            setIsFacturaViewerOpen(false);
+            setFacturaSeleccionada(null);
+          }}
+          onUpdate={loadFacturas}
         />
       )}
 

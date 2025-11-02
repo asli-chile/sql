@@ -4,7 +4,8 @@ import { Registro } from '@/types/registros';
 import { Badge } from '@/components/ui/badge';
 import { calculateTransitTime, formatTransitTime } from '@/lib/transit-time-utils';
 import { InlineEditCell } from '@/components/InlineEditCell';
-import { History } from 'lucide-react';
+import { History, Eye } from 'lucide-react';
+import { Factura } from '@/types/factura';
 
 // Función para crear un mapeo de naves a navieras
 const createNaveToNavieraMap = (data: Registro[]): Map<string, string[]> => {
@@ -57,7 +58,9 @@ export const createRegistrosColumns = (
   co2sUnicos?: string[],
   o2sUnicos?: string[],
   facturacionesUnicas?: string[],
-  onShowHistorial?: (registro: Registro) => void
+  onShowHistorial?: (registro: Registro) => void,
+  facturasPorRegistro?: Map<string, Factura>,
+  onViewFactura?: (factura: Factura) => void
 ): ColumnDef<Registro>[] => {
   // Crear mapeo de naves a navieras
   const naveToNavierasMap = createNaveToNavieraMap(data);
@@ -668,6 +671,38 @@ export const createRegistrosColumns = (
         />
       );
     },
+  },
+  {
+    id: 'proforma',
+    header: 'PROFORMA',
+    cell: ({ row }) => {
+      const registroId = row.original.id;
+      const factura = registroId ? facturasPorRegistro?.get(registroId) : undefined;
+
+      if (factura && onViewFactura) {
+        return (
+          <div className="flex items-center justify-center">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewFactura(factura);
+              }}
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors dark:hover:bg-blue-900 dark:text-gray-300"
+              title="Ver factura"
+            >
+              <Eye size={16} />
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex items-center justify-center">
+          <span className="text-xs text-gray-500 dark:text-gray-400">PENDIENTE</span>
+        </div>
+      );
+    },
+    enableSorting: false,
   },
   {
     id: 'historial',
