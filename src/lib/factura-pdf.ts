@@ -156,66 +156,149 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     y += 6;
   }
 
-  // Tabla de detalles de embarque con bordes
+  // Tabla de detalles de embarque con bordes - estructura reorganizada
   const tableStartY = y;
-  const col1Width = 30;
-  const col2Width = 30;
-  const col3Width = 30;
-  const col4Width = 30;
-  const col5Width = 30;
-  const col6Width = 30;
-  const rowHeight = 5;
-
-  const shippingRows = [
-    [
-      'FECHA EMBARQUE', formatDateShort(factura.embarque.fechaEmbarque),
-      'MOTONAVE', factura.embarque.motonave || '-',
-      'N° VIAJE', factura.embarque.numeroViaje || '-'
-    ],
-    [
-      'MODALIDAD DE VENTA', factura.embarque.modalidadVenta || 'BAJO CONDICION',
-      'CLÁUSULA DE VENTA', factura.embarque.clausulaVenta,
-      'PAIS ORIGEN', factura.embarque.paisOrigen
-    ],
-    [
-      'PTO EMBARQUE', factura.embarque.puertoEmbarque,
-      'PTO DESTINO', factura.embarque.puertoDestino,
-      'PAIS DESTINO FINAL', factura.embarque.paisDestinoFinal
-    ],
-    [
-      'FORMA DE PAGO', factura.embarque.formaPago || '',
-      'PESO NETO TOTAL', factura.embarque.pesoNetoTotal ? `${formatNumber(factura.embarque.pesoNetoTotal)} Kgs.` : '',
-      'PESO BRUTO TOTAL', factura.embarque.pesoBrutoTotal ? `${formatNumber(factura.embarque.pesoBrutoTotal)} Kgs.` : ''
-    ],
-    [
-      'CONTENEDOR / AWB', factura.embarque.contenedor || '', '', '', '', ''
-    ]
-  ];
+  const numCols = 5;
+  const colWidth = 35;
+  const headerRowHeight = 5;
+  const valueRowHeight = 5;
 
   doc.setFontSize(7);
-  shippingRows.forEach((row, rowIndex) => {
-    const currentY = tableStartY + (rowIndex * rowHeight);
-    
-    // Dibujar bordes de las celdas
-    for (let col = 0; col < 6; col++) {
-      const x = margin + (col * 31);
-      doc.rect(x, currentY - 4, 31, rowHeight);
-    }
+  let currentY = tableStartY;
 
-    // Dibujar contenido
-    for (let col = 0; col < 6; col += 2) {
-      if (row[col]) {
-        const x = margin + (col * 31) + 1;
-        doc.setFont('helvetica', 'bold');
-        doc.text(row[col], x, currentY);
-        
-        if (row[col + 1]) {
-          doc.setFont('helvetica', 'normal');
-          doc.text(row[col + 1], x + col1Width, currentY);
-        }
+  // Primera fila: Headers en español
+  doc.setFont('helvetica', 'bold');
+  const spanishHeaders = ['FECHA EMBARQUE', 'MOTONAVE', 'N° VIAJE', 'MODALIDAD DE VENTA', 'CLÁUSULA DE VENTA'];
+  for (let col = 0; col < numCols; col++) {
+    const x = margin + (col * colWidth);
+    doc.rect(x, currentY - 4, colWidth, headerRowHeight);
+    doc.text(spanishHeaders[col], x + 1, currentY);
+  }
+  currentY += headerRowHeight;
+
+  // Segunda fila: Headers en inglés (fuente más chica)
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  const englishHeaders = ['(Departure Date)', '(Vessel)', '(Travel Number)', '(Terms of Sale)', '(Clause of Sale)'];
+  for (let col = 0; col < numCols; col++) {
+    const x = margin + (col * colWidth);
+    doc.rect(x, currentY - 4, colWidth, headerRowHeight);
+    doc.text(englishHeaders[col], x + 1, currentY);
+  }
+  currentY += headerRowHeight;
+
+  // Tercera fila: Valores
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  const values = [
+    formatDateShort(factura.embarque.fechaEmbarque),
+    factura.embarque.motonave || '-',
+    factura.embarque.numeroViaje || '-',
+    factura.embarque.modalidadVenta || 'BAJO CONDICION',
+    factura.embarque.clausulaVenta
+  ];
+  for (let col = 0; col < numCols; col++) {
+    const x = margin + (col * colWidth);
+    doc.rect(x, currentY - 4, colWidth, valueRowHeight);
+    doc.text(values[col], x + 1, currentY);
+  }
+  currentY += valueRowHeight + 1;
+
+  // Segunda sección: PAIS ORIGEN, PTO EMBARQUE, etc.
+  // Headers con español e inglés juntos
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  const section2Headers = [
+    'PAIS ORIGEN\n(Country of Origin)',
+    'PTO EMBARQUE\n(Loading Port)',
+    'PTO DESTINO\n(Destination Port)',
+    'PAIS DESTINO FINAL\n(Country of Destination)',
+    'FORMA DE PAGO\n(Payment Terms)'
+  ];
+  for (let col = 0; col < numCols; col++) {
+    const x = margin + (col * colWidth);
+    doc.rect(x, currentY - 4, colWidth, headerRowHeight * 2);
+    const lines = section2Headers[col].split('\n');
+    let textY = currentY - 1;
+    lines.forEach((line, lineIndex) => {
+      if (lineIndex === 1) {
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(6);
       }
+      doc.text(line, x + 1, textY);
+      textY += 2.5;
+    });
+  }
+  currentY += headerRowHeight * 2;
+
+  // Valores segunda sección
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  const values2 = [
+    factura.embarque.paisOrigen,
+    factura.embarque.puertoEmbarque,
+    factura.embarque.puertoDestino,
+    factura.embarque.paisDestinoFinal,
+    factura.embarque.formaPago || ''
+  ];
+  for (let col = 0; col < numCols; col++) {
+    const x = margin + (col * colWidth);
+    doc.rect(x, currentY - 4, colWidth, valueRowHeight);
+    doc.text(values2[col], x + 1, currentY);
+  }
+  currentY += valueRowHeight + 1;
+
+  // Tercera sección: PESO NETO, PESO BRUTO, CONTENEDOR
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  const section3Headers = [
+    'PESO NETO TOTAL\n(Total Net Weight)',
+    'PESO BRUTO TOTAL\n(Total Gross Weight)',
+    'CONTENEDOR / AWB\n(Container / AWB)',
+    '',
+    ''
+  ];
+  for (let col = 0; col < numCols; col++) {
+    if (section3Headers[col]) {
+      const x = margin + (col * colWidth);
+      const colspan = col === 2 ? 3 : 1;
+      const width = colWidth * colspan;
+      doc.rect(x, currentY - 4, width, headerRowHeight * 2);
+      const lines = section3Headers[col].split('\n');
+      let textY = currentY - 1;
+      lines.forEach((line, lineIndex) => {
+        if (lineIndex === 1) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6);
+        }
+        doc.text(line, x + 1, textY);
+        textY += 2.5;
+      });
+      if (col === 2) break; // Salir después del contenedor que ocupa 3 columnas
     }
-  });
+  }
+  currentY += headerRowHeight * 2;
+
+  // Valores tercera sección
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  const pesoNeto = factura.embarque.pesoNetoTotal ? `${formatNumber(factura.embarque.pesoNetoTotal)} Kgs.` : '';
+  const pesoBruto = factura.embarque.pesoBrutoTotal ? `${formatNumber(factura.embarque.pesoBrutoTotal)} Kgs.` : '';
+  const contenedor = factura.embarque.contenedor || '';
+  
+  // PESO NETO
+  doc.rect(margin, currentY - 4, colWidth, valueRowHeight);
+  doc.text(pesoNeto, margin + 1, currentY);
+  
+  // PESO BRUTO
+  doc.rect(margin + colWidth, currentY - 4, colWidth, valueRowHeight);
+  doc.text(pesoBruto, margin + colWidth + 1, currentY);
+  
+  // CONTENEDOR (ocupa 3 columnas)
+  doc.rect(margin + (colWidth * 2), currentY - 4, colWidth * 3, valueRowHeight);
+  doc.text(contenedor, margin + (colWidth * 2) + 1, currentY);
+  
+  currentY += valueRowHeight;
 
   y = tableStartY + (shippingRows.length * rowHeight) + 5;
 
