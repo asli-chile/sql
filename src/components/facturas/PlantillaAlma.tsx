@@ -22,6 +22,11 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
             {factura.exportador.direccion && (
               <div className="text-sm text-gray-700">{factura.exportador.direccion}</div>
             )}
+            {factura.refAsli && (
+              <div className="text-sm text-gray-700 mt-1">
+                <span className="font-semibold">REF ASLI:</span> {factura.refAsli}
+              </div>
+            )}
           </div>
         </div>
         <div className="text-right">

@@ -62,9 +62,16 @@ export function FacturaViewer({ factura, isOpen, onClose }: FacturaViewerProps) 
             theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
           }`}
         >
-          <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Ver Factura - {factura.refAsli}
-          </h2>
+          <div>
+            <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Ver Factura
+            </h2>
+            {factura.refAsli && (
+              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                REF ASLI: <span className="font-semibold">{factura.refAsli}</span>
+              </p>
+            )}
+          </div>
           <div className="flex items-center space-x-2">
             <button
               onClick={handleDownloadPDF}
