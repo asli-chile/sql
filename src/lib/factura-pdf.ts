@@ -108,7 +108,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   doc.text(formatDate(factura.embarque.fechaFactura), boxX + fechaLabelWidth + 5, y);
 
   // EMBARQUE N° en caja
-  y += 6;
+  y += 8;
   const embarqueLabelWidth = doc.getTextWidth('EMBARQUE N°');
   doc.text('EMBARQUE N°', boxX, y);
   doc.rect(boxX + embarqueLabelWidth + 2, y - 4, 35, 6);

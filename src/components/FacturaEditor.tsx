@@ -953,26 +953,41 @@ function numberToWords(num: number): string {
 
   if (num === 0) return 'ZERO';
 
-  const numStr = Math.floor(num).toString();
+  // Separar parte entera y decimal
+  const integerPart = Math.floor(num);
+  const decimalPart = Math.round((num - integerPart) * 100);
+
   const parts = [];
+  let workingNum = integerPart;
 
-  if (num >= 1000000) {
-    const millions = Math.floor(num / 1000000);
+  if (workingNum >= 1000000) {
+    const millions = Math.floor(workingNum / 1000000);
     parts.push(convertHundreds(millions) + ' MILLION');
-    num %= 1000000;
+    workingNum %= 1000000;
   }
 
-  if (num >= 1000) {
-    const thousands = Math.floor(num / 1000);
+  if (workingNum >= 1000) {
+    const thousands = Math.floor(workingNum / 1000);
     parts.push(convertHundreds(thousands) + ' THOUSAND');
-    num %= 1000;
+    workingNum %= 1000;
   }
 
-  if (num > 0) {
-    parts.push(convertHundreds(num));
+  if (workingNum > 0) {
+    parts.push(convertHundreds(workingNum));
   }
 
-  return parts.join(' ') + ' US Dollar';
+  let result = parts.join(' ') + ' US Dollar';
+  
+  // Agregar centavos si hay decimales
+  if (decimalPart > 0) {
+    const cents = convertHundreds(decimalPart);
+    result += ' AND ' + cents + ' Cent';
+    if (decimalPart > 1) {
+      result += 's';
+    }
+  }
+
+  return result;
 
   function convertHundreds(num: number): string {
     if (num === 0) return '';
