@@ -99,7 +99,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
 
       {/* Shipping Details Table */}
       <div className="mb-6">
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-sm border-collapse table-fixed">
           <tbody>
             <tr>
               <td className="border border-gray-300 px-2 py-1 font-semibold">CSP:</td>
@@ -108,8 +108,8 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               <td className="border border-gray-300 px-2 py-1">{factura.embarque.csg || ''}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold">FECHA EMBARQUE (Departure Date):</td>
-              <td className="border border-gray-300 px-2 py-1">
+              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4">FECHA EMBARQUE (Departure Date):</td>
+              <td className="border border-gray-300 px-2 py-1 w-1/4">
                 {factura.embarque.fechaEmbarque
                   ? new Date(factura.embarque.fechaEmbarque).toLocaleDateString('es-CL', {
                       day: '2-digit',
@@ -118,8 +118,8 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                     })
                   : ''}
               </td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold">MOTONAVE (Vessel):</td>
-              <td className="border border-gray-300 px-2 py-1">{factura.embarque.motonave}</td>
+              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4">MOTONAVE (Vessel):</td>
+              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.motonave}</td>
             </tr>
             <tr>
               <td className="border border-gray-300 px-2 py-1 font-semibold">N° VIAJE (Travel Number):</td>

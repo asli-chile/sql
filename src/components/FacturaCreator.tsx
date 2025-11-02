@@ -66,24 +66,37 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
     }));
   }, [totalesCalculados]);
 
-  const handleSave = async () => {
+  const handleSave = async (e?: React.MouseEvent) => {
+    // Prevenir comportamiento por defecto si hay evento
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    console.log('🔵 Iniciando guardado de factura...');
+    console.log('Datos de factura:', factura);
+
     // Validaciones básicas
     if (!factura.exportador.nombre || !factura.exportador.nombre.trim()) {
+      console.error('❌ Error: Nombre del exportador faltante');
       showError('El nombre del exportador es obligatorio');
       return;
     }
 
     if (!factura.consignatario.nombre || !factura.consignatario.nombre.trim()) {
+      console.error('❌ Error: Nombre del consignatario faltante');
       showError('El nombre del consignatario es obligatorio');
       return;
     }
 
     if (!factura.embarque.numeroEmbarque || !factura.embarque.numeroEmbarque.trim()) {
+      console.error('❌ Error: Número de embarque faltante');
       showError('El número de embarque es obligatorio');
       return;
     }
 
     if (factura.productos.length === 0) {
+      console.error('❌ Error: No hay productos');
       showError('Debe agregar al menos un producto');
       return;
     }
@@ -94,9 +107,12 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
     );
 
     if (productosInvalidos) {
+      console.error('❌ Error: Productos con datos inválidos');
       showError('Todos los productos deben tener cantidad y precio válidos');
       return;
     }
+
+    console.log('✅ Validaciones pasadas, guardando...');
 
     setGuardando(true);
     try {
@@ -267,7 +283,8 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
             Cancelar
           </button>
           <button
-            onClick={handleSave}
+            type="button"
+            onClick={(e) => handleSave(e)}
             disabled={guardando}
             className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
               guardando
