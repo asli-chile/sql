@@ -25,7 +25,7 @@ import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText } from 'lucide-react';
+import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText, Receipt } from 'lucide-react';
 import { QRGenerator } from '@/components/QRGenerator';
 import { ReportGenerator } from '@/components/ReportGenerator';
 
@@ -1280,6 +1280,14 @@ export default function RegistrosPage() {
                   <span className="text-xs sm:text-sm">Enviar a ({selectedRows.size})</span>
                 </button>
               )}
+              <button
+                onClick={() => router.push('/facturas')}
+                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg transition-colors bg-purple-600 text-white hover:bg-purple-700"
+                title="Ir a Facturas"
+              >
+                <Receipt className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm hidden sm:inline">Facturas</span>
+              </button>
               <QRGenerator />
               <ThemeToggle />
               <ThemeTest />
