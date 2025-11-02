@@ -29,14 +29,14 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
 
-  // Inicializar factura cuando cambia y sincronizar paisDestinoFinal con consignatario.pais
+  // Inicializar factura cuando cambia y sincronizar consignatario.pais con paisDestinoFinal
   useEffect(() => {
     if (isOpen) {
       setFacturaEditada({
         ...factura,
-        embarque: {
-          ...factura.embarque,
-          paisDestinoFinal: factura.consignatario.pais || factura.embarque.paisDestinoFinal
+        consignatario: {
+          ...factura.consignatario,
+          pais: factura.embarque.paisDestinoFinal || factura.consignatario.pais
         }
       });
     }
@@ -328,9 +328,9 @@ function FormularioFactura({
       }
       current[keys[keys.length - 1]] = value;
       
-      // Si se actualiza el país del consignatario, sincronizar con paisDestinoFinal
-      if (path === 'consignatario.pais') {
-        newFactura.embarque.paisDestinoFinal = value;
+      // Si se actualiza el PAIS DESTINO FINAL, sincronizar con el país del consignatario
+      if (path === 'embarque.paisDestinoFinal') {
+        newFactura.consignatario.pais = value;
       }
       
       return newFactura;

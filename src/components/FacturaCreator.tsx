@@ -321,9 +321,9 @@ function FormularioFactura({
       }
       current[keys[keys.length - 1]] = value;
       
-      // Si se actualiza el país del consignatario, sincronizar con paisDestinoFinal
-      if (path === 'consignatario.pais') {
-        newFactura.embarque.paisDestinoFinal = value;
+      // Si se actualiza el PAIS DESTINO FINAL, sincronizar con el país del consignatario
+      if (path === 'embarque.paisDestinoFinal') {
+        newFactura.consignatario.pais = value;
       }
       
       return newFactura;
