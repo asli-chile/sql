@@ -30,6 +30,7 @@ export interface Factura {
   // Detalles de embarque (vienen de registros o se completan manualmente)
   embarque: {
     fechaFactura: string; // Fecha de la factura
+    numeroInvoice: string; // INVOICE N° (independiente del embarque)
     numeroEmbarque: string; // EMBARQUE N°
     csp?: string;
     csg?: string;

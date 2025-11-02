@@ -89,9 +89,9 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
       return;
     }
 
-    if (!factura.embarque.numeroEmbarque || !factura.embarque.numeroEmbarque.trim()) {
-      console.error('❌ Error: Número de embarque faltante');
-      showError('El número de embarque es obligatorio');
+    if (!factura.embarque.numeroInvoice || !factura.embarque.numeroInvoice.trim()) {
+      console.error('❌ Error: Número de invoice faltante');
+      showError('El número de invoice es obligatorio');
       return;
     }
 
@@ -356,6 +356,18 @@ function FormularioFactura({
     setFactura(prev => {
       const newProductos = [...prev.productos];
       newProductos[index] = { ...newProductos[index], [field]: value };
+      
+      // Si se cambia el tipo de caja, actualizar automáticamente kgNetoUnidad y kgBrutoUnidad
+      if (field === 'tipoEnvase') {
+        if (value === '5KG') {
+          newProductos[index].kgNetoUnidad = 5.0;
+          newProductos[index].kgBrutoUnidad = 5.5;
+        } else if (value === '2.5KG') {
+          newProductos[index].kgNetoUnidad = 2.5;
+          newProductos[index].kgBrutoUnidad = 2.8;
+        }
+      }
+      
       // Recalcular total
       newProductos[index].total = newProductos[index].cantidad * newProductos[index].precioPorCaja;
       return { ...prev, productos: newProductos };
@@ -486,27 +498,102 @@ function FormularioFactura({
         <h4 className={`font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
           Embarque
         </h4>
-        <input
-          type="date"
-          value={factura.embarque.fechaFactura}
-          onChange={e => updateFactura('embarque.fechaFactura', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-        />
-        <input
-          type="text"
-          value={factura.embarque.numeroEmbarque}
-          onChange={e => updateFactura('embarque.numeroEmbarque', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="N° Embarque"
-        />
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Fecha Factura
+          </label>
+          <input
+            type="date"
+            value={factura.embarque.fechaFactura}
+            onChange={e => updateFactura('embarque.fechaFactura', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          />
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            INVOICE N° *
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.numeroInvoice}
+            onChange={e => updateFactura('embarque.numeroInvoice', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="N° Invoice"
+          />
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            EMBARQUE N°
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.numeroEmbarque}
+            onChange={e => updateFactura('embarque.numeroEmbarque', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="N° Embarque"
+          />
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Fecha Embarque
+          </label>
+          <input
+            type="date"
+            value={factura.embarque.fechaEmbarque}
+            onChange={e => updateFactura('embarque.fechaEmbarque', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              CSP
+            </label>
+            <input
+              type="text"
+              value={factura.embarque.csp || ''}
+              onChange={e => updateFactura('embarque.csp', e.target.value)}
+              className={`w-full px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="CSP"
+            />
+          </div>
+          <div>
+            <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              CSG
+            </label>
+            <input
+              type="text"
+              value={factura.embarque.csg || ''}
+              onChange={e => updateFactura('embarque.csg', e.target.value)}
+              className={`w-full px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="CSG"
+            />
+          </div>
+        </div>
         {/* Nave - Solo lectura (viene del registro) */}
         <div>
           <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -543,28 +630,172 @@ function FormularioFactura({
             placeholder="N° Viaje"
           />
         </div>
-        <input
-          type="text"
-          value={factura.embarque.clausulaVenta}
-          onChange={e => updateFactura('embarque.clausulaVenta', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="Cláusula (FOB, CIF, etc.)"
-        />
-        <input
-          type="text"
-          value={factura.embarque.formaPago}
-          onChange={e => updateFactura('embarque.formaPago', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="Forma de Pago"
-        />
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Cláusula de Venta
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.clausulaVenta}
+            onChange={e => updateFactura('embarque.clausulaVenta', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="FOB, CIF, etc."
+          />
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Modalidad de Venta
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.modalidadVenta || ''}
+            onChange={e => updateFactura('embarque.modalidadVenta', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="BAJO CONDICION"
+          />
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            País Origen
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.paisOrigen}
+            onChange={e => updateFactura('embarque.paisOrigen', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="CHILE"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              Puerto Embarque
+            </label>
+            <input
+              type="text"
+              value={factura.embarque.puertoEmbarque}
+              onChange={e => updateFactura('embarque.puertoEmbarque', e.target.value)}
+              className={`w-full px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Puerto Embarque"
+            />
+          </div>
+          <div>
+            <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              Puerto Destino
+            </label>
+            <input
+              type="text"
+              value={factura.embarque.puertoDestino}
+              onChange={e => updateFactura('embarque.puertoDestino', e.target.value)}
+              className={`w-full px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Puerto Destino"
+            />
+          </div>
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            País Destino Final
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.paisDestinoFinal}
+            onChange={e => updateFactura('embarque.paisDestinoFinal', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="País Destino Final"
+          />
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Forma de Pago
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.formaPago}
+            onChange={e => updateFactura('embarque.formaPago', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="Forma de Pago"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              Peso Neto Total (Kgs)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={factura.embarque.pesoNetoTotal || ''}
+              onChange={e => updateFactura('embarque.pesoNetoTotal', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className={`w-full px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Peso Neto Total"
+            />
+          </div>
+          <div>
+            <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              Peso Bruto Total (Kgs)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              value={factura.embarque.pesoBrutoTotal || ''}
+              onChange={e => updateFactura('embarque.pesoBrutoTotal', e.target.value ? parseFloat(e.target.value) : undefined)}
+              className={`w-full px-3 py-2 rounded border ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white'
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+              placeholder="Peso Bruto Total"
+            />
+          </div>
+        </div>
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Contenedor / AWB
+          </label>
+          <input
+            type="text"
+            value={factura.embarque.contenedor || ''}
+            onChange={e => updateFactura('embarque.contenedor', e.target.value)}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+            placeholder="Contenedor / AWB"
+          />
+        </div>
       </section>
 
       {/* Productos */}
@@ -604,69 +835,135 @@ function FormularioFactura({
                 Eliminar
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <input
-                type="number"
-                value={producto.cantidad}
-                onChange={e => updateProducto(index, 'cantidad', parseInt(e.target.value) || 0)}
-                placeholder="Cantidad"
-                className={`px-2 py-1 rounded border ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                }`}
-              />
+            <div className="space-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  value={producto.cantidad}
+                  onChange={e => updateProducto(index, 'cantidad', parseInt(e.target.value) || 0)}
+                  placeholder="Cantidad"
+                  className={`px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-gray-50 border-gray-300 text-gray-900'
+                  }`}
+                />
+                <select
+                  value={producto.tipoEnvase}
+                  onChange={e => updateProducto(index, 'tipoEnvase', e.target.value)}
+                  className={`px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-gray-50 border-gray-300 text-gray-900'
+                  }`}
+                >
+                  <option value="CASES">CASES</option>
+                  <option value="5KG">5KG</option>
+                  <option value="2.5KG">2.5KG</option>
+                </select>
+              </div>
               <input
                 type="text"
                 value={producto.variedad}
                 onChange={e => updateProducto(index, 'variedad', e.target.value)}
                 placeholder="Variedad"
-                className={`px-2 py-1 rounded border ${
+                className={`w-full px-2 py-1 rounded border ${
                   theme === 'dark'
                     ? 'bg-gray-700 border-gray-600 text-white'
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                 }`}
               />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={producto.categoria}
+                  onChange={e => updateProducto(index, 'categoria', e.target.value)}
+                  placeholder="Categoría"
+                  className={`px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-gray-50 border-gray-300 text-gray-900'
+                  }`}
+                />
+                <input
+                  type="text"
+                  value={producto.calibre}
+                  onChange={e => updateProducto(index, 'calibre', e.target.value)}
+                  placeholder="Calibre"
+                  className={`px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-gray-50 border-gray-300 text-gray-900'
+                  }`}
+                />
+              </div>
               <input
                 type="text"
-                value={producto.categoria}
-                onChange={e => updateProducto(index, 'categoria', e.target.value)}
-                placeholder="Categoría"
-                className={`px-2 py-1 rounded border ${
+                value={producto.etiqueta}
+                onChange={e => updateProducto(index, 'etiqueta', e.target.value)}
+                placeholder="Etiqueta"
+                className={`w-full px-2 py-1 rounded border ${
                   theme === 'dark'
                     ? 'bg-gray-700 border-gray-600 text-white'
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                 }`}
               />
-              <input
-                type="text"
-                value={producto.calibre}
-                onChange={e => updateProducto(index, 'calibre', e.target.value)}
-                placeholder="Calibre"
-                className={`px-2 py-1 rounded border ${
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    KG Neto/Unidad
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={producto.kgNetoUnidad}
+                    onChange={e => updateProducto(index, 'kgNetoUnidad', parseFloat(e.target.value) || 0)}
+                    placeholder="KG Neto"
+                    className={`w-full px-2 py-1 rounded border ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    KG Bruto/Unidad
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={producto.kgBrutoUnidad}
+                    onChange={e => updateProducto(index, 'kgBrutoUnidad', parseFloat(e.target.value) || 0)}
+                    placeholder="KG Bruto"
+                    className={`w-full px-2 py-1 rounded border ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  step="0.01"
+                  value={producto.precioPorCaja}
+                  onChange={e => updateProducto(index, 'precioPorCaja', parseFloat(e.target.value) || 0)}
+                  placeholder="Precio/Caja"
+                  className={`px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-gray-50 border-gray-300 text-gray-900'
+                  }`}
+                />
+                <div className={`px-2 py-1 rounded border flex items-center ${
                   theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white'
+                    ? 'bg-gray-700 border-gray-600 text-gray-300'
                     : 'bg-gray-50 border-gray-300 text-gray-900'
-                }`}
-              />
-              <input
-                type="number"
-                step="0.01"
-                value={producto.precioPorCaja}
-                onChange={e => updateProducto(index, 'precioPorCaja', parseFloat(e.target.value) || 0)}
-                placeholder="Precio/Caja"
-                className={`px-2 py-1 rounded border ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                }`}
-              />
-              <div className={`px-2 py-1 rounded border ${
-                theme === 'dark'
-                  ? 'bg-gray-700 border-gray-600 text-gray-300'
-                  : 'bg-gray-50 border-gray-300 text-gray-900'
-              }`}>
-                Total: US${producto.total.toFixed(2)}
+                }`}>
+                  Total: US${producto.total.toFixed(2)}
+                </div>
               </div>
             </div>
           </div>
@@ -738,16 +1035,22 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
     },
     embarque: {
       fechaFactura: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      numeroInvoice: '', // Número de invoice independiente
       numeroEmbarque: registro.booking || '',
+      csp: '',
+      csg: '',
       fechaEmbarque: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : '',
       motonave: nave, // Nave extraída sin el viaje
       numeroViaje: viaje, // Viaje extraído
+      modalidadVenta: 'BAJO CONDICION',
       clausulaVenta: 'FOB',
       paisOrigen: 'CHILE',
       puertoEmbarque: registro.pol || '',
       puertoDestino: registro.pod || '',
       paisDestinoFinal: registro.pod || '',
       formaPago: '',
+      pesoNetoTotal: undefined,
+      pesoBrutoTotal: undefined,
       contenedor: Array.isArray(registro.contenedor) ? registro.contenedor.join(' ') : registro.contenedor || '',
     },
     productos: [

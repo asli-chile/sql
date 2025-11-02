@@ -36,7 +36,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
             </div>
           )}
           <div className="text-lg font-bold">
-            <span className="font-semibold">INVOICE N°:</span> {factura.embarque.numeroEmbarque}
+            <span className="font-semibold">INVOICE N°:</span> {factura.embarque.numeroInvoice}
           </div>
         </div>
       </div>
