@@ -121,6 +121,7 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
           totales: totalesCalculados,
           cliente_plantilla: facturaEditada.clientePlantilla,
           updated_at: new Date().toISOString(),
+          updated_by: userEmail,
         })
         .eq('id', facturaEditada.id)
         .select()
