@@ -17,10 +17,10 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           <div className="mb-4">
             <div className="text-lg font-bold uppercase">{factura.exportador.nombre}</div>
             {factura.exportador.giro && (
-              <div className="text-sm text-gray-700">Giro: {factura.exportador.giro}</div>
+              <div className="text-sm text-gray-900 font-medium">Giro: {factura.exportador.giro}</div>
             )}
             {factura.exportador.direccion && (
-              <div className="text-sm text-gray-700">{factura.exportador.direccion}</div>
+              <div className="text-sm text-gray-900 font-medium">{factura.exportador.direccion}</div>
             )}
             {factura.refAsli && (
               <div className="text-sm text-gray-700 mt-1">
@@ -176,7 +176,6 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>ETIQUETA (Label)</th>
               <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CALIBRE (Size)</th>
               <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>KG NETO UNIDAD (Net Weight Per Unit)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>BRUTO UNID (Gross Weight Per Unit)</th>
               <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PRECIO POR CAJA (Price per Box)</th>
               <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>TOTAL</th>
             </tr>
@@ -191,7 +190,6 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                 <td className="border border-gray-300 px-2 py-1">{producto.etiqueta}</td>
                 <td className="border border-gray-300 px-2 py-1">{producto.calibre}</td>
                 <td className="border border-gray-300 px-2 py-1">{producto.kgNetoUnidad.toFixed(2)} Kgs.</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.kgBrutoUnidad.toFixed(2)} Kgs.</td>
                 <td className="border border-gray-300 px-2 py-1">US${producto.precioPorCaja.toFixed(2)}/box</td>
                 <td className="border border-gray-300 px-2 py-1 font-semibold">
                   US${producto.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -201,15 +199,15 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           </tbody>
           <tfoot>
             <tr className="bg-gray-800 font-semibold" style={{ backgroundColor: '#1f2937' }}>
-              <td className="border border-gray-300 px-2 py-2 text-white" colSpan={9}>
+              <td className="border border-gray-300 px-2 py-2 text-white" colSpan={7}>
                 TOTALES (Totals):
               </td>
               <td className="border border-gray-300 px-2 py-2 text-white">
                 US${factura.totales.valorTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </td>
             </tr>
-            <tr className="bg-gray-100">
-              <td className="border border-gray-300 px-2 py-1 font-semibold" colSpan={9}>
+            <tr>
+              <td className="border border-gray-300 px-2 py-1 font-semibold" colSpan={7} style={{ backgroundColor: '#f3f4f6' }}>
                 Total Quantity:
               </td>
               <td className="border border-gray-300 px-2 py-1">{factura.totales.cantidadTotal.toLocaleString()}</td>
