@@ -57,12 +57,10 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
 
         {/* Invoice Info - Cajas a la derecha */}
         <div className="text-right ml-4">
-          {factura.exportador.rut && (
-            <div className="border border-black px-3 py-2 mb-2 inline-block" style={{ borderWidth: '1px' }}>
-              <div className="text-xs" style={{ fontSize: '10px' }}>R.U.T {factura.exportador.rut}</div>
-            </div>
-          )}
           <div className="border border-black px-3 py-2 mb-2 inline-block" style={{ borderWidth: '1px' }}>
+            {factura.exportador.rut && (
+              <div className="text-xs mb-1" style={{ fontSize: '10px' }}>R.U.T {factura.exportador.rut}</div>
+            )}
             <div className="text-xs mb-1" style={{ fontSize: '10px' }}>INVOICE</div>
             <div className="text-sm font-bold" style={{ fontSize: '12px', fontWeight: 'bold' }}>
               N° {factura.embarque.numeroInvoice}
