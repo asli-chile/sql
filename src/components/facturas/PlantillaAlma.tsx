@@ -236,17 +236,21 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
 
       {/* Productos Table */}
       <div className="mb-4">
-        <div className="text-center mb-2">
-          <div className="border border-black px-4 py-2 inline-block" style={{ borderWidth: '1px' }}>
-            <div className="text-xs font-bold mb-1" style={{ fontSize: '11px', fontWeight: 'bold' }}>ESPECIE</div>
-            <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Specie)</div>
-          </div>
-          <div className="border border-black px-4 py-2 mt-1 inline-block" style={{ borderWidth: '1px' }}>
-            <span className="text-xs font-bold" style={{ fontSize: '11px', fontWeight: 'bold' }}>
-              {factura.productos[0]?.variedad || ''}
-            </span>
-          </div>
-        </div>
+        <table className="w-full border-collapse mb-2" style={{ border: '1px solid black', fontSize: '9px' }}>
+          <tbody>
+            <tr>
+              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
+                <div className="text-xs font-bold mb-1" style={{ fontSize: '11px', fontWeight: 'bold' }}>ESPECIE</div>
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Specie)</div>
+              </td>
+              <td className="border border-black px-1 py-1 text-center" colSpan={8} style={{ borderWidth: '1px', textAlign: 'center' }}>
+                <span className="text-xs font-bold" style={{ fontSize: '11px', fontWeight: 'bold' }}>
+                  {factura.productos[0]?.variedad || ''}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <table className="w-full border-collapse" style={{ border: '1px solid black', fontSize: '9px' }}>
           <thead>
             <tr>
