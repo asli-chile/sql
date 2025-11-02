@@ -2,6 +2,92 @@
 import jsPDF from 'jspdf';
 import { Factura } from '@/types/factura';
 
+// Función para convertir número a palabras (en inglés, como en la factura)
+function numberToWords(num: number): string {
+  const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
+  const teens = ['TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN'];
+  const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY'];
+
+  if (num === 0) return 'ZERO';
+
+  // Asegurar que num es un número válido
+  if (isNaN(num) || !isFinite(num)) {
+    return 'ZERO US Dollar';
+  }
+  
+  // Separar parte entera y decimal
+  const integerPart = Math.floor(Math.abs(num));
+  const rawDecimal = Math.abs(num) - integerPart;
+  const decimalPart = Math.round(Math.round(rawDecimal * 10000) / 100);
+
+  const parts = [];
+  let workingNum = integerPart;
+
+  // Simple implementation for up to millions
+  if (workingNum >= 1000000) {
+    const millions = Math.floor(workingNum / 1000000);
+    parts.push(convertHundreds(millions) + ' MILLION');
+    workingNum %= 1000000;
+  }
+
+  if (workingNum >= 1000) {
+    const thousands = Math.floor(workingNum / 1000);
+    parts.push(convertHundreds(thousands) + ' THOUSAND');
+    workingNum %= 1000;
+  }
+
+  if (workingNum > 0) {
+    parts.push(convertHundreds(workingNum));
+  }
+
+  // Filtrar partes vacías antes de unir
+  const validParts = parts.filter(p => p && p.trim() !== '');
+  let result = validParts.length > 0 ? validParts.join(' ') + ' US Dollar' : 'ZERO US Dollar';
+  
+  // Agregar centavos si hay decimales
+  if (decimalPart > 0) {
+    const cents = convertHundreds(decimalPart);
+    if (cents && cents.trim() !== '') {
+      result += ' AND ' + cents + ' Cent';
+      if (decimalPart > 1) {
+        result += 's';
+      }
+    }
+  }
+
+  return result;
+
+  function convertHundreds(num: number): string {
+    if (!num || num === 0 || isNaN(num)) return '';
+    
+    if (num < 10) {
+      const result = ones[num];
+      return (result && result.trim() !== '') ? result : '';
+    }
+    if (num < 20) {
+      const index = num - 10;
+      const result = teens[index];
+      return (result && result.trim() !== '') ? result : '';
+    }
+    if (num < 100) {
+      const tensDigit = Math.floor(num / 10);
+      const onesDigit = num % 10;
+      const tensStr = (tens[tensDigit] && tens[tensDigit].trim() !== '') ? tens[tensDigit] : '';
+      const onesStr = (onesDigit > 0 && ones[onesDigit] && ones[onesDigit].trim() !== '') ? ones[onesDigit] : '';
+      if (!tensStr && !onesStr) return '';
+      return tensStr + (onesStr ? ' ' + onesStr : '').trim();
+    }
+    
+    const hundreds = Math.floor(num / 100);
+    const remainder = num % 100;
+    const hundredsStr = (ones[hundreds] && ones[hundreds].trim() !== '') ? ones[hundreds] : '';
+    if (!hundredsStr) return '';
+    
+    const remainderStr = remainder > 0 ? convertHundreds(remainder) : '';
+    return hundredsStr + ' HUNDRED' + (remainderStr && remainderStr.trim() !== '' ? ' ' + remainderStr : '');
+  }
+}
+
 export async function generarFacturaPDF(factura: Factura): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -483,7 +569,11 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  const totalTextLines = doc.splitTextToSize(factura.totales.valorTotalTexto, 80);
+  // Recalcular el texto si contiene "undefined" o está vacío
+  const valorTotalTexto = factura.totales.valorTotalTexto && !factura.totales.valorTotalTexto.includes('undefined') 
+    ? factura.totales.valorTotalTexto 
+    : numberToWords(factura.totales.valorTotal);
+  const totalTextLines = doc.splitTextToSize(valorTotalTexto, 80);
   doc.text(totalTextLines, margin, y);
   
   const totalValueY = y;
