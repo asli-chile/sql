@@ -102,13 +102,13 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
         <table className="w-full text-sm border-collapse table-fixed">
           <tbody>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">CSP:</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CSP:</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.csp || ''}</td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">CSG:</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CSG:</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.csg || ''}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">FECHA EMBARQUE (Departure Date):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>FECHA EMBARQUE (Departure Date):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">
                 {factura.embarque.fechaEmbarque
                   ? new Date(factura.embarque.fechaEmbarque).toLocaleDateString('es-CL', {
@@ -118,45 +118,45 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                     })
                   : ''}
               </td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">MOTONAVE (Vessel):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>MOTONAVE (Vessel):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.motonave || '-'}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">N° VIAJE (Travel Number):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>N° VIAJE (Travel Number):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.numeroViaje || '-'}</td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">MODALIDAD DE VENTA (Terms of Sale):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>MODALIDAD DE VENTA (Terms of Sale):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.modalidadVenta || 'BAJO CONDICION'}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">CLÁUSULA DE VENTA (Clause of Sale):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CLÁUSULA DE VENTA (Clause of Sale):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.clausulaVenta}</td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">PAIS ORIGEN (Country of Origin):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PAIS ORIGEN (Country of Origin):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.paisOrigen}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">PTO EMBARQUE (Loading Port):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PTO EMBARQUE (Loading Port):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.puertoEmbarque}</td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">PTO DESTINO (Destination Port):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PTO DESTINO (Destination Port):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.puertoDestino}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">PAIS DESTINO FINAL (Country of Destination):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PAIS DESTINO FINAL (Country of Destination):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.paisDestinoFinal}</td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">FORMA DE PAGO (Payment Terms):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>FORMA DE PAGO (Payment Terms):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.formaPago}</td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">PESO NETO TOTAL (Total Net Weight):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PESO NETO TOTAL (Total Net Weight):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">
                 {factura.embarque.pesoNetoTotal ? `${factura.embarque.pesoNetoTotal.toLocaleString()} Kgs.` : ''}
               </td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">PESO BRUTO TOTAL (Total Gross Weight):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PESO BRUTO TOTAL (Total Gross Weight):</td>
               <td className="border border-gray-300 px-2 py-1 w-1/4">
                 {factura.embarque.pesoBrutoTotal ? `${factura.embarque.pesoBrutoTotal.toLocaleString()} Kgs.` : ''}
               </td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4 bg-gray-100 text-gray-900">CONTENEDOR / AWB (Container / AWB):</td>
+              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CONTENEDOR / AWB (Container / AWB):</td>
               <td className="border border-gray-300 px-2 py-1 col-span-3">{factura.embarque.contenedor || ''}</td>
             </tr>
           </tbody>
