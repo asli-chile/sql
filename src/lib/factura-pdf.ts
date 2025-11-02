@@ -100,26 +100,27 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   doc.setFontSize(10);
   doc.text(`N° ${factura.embarque.numeroInvoice}`, boxX + 3, boxY);
 
-  // FECHA y EMBARQUE N° - Centrados horizontalmente
+  // FECHA y EMBARQUE N° - Alineados a la derecha
   y = 28;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
+  const tableRightEdge = margin + tableWidth;
   const fechaLabelWidth = doc.getTextWidth('FECHA:');
   const fechaBoxWidth = 40;
-  const fechaLabelX = margin + (contentWidth / 2) - (fechaBoxWidth / 2) - fechaLabelWidth - 4;
+  const fechaLabelX = tableRightEdge - fechaBoxWidth - fechaLabelWidth - 4;
   doc.text('FECHA:', fechaLabelX, y);
-  const fechaBoxX = margin + (contentWidth / 2) - (fechaBoxWidth / 2);
+  const fechaBoxX = tableRightEdge - fechaBoxWidth;
   doc.rect(fechaBoxX, y - 4, fechaBoxWidth, 6);
   const fechaTextWidth = doc.getTextWidth(formatDate(factura.embarque.fechaFactura));
   doc.text(formatDate(factura.embarque.fechaFactura), fechaBoxX + (fechaBoxWidth / 2) - (fechaTextWidth / 2), y);
 
-  // EMBARQUE N° en caja - Centrado
+  // EMBARQUE N° en caja - Alineado a la derecha
   y += 8;
   const embarqueLabelWidth = doc.getTextWidth('EMBARQUE N°');
   const embarqueBoxWidth = 40;
-  const embarqueLabelX = margin + (contentWidth / 2) - (embarqueBoxWidth / 2) - embarqueLabelWidth - 4;
+  const embarqueLabelX = tableRightEdge - embarqueBoxWidth - embarqueLabelWidth - 4;
   doc.text('EMBARQUE N°', embarqueLabelX, y);
-  const embarqueBoxX = margin + (contentWidth / 2) - (embarqueBoxWidth / 2);
+  const embarqueBoxX = tableRightEdge - embarqueBoxWidth;
   doc.rect(embarqueBoxX, y - 4, embarqueBoxWidth, 6);
   const embarqueTextWidth = doc.getTextWidth(factura.embarque.numeroEmbarque);
   doc.text(factura.embarque.numeroEmbarque, embarqueBoxX + (embarqueBoxWidth / 2) - (embarqueTextWidth / 2), y);
