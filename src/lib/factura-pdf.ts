@@ -379,7 +379,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // Segunda fila: Headers en inglés
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  const section3EnglishHeaders = ['Total Net Weight', 'Total Gross Weight', 'Container / AWB'];
+  const section3EnglishHeaders = ['Net Weight', 'Gross Weight', 'Container / AWB'];
   for (let col = 0; col < 3; col++) {
     const x = margin + (col * colWidth);
     const colspan = col === 2 ? 3 : 1;

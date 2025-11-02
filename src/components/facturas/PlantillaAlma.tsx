@@ -259,10 +259,10 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
             </tr>
             <tr>
               <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
-                Total Net Weight
+                Net Weight
               </th>
               <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
-                Total Gross Weight
+                Gross Weight
               </th>
               <th className="border border-black px-1 py-1 font-normal text-center" colSpan={3} style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
                 Container / AWB
