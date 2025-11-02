@@ -497,7 +497,18 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Contacto"
+          placeholder="ATTN"
+        />
+        <input
+          type="text"
+          value={factura.consignatario.codigoPostal || ''}
+          onChange={e => updateFactura('consignatario.codigoPostal', e.target.value)}
+          className={`w-full px-3 py-2 rounded border ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700 text-white'
+              : 'bg-white border-gray-300 text-gray-900'
+          }`}
+          placeholder="Zip Code"
         />
         <input
           type="text"
