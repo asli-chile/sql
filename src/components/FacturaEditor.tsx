@@ -35,8 +35,15 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
       setFacturaEditada({
         ...factura,
         consignatario: {
-          ...factura.consignatario,
-          pais: factura.embarque.paisDestinoFinal || factura.consignatario.pais
+          nombre: factura.consignatario.nombre || '',
+          direccion: factura.consignatario.direccion || '',
+          email: factura.consignatario.email || '',
+          telefono: factura.consignatario.telefono || '',
+          contacto: factura.consignatario.contacto || '',
+          telefonoContacto: factura.consignatario.telefonoContacto || '',
+          codigoPostal: factura.consignatario.codigoPostal || '',
+          usci: factura.consignatario.usci || '',
+          pais: factura.embarque.paisDestinoFinal || factura.consignatario.pais || ''
         }
       });
     }

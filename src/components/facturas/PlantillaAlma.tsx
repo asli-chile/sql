@@ -111,21 +111,21 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               Address: {factura.consignatario.direccion}
             </div>
           )}
-          {(factura.consignatario.email || factura.consignatario.telefono || factura.consignatario.telefonoContacto || factura.consignatario.contacto) && (
+          {(factura.consignatario?.email || factura.consignatario?.telefono || factura.consignatario?.telefonoContacto || factura.consignatario?.contacto) && (
             <div className="mb-1" style={{ fontSize: '8pt' }}>
-              {factura.consignatario.email && <>Email: {factura.consignatario.email}</>}
-              {(factura.consignatario.email && (factura.consignatario.telefono || factura.consignatario.telefonoContacto || factura.consignatario.contacto)) && ' '}
-              {(factura.consignatario.telefonoContacto || factura.consignatario.telefono) && (
+              {factura.consignatario?.email && <>Email: {factura.consignatario.email}</>}
+              {(factura.consignatario?.email && (factura.consignatario?.telefono || factura.consignatario?.telefonoContacto || factura.consignatario?.contacto)) && ' '}
+              {(factura.consignatario?.telefonoContacto || factura.consignatario?.telefono) && (
                 <>TEL: {factura.consignatario.telefonoContacto || factura.consignatario.telefono}</>
               )}
-              {((factura.consignatario.telefonoContacto || factura.consignatario.telefono) && factura.consignatario.contacto) && ' '}
-              {factura.consignatario.contacto && <>ATTN: {factura.consignatario.contacto}</>}
+              {((factura.consignatario?.telefonoContacto || factura.consignatario?.telefono) && factura.consignatario?.contacto) && ' '}
+              {factura.consignatario?.contacto && <>ATTN: {factura.consignatario.contacto}</>}
             </div>
           )}
-          {factura.consignatario.codigoPostal && (
+          {factura.consignatario?.codigoPostal && (
             <div className="mb-1" style={{ fontSize: '8pt' }}>Zip Code: {factura.consignatario.codigoPostal}</div>
           )}
-          {factura.consignatario.usci && (
+          {factura.consignatario?.usci && (
             <div className="mb-1" style={{ fontSize: '8pt' }}>USCI: {factura.consignatario.usci}</div>
           )}
           <div style={{ fontSize: '8pt' }}>{factura.consignatario.pais}</div>

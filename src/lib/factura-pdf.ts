@@ -237,23 +237,23 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     });
   }
   
-  if (factura.consignatario.email || factura.consignatario.telefono || factura.consignatario.telefonoContacto || factura.consignatario.contacto) {
-    const email = factura.consignatario.email ? `Email: ${factura.consignatario.email}` : '';
-    const tel = (factura.consignatario.telefonoContacto || factura.consignatario.telefono) 
+  if (factura.consignatario?.email || factura.consignatario?.telefono || factura.consignatario?.telefonoContacto || factura.consignatario?.contacto) {
+    const email = factura.consignatario?.email ? `Email: ${factura.consignatario.email}` : '';
+    const tel = (factura.consignatario?.telefonoContacto || factura.consignatario?.telefono) 
       ? `TEL: ${factura.consignatario.telefonoContacto || factura.consignatario.telefono}`
       : '';
-    const attn = factura.consignatario.contacto ? `ATTN: ${factura.consignatario.contacto}` : '';
+    const attn = factura.consignatario?.contacto ? `ATTN: ${factura.consignatario.contacto}` : '';
     const contactInfo = [email, tel, attn].filter(Boolean).join(' ');
     doc.text(contactInfo, margin, y);
     y += 4;
   }
   
-  if (factura.consignatario.codigoPostal) {
+  if (factura.consignatario?.codigoPostal) {
     doc.text(`Zip Code: ${factura.consignatario.codigoPostal}`, margin, y);
     y += 4;
   }
   
-  if (factura.consignatario.usci) {
+  if (factura.consignatario?.usci) {
     doc.text(`USCI: ${factura.consignatario.usci}`, margin, y);
     y += 4;
   }

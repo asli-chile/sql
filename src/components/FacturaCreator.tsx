@@ -1053,6 +1053,12 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
     consignatario: {
       nombre: (registro as any).consignatario || '',
       direccion: '',
+      email: '',
+      telefono: '',
+      contacto: '',
+      telefonoContacto: '',
+      codigoPostal: '',
+      usci: '',
       pais: registro.pod || '', // Por ahora usa POD, pero el usuario puede cambiarlo
     },
     embarque: {
