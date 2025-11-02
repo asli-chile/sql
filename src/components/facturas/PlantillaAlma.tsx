@@ -102,10 +102,10 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
         <table className="w-full text-sm border-collapse table-fixed">
           <tbody>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold">CSP:</td>
-              <td className="border border-gray-300 px-2 py-1">{factura.embarque.csp || ''}</td>
-              <td className="border border-gray-300 px-2 py-1 font-semibold">CSG:</td>
-              <td className="border border-gray-300 px-2 py-1">{factura.embarque.csg || ''}</td>
+              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4">CSP:</td>
+              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.csp || ''}</td>
+              <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4">CSG:</td>
+              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.csg || ''}</td>
             </tr>
             <tr>
               <td className="border border-gray-300 px-2 py-1 font-semibold w-1/4">FECHA EMBARQUE (Departure Date):</td>
