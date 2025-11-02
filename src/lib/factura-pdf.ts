@@ -237,9 +237,11 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     });
   }
   
-  if (factura.consignatario.email || factura.consignatario.telefono) {
+  if (factura.consignatario.email || factura.consignatario.telefono || factura.consignatario.telefonoContacto) {
     const email = factura.consignatario.email ? `Email: ${factura.consignatario.email}` : '';
-    const tel = factura.consignatario.telefono ? `TEL: ${factura.consignatario.telefono}` : '';
+    const tel = factura.consignatario.telefonoContacto 
+      ? `TEL: ${factura.consignatario.telefonoContacto}`
+      : (factura.consignatario.telefono ? `TEL: ${factura.consignatario.telefono}` : '');
     const contactInfo = [email, tel].filter(Boolean).join(' ');
     doc.text(contactInfo, margin, y);
     y += 4;
