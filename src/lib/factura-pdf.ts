@@ -45,9 +45,10 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   let y = 15;
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 15;
+  const margin = 5; // Reducir margen para dar más espacio
   const contentWidth = pageWidth - (margin * 2);
-  const tableWidth = 175; // Ancho total de las tablas (5 columnas * 35mm = 175mm)
+  const tableWidth = contentWidth; // Usar todo el ancho disponible
+  const colWidth = tableWidth / 5; // 5 columnas de igual ancho
 
   // Header - Exportador centrado a la izquierda
   doc.setFont('helvetica', 'bold');
@@ -177,7 +178,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // Tabla de detalles de embarque con bordes - estructura reorganizada
   const tableStartY = y;
   const numCols = 5;
-  const colWidth = 35;
+  // colWidth ya está definido arriba (tableWidth / 5)
   const headerRowHeight = 5;
   const valueRowHeight = 5;
 
