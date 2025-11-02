@@ -46,6 +46,7 @@ export default function FacturasPage() {
 
       const registrosData = (data || []).map((r: any) => ({
         ...r,
+        refAsli: r.ref_asli || '',
         ingresado: r.ingresado ? new Date(r.ingresado) : null,
         etd: r.etd ? new Date(r.etd) : null,
         eta: r.eta ? new Date(r.eta) : null,
@@ -381,8 +382,8 @@ export default function FacturasPage() {
                     >
                       <td className={`px-6 py-4 whitespace-nowrap ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {registro.refAsli}
+                      } font-semibold`}>
+                        {registro.refAsli || '-'}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap ${
                         theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
