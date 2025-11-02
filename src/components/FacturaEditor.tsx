@@ -29,10 +29,16 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
 
-  // Inicializar factura cuando cambia
+  // Inicializar factura cuando cambia y sincronizar paisDestinoFinal con consignatario.pais
   useEffect(() => {
     if (isOpen) {
-      setFacturaEditada(factura);
+      setFacturaEditada({
+        ...factura,
+        embarque: {
+          ...factura.embarque,
+          paisDestinoFinal: factura.consignatario.pais || factura.embarque.paisDestinoFinal
+        }
+      });
     }
   }, [isOpen, factura]);
 
@@ -321,6 +327,12 @@ function FormularioFactura({
         current = current[keys[i]];
       }
       current[keys[keys.length - 1]] = value;
+      
+      // Si se actualiza el país del consignatario, sincronizar con paisDestinoFinal
+      if (path === 'consignatario.pais') {
+        newFactura.embarque.paisDestinoFinal = value;
+      }
+      
       return newFactura;
     });
   };

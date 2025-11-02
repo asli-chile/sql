@@ -320,6 +320,12 @@ function FormularioFactura({
         current = current[keys[i]];
       }
       current[keys[keys.length - 1]] = value;
+      
+      // Si se actualiza el país del consignatario, sincronizar con paisDestinoFinal
+      if (path === 'consignatario.pais') {
+        newFactura.embarque.paisDestinoFinal = value;
+      }
+      
       return newFactura;
     });
   };
@@ -1022,7 +1028,7 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
     consignatario: {
       nombre: (registro as any).consignatario || '',
       direccion: '',
-      pais: registro.pod || '',
+      pais: registro.pod || '', // Por ahora usa POD, pero el usuario puede cambiarlo
     },
     embarque: {
       fechaFactura: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
@@ -1038,7 +1044,7 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
       paisOrigen: 'CHILE',
       puertoEmbarque: registro.pol || '',
       puertoDestino: registro.pod || '',
-      paisDestinoFinal: registro.pod || '',
+      paisDestinoFinal: registro.pod || '', // Se sincronizará automáticamente con consignatario.pais
       formaPago: '',
       pesoNetoTotal: undefined,
       pesoBrutoTotal: undefined,
