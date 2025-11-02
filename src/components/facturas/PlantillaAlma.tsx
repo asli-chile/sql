@@ -142,19 +142,19 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
             </tr>
             {/* Segunda fila: Headers en inglés (fuente más chica) */}
             <tr>
-              <th className="border border-black px-2 py-1" style={{ borderWidth: '1px', fontSize: '8px' }}>
+              <th className="border border-black px-2 py-1 font-normal" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
                 (Departure Date)
               </th>
-              <th className="border border-black px-2 py-1" style={{ borderWidth: '1px', fontSize: '8px' }}>
+              <th className="border border-black px-2 py-1 font-normal" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
                 (Vessel)
               </th>
-              <th className="border border-black px-2 py-1" style={{ borderWidth: '1px', fontSize: '8px' }}>
+              <th className="border border-black px-2 py-1 font-normal" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
                 (Travel Number)
               </th>
-              <th className="border border-black px-2 py-1" style={{ borderWidth: '1px', fontSize: '8px' }}>
+              <th className="border border-black px-2 py-1 font-normal" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
                 (Terms of Sale)
               </th>
-              <th className="border border-black px-2 py-1" style={{ borderWidth: '1px', fontSize: '8px' }}>
+              <th className="border border-black px-2 py-1 font-normal" style={{ borderWidth: '1px', fontSize: '8px', fontWeight: 'normal' }}>
                 (Clause of Sale)
               </th>
             </tr>
