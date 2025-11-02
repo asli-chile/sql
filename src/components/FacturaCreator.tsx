@@ -472,7 +472,21 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Email/Tel"
+          placeholder="Email"
+        />
+        <input
+          type="text"
+          value={factura.consignatario.telefono || factura.consignatario.telefonoContacto || ''}
+          onChange={e => {
+            updateFactura('consignatario.telefono', e.target.value);
+            updateFactura('consignatario.telefonoContacto', e.target.value);
+          }}
+          className={`w-full px-3 py-2 rounded border ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700 text-white'
+              : 'bg-white border-gray-300 text-gray-900'
+          }`}
+          placeholder="Teléfono"
         />
         <input
           type="text"
