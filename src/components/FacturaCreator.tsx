@@ -357,14 +357,12 @@ function FormularioFactura({
       const newProductos = [...prev.productos];
       newProductos[index] = { ...newProductos[index], [field]: value };
       
-      // Si se cambia el tipo de caja, actualizar automáticamente kgNetoUnidad y kgBrutoUnidad
+      // Si se cambia el tipo de caja, actualizar automáticamente kgNetoUnidad
       if (field === 'tipoEnvase') {
         if (value === '5KG') {
           newProductos[index].kgNetoUnidad = 5.0;
-          newProductos[index].kgBrutoUnidad = 5.5;
         } else if (value === '2.5KG') {
           newProductos[index].kgNetoUnidad = 2.5;
-          newProductos[index].kgBrutoUnidad = 2.8;
         }
       }
       
@@ -908,41 +906,22 @@ function FormularioFactura({
                     : 'bg-gray-50 border-gray-300 text-gray-900'
                 }`}
               />
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    KG Neto/Unidad
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={producto.kgNetoUnidad}
-                    onChange={e => updateProducto(index, 'kgNetoUnidad', parseFloat(e.target.value) || 0)}
-                    placeholder="KG Neto"
-                    className={`w-full px-2 py-1 rounded border ${
-                      theme === 'dark'
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    KG Bruto/Unidad
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={producto.kgBrutoUnidad}
-                    onChange={e => updateProducto(index, 'kgBrutoUnidad', parseFloat(e.target.value) || 0)}
-                    placeholder="KG Bruto"
-                    className={`w-full px-2 py-1 rounded border ${
-                      theme === 'dark'
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-gray-50 border-gray-300 text-gray-900'
-                    }`}
-                  />
-                </div>
+              <div>
+                <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  KG Neto/Unidad
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={producto.kgNetoUnidad}
+                  onChange={e => updateProducto(index, 'kgNetoUnidad', parseFloat(e.target.value) || 0)}
+                  placeholder="KG Neto"
+                  className={`w-full px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-gray-50 border-gray-300 text-gray-900'
+                  }`}
+                />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <input
