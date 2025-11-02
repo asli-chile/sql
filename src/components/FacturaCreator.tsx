@@ -416,8 +416,7 @@ function FormularioFactura({
           }`}
           placeholder="Giro"
         />
-        <input
-          type="text"
+        <textarea
           value={factura.exportador.direccion}
           onChange={e => updateFactura('exportador.direccion', e.target.value)}
           className={`w-full px-3 py-2 rounded border ${
@@ -426,6 +425,7 @@ function FormularioFactura({
               : 'bg-white border-gray-300 text-gray-900'
           }`}
           placeholder="Dirección"
+          rows={2}
         />
       </section>
 

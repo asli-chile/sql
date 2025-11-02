@@ -54,9 +54,15 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     y += 4;
   }
   if (factura.exportador.direccion) {
-    const dirWidth = doc.getTextWidth(factura.exportador.direccion);
-    doc.text(factura.exportador.direccion, margin + (contentWidth * 0.35) - (dirWidth / 2), y);
-    y += 4;
+    // Manejar saltos de línea en la dirección
+    const dirLines = factura.exportador.direccion.split('\n');
+    dirLines.forEach((line, index) => {
+      if (line.trim()) {
+        const dirWidth = doc.getTextWidth(line);
+        doc.text(line, margin + (contentWidth * 0.35) - (dirWidth / 2), y);
+        y += 4;
+      }
+    });
   }
 
   // RUT e Invoice en caja a la derecha
@@ -113,8 +119,15 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   if (factura.consignatario.direccion) {
-    doc.text(`Address: ${factura.consignatario.direccion}`, margin, y);
-    y += 4;
+    // Manejar saltos de línea en la dirección del consignatario
+    const addressLines = factura.consignatario.direccion.split('\n');
+    addressLines.forEach((line, index) => {
+      if (line.trim() || index === 0) {
+        const prefix = index === 0 ? 'Address: ' : '         ';
+        doc.text(`${prefix}${line}`, margin, y);
+        y += 4;
+      }
+    });
   }
   
   if (factura.consignatario.email || factura.consignatario.telefono) {

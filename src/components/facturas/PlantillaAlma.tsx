@@ -49,7 +49,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
             </div>
           )}
           {factura.exportador.direccion && (
-            <div className="text-xs" style={{ fontSize: '11px' }}>
+            <div className="text-xs whitespace-pre-line" style={{ fontSize: '11px', whiteSpace: 'pre-line' }}>
               {factura.exportador.direccion}
             </div>
           )}
