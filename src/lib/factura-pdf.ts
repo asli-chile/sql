@@ -77,10 +77,10 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     });
   }
 
-  // RUT e Invoice en caja - Alineado con el borde derecho de las tablas
+  // RUT e Invoice en caja - Centrado
   y = 15;
   const boxWidth = 65;
-  const boxX = margin + tableWidth - boxWidth; // Alineado con el borde derecho de las tablas
+  const boxX = margin + (contentWidth / 2) - (boxWidth / 2); // Centrado
   
   // Dibujar borde del cuadro
   doc.rect(boxX, y - 8, boxWidth, 12);
@@ -89,39 +89,45 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   if (factura.exportador.rut) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
-    doc.text(`R.U.T ${factura.exportador.rut}`, boxX + 3, boxY);
+    const rutText = `R.U.T ${factura.exportador.rut}`;
+    const rutWidth = doc.getTextWidth(rutText);
+    doc.text(rutText, boxX + (boxWidth / 2) - (rutWidth / 2), boxY);
     boxY += 3.5;
   }
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.text('INVOICE', boxX + 3, boxY);
+  const invoiceWidth = doc.getTextWidth('INVOICE');
+  doc.text('INVOICE', boxX + (boxWidth / 2) - (invoiceWidth / 2), boxY);
   boxY += 4;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text(`N° ${factura.embarque.numeroInvoice}`, boxX + 3, boxY);
+  const numInvoiceText = `N° ${factura.embarque.numeroInvoice}`;
+  const numInvoiceWidth = doc.getTextWidth(numInvoiceText);
+  doc.text(numInvoiceText, boxX + (boxWidth / 2) - (numInvoiceWidth / 2), boxY);
 
-  // FECHA en caja - Alineado con el borde derecho de las tablas
+  // FECHA en caja - Centrado
   y = 28;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  const tableRightEdge = margin + tableWidth;
-  const fechaBoxWidth = 35;
-  const fechaBoxX = tableRightEdge - fechaBoxWidth;
   const fechaLabelWidth = doc.getTextWidth('FECHA:');
-  doc.text('FECHA:', fechaBoxX - fechaLabelWidth - 4, y);
+  const fechaBoxWidth = 40;
+  const fechaLabelX = margin + (contentWidth / 2) - (fechaBoxWidth / 2) - fechaLabelWidth - 4;
+  doc.text('FECHA:', fechaLabelX, y);
+  const fechaBoxX = margin + (contentWidth / 2) - (fechaBoxWidth / 2);
   doc.rect(fechaBoxX, y - 4, fechaBoxWidth, 6);
   const fechaTextWidth = doc.getTextWidth(formatDate(factura.embarque.fechaFactura));
-  doc.text(formatDate(factura.embarque.fechaFactura), fechaBoxX + fechaBoxWidth - fechaTextWidth - 2, y);
+  doc.text(formatDate(factura.embarque.fechaFactura), fechaBoxX + (fechaBoxWidth / 2) - (fechaTextWidth / 2), y);
 
-  // EMBARQUE N° en caja - Alineado con el borde derecho de las tablas
+  // EMBARQUE N° en caja - Centrado
   y += 8;
-  const embarqueBoxWidth = 35;
-  const embarqueBoxX = tableRightEdge - embarqueBoxWidth;
   const embarqueLabelWidth = doc.getTextWidth('EMBARQUE N°');
-  doc.text('EMBARQUE N°', embarqueBoxX - embarqueLabelWidth - 4, y);
+  const embarqueBoxWidth = 40;
+  const embarqueLabelX = margin + (contentWidth / 2) - (embarqueBoxWidth / 2) - embarqueLabelWidth - 4;
+  doc.text('EMBARQUE N°', embarqueLabelX, y);
+  const embarqueBoxX = margin + (contentWidth / 2) - (embarqueBoxWidth / 2);
   doc.rect(embarqueBoxX, y - 4, embarqueBoxWidth, 6);
   const embarqueTextWidth = doc.getTextWidth(factura.embarque.numeroEmbarque);
-  doc.text(factura.embarque.numeroEmbarque, embarqueBoxX + embarqueBoxWidth - embarqueTextWidth - 2, y);
+  doc.text(factura.embarque.numeroEmbarque, embarqueBoxX + (embarqueBoxWidth / 2) - (embarqueTextWidth / 2), y);
 
   // Consignatario
   y = 48;
@@ -223,7 +229,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, valueRowHeight);
     const textWidth = doc.getTextWidth(values[col]);
-    doc.text(values[col], x + colWidth - textWidth - 1, currentY);
+    doc.text(values[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
   currentY += valueRowHeight + 1;
 
@@ -301,7 +307,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   }
   currentY += headerRowHeight;
 
-  // Tercera fila: Valores (alineados a la derecha)
+  // Tercera fila: Valores (centrados)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   const pesoNeto = factura.embarque.pesoNetoTotal ? `${formatNumber(factura.embarque.pesoNetoTotal)} Kgs.` : '';
@@ -311,17 +317,17 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // PESO NETO
   doc.rect(margin, currentY - 4, colWidth, valueRowHeight);
   const pesoNetoWidth = doc.getTextWidth(pesoNeto);
-  doc.text(pesoNeto, margin + colWidth - pesoNetoWidth - 1, currentY);
+  doc.text(pesoNeto, margin + (colWidth / 2) - (pesoNetoWidth / 2), currentY);
   
   // PESO BRUTO
   doc.rect(margin + colWidth, currentY - 4, colWidth, valueRowHeight);
   const pesoBrutoWidth = doc.getTextWidth(pesoBruto);
-  doc.text(pesoBruto, margin + colWidth + colWidth - pesoBrutoWidth - 1, currentY);
+  doc.text(pesoBruto, margin + colWidth + (colWidth / 2) - (pesoBrutoWidth / 2), currentY);
   
-  // CONTENEDOR (ocupa 3 columnas) - alineado a la derecha
+  // CONTENEDOR (ocupa 3 columnas) - centrado
   doc.rect(margin + (colWidth * 2), currentY - 4, colWidth * 3, valueRowHeight);
   const contenedorWidth = doc.getTextWidth(contenedor);
-  doc.text(contenedor, margin + (colWidth * 5) - contenedorWidth - 1, currentY);
+  doc.text(contenedor, margin + (colWidth * 2) + ((colWidth * 3) / 2) - (contenedorWidth / 2), currentY);
   
   currentY += valueRowHeight;
 
@@ -348,14 +354,14 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   doc.setFontSize(6);
   doc.text('(Specie)', margin + (productColWidths[0] / 2) - (doc.getTextWidth('(Specie)') / 2), productTableStartY + 3);
   
-  // Resto de columnas con variedad (colSpan 8) - alineado a la derecha
+  // Resto de columnas con variedad (colSpan 8) - centrado
   const variedadColSpan = productColWidths.slice(1).reduce((a, b) => a + b, 0);
   doc.rect(margin + productColWidths[0], productTableStartY - 4, variedadColSpan, productRowHeight * 2);
   const especieValue = transformVariety(factura.productos[0]?.especie || '');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   const especieValueWidth = doc.getTextWidth(especieValue);
-  doc.text(especieValue, margin + productColWidths[0] + variedadColSpan - especieValueWidth - 1, productTableStartY + 1);
+  doc.text(especieValue, margin + productColWidths[0] + (variedadColSpan / 2) - (especieValueWidth / 2), productTableStartY + 1);
 
   y = productTableStartY + (productRowHeight * 2) + 1;
 
@@ -415,23 +421,23 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
     productData.forEach((data, index) => {
       if (index === productData.length - 1) {
-        // TOTAL alineado a la derecha
+        // TOTAL centrado
         doc.setFont('helvetica', 'bold');
         const textWidth = doc.getTextWidth(data);
-        doc.text(data, productX + productColWidths[index] - textWidth - 1, y);
+        doc.text(data, productX + (productColWidths[index] / 2) - (textWidth / 2), y);
       } else if (index === 4) {
-        // ETIQUETA: usar splitTextToSize para manejar texto largo - alineado a la derecha
+        // ETIQUETA: usar splitTextToSize para manejar texto largo - centrado
         doc.setFont('helvetica', 'normal');
         const labelLines = doc.splitTextToSize(data, productColWidths[index] - 2);
         labelLines.forEach((line: string, lineIndex: number) => {
           const lineWidth = doc.getTextWidth(line);
-          doc.text(line, productX + productColWidths[index] - lineWidth - 1, y + (lineIndex * 2.5));
+          doc.text(line, productX + (productColWidths[index] / 2) - (lineWidth / 2), y + (lineIndex * 2.5));
         });
       } else {
-        // Todos los demás campos alineados a la derecha
+        // Todos los demás campos centrados
         doc.setFont('helvetica', 'normal');
         const textWidth = doc.getTextWidth(data);
-        doc.text(data, productX + productColWidths[index] - textWidth - 1, y);
+        doc.text(data, productX + (productColWidths[index] / 2) - (textWidth / 2), y);
       }
       productX += productColWidths[index];
     });
@@ -447,28 +453,29 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   // Fila de totales - Dibujar bordes de cada celda
   let totalesX = margin;
-  // Primera celda: cantidad total - alineada a la derecha
+  // Primera celda: cantidad total - centrada
   doc.rect(totalesX, y - 4, productColWidths[0], productRowHeight);
   doc.setFont('helvetica', 'normal');
   const cantidadTotalText = factura.totales.cantidadTotal.toLocaleString('es-ES');
   const cantidadTotalWidth = doc.getTextWidth(cantidadTotalText);
-  doc.text(cantidadTotalText, totalesX + productColWidths[0] - cantidadTotalWidth - 1, y);
+  doc.text(cantidadTotalText, totalesX + (productColWidths[0] / 2) - (cantidadTotalWidth / 2), y);
   totalesX += productColWidths[0];
   
-  // Celdas intermedias con "TOTALES" (ocupan 7 columnas) - alineado a la izquierda
+  // Celdas intermedias con "TOTALES" (ocupan 7 columnas) - centrado
   const totalesColsWidth = productColWidths.slice(1, 8).reduce((a, b) => a + b, 0);
   doc.rect(totalesX, y - 4, totalesColsWidth, productRowHeight);
   doc.setFont('helvetica', 'bold');
   const totalesText = 'TOTALES';
-  doc.text(totalesText, totalesX + 1, y);
+  const totalesTextWidth = doc.getTextWidth(totalesText);
+  doc.text(totalesText, totalesX + (totalesColsWidth / 2) - (totalesTextWidth / 2), y);
   totalesX += totalesColsWidth;
   
-  // Última celda: valor total - alineado a la derecha
+  // Última celda: valor total - centrado
   doc.rect(totalesX, y - 4, productColWidths[8], productRowHeight);
   doc.setFont('helvetica', 'bold');
   const totalValue = `US$${formatNumber(factura.totales.valorTotal)}`;
   const totalValueWidth = doc.getTextWidth(totalValue);
-  doc.text(totalValue, totalesX + productColWidths[8] - totalValueWidth - 1, y);
+  doc.text(totalValue, totalesX + (productColWidths[8] / 2) - (totalValueWidth / 2), y);
 
   y += 8;
 
