@@ -325,8 +325,8 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                 <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
                   US${producto.precioPorCaja.toFixed(2).replace('.', ',')}/box
                 </td>
-                <td className="border border-black px-1 py-1 text-right font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
-                  US${formatNumber(producto.total)}
+                <td className="border border-black px-1 py-1 text-right font-bold whitespace-nowrap" style={{ borderWidth: '1px', fontWeight: 'bold', textAlign: 'right' }}>
+                  <span>US${formatNumber(producto.total)}</span>
                 </td>
               </tr>
             ))}
@@ -339,8 +339,8 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               <td className="border border-black px-1 py-1" colSpan={7} style={{ borderWidth: '1px' }}>
                 <div className="text-center font-bold" style={{ fontWeight: 'bold' }}>TOTALES</div>
               </td>
-              <td className="border border-black px-1 py-1 text-right font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
-                US${formatNumber(factura.totales.valorTotal)}
+              <td className="border border-black px-1 py-1 text-right font-bold whitespace-nowrap" style={{ borderWidth: '1px', fontWeight: 'bold', textAlign: 'right' }}>
+                <span>US${formatNumber(factura.totales.valorTotal)}</span>
               </td>
             </tr>
           </tfoot>

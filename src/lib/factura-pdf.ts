@@ -382,11 +382,14 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     ];
 
     productData.forEach((data, index) => {
-      doc.text(data, productX + 1, y);
       if (index === productData.length - 1) {
-        // TOTAL alineado a la derecha
+        // TOTAL alineado a la derecha (solo una vez)
+        doc.setFont('helvetica', 'bold');
         const textWidth = doc.getTextWidth(data);
         doc.text(data, productX + productColWidths[index] - textWidth - 1, y);
+      } else {
+        doc.setFont('helvetica', 'normal');
+        doc.text(data, productX + 1, y);
       }
       productX += productColWidths[index];
     });
@@ -400,18 +403,29 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     }
   });
 
-  // Fila de totales
-  doc.rect(margin, y - 4, totalProductColWidth, productRowHeight);
+  // Fila de totales - Dibujar bordes de cada celda
+  let totalesX = margin;
+  // Primera celda: cantidad total
+  doc.rect(totalesX, y - 4, productColWidths[0], productRowHeight);
   doc.setFont('helvetica', 'normal');
-  doc.text(factura.totales.cantidadTotal.toLocaleString('es-ES'), margin + 1, y);
+  doc.text(factura.totales.cantidadTotal.toLocaleString('es-ES'), totalesX + 1, y);
+  totalesX += productColWidths[0];
+  
+  // Celdas intermedias con "TOTALES" (ocupan 7 columnas)
+  const totalesColsWidth = productColWidths.slice(1, 8).reduce((a, b) => a + b, 0);
+  doc.rect(totalesX, y - 4, totalesColsWidth, productRowHeight);
   doc.setFont('helvetica', 'bold');
   const totalesText = 'TOTALES';
   const totalesTextWidth = doc.getTextWidth(totalesText);
-  doc.text(totalesText, margin + (totalProductColWidth / 2) - (totalesTextWidth / 2), y);
+  doc.text(totalesText, totalesX + (totalesColsWidth / 2) - (totalesTextWidth / 2), y);
+  totalesX += totalesColsWidth;
+  
+  // Última celda: valor total
+  doc.rect(totalesX, y - 4, productColWidths[8], productRowHeight);
   doc.setFont('helvetica', 'bold');
   const totalValue = `US$${formatNumber(factura.totales.valorTotal)}`;
   const totalValueWidth = doc.getTextWidth(totalValue);
-  doc.text(totalValue, margin + totalProductColWidth - totalValueWidth - 1, y);
+  doc.text(totalValue, totalesX + productColWidths[8] - totalValueWidth - 1, y);
 
   y += 8;
 
