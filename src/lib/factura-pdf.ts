@@ -340,7 +340,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   }
   currentY += headerRowHeight;
 
-  // Tercera fila: Valores (alineados a la derecha)
+  // Tercera fila: Valores (centrados)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   const values2 = [
@@ -354,7 +354,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, valueRowHeight);
     const textWidth = doc.getTextWidth(values2[col]);
-    doc.text(values2[col], x + colWidth - textWidth - 1, currentY);
+    doc.text(values2[col], x + (colWidth / 2) - (textWidth / 2), currentY);
   }
   currentY += valueRowHeight + 1;
 
@@ -447,34 +447,57 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   y = productTableStartY + (productRowHeight * 2) + 1;
 
-  // Headers de productos
+  // Headers de productos en español
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(6);
-  const productHeaders = [
-    'CANTIDAD\n(Quantity)',
-    'TIPO ENVASE\n(Type of Package)',
-    'VARIEDAD\n(Variety)',
-    'CATEGORÍA\n(Category)',
-    'ETIQUETA\n(Label)',
-    'CALIBRE\n(Size)',
-    'KG NETO UNIDAD\n(Net Weight Per Unit)',
-    'PRECIO POR CAJA\n(Price per Box)',
+  const productHeadersSpanish = [
+    'CANTIDAD',
+    'TIPO ENVASE',
+    'VARIEDAD',
+    'CATEGORÍA',
+    'ETIQUETA',
+    'CALIBRE',
+    'KG NETO UNIDAD',
+    'PRECIO POR CAJA',
     'TOTAL'
   ];
 
   let productX = margin;
-  productHeaders.forEach((header, index) => {
-    doc.rect(productX, y - 4, productColWidths[index], productRowHeight * 2);
-    doc.setFont('helvetica', 'bold');
-    const headerLines = header.split('\n');
-    let headerY = y - 1;
-    headerLines.forEach((line, lineIndex) => {
-      doc.text(line, productX + 1, headerY);
-      headerY += 2.5;
-    });
+  productHeadersSpanish.forEach((header, index) => {
+    doc.rect(productX, y - 4, productColWidths[index], productRowHeight);
+    const textWidth = doc.getTextWidth(header);
+    doc.text(header, productX + (productColWidths[index] / 2) - (textWidth / 2), y);
     productX += productColWidths[index];
   });
 
-  y += (productRowHeight * 2);
+  y += productRowHeight;
+
+  // Headers de productos en inglés
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  const productHeadersEnglish = [
+    '(Quantity)',
+    '(Type of Package)',
+    '(Variety)',
+    '(Category)',
+    '(Label)',
+    '(Size)',
+    '(Net Weight Per Unit)',
+    '(Price per Box)',
+    '' // Sin traducción para TOTAL
+  ];
+
+  productX = margin;
+  productHeadersEnglish.forEach((header, index) => {
+    doc.rect(productX, y - 4, productColWidths[index], productRowHeight);
+    if (header) {
+      const textWidth = doc.getTextWidth(header);
+      doc.text(header, productX + (productColWidths[index] / 2) - (textWidth / 2), y);
+    }
+    productX += productColWidths[index];
+  });
+
+  y += productRowHeight;
 
   // Filas de productos
   doc.setFont('helvetica', 'normal');

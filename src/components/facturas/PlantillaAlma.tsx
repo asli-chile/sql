@@ -142,25 +142,37 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
         <table className="w-full border-collapse" style={{ border: '1px solid black', fontSize: '7pt' }}>
           <thead>
             <tr>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 FECHA EMBARQUE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Departure Date)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 MOTONAVE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Vessel)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 N° VIAJE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Travel Number)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 MODALIDAD DE VENTA
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Terms of Sale)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 CLÁUSULA DE VENTA
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Clause of Sale)</div>
+              </th>
+            </tr>
+            <tr>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Departure Date)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Vessel)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Travel Number)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Terms of Sale)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Clause of Sale)
               </th>
             </tr>
           </thead>
@@ -183,25 +195,37 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               </td>
             </tr>
             <tr>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 PAIS ORIGEN
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Country of Origin)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 PTO EMBARQUE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Loading Port)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 PTO DESTINO
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Destination Port)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 PAIS DESTINO FINAL
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Country of Destination)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '7pt', textAlign: 'center' }}>
                 FORMA DE PAGO
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Payment Terms)</div>
+              </th>
+            </tr>
+            <tr>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Country of Origin)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Loading Port)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Destination Port)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Country of Destination)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Payment Terms)
               </th>
             </tr>
             <tr>
@@ -264,40 +288,61 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               </th>
             </tr>
             <tr>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 CANTIDAD
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Quantity)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 TIPO ENVASE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Type of Package)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 VARIEDAD
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Variety)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 CATEGORÍA
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Category)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center break-words" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', wordBreak: 'break-word' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center break-words" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center', wordBreak: 'break-word' }}>
                 ETIQUETA
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Label)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 CALIBRE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Size)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 KG NETO UNIDAD
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Net Weight Per Unit)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 PRECIO POR CAJA
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Price per Box)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '6pt', textAlign: 'center' }}>
                 TOTAL
+              </th>
+            </tr>
+            <tr>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Quantity)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Type of Package)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Variety)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Category)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center break-words" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center', wordBreak: 'break-word' }}>
+                (Label)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Size)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Net Weight Per Unit)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                (Price per Box)
+              </th>
+              <th className="border border-black px-1 py-1 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt', textAlign: 'center' }}>
+                {/* Sin traducción para TOTAL */}
               </th>
             </tr>
           </thead>
