@@ -328,16 +328,16 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   // Tabla de productos con bordes - Mismo ancho que la tabla de embarque
   const productTableStartY = y;
-  // Ajustar anchos para que coincidan con el ancho total de la tabla de embarque (175mm)
-  const productColWidths = [18, 20, 25, 18, 20, 18, 25, 25, 22];
+  // Ancho total de las tablas (5 columnas * 35mm = 175mm)
+  const tableWidth = 175;
+  // Anchuras originales proporcionales
+  const originalColWidths = [18, 20, 25, 18, 20, 18, 25, 25, 22];
+  const originalTotal = originalColWidths.reduce((a, b) => a + b, 0);
+  // Escalar proporcionalmente para que coincida con el ancho de la tabla de embarque
+  const scale = tableWidth / originalTotal;
+  const productColWidths = originalColWidths.map(w => w * scale);
   const productRowHeight = 5;
-  let totalProductColWidth = productColWidths.reduce((a, b) => a + b, 0);
-  const tableWidth = 175; // Ancho total de las tablas (5 columnas * 35mm)
-  // Ajustar proporcionalmente si es necesario para que coincida exactamente
-  if (Math.abs(totalProductColWidth - tableWidth) > 0.1) {
-    const scale = tableWidth / totalProductColWidth;
-    totalProductColWidth = tableWidth;
-  }
+  const totalProductColWidth = tableWidth;
 
   // Fila ESPECIE
   doc.setFont('helvetica', 'bold');
