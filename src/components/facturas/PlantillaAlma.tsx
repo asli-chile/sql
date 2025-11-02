@@ -8,234 +8,338 @@ interface PlantillaAlmaProps {
 }
 
 export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
+  // Formatear fecha como "December/09/2024"
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = months[date.getMonth()];
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
+
+  // Formatear número con comas y punto decimal (ej: 98.603,20)
+  const formatNumber = (num: number) => {
+    return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // Formatear fecha como "09-12-2024"
+  const formatDateShort = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
   return (
-    <div className="w-full max-w-[8.5in] mx-auto bg-white p-8 shadow-lg" style={{ fontFamily: 'Arial, sans-serif' }}>
-      {/* Header - Invoice Number and RUT */}
+    <div className="w-full max-w-[8.5in] mx-auto bg-white p-8" style={{ fontFamily: 'Arial, sans-serif', fontSize: '11px' }}>
+      {/* Header - Exportador a la izquierda, Invoice/RUT a la derecha */}
       <div className="flex justify-between items-start mb-6">
-        <div className="flex-1">
-          {/* Exportador Info */}
-          <div className="mb-4">
-            <div className="text-lg font-bold uppercase">{factura.exportador.nombre}</div>
-            {factura.exportador.giro && (
-              <div className="text-sm text-gray-900 font-medium">Giro: {factura.exportador.giro}</div>
-            )}
-            {factura.exportador.direccion && (
-              <div className="text-sm text-gray-900 font-medium">{factura.exportador.direccion}</div>
-            )}
-            {factura.refAsli && (
-              <div className="text-sm text-gray-900 font-medium mt-1">
-                <span className="font-semibold">REF ASLI:</span> {factura.refAsli}
-              </div>
-            )}
+        {/* Exportador Info - Centrado */}
+        <div className="flex-1 text-center">
+          <div className="text-base font-bold uppercase mb-1" style={{ fontSize: '14px', fontWeight: 'bold' }}>
+            {factura.exportador.nombre}
           </div>
-        </div>
-        <div className="text-right">
-          {factura.exportador.rut && (
-            <div className="text-sm mb-2">
-              <span className="font-semibold">R.U.T:</span> {factura.exportador.rut}
+          {factura.exportador.giro && (
+            <div className="text-xs mb-1" style={{ fontSize: '11px' }}>
+              {factura.exportador.giro}
             </div>
           )}
-          <div className="text-lg font-bold">
-            <span className="font-semibold">INVOICE N°:</span> {factura.embarque.numeroInvoice}
+          {factura.exportador.direccion && (
+            <div className="text-xs" style={{ fontSize: '11px' }}>
+              {factura.exportador.direccion}
+            </div>
+          )}
+        </div>
+
+        {/* Invoice Info - Cajas a la derecha */}
+        <div className="text-right ml-4">
+          {factura.exportador.rut && (
+            <div className="border border-black px-3 py-2 mb-2 inline-block" style={{ borderWidth: '1px' }}>
+              <div className="text-xs" style={{ fontSize: '10px' }}>R.U.T {factura.exportador.rut}</div>
+            </div>
+          )}
+          <div className="border border-black px-3 py-2 mb-2 inline-block" style={{ borderWidth: '1px' }}>
+            <div className="text-xs mb-1" style={{ fontSize: '10px' }}>INVOICE</div>
+            <div className="text-sm font-bold" style={{ fontSize: '12px', fontWeight: 'bold' }}>
+              N° {factura.embarque.numeroInvoice}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs" style={{ fontSize: '10px' }}>FECHA:</span>
+            <div className="border border-black px-3 py-1 inline-block" style={{ borderWidth: '1px' }}>
+              <span className="text-xs" style={{ fontSize: '10px' }}>
+                {formatDate(factura.embarque.fechaFactura)}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs" style={{ fontSize: '10px' }}>EMBARQUE N°</span>
+            <div className="border border-black px-3 py-1 inline-block" style={{ borderWidth: '1px' }}>
+              <span className="text-xs" style={{ fontSize: '10px' }}>
+                {factura.embarque.numeroEmbarque}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Consignatario */}
-      <div className="mb-6">
-        <div className="text-sm font-semibold mb-2">CONSIGNEE:</div>
-        <div className="text-sm">
-          <div className="font-semibold">{factura.consignatario.nombre}</div>
+      <div className="mb-4">
+        <div className="text-xs font-bold mb-2" style={{ fontSize: '11px', fontWeight: 'bold' }}>CONSIGNEE:</div>
+        <div className="text-xs" style={{ fontSize: '11px' }}>
+          <div className="font-bold mb-1" style={{ fontWeight: 'bold' }}>{factura.consignatario.nombre}</div>
           {factura.consignatario.direccion && (
-            <div className="text-gray-900 font-medium">{factura.consignatario.direccion}</div>
+            <div className="mb-1">Address: {factura.consignatario.direccion}</div>
           )}
           {(factura.consignatario.email || factura.consignatario.telefono) && (
-            <div className="text-gray-900 font-medium">
-              {factura.consignatario.email || ''}
-              {factura.consignatario.email && factura.consignatario.telefono ? ' / ' : ''}
-              {factura.consignatario.telefono || ''}
-            </div>
-          )}
-          {factura.consignatario.contacto && (
-            <div className="text-gray-900 font-medium">
-              Contact Person: {factura.consignatario.contacto}
-              {factura.consignatario.telefonoContacto && `, Telephone: ${factura.consignatario.telefonoContacto}`}
+            <div className="mb-1">
+              {factura.consignatario.email && <>Email: {factura.consignatario.email}</>}
+              {factura.consignatario.email && factura.consignatario.telefono && ' '}
+              {factura.consignatario.telefono && <>TEL: {factura.consignatario.telefono}</>}
             </div>
           )}
           {factura.consignatario.usci && (
-            <div className="text-gray-900 font-medium">
-              <span className="font-semibold">USCI:</span> {factura.consignatario.usci}
-            </div>
+            <div className="mb-1">USCI: {factura.consignatario.usci}</div>
           )}
-          {factura.consignatario.codigoPostal && (
-            <div className="text-gray-900 font-medium">
-              <span className="font-semibold">Postal Code:</span> {factura.consignatario.codigoPostal}
-            </div>
+          <div>{factura.consignatario.pais}</div>
+        </div>
+        {/* CSP y CSG */}
+        <div className="mt-2 flex gap-4">
+          {factura.embarque.csp && (
+            <span className="text-xs font-bold" style={{ fontSize: '11px', fontWeight: 'bold' }}>CSP {factura.embarque.csp}</span>
           )}
-          <div className="text-gray-900 font-medium">
-            <span className="font-semibold">Country:</span> {factura.consignatario.pais}
-          </div>
+          {factura.embarque.csg && (
+            <span className="text-xs font-bold" style={{ fontSize: '11px', fontWeight: 'bold' }}>CSG {factura.embarque.csg}</span>
+          )}
         </div>
       </div>
 
-      {/* Fecha y Embarque */}
-      <div className="mb-6 flex justify-between">
-        <div>
-          <div className="text-sm">
-            <span className="font-semibold">FECHA (Date):</span>{' '}
-            {factura.embarque.fechaFactura
-              ? new Date(factura.embarque.fechaFactura).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: '2-digit',
-                  year: 'numeric',
-                })
-              : ''}
-          </div>
-          <div className="text-sm mt-1">
-            <span className="font-semibold">EMBARQUE N° (Shipment Number):</span> {factura.embarque.numeroEmbarque}
-          </div>
-        </div>
-      </div>
-
-      {/* Shipping Details Table */}
-      <div className="mb-6">
-        <table className="w-full text-sm border-collapse table-fixed">
+      {/* Shipping Details Table - Sin fondo oscuro, solo bordes */}
+      <div className="mb-4">
+        <table className="w-full border-collapse" style={{ border: '1px solid black', fontSize: '10px' }}>
           <tbody>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CSP:</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.csp || ''}</td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CSG:</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.csg || ''}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>FECHA EMBARQUE (Departure Date):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">
-                {factura.embarque.fechaEmbarque
-                  ? new Date(factura.embarque.fechaEmbarque).toLocaleDateString('es-CL', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })
-                  : ''}
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                FECHA EMBARQUE
               </td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>MOTONAVE (Vessel):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.motonave || '-'}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>N° VIAJE (Travel Number):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.numeroViaje || '-'}</td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>MODALIDAD DE VENTA (Terms of Sale):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.modalidadVenta || 'BAJO CONDICION'}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CLÁUSULA DE VENTA (Clause of Sale):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.clausulaVenta}</td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PAIS ORIGEN (Country of Origin):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.paisOrigen}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PTO EMBARQUE (Loading Port):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.puertoEmbarque}</td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PTO DESTINO (Destination Port):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.puertoDestino}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PAIS DESTINO FINAL (Country of Destination):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.paisDestinoFinal}</td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>FORMA DE PAGO (Payment Terms):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">{factura.embarque.formaPago}</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PESO NETO TOTAL (Total Net Weight):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">
-                {factura.embarque.pesoNetoTotal ? `${factura.embarque.pesoNetoTotal.toLocaleString()} Kgs.` : ''}
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {formatDateShort(factura.embarque.fechaEmbarque)}
               </td>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PESO BRUTO TOTAL (Total Gross Weight):</td>
-              <td className="border border-gray-300 px-2 py-1 w-1/4">
-                {factura.embarque.pesoBrutoTotal ? `${factura.embarque.pesoBrutoTotal.toLocaleString()} Kgs.` : ''}
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                MOTONAVE
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.motonave || '-'}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                N° VIAJE
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.numeroViaje || '-'}
               </td>
             </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-bold w-1/4" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CONTENEDOR / AWB (Container / AWB):</td>
-              <td className="border border-gray-300 px-2 py-1 col-span-3">{factura.embarque.contenedor || ''}</td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                MODALIDAD DE VENTA
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.modalidadVenta || 'BAJO CONDICION'}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                CLÁUSULA DE VENTA
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.clausulaVenta}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                PAIS ORIGEN
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.paisOrigen}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                PTO EMBARQUE
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.puertoEmbarque}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                PTO DESTINO
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.puertoDestino}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                PAIS DESTINO FINAL
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.paisDestinoFinal}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                FORMA DE PAGO
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.formaPago || ''}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                PESO NETO TOTAL
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.pesoNetoTotal ? `${formatNumber(factura.embarque.pesoNetoTotal)} Kgs.` : ''}
+              </td>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                PESO BRUTO TOTAL
+              </td>
+              <td className="border border-black px-2 py-1" style={{ borderWidth: '1px' }}>
+                {factura.embarque.pesoBrutoTotal ? `${formatNumber(factura.embarque.pesoBrutoTotal)} Kgs.` : ''}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-black px-2 py-1 font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                CONTENEDOR / AWB
+              </td>
+              <td className="border border-black px-2 py-1 col-span-5" style={{ borderWidth: '1px' }} colSpan={5}>
+                {factura.embarque.contenedor || ''}
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
       {/* Productos Table */}
-      <div className="mb-6">
-        <div className="text-sm font-semibold mb-2">ESPECIE (Specie): {factura.productos[0]?.variedad || ''}</div>
-        <table className="w-full text-xs border-collapse border border-gray-300">
+      <div className="mb-4">
+        <div className="text-center mb-2">
+          <span className="text-xs font-bold" style={{ fontSize: '11px', fontWeight: 'bold' }}>ESPECIE</span>
+          <div className="border border-black px-4 py-2 mt-1 inline-block" style={{ borderWidth: '1px' }}>
+            <span className="text-xs font-bold" style={{ fontSize: '11px', fontWeight: 'bold' }}>
+              {factura.productos[0]?.variedad || ''}
+            </span>
+          </div>
+        </div>
+        <table className="w-full border-collapse" style={{ border: '1px solid black', fontSize: '9px' }}>
           <thead>
-            <tr style={{ backgroundColor: '#374151' }}>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CANTIDAD (Quantity)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>TIPO ENVASE (Type of Package)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>VARIEDAD (Variety)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CATEGORÍA (Category)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>ETIQUETA (Label)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>CALIBRE (Size)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>KG NETO UNIDAD (Net Weight Per Unit)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>PRECIO POR CAJA (Price per Box)</th>
-              <th className="border border-gray-300 px-2 py-2 text-left font-bold text-white" style={{ backgroundColor: '#374151', color: '#ffffff' }}>TOTAL</th>
+            <tr>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                CANTIDAD
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Quantity)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                TIPO ENVASE
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Type of Package)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                VARIEDAD
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Variety)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                CATEGORÍA
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Category)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                ETIQUETA
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Label)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                CALIBRE
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Size)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                KG NETO UNIDAD
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Net Weight Per Unit)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                PRECIO POR CAJA
+                <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Price per Box)</div>
+              </th>
+              <th className="border border-black px-1 py-1 text-left font-bold" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
+                TOTAL
+              </th>
             </tr>
           </thead>
           <tbody>
             {factura.productos.map((producto, index) => (
               <tr key={index}>
-                <td className="border border-gray-300 px-2 py-1">{producto.cantidad.toLocaleString()}</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.tipoEnvase}</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.variedad}</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.categoria}</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.etiqueta}</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.calibre}</td>
-                <td className="border border-gray-300 px-2 py-1">{producto.kgNetoUnidad.toFixed(2)} Kgs.</td>
-                <td className="border border-gray-300 px-2 py-1">US${producto.precioPorCaja.toFixed(2)}/box</td>
-                <td className="border border-gray-300 px-2 py-1 font-semibold">
-                  US${producto.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.cantidad.toLocaleString('es-ES')}
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.tipoEnvase}
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.variedad}
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.categoria}
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.etiqueta}
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.calibre}
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  {producto.kgNetoUnidad.toFixed(2).replace('.', ',')} Kgs.
+                </td>
+                <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                  US${producto.precioPorCaja.toFixed(2).replace('.', ',')}/box
+                </td>
+                <td className="border border-black px-1 py-1 text-right font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                  US${formatNumber(producto.total)}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="bg-gray-800 font-semibold" style={{ backgroundColor: '#1f2937' }}>
-              <td className="border border-gray-300 px-2 py-2 text-white" colSpan={7}>
-                TOTALES (Totals):
-              </td>
-              <td className="border border-gray-300 px-2 py-2 text-white">
-                US${factura.totales.valorTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </td>
-            </tr>
             <tr>
-              <td className="border border-gray-300 px-2 py-1 font-semibold" colSpan={7} style={{ backgroundColor: '#f3f4f6' }}>
-                Total Quantity:
+              <td className="border border-black px-1 py-1" style={{ borderWidth: '1px' }}>
+                {factura.totales.cantidadTotal.toLocaleString('es-ES')}
               </td>
-              <td className="border border-gray-300 px-2 py-1">{factura.totales.cantidadTotal.toLocaleString()}</td>
+              <td className="border border-black px-1 py-1" colSpan={7} style={{ borderWidth: '1px' }}>
+                <div className="text-center font-bold" style={{ fontWeight: 'bold' }}>TOTALES</div>
+              </td>
+              <td className="border border-black px-1 py-1 text-right font-bold" style={{ borderWidth: '1px', fontWeight: 'bold' }}>
+                US${formatNumber(factura.totales.valorTotal)}
+              </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
       {/* Payment Summary */}
-      <div className="mb-6">
-        <div className="text-sm">
-          <div className="mb-2">
-            <span className="font-semibold">VALOR TOTAL A PAGAR (Total Value to Pay):</span>{' '}
-            {factura.totales.valorTotalTexto}
+      <div className="mb-4">
+        <div className="text-xs" style={{ fontSize: '11px' }}>
+          <div className="mb-1">
+            <span className="font-bold" style={{ fontWeight: 'bold' }}>VALOR TOTAL A PAGAR:</span> (TOTAL VALUE:)
+          </div>
+          <div className="flex justify-between">
+            <div className="flex-1">
+              {factura.totales.valorTotalTexto}
+            </div>
+            <div className="font-bold" style={{ fontWeight: 'bold' }}>
+              US${formatNumber(factura.totales.valorTotal)}
+            </div>
           </div>
           {factura.embarque.formaPago && (
-            <div>
-              <span className="font-semibold">PLAZO DE PAGO (Payment Terms):</span> {factura.embarque.formaPago}
+            <div className="mt-2">
+              <span className="font-bold" style={{ fontWeight: 'bold' }}>PLAZO DE PAGO:</span> (PAYMENT TERMS:){' '}
+              {factura.embarque.formaPago}
             </div>
           )}
         </div>
       </div>
 
       {/* Footer */}
-      <div className="text-center text-sm font-semibold mt-8">
+      <div className="text-right text-xs font-bold mt-6" style={{ fontSize: '11px', fontWeight: 'bold' }}>
         {factura.exportador.nombre}
       </div>
     </div>
   );
 }
-
