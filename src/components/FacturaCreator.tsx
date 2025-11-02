@@ -1102,41 +1102,51 @@ function numberToWords(num: number): string {
     parts.push(convertHundreds(workingNum));
   }
 
-  let result = parts.join(' ') + ' US Dollar';
+  // Filtrar partes vacías antes de unir
+  const validParts = parts.filter(p => p && p.trim() !== '');
+  let result = validParts.length > 0 ? validParts.join(' ') + ' US Dollar' : 'ZERO US Dollar';
   
   // Agregar centavos si hay decimales
   if (decimalPart > 0) {
     const cents = convertHundreds(decimalPart);
-    result += ' AND ' + cents + ' Cent';
-    if (decimalPart > 1) {
-      result += 's';
+    if (cents && cents.trim() !== '') {
+      result += ' AND ' + cents + ' Cent';
+      if (decimalPart > 1) {
+        result += 's';
+      }
     }
   }
 
   return result;
 
   function convertHundreds(num: number): string {
-    if (num === 0) return '';
+    if (!num || num === 0 || isNaN(num)) return '';
+    
     if (num < 10) {
       const result = ones[num];
-      return result || '';
+      return (result && result.trim() !== '') ? result : '';
     }
     if (num < 20) {
-      const result = teens[num - 10];
-      return result || '';
+      const index = num - 10;
+      const result = teens[index];
+      return (result && result.trim() !== '') ? result : '';
     }
     if (num < 100) {
       const tensDigit = Math.floor(num / 10);
       const onesDigit = num % 10;
-      const tensStr = tens[tensDigit] || '';
-      const onesStr = onesDigit > 0 ? ones[onesDigit] : '';
-      return tensStr + (onesStr ? ' ' + onesStr : '');
+      const tensStr = (tens[tensDigit] && tens[tensDigit].trim() !== '') ? tens[tensDigit] : '';
+      const onesStr = (onesDigit > 0 && ones[onesDigit] && ones[onesDigit].trim() !== '') ? ones[onesDigit] : '';
+      if (!tensStr && !onesStr) return '';
+      return tensStr + (onesStr ? ' ' + onesStr : '').trim();
     }
+    
     const hundreds = Math.floor(num / 100);
     const remainder = num % 100;
-    const hundredsStr = ones[hundreds] || '';
+    const hundredsStr = (ones[hundreds] && ones[hundreds].trim() !== '') ? ones[hundreds] : '';
+    if (!hundredsStr) return '';
+    
     const remainderStr = remainder > 0 ? convertHundreds(remainder) : '';
-    return hundredsStr + ' HUNDRED' + (remainderStr ? ' ' + remainderStr : '');
+    return hundredsStr + ' HUNDRED' + (remainderStr && remainderStr.trim() !== '' ? ' ' + remainderStr : '');
   }
 }
 
