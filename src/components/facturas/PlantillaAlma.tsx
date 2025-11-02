@@ -160,19 +160,19 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           </thead>
           <tbody>
             <tr>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {formatDateShort(factura.embarque.fechaEmbarque)}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.motonave || '-'}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.numeroViaje || '-'}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.modalidadVenta || 'BAJO CONDICION'}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.clausulaVenta}
               </td>
             </tr>
@@ -199,19 +199,19 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               </th>
             </tr>
             <tr>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.paisOrigen}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.puertoEmbarque}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.puertoDestino}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.paisDestinoFinal}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.formaPago || ''}
               </td>
             </tr>
@@ -230,13 +230,13 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
               </th>
             </tr>
             <tr>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.pesoNetoTotal ? `${formatNumber(factura.embarque.pesoNetoTotal)} Kgs.` : ''}
               </td>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.pesoBrutoTotal ? `${formatNumber(factura.embarque.pesoBrutoTotal)} Kgs.` : ''}
               </td>
-              <td className="border border-black px-1 py-1 text-center" colSpan={3} style={{ borderWidth: '1px', textAlign: 'center', fontSize: '7pt' }}>
+              <td className="border border-black px-1 py-1 text-right" colSpan={3} style={{ borderWidth: '1px', textAlign: 'right', fontSize: '7pt' }}>
                 {factura.embarque.contenedor || ''}
               </td>
             </tr>
@@ -253,7 +253,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                 ESPECIE
                 <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Specie)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" colSpan={8} style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '8pt' }}>
+              <th className="border border-black px-1 py-1 font-bold text-right" colSpan={8} style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '8pt', textAlign: 'right' }}>
                 {transformVariety(factura.productos[0]?.especie || '')}
               </th>
             </tr>
@@ -298,31 +298,31 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           <tbody>
             {factura.productos.map((producto, index) => (
               <tr key={index}>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   {producto.cantidad.toLocaleString('es-ES')}
                 </td>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   {producto.tipoEnvase}
                 </td>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   {transformVariety(producto.variedad)}
                 </td>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   {producto.categoria}
                 </td>
-                <td className="border border-black px-1 py-1 text-center break-words" style={{ borderWidth: '1px', textAlign: 'center', wordBreak: 'break-word', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right break-words" style={{ borderWidth: '1px', textAlign: 'right', wordBreak: 'break-word', fontSize: '6pt' }}>
                   {producto.etiqueta}
                 </td>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   {producto.calibre}
                 </td>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   {producto.kgNetoUnidad.toFixed(2).replace('.', ',')} Kgs.
                 </td>
-                <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                   US${producto.precioPorCaja.toFixed(2).replace('.', ',')}/box
                 </td>
-                <td className="border border-black px-1 py-1 text-center font-bold whitespace-nowrap" style={{ borderWidth: '1px', fontWeight: 'bold', textAlign: 'center', fontSize: '6pt' }}>
+                <td className="border border-black px-1 py-1 text-right font-bold whitespace-nowrap" style={{ borderWidth: '1px', fontWeight: 'bold', textAlign: 'right', fontSize: '6pt' }}>
                   <span>US${formatNumber(producto.total)}</span>
                 </td>
               </tr>
@@ -330,13 +330,13 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
           </tbody>
           <tfoot>
             <tr>
-              <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center', fontSize: '6pt' }}>
+              <td className="border border-black px-1 py-1 text-right" style={{ borderWidth: '1px', textAlign: 'right', fontSize: '6pt' }}>
                 {factura.totales.cantidadTotal.toLocaleString('es-ES')}
               </td>
               <td className="border border-black px-1 py-1" colSpan={7} style={{ borderWidth: '1px' }}>
-                <div className="text-center font-bold" style={{ fontWeight: 'bold', fontSize: '6pt' }}>TOTALES</div>
+                <div className="text-left font-bold" style={{ fontWeight: 'bold', fontSize: '6pt' }}>TOTALES</div>
               </td>
-              <td className="border border-black px-1 py-1 text-center font-bold whitespace-nowrap" style={{ borderWidth: '1px', fontWeight: 'bold', textAlign: 'center', fontSize: '6pt' }}>
+              <td className="border border-black px-1 py-1 text-right font-bold whitespace-nowrap" style={{ borderWidth: '1px', fontWeight: 'bold', textAlign: 'right', fontSize: '6pt' }}>
                 <span>US${formatNumber(factura.totales.valorTotal)}</span>
               </td>
             </tr>
