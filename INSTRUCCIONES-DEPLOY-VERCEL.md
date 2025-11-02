@@ -36,7 +36,10 @@ Si tu proyecto actual se quedó sin saldo gratuito, puedes crear un nuevo proyec
    - Root Directory: `./` (raíz del proyecto)
    - Build Command: `npm run build`
    - Output Directory: `.next`
-5. **Agrega las variables de entorno** necesarias desde Settings → Environment Variables
+5. **Agrega las variables de entorno** desde Settings → Environment Variables:
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://knbnwbrjzkknarnkyriv.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuYm53YnJqemtrbmFybmt5cml2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE0ODQzOTYsImV4cCI6MjA3NzA2MDM5Nn0.l7pwhkJSinVQLAsDVFvefP8V5gn_v8rN2U6FG03qVqs`
+   - Marca todas las opciones (Production, Preview, Development)
 6. **Haz click en "Deploy"**
 
 **Importante**: Al crear un nuevo proyecto, tendrás un nuevo URL. Puedes configurar un dominio personalizado si lo deseas.
