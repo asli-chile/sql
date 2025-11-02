@@ -76,10 +76,10 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     });
   }
 
-  // RUT e Invoice en caja a la derecha
+  // RUT e Invoice en caja - Alineado con el borde derecho de las tablas
   y = 15;
-  const boxX = margin + (contentWidth * 0.7);
   const boxWidth = 65;
+  const boxX = margin + tableWidth - boxWidth; // Alineado con el borde derecho de las tablas
   
   // Dibujar borde del cuadro
   doc.rect(boxX, y - 8, boxWidth, 12);
@@ -495,12 +495,12 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     y += 6;
   }
 
-  // Footer
+  // Footer - Centrado
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   const footerText = factura.exportador.nombre;
   const footerTextWidth = doc.getTextWidth(footerText);
-  doc.text(footerText, margin + (contentWidth) - footerTextWidth, y);
+  doc.text(footerText, margin + (contentWidth / 2) - (footerTextWidth / 2), y);
 
   // Descargar PDF
   doc.save(`Factura_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`);

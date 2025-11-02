@@ -1004,16 +1004,26 @@ function numberToWords(num: number): string {
 
   function convertHundreds(num: number): string {
     if (num === 0) return '';
-    if (num < 10) return ones[num];
-    if (num < 20) return teens[num - 10];
+    if (num < 10) {
+      const result = ones[num];
+      return result || '';
+    }
+    if (num < 20) {
+      const result = teens[num - 10];
+      return result || '';
+    }
     if (num < 100) {
       const tensDigit = Math.floor(num / 10);
       const onesDigit = num % 10;
-      return tens[tensDigit] + (onesDigit > 0 ? ' ' + ones[onesDigit] : '');
+      const tensStr = tens[tensDigit] || '';
+      const onesStr = onesDigit > 0 ? ones[onesDigit] : '';
+      return tensStr + (onesStr ? ' ' + onesStr : '');
     }
     const hundreds = Math.floor(num / 100);
     const remainder = num % 100;
-    return ones[hundreds] + ' HUNDRED' + (remainder > 0 ? ' ' + convertHundreds(remainder) : '');
+    const hundredsStr = ones[hundreds] || '';
+    const remainderStr = remainder > 0 ? convertHundreds(remainder) : '';
+    return hundredsStr + ' HUNDRED' + (remainderStr ? ' ' + remainderStr : '');
   }
 }
 
