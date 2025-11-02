@@ -300,7 +300,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   
   currentY += valueRowHeight;
 
-  y = tableStartY + (shippingRows.length * rowHeight) + 5;
+  y = currentY + 5;
 
   // ESPECIE en caja
   const especieY = y;
