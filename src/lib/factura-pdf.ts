@@ -33,6 +33,16 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     return num.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  // Función para transformar variedad según especie
+  const transformVariety = (variedad: string): string => {
+    const mapping: Record<string, string> = {
+      'CEREZA': 'RED CHERRIES',
+      'Cereza': 'RED CHERRIES',
+      'cereza': 'RED CHERRIES',
+    };
+    return mapping[variedad] || variedad;
+  };
+
   let y = 15;
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 15;
@@ -327,7 +337,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // Resto de columnas con variedad (colSpan 8)
   const variedadColSpan = productColWidths.slice(1).reduce((a, b) => a + b, 0);
   doc.rect(margin + productColWidths[0], productTableStartY - 4, variedadColSpan, productRowHeight * 2);
-  const especieValue = factura.productos[0]?.variedad || '';
+  const especieValue = transformVariety(factura.productos[0]?.variedad || '');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   doc.text(especieValue, margin + productColWidths[0] + (variedadColSpan / 2) - (doc.getTextWidth(especieValue) / 2), productTableStartY + 1);
@@ -379,7 +389,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
     const productData = [
       producto.cantidad.toLocaleString('es-ES'),
       producto.tipoEnvase,
-      producto.variedad,
+      transformVariety(producto.variedad),
       producto.categoria,
       producto.etiqueta,
       producto.calibre,

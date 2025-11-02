@@ -8,6 +8,16 @@ interface PlantillaAlmaProps {
 }
 
 export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
+  // Función para transformar variedad según especie
+  const transformVariety = (variedad: string): string => {
+    const mapping: Record<string, string> = {
+      'CEREZA': 'RED CHERRIES',
+      'Cereza': 'RED CHERRIES',
+      'cereza': 'RED CHERRIES',
+    };
+    return mapping[variedad] || variedad;
+  };
+
   // Formatear fecha como "December/09/2024"
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -244,7 +254,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                 <div className="text-xs font-normal" style={{ fontSize: '8px', fontWeight: 'normal' }}>(Specie)</div>
               </th>
               <th className="border border-black px-1 py-1 font-bold text-center" colSpan={8} style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '9px' }}>
-                {factura.productos[0]?.variedad || ''}
+                {transformVariety(factura.productos[0]?.variedad || '')}
               </th>
             </tr>
             <tr>
@@ -295,7 +305,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
                   {producto.tipoEnvase}
                 </td>
                 <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
-                  {producto.variedad}
+                  {transformVariety(producto.variedad)}
                 </td>
                 <td className="border border-black px-1 py-1 text-center" style={{ borderWidth: '1px', textAlign: 'center' }}>
                   {producto.categoria}
