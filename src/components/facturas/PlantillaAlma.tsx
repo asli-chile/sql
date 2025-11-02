@@ -11,9 +11,9 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
   // Función para transformar variedad según especie
   const transformVariety = (variedad: string): string => {
     const mapping: Record<string, string> = {
-      'CEREZA': 'RED CHERRIES',
-      'Cereza': 'RED CHERRIES',
-      'cereza': 'RED CHERRIES',
+      'CEREZA': 'FRESH CHERRIES',
+      'Cereza': 'FRESH CHERRIES',
+      'cereza': 'FRESH CHERRIES',
     };
     return mapping[variedad] || variedad;
   };
