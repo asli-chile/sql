@@ -288,7 +288,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // Segunda fila: Headers en inglés (fuente más chica)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  const englishHeaders = ['(Departure Date)', '(Vessel)', '(Travel Number)', '(Terms of Sale)', '(Clause of Sale)'];
+  const englishHeaders = ['Departure Date', 'Vessel', 'Travel Number', 'Terms of Sale', 'Clause of Sale'];
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, headerRowHeight);
@@ -331,7 +331,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // Segunda fila: Headers en inglés
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  const section2EnglishHeaders = ['(Country of Origin)', '(Loading Port)', '(Destination Port)', '(Country of Destination)', '(Payment Terms)'];
+  const section2EnglishHeaders = ['Country of Origin', 'Loading Port', 'Destination Port', 'Country of Destination', 'Payment Terms'];
   for (let col = 0; col < numCols; col++) {
     const x = margin + (col * colWidth);
     doc.rect(x, currentY - 4, colWidth, headerRowHeight);
@@ -377,7 +377,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   // Segunda fila: Headers en inglés
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  const section3EnglishHeaders = ['(Total Net Weight)', '(Total Gross Weight)', '(Container / AWB)'];
+  const section3EnglishHeaders = ['Total Net Weight', 'Total Gross Weight', 'Container / AWB'];
   for (let col = 0; col < 3; col++) {
     const x = margin + (col * colWidth);
     const colspan = col === 2 ? 3 : 1;
@@ -476,15 +476,15 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
   const productHeadersEnglish = [
-    '(Quantity)',
-    '(Type of Package)',
-    '(Variety)',
-    '(Category)',
-    '(Label)',
-    '(Size)',
-    '(Net Weight Per Unit)',
-    '(Price per Box)',
-    '' // Sin traducción para TOTAL
+    'Quantity',
+    'Type of Package',
+    'Variety',
+    'Category',
+    'Label',
+    'Size',
+    'Net Weight Per Unit',
+    'Price per Box',
+    'Total Value'
   ];
 
   productX = margin;
