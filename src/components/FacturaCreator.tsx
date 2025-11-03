@@ -8,6 +8,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import { useToast } from '@/hooks/useToast';
 import { PlantillaAlma } from '@/components/facturas/PlantillaAlma';
+import { PlantillaFruitAndes } from '@/components/facturas/PlantillaFruitAndes';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
 
@@ -262,7 +263,11 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
 
           {/* Vista previa (70%) */}
           <div className="flex-1 overflow-y-auto p-4 bg-white">
-            <PlantillaAlma factura={{ ...factura, totales: totalesCalculados }} />
+            {(factura.exportador.nombre?.toUpperCase().includes('FRUIT ANDES') || factura.clientePlantilla === 'FRUIT ANDES SUR') ? (
+              <PlantillaFruitAndes factura={{ ...factura, totales: totalesCalculados }} />
+            ) : (
+              <PlantillaAlma factura={{ ...factura, totales: totalesCalculados }} />
+            )}
           </div>
         </div>
 
@@ -508,7 +513,7 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Zip Code"
+          placeholder="Postal Code"
         />
         <input
           type="text"

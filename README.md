@@ -13,6 +13,23 @@ Sistema web para la gestión de embarques y contenedores desarrollado con Next.j
 - **Historial**: Seguimiento de cambios en registros
 - **Edición Múltiple**: Editar varios registros simultáneamente
 
+---
+
+## 🏠 TRABAJAR EN LOCAL
+
+**¿Quieres trabajar en local sin afectar producción?** ✅
+
+**Lee primero:** [`LEEME-PRIMERO.md`](./LEEME-PRIMERO.md)
+
+**O haz doble clic en:** [`INICIAR-LOCAL.bat`](./INICIAR-LOCAL.bat)
+
+**Más información:**
+- [`EMPEZAR-AHORA.md`](./EMPEZAR-AHORA.md) - Inicio rápido
+- [`GUIA-TRABAJO-LOCAL-SEGURO.md`](./GUIA-TRABAJO-LOCAL-SEGURO.md) - Guía completa
+- [`RESUMEN-CONFIGURACION-LOCAL.md`](./RESUMEN-CONFIGURACION-LOCAL.md) - Configuración
+
+---
+
 ## 🛠️ Tecnologías
 
 - **Frontend**: Next.js 16, React 19, TypeScript

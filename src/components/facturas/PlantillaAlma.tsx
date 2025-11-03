@@ -123,7 +123,7 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
             </div>
           )}
           {factura.consignatario?.codigoPostal && (
-            <div className="mb-1" style={{ fontSize: '8pt' }}>Zip Code: {factura.consignatario.codigoPostal}</div>
+            <div className="mb-1" style={{ fontSize: '8pt' }}>Postal Code: {factura.consignatario.codigoPostal}</div>
           )}
           {factura.consignatario?.usci && (
             <div className="mb-1" style={{ fontSize: '8pt' }}>USCI: {factura.consignatario.usci}</div>
@@ -294,11 +294,13 @@ export function PlantillaAlma({ factura }: PlantillaAlmaProps) {
         <table className="w-full border-collapse" style={{ border: '1px solid black', fontSize: '6pt' }}>
           <thead>
             <tr>
-              <th className="border border-black px-1 py-1 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '8pt' }}>
+              <th className="border border-black px-1 py-0.5 font-bold text-center" style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '8pt' }}>
                 ESPECIE
-                <div className="text-xs font-normal" style={{ fontSize: '6pt', fontWeight: 'normal' }}>(Specie)</div>
               </th>
-              <th className="border border-black px-1 py-1 font-bold text-center" colSpan={8} style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '8pt', textAlign: 'center' }}>
+              <th className="border border-black px-1 py-0.5 font-normal text-center" style={{ borderWidth: '1px', fontWeight: 'normal', fontSize: '6pt' }}>
+                (Specie)
+              </th>
+              <th className="border border-black px-1 py-0.5 font-bold text-center" colSpan={7} style={{ borderWidth: '1px', fontWeight: 'bold', fontSize: '8pt', textAlign: 'center' }}>
                 {transformVariety(factura.productos[0]?.especie || '')}
               </th>
             </tr>

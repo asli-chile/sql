@@ -1,0 +1,23 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 PASOS PARA CREAR asli-sql-v2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1️⃣  IR A ESTA URL:
+   👉 https://github.com/organizations/asli-chile/repositories/new
+
+2️⃣  COMPLETAR EL FORMULARIO:
+   Repository name: asli-sql-v2
+   Description: ASLI SQL V2 - Sistema de gestión de embarques y facturas
+   Visibility: 🔒 Private
+   
+   ⚠️  NO MARQUES NINGUNA CASILLA:
+      ❌ Add a README file
+      ❌ Add .gitignore  
+      ❌ Choose a license
+
+3️⃣  CLICK EN "Create repository"
+
+4️⃣  AVÍSAME CUANDO LO CREES Y TE DIGO EL COMANDO PARA PUSHEAR
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+

@@ -1,0 +1,28 @@
+=============================================================
+NO PUEDO CREAR EL REPOSITORIO AUTOMATICAMENTE
+=============================================================
+
+Lo siento, pero necesito que lo crees manualmente en GitHub.
+
+HAZ LO SIGUIENTE:
+
+1. Abre tu navegador
+2. Ve a: https://github.com/organizations/asli-chile/repositories/new
+3. Llena el formulario:
+   - Repository name: asli-sql-v2
+   - Description: ASLI SQL V2
+   - Visibility: Private
+   - NO marques nada más
+4. Click en "Create repository"
+5. Cuando lo crees, avísame y ejecuto:
+   git push origin-v2 main
+
+=============================================================
+
+ALTERNATIVA: Usar uno de tus proyectos existentes
+
+Ya tienes "sql-toox" en Vercel funcionando. 
+¿Prefieres simplemente hacer redeploy de ese proyecto?
+
+=============================================================
+

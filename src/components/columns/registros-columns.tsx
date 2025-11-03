@@ -26,6 +26,28 @@ const createNaveToNavieraMap = (data: Registro[]): Map<string, string[]> => {
   return naveToNavieras;
 };
 
+// Función para obtener la traducción al inglés de la especie
+const getEspecieEnIngles = (especie: string): string => {
+  const mapping: Record<string, string> = {
+    'CEREZA': 'FRESH CHERRIES',
+    'Cereza': 'FRESH CHERRIES',
+    'cereza': 'FRESH CHERRIES',
+    'PALTA': 'AVOCADO',
+    'Palta': 'AVOCADO',
+    'palta': 'AVOCADO',
+    'UVA': 'GRAPES',
+    'Uva': 'GRAPES',
+    'uva': 'GRAPES',
+    'ARANDANO': 'BLUEBERRY',
+    'Arandano': 'BLUEBERRY',
+    'arandano': 'BLUEBERRY',
+    'ARÁNDANO': 'BLUEBERRY',
+    'Arándano': 'BLUEBERRY',
+    'arándano': 'BLUEBERRY',
+  };
+  return mapping[especie] || especie;
+};
+
 // Campos que NO permiten edición múltiple (son únicos)
 const UNIQUE_FIELDS = ['booking', 'contenedor'];
 
@@ -122,7 +144,7 @@ export const createRegistrosColumns = (
             {refAsli}
           </span>
           {shouldShowIndicator && (
-            <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold">
+            <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold">
               {selectedRecordsArray.length}
             </span>
           )}
@@ -158,7 +180,7 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const value = row.getValue('usuario') as string || row.original.createdBy || '';
       return (
-        <span className="text-sm text-gray-700 dark:text-gray-300">
+        <span className="text-[10px] text-gray-700 dark:text-gray-300">
           {value || '-'}
         </span>
       );
@@ -213,7 +235,7 @@ export const createRegistrosColumns = (
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={allowsBulkEdit('booking') ? onBulkUpdate : undefined}
           type="text"
-          className={isCancelado ? 'bg-red-600 text-black px-2 py-1 rounded' : ''}
+          className={isCancelado ? 'bg-red-600 text-black px-2 py-0.5 rounded text-[10px]' : ''}
           selectedRecords={allowsBulkEdit('booking') ? getSelectedRecords() : []}
           isSelectionMode={allowsBulkEdit('booking')}
         />
@@ -260,14 +282,14 @@ export const createRegistrosColumns = (
           onSave={onUpdateRecord || (() => {})}
           onBulkSave={allowsBulkEdit('contenedor') ? onBulkUpdate : undefined}
           type="text"
-          className={isCancelado ? 'bg-red-600 text-black px-2 py-1 rounded' : ''}
+          className={isCancelado ? 'bg-red-600 text-black px-2 py-0.5 rounded text-[10px]' : ''}
           selectedRecords={allowsBulkEdit('contenedor') ? getSelectedRecords() : []}
           isSelectionMode={allowsBulkEdit('contenedor')}
           displayAsVerticalList={contenedores.length > 1}
           customDisplay={contenedores.length > 1 ? (
             <div className="flex flex-col gap-1">
               {contenedores.map((container, index) => (
-                <span key={index} className={`px-2 py-1 rounded text-xs font-mono ${
+                <span key={index} className={`px-2 py-0.5 rounded text-[10px] font-mono ${
                   isCancelado ? 'bg-red-600 text-black' : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-gray-200'
                 }`}>
                   {container}
@@ -336,7 +358,7 @@ export const createRegistrosColumns = (
       
       // Mostrar nave y viaje juntos, sin edición inline (solo se edita con clic derecho)
       return (
-        <div className="text-xs">
+        <div className="text-[10px]">
           {value || '-'}
           {viaje && <span className="text-gray-500 dark:text-gray-400"> [{viaje}]</span>}
         </div>
@@ -484,9 +506,30 @@ export const createRegistrosColumns = (
     },
   },
   {
+    id: 'especie_header_esp',
+    header: () => (
+      <div className="text-center">
+        <div className="font-bold">ESPECIE</div>
+        <div className="text-[8px] font-normal">(Specie)</div>
+      </div>
+    ),
+    cell: () => {
+      return <div className="text-[10px] text-center font-semibold">ESPECIE</div>;
+    },
+    enableSorting: false,
+  },
+  {
+    id: 'especie_header_eng',
+    header: '',
+    cell: () => {
+      return <div className="text-[10px] text-center font-semibold">(Specie)</div>;
+    },
+    enableSorting: false,
+  },
+  {
     id: 'especie',
     accessorKey: 'especie',
-    header: 'Especie',
+    header: '',
     cell: ({ row }) => {
       const value = row.getValue('especie') as string;
       return (
@@ -698,7 +741,7 @@ export const createRegistrosColumns = (
 
       return (
         <div className="flex items-center justify-center">
-          <span className="text-xs text-gray-500 dark:text-gray-400">PENDIENTE</span>
+          <span className="text-[10px] text-gray-500 dark:text-gray-400">PENDIENTE</span>
         </div>
       );
     },

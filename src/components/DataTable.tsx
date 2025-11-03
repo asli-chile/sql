@@ -368,7 +368,7 @@ export function DataTable({
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 40, // Altura estimada de cada fila en píxeles
+    estimateSize: () => 32, // Altura estimada de cada fila en píxeles
     overscan: 10, // Renderizar 10 filas adicionales fuera del viewport para scroll suave
   });
 
@@ -986,7 +986,7 @@ export function DataTable({
                      return (
                        <th
                          key={header.id}
-                        className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 text-center text-xs font-bold uppercase tracking-wider whitespace-nowrap border-r border-gray-300 dark:border-gray-600 ${
+                        className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-1 text-center text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border-r border-gray-300 dark:border-gray-600 ${
                           canSort ? 'cursor-pointer select-none hover:bg-blue-800 transition-colors' : ''
                         } ${stickyClasses}`}
                          style={{ ...stickyStyles, color: 'white' }}
@@ -1123,7 +1123,7 @@ export function DataTable({
                       return (
                         <td 
                           key={cell.id} 
-                          className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-2 whitespace-nowrap text-xs text-center border-r border-b border-gray-200 dark:border-gray-700 ${rowClasses.text} ${stickyClasses}`}
+                          className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-1 whitespace-nowrap text-[10px] text-center border-r border-b border-gray-200 dark:border-gray-700 ${rowClasses.text} ${stickyClasses}`}
                           style={stickyStyles}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}

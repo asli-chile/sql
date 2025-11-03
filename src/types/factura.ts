@@ -12,6 +12,7 @@ export interface Factura {
     rut: string;
     giro: string;
     direccion: string;
+    email?: string;
   };
   
   // Información del consignatario

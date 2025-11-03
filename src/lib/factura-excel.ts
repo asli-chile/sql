@@ -3,6 +3,19 @@ import ExcelJS from 'exceljs';
 import { Factura } from '@/types/factura';
 
 export async function generarFacturaExcel(factura: Factura): Promise<void> {
+  // Detectar plantilla según cliente
+  const clienteNombre = factura.exportador.nombre?.toUpperCase() || '';
+  const clientePlantilla = factura.clientePlantilla || '';
+  
+  if (clienteNombre.includes('FRUIT ANDES') || clientePlantilla === 'FRUIT ANDES SUR') {
+    return generarFacturaExcelFruitAndes(factura);
+  }
+  
+  // Plantilla por defecto (ALMA)
+  return generarFacturaExcelAlma(factura);
+}
+
+async function generarFacturaExcelAlma(factura: Factura): Promise<void> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Factura');
 
@@ -287,6 +300,27 @@ export async function generarFacturaExcel(factura: Factura): Promise<void> {
   const link = document.createElement('a');
   link.href = url;
   link.download = `Factura_${factura.refAsli}_${factura.embarque.numeroEmbarque}.xlsx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+async function generarFacturaExcelFruitAndes(factura: Factura): Promise<void> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet('Proforma');
+
+  // Plantilla vacía - esperando coordenadas exactas del usuario
+
+  // Generar buffer y descargar
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `Proforma_${factura.refAsli}_${factura.embarque.numeroInvoice}.xlsx`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

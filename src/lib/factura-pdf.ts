@@ -89,6 +89,19 @@ function numberToWords(num: number): string {
 }
 
 export async function generarFacturaPDF(factura: Factura): Promise<void> {
+  // Detectar plantilla según cliente
+  const clienteNombre = factura.exportador.nombre?.toUpperCase() || '';
+  const clientePlantilla = factura.clientePlantilla || '';
+  
+  if (clienteNombre.includes('FRUIT ANDES') || clientePlantilla === 'FRUIT ANDES SUR') {
+    return generarFacturaPDFFruitAndes(factura);
+  }
+  
+  // Plantilla por defecto (ALMA)
+  return generarFacturaPDFAlma(factura);
+}
+
+async function generarFacturaPDFAlma(factura: Factura): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -249,7 +262,7 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   }
   
   if (factura.consignatario?.codigoPostal) {
-    doc.text(`Zip Code: ${factura.consignatario.codigoPostal}`, margin, y);
+    doc.text(`Postal Code: ${factura.consignatario.codigoPostal}`, margin, y);
     y += 4;
   }
   
@@ -434,26 +447,30 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
   const productRowHeight = 5;
   const totalProductColWidth = tableWidth;
 
-  // Fila ESPECIE
+  // Fila ESPECIE - 3 columnas separadas
+  const especieRowHeight = 6; // Altura más delgada para la fila de especie
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   // Primera columna: ESPECIE header
-  doc.rect(margin, productTableStartY - 4, productColWidths[0], productRowHeight * 2);
+  doc.rect(margin, productTableStartY - 4, productColWidths[0], especieRowHeight);
   doc.text('ESPECIE', margin + (productColWidths[0] / 2) - (doc.getTextWidth('ESPECIE') / 2), productTableStartY);
+  
+  // Segunda columna: (Specie) header
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6);
-  doc.text('(Specie)', margin + (productColWidths[0] / 2) - (doc.getTextWidth('(Specie)') / 2), productTableStartY + 3);
+  doc.rect(margin + productColWidths[0], productTableStartY - 4, productColWidths[0], especieRowHeight);
+  doc.text('(Specie)', margin + productColWidths[0] + (productColWidths[0] / 2) - (doc.getTextWidth('(Specie)') / 2), productTableStartY);
   
-  // Resto de columnas con variedad (colSpan 8) - centrado
-  const variedadColSpan = productColWidths.slice(1).reduce((a, b) => a + b, 0);
-  doc.rect(margin + productColWidths[0], productTableStartY - 4, variedadColSpan, productRowHeight * 2);
+  // Resto de columnas con variedad (colSpan 7) - centrado
+  const variedadColSpan = productColWidths.slice(2).reduce((a, b) => a + b, 0);
+  doc.rect(margin + (productColWidths[0] * 2), productTableStartY - 4, variedadColSpan, especieRowHeight);
   const especieValue = transformVariety(factura.productos[0]?.especie || '');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   const especieValueWidth = doc.getTextWidth(especieValue);
-  doc.text(especieValue, margin + productColWidths[0] + (variedadColSpan / 2) - (especieValueWidth / 2), productTableStartY + 1);
+  doc.text(especieValue, margin + (productColWidths[0] * 2) + (variedadColSpan / 2) - (especieValueWidth / 2), productTableStartY);
 
-  y = productTableStartY + (productRowHeight * 2) + 1;
+  y = productTableStartY + especieRowHeight + 1;
 
   // Headers de productos en español
   doc.setFont('helvetica', 'bold');
@@ -634,4 +651,261 @@ export async function generarFacturaPDF(factura: Factura): Promise<void> {
 
   // Descargar PDF
   doc.save(`Factura_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`);
+}
+
+async function generarFacturaPDFFruitAndes(factura: Factura): Promise<void> {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  // Funciones auxiliares para formateo
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  let y = 15;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const margin = 10;
+  const contentWidth = pageWidth - (margin * 2);
+
+  // Header - Logo y Company Name centrado
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text('FRUIT ANDES SUR', margin + (contentWidth / 2) - (doc.getTextWidth('FRUIT ANDES SUR') / 2), y);
+  y += 6;
+
+  doc.setFontSize(12);
+  doc.text(factura.exportador.nombre, margin + (contentWidth / 2) - (doc.getTextWidth(factura.exportador.nombre) / 2), y);
+  y += 10;
+
+  // Proforma de Exportacion y NRO - Alineados a la derecha
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  const proformaText = 'Proforma de Exportacion';
+  const proformaWidth = doc.getTextWidth(proformaText);
+  doc.text(proformaText, margin + contentWidth - proformaWidth, y);
+  y += 5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  const nroText = `NRO: ${factura.embarque.numeroInvoice}`;
+  const nroWidth = doc.getTextWidth(nroText);
+  doc.text(nroText, margin + contentWidth - nroWidth, y);
+  y += 8;
+
+  // Company Info
+  doc.setFontSize(8);
+  if (factura.exportador.direccion) {
+    doc.text(factura.exportador.direccion, margin, y);
+    y += 4;
+  }
+
+  if (factura.exportador.rut) {
+    doc.text(`RUT: ${factura.exportador.rut}`, margin, y);
+    y += 4;
+  }
+
+  doc.text(`Email: ${factura.exportador.email || 'patricioborlando@gmail.com'}`, margin, y);
+  y += 8;
+
+  // Consignee y Shipping Details - Dos columnas
+  const leftColX = margin;
+  const rightColX = margin + (contentWidth * 0.6);
+
+  // Consignee (izquierda)
+  let consigneeY = y;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Consignee', leftColX, consigneeY);
+  consigneeY += 5;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text(factura.consignatario.nombre, leftColX, consigneeY);
+  consigneeY += 4;
+
+  if (factura.consignatario.direccion) {
+    doc.setFont('helvetica', 'normal');
+    doc.text('Address', leftColX, consigneeY);
+    consigneeY += 4;
+    doc.text(factura.consignatario.direccion, leftColX, consigneeY);
+    consigneeY += 4;
+  }
+
+  if (factura.consignatario.usci) {
+    doc.text(`USCI: ${factura.consignatario.usci}`, leftColX, consigneeY);
+    consigneeY += 4;
+  }
+
+  // Shipping Details (derecha)
+  let shippingY = y;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Fecha:', rightColX, shippingY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(formatDate(factura.embarque.fechaFactura), rightColX + 20, shippingY);
+  shippingY += 5;
+
+  if (factura.embarque.puertoEmbarque) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Puerto de Embarque:', rightColX, shippingY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(factura.embarque.puertoEmbarque, rightColX + 40, shippingY);
+    shippingY += 5;
+  }
+
+  if (factura.embarque.contenedor) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Contenedor:', rightColX, shippingY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(factura.embarque.contenedor, rightColX + 30, shippingY);
+    shippingY += 5;
+  }
+
+  if (factura.embarque.puertoDestino) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Puerto Destino:', rightColX, shippingY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(factura.embarque.puertoDestino, rightColX + 35, shippingY);
+    shippingY += 5;
+  }
+
+  if (factura.embarque.motonave) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('Nave:', rightColX, shippingY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(factura.embarque.motonave, rightColX + 18, shippingY);
+    shippingY += 5;
+  }
+
+  if (factura.embarque.numeroViaje) {
+    doc.setFont('helvetica', 'bold');
+    doc.text('DUS:', rightColX, shippingY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(factura.embarque.numeroViaje, rightColX + 18, shippingY);
+    shippingY += 5;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Mod. Venta:', rightColX, shippingY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(factura.embarque.modalidadVenta || 'LIBRE CONSIGNACION', rightColX + 30, shippingY);
+  shippingY += 5;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Clausula de venta:', rightColX, shippingY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(factura.embarque.clausulaVenta || 'CIF', rightColX + 45, shippingY);
+
+  // Ajustar y para tabla de productos
+  y = Math.max(consigneeY, shippingY) + 10;
+
+  // Tabla de productos
+  const tableWidth = contentWidth;
+  const colWidths = [25, 25, 25, 25, 25, 30, 35, 30, 35];
+  const tableRowHeight = 6;
+
+  // Headers
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  const headers = ['VARIEDAD', 'KG NETO / CAJA', '', 'MARK / LABEL', 'SIZE', 'N° CAJAS', 'KG NETO TOTAL', 'VALOR / CAJA', 'VALOR TOTAL'];
+  let x = margin;
+  headers.forEach((header, index) => {
+    if (header) {
+      doc.rect(x, y - 4, colWidths[index], tableRowHeight);
+      const textWidth = doc.getTextWidth(header);
+      doc.text(header, x + (colWidths[index] / 2) - (textWidth / 2), y);
+    }
+    x += colWidths[index];
+  });
+  y += tableRowHeight;
+
+  // Sub-header Fresh Cherries
+  doc.rect(margin, y - 4, tableWidth, tableRowHeight);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Fresh Cherries', margin + (tableWidth / 2) - (doc.getTextWidth('Fresh Cherries') / 2), y);
+  y += tableRowHeight;
+
+  // Productos rows
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  factura.productos.forEach((producto) => {
+    x = margin;
+    const values = [
+      producto.variedad || '-',
+      producto.kgNetoUnidad.toFixed(1).replace('.', ','),
+      '',
+      producto.etiqueta || 'NO MARK',
+      producto.calibre || '-',
+      producto.cantidad.toLocaleString('es-ES'),
+      (producto.cantidad * producto.kgNetoUnidad).toFixed(1).replace('.', ','),
+      `US$ ${producto.precioPorCaja.toFixed(2).replace('.', ',')}`,
+      `US$ ${producto.total.toFixed(2).replace('.', ',')}`
+    ];
+
+    values.forEach((value, index) => {
+      doc.rect(x, y - 4, colWidths[index], tableRowHeight);
+      if (value) {
+        const textWidth = doc.getTextWidth(value);
+        const alignment = [0, 1, 2, 3, 4].includes(index) ? 'center' : 'right';
+        const textX = alignment === 'center' ? x + (colWidths[index] / 2) - (textWidth / 2) : x + colWidths[index] - textWidth - 2;
+        doc.text(value, textX, y);
+      }
+      x += colWidths[index];
+    });
+    y += tableRowHeight;
+
+    if (y > 250) {
+      doc.addPage();
+      y = 20;
+    }
+  });
+
+  // Totals
+  y += 2;
+
+  // NETO TOTAL
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.rect(margin, y - 4, colWidths[0] * 2, tableRowHeight);
+  const netoTotal = factura.productos.reduce((sum, p) => sum + (p.cantidad * p.kgNetoUnidad), 0);
+  doc.text('NETO TOTAL (KG)', margin + colWidths[0], y - 1);
+  
+  doc.rect(margin + colWidths[0] * 6, y - 4, colWidths[6] * 2, tableRowHeight);
+  const netoText = netoTotal.toFixed(2).replace('.', ',');
+  const netoTextWidth = doc.getTextWidth(netoText);
+  doc.text(netoText, margin + colWidths[0] * 6 + (colWidths[6] * 2) - netoTextWidth - 2, y);
+  
+  y += tableRowHeight;
+
+  // CAJA TOTAL
+  doc.rect(margin, y - 4, colWidths[0], tableRowHeight);
+  doc.text('CAJA TOTAL', margin + colWidths[0] / 2 - doc.getTextWidth('CAJA TOTAL') / 2, y);
+  
+  doc.rect(margin + colWidths[0] * 5, y - 4, colWidths[5], tableRowHeight);
+  const cajaText = factura.totales.cantidadTotal.toLocaleString('es-ES');
+  const cajaTextWidth = doc.getTextWidth(cajaText);
+  doc.text(cajaText, margin + colWidths[0] * 5 + colWidths[5] - cajaTextWidth - 2, y);
+  
+  y += tableRowHeight;
+
+  // CIF TOTAL
+  doc.rect(margin, y - 4, colWidths[0], tableRowHeight);
+  doc.text('CIF TOTAL (USD)', margin + colWidths[0] / 2 - doc.getTextWidth('CIF TOTAL (USD)') / 2, y);
+  
+  doc.rect(margin + colWidths[0] * 8, y - 4, colWidths[8], tableRowHeight);
+  const cifText = factura.totales.valorTotal.toFixed(2).replace('.', ',');
+  const cifTextWidth = doc.getTextWidth(cifText);
+  doc.text(cifText, margin + colWidths[0] * 8 + colWidths[8] - cifTextWidth - 2, y);
+
+  // Descargar PDF
+  doc.save(`Proforma_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`);
 }

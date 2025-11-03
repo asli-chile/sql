@@ -293,40 +293,40 @@ export function InlineEditCell({
     if (field === 'estado') {
       if (val === 'CONFIRMADO') {
         return theme === 'dark'
-          ? 'bg-green-900/30 text-green-300 px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-green-900/30 text-green-300 px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[10px] font-semibold';
       } else if (val === 'CANCELADO') {
         return theme === 'dark'
-          ? 'bg-red-900/30 text-red-300 px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-red-900/30 text-red-300 px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-[10px] font-semibold';
       } else if (val === 'PENDIENTE') {
         return theme === 'dark'
-          ? 'bg-yellow-900/30 text-yellow-300 px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-yellow-900/30 text-yellow-300 px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-[10px] font-semibold';
       } else {
         return theme === 'dark'
-          ? 'bg-gray-700 text-gray-300 px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-gray-700 text-gray-300 px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-gray-100 text-gray-800 px-2 py-0.5 rounded-full text-[10px] font-semibold';
       }
     }
     
     if (field === 'tipoIngreso') {
       if (val === 'NORMAL') {
         return theme === 'dark'
-          ? 'bg-green-600 text-white px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-green-500 text-white px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-green-600 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-green-500 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold';
       } else if (val === 'EARLY') {
         return theme === 'dark'
-          ? 'bg-cyan-600 text-white px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-cyan-500 text-white px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-cyan-600 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-cyan-500 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold';
       } else if (val === 'LATE') {
         return theme === 'dark'
-          ? 'bg-yellow-600 text-white px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-yellow-600 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-yellow-500 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold';
       } else if (val === 'EXTRA LATE') {
         return theme === 'dark'
-          ? 'bg-red-600 text-white px-2 py-1 rounded-full text-xs font-semibold'
-          : 'bg-red-500 text-white px-2 py-1 rounded-full text-xs font-semibold';
+          ? 'bg-red-600 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold'
+          : 'bg-red-500 text-white px-2 py-0.5 rounded-full text-[10px] font-semibold';
       }
     }
     
@@ -341,7 +341,7 @@ export function InlineEditCell({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
+            className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
           >
             {options.map(option => (
@@ -354,7 +354,7 @@ export function InlineEditCell({
             value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
+            className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
           />
         ) : type === 'textarea' ? (
@@ -362,7 +362,7 @@ export function InlineEditCell({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
+            className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
             rows={3}
             cols={20}
             autoFocus
@@ -373,7 +373,7 @@ export function InlineEditCell({
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
+            className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoComplete="off"
             autoFocus
           />
@@ -398,7 +398,7 @@ export function InlineEditCell({
         </button>
         
         {error && (
-          <span className="text-xs text-red-600 ml-1 bg-red-50 px-1 py-0.5 rounded">{error}</span>
+          <span className="text-[10px] text-red-600 ml-1 bg-red-50 px-1 py-0.5 rounded">{error}</span>
         )}
       </div>
     );
@@ -411,7 +411,7 @@ export function InlineEditCell({
 
   return (
     <div 
-      className={`flex items-center gap-1 group rounded px-2 py-1 transition-colors relative ${className} ${
+      className={`flex items-center gap-1 group rounded px-2 py-0.5 transition-colors relative ${className} ${
         shouldShowBulkIndicator 
           ? theme === 'dark'
             ? 'bg-blue-900/30 border border-blue-600'
@@ -456,7 +456,7 @@ export function InlineEditCell({
         </span>
       )}
       {shouldShowBulkIndicator && (
-        <span className="text-xs bg-blue-500 text-white px-1 py-0.5 rounded-full font-semibold">
+        <span className="text-[10px] bg-blue-500 text-white px-1 py-0.5 rounded-full font-semibold">
           {selectedRecords.length}
         </span>
       )}

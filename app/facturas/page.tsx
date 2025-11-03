@@ -80,10 +80,17 @@ export default function FacturasPage() {
   const loadFacturas = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('facturas')
         .select('*')
         .order('created_at', { ascending: false });
+
+      // Si es usuario (no admin ni ejecutivo), filtrar solo sus facturas
+      if (currentUser && currentUser.rol === 'usuario' && !currentUser.email?.endsWith('@asli.cl')) {
+        query = query.eq('created_by', currentUser.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -418,17 +425,24 @@ export default function FacturasPage() {
                           : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <button
-                          onClick={() => handleCrearFactura(registro)}
-                          className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ml-auto ${
-                            theme === 'dark'
-                              ? 'bg-blue-600 text-white hover:bg-blue-700'
-                              : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
-                        >
-                          <FileText className="w-4 h-4" />
-                          <span>Crear Factura</span>
-                        </button>
+                        {(currentUser?.rol === 'admin' || currentUser?.email?.endsWith('@asli.cl')) && (
+                          <button
+                            onClick={() => handleCrearFactura(registro)}
+                            className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ml-auto ${
+                              theme === 'dark'
+                                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                            }`}
+                          >
+                            <FileText className="w-4 h-4" />
+                            <span>Crear Factura</span>
+                          </button>
+                        )}
+                        {!(currentUser?.rol === 'admin' || currentUser?.email?.endsWith('@asli.cl')) && (
+                          <span className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Solo admins y ejecutivos
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}
