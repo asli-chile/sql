@@ -182,6 +182,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
       
       // Si la vista es por país, agrupar por país
       if (vista === 'pais') {
+        if (!country) return; // Asegurar que country no sea null
         const countryCoords = getCountryCoordinates(country);
         if (!countryCoords) return;
         
