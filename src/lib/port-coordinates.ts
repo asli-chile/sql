@@ -318,9 +318,6 @@ export const PORT_COORDINATES: Record<string, [number, number]> = {
   'XINGANG TIANJIN': [117.8000, 38.9800],
   'TIANJIN XINGANG': [117.8000, 38.9800],
   
-  // República Dominicana
-  'CAUCEDO': [-69.9000, 18.5000],
-  
   // Otros
   'PRUEBA': null as any, // Puerto de prueba (no coordenadas)
   'ZAMBRANO': [-63.6167, -38.4161], // Argentina (usar coordenadas de Buenos Aires como referencia)
