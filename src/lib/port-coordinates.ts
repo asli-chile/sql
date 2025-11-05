@@ -318,9 +318,6 @@ export const PORT_COORDINATES: Record<string, [number, number]> = {
   'XINGANG TIANJIN': [117.8000, 38.9800],
   'TIANJIN XINGANG': [117.8000, 38.9800],
   
-  // Puerto Rico
-  'SAN JUAN': [-66.1057, 18.4655],
-  
   // República Dominicana
   'CAUCEDO': [-69.9000, 18.5000],
   
