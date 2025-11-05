@@ -321,9 +321,6 @@ export function getCountryFromPort(portName: string): string | null {
     'AL KHOMS': 'LIBYA',
     'MISURATAH': 'LIBYA',
     
-    // Turquía (más)
-    'AMBARLI PORT ISTANBUL': 'TURKEY',
-    
     // Tailandia
     'BANGKOK': 'THAILAND',
     'LAEM CHABANG': 'THAILAND',
