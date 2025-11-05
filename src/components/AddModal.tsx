@@ -217,18 +217,8 @@ export function AddModal({
       // Crear cliente Supabase
       const supabase = createClient();
       
-      // Verificar conectividad con Supabase primero
-      const { data: testData, error: testError } = await supabase
-        .from('registros')
-        .select('id')
-        .limit(1);
-
-      if (testError) {
-        console.error('❌ Error de conectividad con Supabase:', testError);
-        setError(`Error de conexión: ${testError.message || 'No se puede conectar con la base de datos'}`);
-        return;
-      }
-      
+      // Intentar insertar directamente (el trigger manejará created_by)
+      // Si hay error de transacción de solo lectura, puede ser por RLS o trigger
       const { data: insertData, error: insertError } = await supabase
         .from('registros')
         .insert(recordsToInsert)
@@ -238,7 +228,21 @@ export function AddModal({
         console.error('❌ Error insertando registros:', insertError);
         console.error('📋 Detalles del error:', JSON.stringify(insertError, null, 2));
         console.error('📋 Datos que causaron el error:', JSON.stringify(recordsToInsert, null, 2));
-        setError(`Error al crear los registros: ${insertError.message || insertError.details || 'Error desconocido'}`);
+        
+        // Mensaje de error más específico para el error de transacción de solo lectura
+        let errorMessage = insertError.message || insertError.details || 'Error desconocido';
+        
+        if (insertError.message?.includes('read-only transaction') || insertError.message?.includes('UPDATE')) {
+          errorMessage = `Error de base de datos: El trigger está intentando hacer una operación no permitida.\n\n` +
+            `Esto puede ser causado por:\n` +
+            `- Un trigger que intenta hacer UPDATE en otra tabla\n` +
+            `- Políticas RLS que bloquean la operación\n` +
+            `- Problemas de permisos en la base de datos\n\n` +
+            `Por favor, contacta al administrador de la base de datos.\n\n` +
+            `Error técnico: ${insertError.message}`;
+        }
+        
+        setError(`Error al crear los registros: ${errorMessage}`);
         return;
       }
 

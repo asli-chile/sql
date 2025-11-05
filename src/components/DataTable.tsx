@@ -13,10 +13,16 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare } from 'lucide-react';
+import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send } from 'lucide-react';
+
+// Constante para el ancho de la columna select (necesaria para sticky)
+const COLUMN_WIDTHS = {
+  select: 30, // Ancho fijo para columna sticky - reducido para acercar columnas
+};
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
+import { ReportGenerator } from './ReportGenerator';
 
 interface DataTableProps {
   data: Registro[];
@@ -122,6 +128,7 @@ export function DataTable({
   const [showFilters, setShowFilters] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [showReportGenerator, setShowReportGenerator] = useState(false);
   
   // Estado para visibilidad de columnas
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -506,6 +513,24 @@ export function DataTable({
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden xs:inline">Agregar</span>
+              </button>
+            )}
+
+
+            {/* Generar Reporte */}
+            {selectedRows.size > 0 && (
+              <button
+                onClick={() => setShowReportGenerator(true)}
+                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-green-600 text-white hover:bg-green-700'
+                }`}
+                title="Generar reportes con los registros seleccionados"
+              >
+                <Send className="h-4 w-4" />
+                <span className="hidden xs:inline">Enviar a ({selectedRows.size})</span>
+                <span className="xs:hidden">Enviar</span>
               </button>
             )}
 
@@ -944,8 +969,8 @@ export function DataTable({
              WebkitOverflowScrolling: 'touch'
            }}
          >
-          <table className="w-full min-w-[800px] sm:min-w-[1000px] lg:min-w-[1200px]">
-                         <thead className="bg-blue-900 sticky top-0 z-30 shadow-sm">
+          <table style={{ tableLayout: 'auto', width: '100%' }}>
+                         <thead className="sticky top-0 z-50 shadow-sm">
                {table.getHeaderGroups().map((headerGroup) => (
                  <tr key={headerGroup.id}>
                    {headerGroup.headers.map((header) => {
@@ -958,14 +983,24 @@ export function DataTable({
                      let stickyClasses = '';
                      let stickyStyles: React.CSSProperties = {};
                      
+                    const columnMinSize = header.column.columnDef.minSize || 100;
+                    const columnMaxSize = header.column.columnDef.maxSize || 300;
+                    const columnSize = header.column.getSize() || columnMinSize;
+                    
+                    // Aplicar fondo azul oscuro a todos los headers
+                    const baseHeaderStyle = {
+                      backgroundColor: '#1e3a8a',
+                      color: 'white',
+                    };
+                    
                     if (isSelectColumn) {
                       stickyClasses = 'sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
                       stickyStyles = { 
+                        ...baseHeaderStyle,
                         left: 0, 
-                        width: '36px', 
-                        minWidth: '36px', 
-                        maxWidth: '36px', 
-                        backgroundColor: '#1e3a8a',
+                        width: `${COLUMN_WIDTHS.select}px`,
+                        minWidth: `${COLUMN_WIDTHS.select}px`,
+                        maxWidth: `${COLUMN_WIDTHS.select}px`,
                         transform: 'translateZ(0)',
                         WebkitBackfaceVisibility: 'hidden',
                         backfaceVisibility: 'hidden' as any,
@@ -974,25 +1009,41 @@ export function DataTable({
                     } else if (isRefAsliColumn) {
                       stickyClasses = 'sticky z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
                       stickyStyles = { 
-                        left: '36px', 
-                        backgroundColor: '#1e3a8a',
+                        ...baseHeaderStyle,
+                        left: `${COLUMN_WIDTHS.select}px`, 
+                        minWidth: `${columnMinSize}px`,
+                        maxWidth: `${columnMaxSize}px`,
                         transform: 'translateZ(0)',
                         WebkitBackfaceVisibility: 'hidden',
                         backfaceVisibility: 'hidden' as any,
                         willChange: 'transform'
                       };
+                    } else {
+                      // Para columnas no sticky, solo aplicar el fondo
+                      stickyStyles = {
+                        ...baseHeaderStyle,
+                        minWidth: `${columnMinSize}px`,
+                        maxWidth: `${columnMaxSize}px`,
+                      };
                     }
+                    
+                     const columnStyles = {
+                       ...stickyStyles,
+                       minWidth: isSelectColumn ? `${COLUMN_WIDTHS.select}px` : `${columnMinSize}px`,
+                       maxWidth: isSelectColumn ? `${COLUMN_WIDTHS.select}px` : `${columnMaxSize}px`,
+                       whiteSpace: 'nowrap',
+                     };
                      
                      return (
                        <th
                          key={header.id}
-                        className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-1 text-center text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border-r border-gray-300 dark:border-gray-600 ${
+                        className={`${isSelectColumn ? 'px-0.5' : isRefAsliColumn ? 'px-1' : 'px-2'} py-2.5 text-center text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border-r border-blue-700 ${
                           canSort ? 'cursor-pointer select-none hover:bg-blue-800 transition-colors' : ''
                         } ${stickyClasses}`}
-                         style={{ ...stickyStyles, color: 'white' }}
+                         style={columnStyles}
                          onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                        >
-                         <div className="flex items-center justify-center gap-1">
+                         <div className="flex items-center justify-center gap-1 min-h-[32px]">
                            {isSelectColumn && onSelectAll ? (
                              <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                                <input
@@ -1095,13 +1146,16 @@ export function DataTable({
                       let stickyClasses = '';
                       let stickyStyles: React.CSSProperties = {};
                       
+                      const columnMinSize = cell.column.columnDef.minSize || 100;
+                      const columnMaxSize = cell.column.columnDef.maxSize || 300;
+                      
                       if (isSelectColumn) {
                         stickyClasses = `sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
                         stickyStyles = { 
                           left: 0, 
-                          width: '36px', 
-                          minWidth: '36px', 
-                          maxWidth: '36px', 
+                          width: `${COLUMN_WIDTHS.select}px`,
+                          minWidth: `${COLUMN_WIDTHS.select}px`,
+                          maxWidth: `${COLUMN_WIDTHS.select}px`,
                           backgroundColor: rowBgColor,
                           transform: 'translateZ(0)',
                           WebkitBackfaceVisibility: 'hidden',
@@ -1111,19 +1165,27 @@ export function DataTable({
                       } else if (isRefAsliColumn) {
                         stickyClasses = `sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
                         stickyStyles = { 
-                          left: '36px', 
+                          left: `${COLUMN_WIDTHS.select}px`,
+                          minWidth: `${columnMinSize}px`,
+                          maxWidth: `${columnMaxSize}px`,
                           backgroundColor: rowBgColor,
                           transform: 'translateZ(0)',
                           WebkitBackfaceVisibility: 'hidden',
                           backfaceVisibility: 'hidden' as any,
                           willChange: 'transform'
                         };
+                      } else {
+                        // Para columnas no sticky, usar min y max width dinámicos
+                        stickyStyles = {
+                          minWidth: `${columnMinSize}px`,
+                          maxWidth: `${columnMaxSize}px`,
+                        };
                       }
                       
                       return (
                         <td 
                           key={cell.id} 
-                          className={`${isSelectColumn ? 'px-1' : 'px-1 sm:px-2'} py-1 whitespace-nowrap text-[10px] text-center border-r border-b border-gray-200 dark:border-gray-700 ${rowClasses.text} ${stickyClasses}`}
+                          className={`${isSelectColumn ? 'px-0.5' : isRefAsliColumn ? 'px-1' : 'px-1 sm:px-2'} py-1 whitespace-nowrap text-[10px] text-center border-r border-b border-gray-200 dark:border-gray-700 overflow-hidden ${rowClasses.text} ${stickyClasses}`}
                           style={stickyStyles}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -1445,6 +1507,13 @@ export function DataTable({
            )}
          </div>
        )}
+
+      {/* Generador de Reportes */}
+      <ReportGenerator
+        registros={data.filter(record => record.id && selectedRows.has(record.id))}
+        isOpen={showReportGenerator}
+        onClose={() => setShowReportGenerator(false)}
+      />
     </div>
   );
 }

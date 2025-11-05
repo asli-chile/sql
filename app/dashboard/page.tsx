@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
+import dynamic from 'next/dynamic';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserProfileModal } from '@/components/UserProfileModal';
 import { 
@@ -17,8 +18,25 @@ import {
   ArrowRight,
   Clock,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Map as MapIcon
 } from 'lucide-react';
+import { Registro } from '@/types/registros';
+import { convertSupabaseToApp } from '@/lib/migration-utils';
+
+// Importar el mapa dinámicamente para evitar problemas con SSR
+const ShipmentsMap = dynamic(() => import('@/components/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-[600px] bg-gray-100 dark:bg-gray-900 rounded-lg">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-600 dark:text-gray-400">Cargando mapa...</p>
+      </div>
+    </div>
+  )
+});
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +50,7 @@ export default function DashboardPage() {
     confirmados: 0,
     cancelados: 0
   });
+  const [registrosParaMapa, setRegistrosParaMapa] = useState<Registro[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -90,14 +109,21 @@ export default function DashboardPage() {
     try {
       const supabase = createClient();
       
-      // Consulta optimizada para obtener estadísticas en una sola query
+      // Consulta optimizada para obtener estadísticas y datos para el mapa
       const { data: registros, error } = await supabase
         .from('registros')
-        .select('ref_asli, estado, updated_at, contenedor')
+        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, etd, eta, deposito')
         .is('deleted_at', null) // Solo registros no eliminados
         .not('ref_asli', 'is', null); // Solo registros con REF ASLI
 
       if (error) throw error;
+
+      // Convertir registros para el mapa (todos los que tienen POD, incluso si no tienen POL)
+      const registrosConRutas = (registros || [])
+        .filter(r => r.pod) // Solo requiere POD (puerto de destino)
+        .map(registro => convertSupabaseToApp(registro));
+      
+      setRegistrosParaMapa(registrosConRutas);
 
       console.log('═══════════════════════════════════════');
       console.log('🚀 INICIANDO CONTEO DE CONTENEDORES');
@@ -249,14 +275,14 @@ export default function DashboardPage() {
       comingSoon: true
     },
     {
-      id: 'facturacion',
-      title: 'Facturación',
-      description: 'Gestión de facturas y pagos',
-      icon: CreditCard,
+      id: 'documentos',
+      title: 'Documentos',
+      description: 'Ver, editar y crear facturas para las REF ASLI',
+      icon: FileText,
       color: 'bg-purple-500',
       hoverColor: 'hover:bg-purple-600',
-      available: false,
-      comingSoon: true
+      available: true,
+      stats: null
     }
   ];
 
@@ -344,7 +370,7 @@ export default function DashboardPage() {
         {/* Welcome section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            ¡Bienvenido, {userInfo?.nombre?.split(' ')[0] || user.user_metadata?.full_name?.split(' ')[0] || 'Usuario'}!
+            ¡Bienvenido, {userInfo?.nombre || user.user_metadata?.full_name || 'Usuario'}!
           </h2>
           <p className="text-gray-600">
             Selecciona el módulo al que deseas acceder
@@ -436,29 +462,45 @@ export default function DashboardPage() {
           })}
         </div>
 
+        {/* Mapa de Rutas */}
+        {registrosParaMapa.length > 0 && (
+          <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <MapIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Mapa de Rutas de Embarques
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Visualiza las rutas marítimas entre puertos de origen (POL) y destino (POD)
+            </p>
+            <ShipmentsMap registros={registrosParaMapa} />
+          </div>
+        )}
+
         {/* Quick stats */}
-        <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Resumen General</h3>
+        <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resumen General</h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <Package className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600">{stats.totalContenedores.toLocaleString()}</div>
-              <div className="text-sm text-gray-600">Total Contenedores</div>
+            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <Package className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalContenedores.toLocaleString()}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Total Contenedores</div>
             </div>
-            <div className="text-center p-4 bg-yellow-50 rounded-lg">
-              <Clock className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-yellow-600">{stats.pendientes}</div>
-              <div className="text-sm text-gray-600">Pendientes</div>
+            <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+              <Clock className="w-8 h-8 text-yellow-600 dark:text-yellow-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pendientes}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Pendientes</div>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600">{stats.confirmados}</div>
-              <div className="text-sm text-gray-600">Confirmados</div>
+            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.confirmados}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Confirmados</div>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
-              <AlertCircle className="w-8 h-8 text-red-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-red-600">{stats.cancelados}</div>
-              <div className="text-sm text-gray-600">Cancelados</div>
+            <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
+              <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.cancelados}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Cancelados</div>
             </div>
           </div>
         </div>

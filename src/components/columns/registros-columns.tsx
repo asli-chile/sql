@@ -56,6 +56,42 @@ const allowsBulkEdit = (field: keyof Registro): boolean => {
   return !UNIQUE_FIELDS.includes(field as string);
 };
 
+// Mapeo de anchos mínimos y máximos para cada columna (dinámico según contenido)
+const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
+  select: { min: 30, max: 30 }, // Fijo para sticky
+  refAsli: { min: 90, max: 130 }, // Fijo para sticky pero con rango
+  ejecutivo: { min: 120, max: 200 },
+  usuario: { min: 120, max: 200 },
+  ingresado: { min: 90, max: 120 },
+  shipper: { min: 150, max: 300 },
+  booking: { min: 120, max: 200 },
+  contenedor: { min: 100, max: 250 },
+  naviera: { min: 130, max: 220 },
+  naveInicial: { min: 130, max: 220 },
+  viaje: { min: 70, max: 120 },
+  especie: { min: 90, max: 180 },
+  pol: { min: 100, max: 180 },
+  pod: { min: 100, max: 180 },
+  etd: { min: 80, max: 120 },
+  eta: { min: 80, max: 120 },
+  tt: { min: 50, max: 80 },
+  deposito: { min: 100, max: 180 },
+  ingresoStacking: { min: 120, max: 200 },
+  flete: { min: 80, max: 150 },
+  contrato: { min: 180, max: 350 },
+  tipoIngreso: { min: 100, max: 180 },
+  estado: { min: 100, max: 150 },
+  temperatura: { min: 60, max: 100 },
+  cbm: { min: 50, max: 90 },
+  co2: { min: 50, max: 90 },
+  o2: { min: 50, max: 90 },
+  facturacion: { min: 150, max: 300 },
+  factura: { min: 150, max: 300 },
+  proforma: { min: 70, max: 120 },
+  comentario: { min: 200, max: 400 },
+  historial: { min: 70, max: 100 },
+};
+
 // Función para crear las columnas con soporte de selección
 export const createRegistrosColumns = (
   data: Registro[] = [],
@@ -96,6 +132,9 @@ export const createRegistrosColumns = (
     {
       id: 'select',
       header: () => null,
+      size: COLUMN_WIDTHS.select.min,
+      minSize: COLUMN_WIDTHS.select.min,
+      maxSize: COLUMN_WIDTHS.select.max,
       cell: ({ row }: any) => {
         const rowId = row.original.id || '';
         const isSelected = selectedRows?.has(rowId) || false;
@@ -119,6 +158,9 @@ export const createRegistrosColumns = (
   {
     id: 'refAsli',
     accessorKey: 'refAsli',
+    size: COLUMN_WIDTHS.refAsli.min,
+    minSize: COLUMN_WIDTHS.refAsli.min,
+    maxSize: COLUMN_WIDTHS.refAsli.max,
     header: 'REF ASLI',
     cell: ({ row }) => {
       const refAsli = row.getValue('refAsli') as string;
@@ -139,12 +181,12 @@ export const createRegistrosColumns = (
       }
       
       return (
-        <div className="flex items-center gap-2">
-          <span className={`font-semibold ${textColor}`}>
+        <div className="flex items-center gap-1 overflow-hidden">
+          <span className={`font-semibold ${textColor} truncate`}>
             {refAsli}
           </span>
           {shouldShowIndicator && (
-            <span className="text-[10px] bg-blue-500 text-white px-2 py-0.5 rounded-full font-semibold">
+            <span className="text-[10px] bg-blue-500 text-white px-1 py-0.5 rounded-full font-semibold flex-shrink-0">
               {selectedRecordsArray.length}
             </span>
           )}
@@ -155,6 +197,8 @@ export const createRegistrosColumns = (
   {
     id: 'ejecutivo',
     accessorKey: 'ejecutivo',
+    minSize: COLUMN_WIDTHS.ejecutivo.min,
+    maxSize: COLUMN_WIDTHS.ejecutivo.max,
     header: 'Ejecutivo',
     cell: ({ row }) => {
       const value = row.getValue('ejecutivo') as string;
@@ -176,6 +220,8 @@ export const createRegistrosColumns = (
   {
     id: 'usuario',
     accessorKey: 'usuario',
+    minSize: COLUMN_WIDTHS.usuario.min,
+    maxSize: COLUMN_WIDTHS.usuario.max,
     header: 'Usuario',
     cell: ({ row }) => {
       const value = row.getValue('usuario') as string || row.original.createdBy || '';
@@ -189,6 +235,8 @@ export const createRegistrosColumns = (
   {
     id: 'ingresado',
     accessorKey: 'ingresado',
+    minSize: COLUMN_WIDTHS.ingresado.min,
+    maxSize: COLUMN_WIDTHS.ingresado.max,
     header: 'Ingresado',
     cell: ({ row }) => {
       const ingresado = row.getValue('ingresado') as Date;
@@ -198,6 +246,8 @@ export const createRegistrosColumns = (
   {
     id: 'shipper',
     accessorKey: 'shipper',
+    minSize: COLUMN_WIDTHS.shipper.min,
+    maxSize: COLUMN_WIDTHS.shipper.max,
     header: 'Cliente',
     cell: ({ row }) => {
       const value = row.getValue('shipper') as string;
@@ -219,6 +269,8 @@ export const createRegistrosColumns = (
   {
     id: 'booking',
     accessorKey: 'booking',
+    minSize: COLUMN_WIDTHS.booking.min,
+    maxSize: COLUMN_WIDTHS.booking.max,
     header: 'Booking',
     cell: ({ row }) => {
       const value = row.getValue('booking') as string;
@@ -245,6 +297,8 @@ export const createRegistrosColumns = (
   {
     id: 'contenedor',
     accessorKey: 'contenedor',
+    minSize: COLUMN_WIDTHS.contenedor.min,
+    maxSize: COLUMN_WIDTHS.contenedor.max,
     header: 'Contenedor',
     cell: ({ row }) => {
       const contenedor = row.getValue('contenedor') as string | string[];
@@ -304,6 +358,8 @@ export const createRegistrosColumns = (
   {
     id: 'naviera',
     accessorKey: 'naviera',
+    minSize: COLUMN_WIDTHS.naviera.min,
+    maxSize: COLUMN_WIDTHS.naviera.max,
     header: 'Naviera',
     cell: ({ row }) => {
       const value = row.getValue('naviera') as string;
@@ -344,6 +400,8 @@ export const createRegistrosColumns = (
   {
     id: 'naveInicial',
     accessorKey: 'naveInicial',
+    minSize: COLUMN_WIDTHS.naveInicial.min,
+    maxSize: COLUMN_WIDTHS.naveInicial.max,
     header: 'Nave',
     cell: ({ row }) => {
       let value = row.getValue('naveInicial') as string;
@@ -368,6 +426,8 @@ export const createRegistrosColumns = (
   {
     id: 'pol',
     accessorKey: 'pol',
+    minSize: COLUMN_WIDTHS.pol.min,
+    maxSize: COLUMN_WIDTHS.pol.max,
     header: 'POL',
     cell: ({ row }) => {
       const value = row.getValue('pol') as string;
@@ -389,6 +449,8 @@ export const createRegistrosColumns = (
   {
     id: 'pod',
     accessorKey: 'pod',
+    minSize: COLUMN_WIDTHS.pod.min,
+    maxSize: COLUMN_WIDTHS.pod.max,
     header: 'POD',
     cell: ({ row }) => {
       const value = row.getValue('pod') as string;
@@ -410,6 +472,8 @@ export const createRegistrosColumns = (
   {
     id: 'etd',
     accessorKey: 'etd',
+    minSize: COLUMN_WIDTHS.etd.min,
+    maxSize: COLUMN_WIDTHS.etd.max,
     header: 'ETD',
     cell: ({ row }) => {
       const etd = row.getValue('etd') as Date;
@@ -430,6 +494,8 @@ export const createRegistrosColumns = (
   {
     id: 'eta',
     accessorKey: 'eta',
+    minSize: COLUMN_WIDTHS.eta.min,
+    maxSize: COLUMN_WIDTHS.eta.max,
     header: 'ETA',
     cell: ({ row }) => {
       const eta = row.getValue('eta') as Date;
@@ -450,6 +516,8 @@ export const createRegistrosColumns = (
   {
     id: 'tt',
     accessorKey: 'tt',
+    minSize: COLUMN_WIDTHS.tt.min,
+    maxSize: COLUMN_WIDTHS.tt.max,
     header: 'TT',
     cell: ({ row }) => {
       const etd = row.original.etd;
@@ -466,6 +534,8 @@ export const createRegistrosColumns = (
   {
     id: 'estado',
     accessorKey: 'estado',
+    minSize: COLUMN_WIDTHS.estado.min,
+    maxSize: COLUMN_WIDTHS.estado.max,
     header: 'Estado',
     cell: ({ row }) => {
       const estado = row.getValue('estado') as string;
@@ -487,6 +557,8 @@ export const createRegistrosColumns = (
   {
     id: 'tipoIngreso',
     accessorKey: 'tipoIngreso',
+    minSize: COLUMN_WIDTHS.tipoIngreso.min,
+    maxSize: COLUMN_WIDTHS.tipoIngreso.max,
     header: 'Tipo Ingreso',
     cell: ({ row }) => {
       const tipo = row.getValue('tipoIngreso') as string;
@@ -506,30 +578,11 @@ export const createRegistrosColumns = (
     },
   },
   {
-    id: 'especie_header_esp',
-    header: () => (
-      <div className="text-center">
-        <div className="font-bold">ESPECIE</div>
-        <div className="text-[8px] font-normal">(Specie)</div>
-      </div>
-    ),
-    cell: () => {
-      return <div className="text-[10px] text-center font-semibold">ESPECIE</div>;
-    },
-    enableSorting: false,
-  },
-  {
-    id: 'especie_header_eng',
-    header: '',
-    cell: () => {
-      return <div className="text-[10px] text-center font-semibold">(Specie)</div>;
-    },
-    enableSorting: false,
-  },
-  {
     id: 'especie',
     accessorKey: 'especie',
-    header: '',
+    minSize: COLUMN_WIDTHS.especie.min,
+    maxSize: COLUMN_WIDTHS.especie.max,
+    header: 'ESPECIE',
     cell: ({ row }) => {
       const value = row.getValue('especie') as string;
       return (
@@ -550,6 +603,8 @@ export const createRegistrosColumns = (
   {
     id: 'temperatura',
     accessorKey: 'temperatura',
+    minSize: COLUMN_WIDTHS.temperatura.min,
+    maxSize: COLUMN_WIDTHS.temperatura.max,
     header: 'T°',
     cell: ({ row }) => {
       const temp = row.getValue('temperatura') as number;
@@ -571,6 +626,8 @@ export const createRegistrosColumns = (
   {
     id: 'cbm',
     accessorKey: 'cbm',
+    minSize: COLUMN_WIDTHS.cbm.min,
+    maxSize: COLUMN_WIDTHS.cbm.max,
     header: 'CBM',
     cell: ({ row }) => {
       const cbm = row.getValue('cbm') as number;
@@ -592,6 +649,8 @@ export const createRegistrosColumns = (
   {
     id: 'co2',
     accessorKey: 'co2',
+    minSize: COLUMN_WIDTHS.co2.min,
+    maxSize: COLUMN_WIDTHS.co2.max,
     header: 'CO2',
     cell: ({ row }) => {
       const co2 = row.getValue('co2') as number;
@@ -613,6 +672,8 @@ export const createRegistrosColumns = (
   {
     id: 'o2',
     accessorKey: 'o2',
+    minSize: COLUMN_WIDTHS.o2.min,
+    maxSize: COLUMN_WIDTHS.o2.max,
     header: 'O2',
     cell: ({ row }) => {
       const o2 = row.getValue('o2') as number;
@@ -634,6 +695,8 @@ export const createRegistrosColumns = (
   {
     id: 'flete',
     accessorKey: 'flete',
+    minSize: COLUMN_WIDTHS.flete.min,
+    maxSize: COLUMN_WIDTHS.flete.max,
     header: 'Flete',
     cell: ({ row }) => {
       const value = row.getValue('flete') as string;
@@ -655,6 +718,8 @@ export const createRegistrosColumns = (
   {
     id: 'deposito',
     accessorKey: 'deposito',
+    minSize: COLUMN_WIDTHS.deposito.min,
+    maxSize: COLUMN_WIDTHS.deposito.max,
     header: 'Depósito',
     cell: ({ row }) => {
       const value = row.getValue('deposito') as string;
@@ -676,6 +741,8 @@ export const createRegistrosColumns = (
   {
     id: 'contrato',
     accessorKey: 'contrato',
+    minSize: COLUMN_WIDTHS.contrato.min,
+    maxSize: COLUMN_WIDTHS.contrato.max,
     header: 'Contrato',
     cell: ({ row }) => {
       const value = row.getValue('contrato') as string;
@@ -697,6 +764,8 @@ export const createRegistrosColumns = (
   {
     id: 'comentario',
     accessorKey: 'comentario',
+    minSize: COLUMN_WIDTHS.comentario.min,
+    maxSize: COLUMN_WIDTHS.comentario.max,
     header: 'Comentario',
     cell: ({ row }) => {
       const comentario = row.getValue('comentario') as string;
@@ -717,6 +786,8 @@ export const createRegistrosColumns = (
   },
   {
     id: 'proforma',
+    minSize: COLUMN_WIDTHS.proforma.min,
+    maxSize: COLUMN_WIDTHS.proforma.max,
     header: 'PROFORMA',
     cell: ({ row }) => {
       const registroId = row.original.id;
@@ -749,6 +820,8 @@ export const createRegistrosColumns = (
   },
   {
     id: 'historial',
+    minSize: COLUMN_WIDTHS.historial.min,
+    maxSize: COLUMN_WIDTHS.historial.max,
     header: 'Historial',
     cell: ({ row }) => {
       return (

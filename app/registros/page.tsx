@@ -27,7 +27,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText, Receipt } from 'lucide-react';
 import { QRGenerator } from '@/components/QRGenerator';
-import { ReportGenerator } from '@/components/ReportGenerator';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/FacturaViewer';
 
@@ -86,7 +85,6 @@ export default function RegistrosPage() {
   const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
   const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
   const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
-  const [isReportGeneratorOpen, setIsReportGeneratorOpen] = useState(false);
   
   // Estados para facturas
   const [facturas, setFacturas] = useState<Factura[]>([]);
@@ -1331,16 +1329,6 @@ export default function RegistrosPage() {
 
             {/* User menu */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              {selectedRows.size > 0 && (
-                <button
-                  onClick={() => setIsReportGeneratorOpen(true)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg transition-colors bg-green-600 text-white hover:bg-green-700"
-                  title={`Generar reporte para ${selectedRows.size} registro(s)`}
-                >
-                  <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="text-xs sm:text-sm">Enviar a ({selectedRows.size})</span>
-                </button>
-              )}
               <button
                 onClick={() => router.push('/facturas')}
                 className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg transition-colors bg-purple-600 text-white hover:bg-purple-700"
@@ -1622,12 +1610,6 @@ export default function RegistrosPage() {
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Report Generator Modal */}
-      <ReportGenerator
-        registros={registros.filter(r => r.id && selectedRows.has(r.id))}
-        isOpen={isReportGeneratorOpen}
-        onClose={() => setIsReportGeneratorOpen(false)}
-      />
     </div>
     </EditingCellProvider>
   );

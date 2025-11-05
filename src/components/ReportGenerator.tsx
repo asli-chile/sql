@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { FileText, X, Loader2 } from 'lucide-react';
 import { Registro } from '@/types/registros';
-import { tiposReportes, TipoReporte, generarReporte, descargarExcel } from '@/lib/excel-templates';
+import { generarReporte, descargarExcel, tiposReportes, TipoReporte } from '@/lib/reportes';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface ReportGeneratorProps {
@@ -24,9 +24,10 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
     try {
       const buffer = await generarReporte(tipoSeleccionado, registros);
       const nombreReporte = tiposReportes.find(r => r.id === tipoSeleccionado)?.nombre || 'reporte';
+      
+      // Descargar Excel
       descargarExcel(buffer, nombreReporte);
       
-      // Cerrar modal después de descargar
       setTimeout(() => {
         onClose();
         setTipoSeleccionado(null);
@@ -34,7 +35,8 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
       }, 500);
     } catch (error) {
       console.error('Error al generar reporte:', error);
-      alert('Error al generar el reporte. Por favor, intenta nuevamente.');
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`Error al generar el reporte: ${errorMessage}\n\nPor favor, intenta nuevamente.`);
       setGenerando(false);
     }
   };
@@ -61,7 +63,7 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}
             >
-              Generar Reporte Personalizado
+              Generar Reporte
             </h2>
           </div>
           <button
