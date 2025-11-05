@@ -198,7 +198,7 @@ export function getCountryFromPort(portName: string): string | null {
     // Canadá
     'HALTON HILLS': 'CANADA',
     'TORONTO': 'CANADA',
-    'AUBURN': 'CANADA',
+    'AUBURN CANADA': 'CANADA',
     'CADILLAC': 'CANADA',
     'CALUMET CITY': 'CANADA',
     'CORNWALL': 'CANADA',
@@ -332,7 +332,8 @@ export function getCountryFromPort(portName: string): string | null {
     'CAUCEDO': 'DOMINICAN REPUBLIC',
     
     // USA (más)
-    'AUBURN': 'USA',
+    'AUBURN USA': 'USA',
+    'AUBURN': 'USA', // Si no se especifica, asumir USA
     
     // Nueva Zelanda
     'AUCKLAND METROPORT': 'NEW ZEALAND',
