@@ -183,18 +183,18 @@ export default function TablasPersonalizadasPage() {
       cellRenderer: (params: ICellRendererParams) => {
         const registro = params.data as Registro;
         const tipoIngreso = registro.tipoIngreso;
-        let textColor = 'text-green-600 dark:text-green-400';
+        let textColor = '#22c55e'; // green-600
         
         if (tipoIngreso === 'EARLY') {
-          textColor = 'text-cyan-600 dark:text-cyan-400';
+          textColor = '#0891b2'; // cyan-600
         } else if (tipoIngreso === 'LATE') {
-          textColor = 'text-yellow-600 dark:text-yellow-400';
+          textColor = '#eab308'; // yellow-600
         } else if (tipoIngreso === 'EXTRA LATE') {
-          textColor = 'text-red-600 dark:text-red-400';
+          textColor = '#ef4444'; // red-600
         }
         
         return (
-          <span className={`font-semibold ${textColor}`}>
+          <span style={{ color: textColor, fontWeight: 'bold' }}>
             {params.value}
           </span>
         );
@@ -362,18 +362,18 @@ export default function TablasPersonalizadasPage() {
       },
       cellRenderer: (params: ICellRendererParams) => {
         const tipoIngreso = params.value;
-        let textColor = 'text-green-600 dark:text-green-400';
+        let textColor = '#22c55e'; // green-600
         
         if (tipoIngreso === 'EARLY') {
-          textColor = 'text-cyan-600 dark:text-cyan-400';
+          textColor = '#0891b2'; // cyan-600
         } else if (tipoIngreso === 'LATE') {
-          textColor = 'text-yellow-600 dark:text-yellow-400';
+          textColor = '#eab308'; // yellow-600
         } else if (tipoIngreso === 'EXTRA LATE') {
-          textColor = 'text-red-600 dark:text-red-400';
+          textColor = '#ef4444'; // red-600
         }
         
         return (
-          <span className={`font-semibold ${textColor}`}>
+          <span style={{ color: textColor, fontWeight: 'bold' }}>
             {tipoIngreso}
           </span>
         );
