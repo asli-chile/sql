@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/useToast';
 import { PlantillaAlma } from '@/components/facturas/PlantillaAlma';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
+import { generarFacturaExcelSheetJS } from '@/lib/factura-excel-sheetjs';
 import { FacturaEditor } from '@/components/FacturaEditor';
 
 interface FacturaViewerProps {
@@ -22,6 +23,7 @@ export function FacturaViewer({ factura, isOpen, onClose, onUpdate }: FacturaVie
   const { success, error: showError } = useToast();
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
+  const [descargandoExcelSheetJS, setDescargandoExcelSheetJS] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
   const handleFacturaActualizada = () => {
@@ -54,6 +56,19 @@ export function FacturaViewer({ factura, isOpen, onClose, onUpdate }: FacturaVie
       showError('Error al generar Excel: ' + err.message);
     } finally {
       setDescargandoExcel(false);
+    }
+  };
+
+  const handleDownloadExcelSheetJS = async () => {
+    setDescargandoExcelSheetJS(true);
+    try {
+      await generarFacturaExcelSheetJS(factura);
+      success('Excel (SheetJS) generado exitosamente');
+    } catch (err: any) {
+      console.error('Error generando Excel con SheetJS:', err);
+      showError('Error al generar Excel con SheetJS: ' + err.message);
+    } finally {
+      setDescargandoExcelSheetJS(false);
     }
   };
 
@@ -113,6 +128,19 @@ export function FacturaViewer({ factura, isOpen, onClose, onUpdate }: FacturaVie
             >
               <Download className="w-4 h-4" />
               <span>Excel</span>
+            </button>
+            <button
+              onClick={handleDownloadExcelSheetJS}
+              disabled={descargandoExcelSheetJS}
+              className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                descargandoExcelSheetJS
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-purple-600 text-white hover:bg-purple-700'
+              }`}
+              title="Versión experimental con SheetJS"
+            >
+              <Download className="w-4 h-4" />
+              <span className="text-xs">Excel (SheetJS)</span>
             </button>
             <button
               onClick={onClose}
