@@ -59,7 +59,11 @@ export default function TablasPersonalizadasPage() {
       sortable: true,
       filter: true,
       resizable: true,
+      floatingFilter: true, // Habilitar filtros flotantes
+      menuTabs: ['filterMenuTab', 'generalMenuTab'], // Mostrar menú de filtros
     },
+    sideBar: false, // No mostrar sidebar por defecto
+    suppressMenuHide: true, // Mantener menú visible
   });
 
   const loadRegistros = useCallback(async () => {
@@ -180,6 +184,7 @@ export default function TablasPersonalizadasPage() {
       checkboxSelection: true,
       headerCheckboxSelection: true,
       filter: 'agTextColumnFilter',
+      floatingFilter: true,
       cellRenderer: (params: ICellRendererParams) => {
         const registro = params.data as Registro;
         const tipoIngreso = registro.tipoIngreso;
@@ -205,6 +210,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Ejecutivo',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: ejecutivosUnicos,
       },
@@ -214,6 +220,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Cliente',
       width: 150,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: clientesUnicos,
       },
@@ -223,12 +230,14 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Booking',
       width: 120,
       filter: 'agTextColumnFilter',
+      floatingFilter: true,
     },
     {
       field: 'contenedor',
       headerName: 'Contenedor',
       width: 150,
       filter: 'agTextColumnFilter',
+      floatingFilter: true,
       valueFormatter: (params) => {
         if (Array.isArray(params.value)) {
           return params.value.join(', ');
@@ -241,6 +250,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Naviera',
       width: 130,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: navierasUnicas,
       },
@@ -250,6 +260,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Nave',
       width: 130,
       filter: 'agTextColumnFilter',
+      floatingFilter: true,
       valueFormatter: (params) => {
         let value = params.value || '';
         const registro = params.data as Registro;
@@ -264,6 +275,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Especie',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: especiesUnicas,
       },
@@ -273,6 +285,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'POL',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: polsUnicos,
       },
@@ -282,6 +295,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'POD',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: destinosUnicos,
       },
@@ -291,6 +305,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Depósito',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: depositosUnicos,
       },
@@ -300,6 +315,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'ETD',
       width: 100,
       filter: 'agDateColumnFilter',
+      floatingFilter: true,
       valueFormatter: (params) => {
         if (!params.value) return '';
         return new Date(params.value).toLocaleDateString('es-CL');
@@ -310,6 +326,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'ETA',
       width: 100,
       filter: 'agDateColumnFilter',
+      floatingFilter: true,
       valueFormatter: (params) => {
         if (!params.value) return '';
         return new Date(params.value).toLocaleDateString('es-CL');
@@ -320,12 +337,14 @@ export default function TablasPersonalizadasPage() {
       headerName: 'TT',
       width: 60,
       filter: 'agNumberColumnFilter',
+      floatingFilter: true,
     },
     {
       field: 'estado',
       headerName: 'Estado',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: estadosUnicos,
       },
@@ -348,6 +367,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Flete',
       width: 100,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: fletesUnicos,
       },
@@ -357,6 +377,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Tipo Ingreso',
       width: 120,
       filter: 'agSetColumnFilter',
+      floatingFilter: true,
       filterParams: {
         values: tipoIngresoUnicos,
       },
@@ -384,6 +405,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Temp (°C)',
       width: 90,
       filter: 'agNumberColumnFilter',
+      floatingFilter: true,
       valueFormatter: (params) => {
         return params.value ? `${params.value}°C` : '';
       },
@@ -393,6 +415,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'CBM',
       width: 70,
       filter: 'agNumberColumnFilter',
+      floatingFilter: true,
     },
   ], [navierasUnicas, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos]);
 
