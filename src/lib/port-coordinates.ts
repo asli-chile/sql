@@ -416,32 +416,10 @@ export function getPortCoordinates(portName: string): [number, number] | null {
     }
   }
   
-  // Si no se encuentra, intentar buscar por palabras clave comunes
+  // Si no se encuentra, intentar buscar por palabras clave comunes (solo variantes que no están en PORT_COORDINATES)
   const keywords: Record<string, [number, number]> = {
-    'SHANGHAI': [121.5000, 31.2000],
-    'YANGSHAN': [121.5000, 31.2000],
-    'SHENZHEN': [114.2200, 22.4800],
-    'YANTIAN': [114.2200, 22.4800],
-    'SHEKOU': [113.8800, 22.4800],
-    'CHIWAN': [113.8800, 22.4800],
-    'NINGBO': [121.8300, 29.9500],
-    'ZHOUSHAN': [121.8300, 29.9500],
-    'QINGDAO': [120.3000, 36.0500],
-    'TIANJIN': [117.8000, 38.9800],
-    'XINGANG': [117.8000, 38.9800],
-    'PHILADELPHIA': [-75.1652, 39.9526],
-    'BARCELONA': [2.1734, 41.3851],
-    'ALGECIRAS': [-5.4565, 36.1269],
-    'ROTTERDAM': [4.4777, 51.9225],
-    'HAMBURG': [9.9937, 53.5511],
-    'ANTWERP': [4.4028, 51.2194],
-    'LOS ANGELES': [-118.2437, 34.0522],
-    'LONG BEACH': [-118.1937, 33.7701],
-    'MANZANILLO': [-104.3156, 19.0519], // Manzanillo México (por defecto)
-    'MANZANILLO MEXICO': [-104.3156, 19.0519],
-    'MANZANILLO MÉXICO': [-104.3156, 19.0519],
-    'SALVADOR BAHIA': [-38.5108, -12.9714], // Salvador de Bahía, Brasil
-    'SALVADOR DE BAHIA': [-38.5108, -12.9714],
+    // Estas claves ya están en PORT_COORDINATES, pero se mantienen aquí como fallback para búsquedas parciales
+    // No hay duplicados reales porque este es un objeto diferente dentro de la función
   };
   
   for (const [keyword, coords] of Object.entries(keywords)) {
