@@ -12,8 +12,8 @@ const firaSans = Fira_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Sistema ASLI - Gestión Logística",
-  description: "Sistema de gestión para exportaciones marítimas y aéreas",
+  title: "ASLI Gestión Logística",
+  description: "Gestión logística para exportaciones marítimas y aéreas",
   icons: {
     icon: [
       { url: 'https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png', sizes: '32x32', type: 'image/png' },

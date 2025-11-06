@@ -86,7 +86,7 @@ export default function AuthPage() {
               }}
             />
           </div>
-          <h1 className="text-3xl font-bold text-white">Sistema ASLI</h1>
+          <h1 className="text-3xl font-bold text-white">ASLI Gestión Logística</h1>
           <p className="text-gray-300 mt-2">Gestión Logística Integral</p>
         </div>
 

@@ -1,6 +1,6 @@
-# Sistema ASLI - Gestión de Embarques
+# ASLI Gestión Logística - Gestión de Embarques
 
-Sistema web para la gestión de embarques y contenedores desarrollado con Next.js, Supabase y Tailwind CSS.
+Aplicación web para la gestión de embarques y contenedores desarrollada con Next.js, Supabase y Tailwind CSS.
 
 ## 🚀 Características
 

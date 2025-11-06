@@ -347,7 +347,7 @@ export default function DashboardPage() {
                 />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">Sistema ASLI</h1>
+                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">ASLI Gestión Logística</h1>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Dashboard Principal</p>
               </div>
             </div>
