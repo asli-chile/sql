@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridOptions, GridReadyEvent, ICellRendererParams } from 'ag-grid-community';
+import { ColDef, GridOptions, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
+
+// Registrar todos los módulos de AG Grid Community
+ModuleRegistry.registerModules([AllCommunityModule]);
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserProfileModal } from '@/components/UserProfileModal';
 import { 
