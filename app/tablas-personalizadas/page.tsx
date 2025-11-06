@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
@@ -22,18 +22,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
-
-// Datos de ejemplo para la tabla
-const sampleData = [
-  { id: 1, nombre: 'Juan Pérez', email: 'juan@example.com', edad: 28, ciudad: 'Santiago', activo: true, salario: 50000 },
-  { id: 2, nombre: 'María González', email: 'maria@example.com', edad: 32, ciudad: 'Valparaíso', activo: true, salario: 60000 },
-  { id: 3, nombre: 'Carlos Rodríguez', email: 'carlos@example.com', edad: 45, ciudad: 'Concepción', activo: false, salario: 75000 },
-  { id: 4, nombre: 'Ana Martínez', email: 'ana@example.com', edad: 29, ciudad: 'Santiago', activo: true, salario: 55000 },
-  { id: 5, nombre: 'Luis Fernández', email: 'luis@example.com', edad: 38, ciudad: 'Viña del Mar', activo: true, salario: 70000 },
-  { id: 6, nombre: 'Carmen López', email: 'carmen@example.com', edad: 41, ciudad: 'Temuco', activo: false, salario: 65000 },
-  { id: 7, nombre: 'Pedro Sánchez', email: 'pedro@example.com', edad: 35, ciudad: 'Santiago', activo: true, salario: 58000 },
-  { id: 8, nombre: 'Laura Torres', email: 'laura@example.com', edad: 27, ciudad: 'Antofagasta', activo: true, salario: 52000 },
-];
+import { Registro } from '@/types/registros';
+import { convertSupabaseToApp } from '@/lib/migration-utils';
 
 export default function TablasPersonalizadasPage() {
   const router = useRouter();
@@ -43,7 +33,8 @@ export default function TablasPersonalizadasPage() {
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [rowData, setRowData] = useState(sampleData);
+  const [rowData, setRowData] = useState<Registro[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<'quartz' | 'quartz-dark'>('quartz');
   const [gridOptions, setGridOptions] = useState<GridOptions>({
     pagination: true,
@@ -55,6 +46,33 @@ export default function TablasPersonalizadasPage() {
       resizable: true,
     },
   });
+
+  const loadRegistros = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('registros')
+        .select('*')
+        .is('deleted_at', null)
+        .order('ref_asli', { ascending: false });
+
+      if (error) {
+        console.error('Error loading registros:', error);
+        showError('Error al cargar registros: ' + error.message);
+        return;
+      }
+
+      const registrosConvertidos = (data || []).map(convertSupabaseToApp);
+      setRowData(registrosConvertidos);
+      success(`${registrosConvertidos.length} registros cargados`);
+    } catch (error: any) {
+      console.error('Error loading registros:', error);
+      showError('Error al cargar registros: ' + error.message);
+    } finally {
+      setLoadingData(false);
+    }
+  }, [showError, success]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -79,6 +97,9 @@ export default function TablasPersonalizadasPage() {
         if (!error && userData) {
           setUserInfo(userData);
         }
+
+        // Cargar registros
+        await loadRegistros();
       } catch (error) {
         console.error('Error checking user:', error);
         router.push('/auth');
@@ -88,7 +109,7 @@ export default function TablasPersonalizadasPage() {
     };
 
     checkUser();
-  }, [router]);
+  }, [router, loadRegistros]);
 
   useEffect(() => {
     // Ajustar tema según el tema del sistema
@@ -110,68 +131,142 @@ export default function TablasPersonalizadasPage() {
     }
   };
 
-  // Definición de columnas
+  // Definición de columnas para registros
   const columnDefs: ColDef[] = useMemo(() => [
     {
-      field: 'id',
-      headerName: 'ID',
-      width: 80,
+      field: 'refAsli',
+      headerName: 'REF ASLI',
+      width: 120,
       pinned: 'left',
       checkboxSelection: true,
       headerCheckboxSelection: true,
-    },
-    {
-      field: 'nombre',
-      headerName: 'Nombre',
-      width: 180,
       filter: 'agTextColumnFilter',
     },
     {
-      field: 'email',
-      headerName: 'Email',
-      width: 200,
+      field: 'shipper',
+      headerName: 'Cliente',
+      width: 150,
       filter: 'agTextColumnFilter',
     },
     {
-      field: 'edad',
-      headerName: 'Edad',
-      width: 100,
-      filter: 'agNumberColumnFilter',
-      cellStyle: (params) => {
-        return {
-          fontWeight: 'bold',
-          color: params.value > 35 ? '#ef4444' : '#22c55e'
-        };
+      field: 'ejecutivo',
+      headerName: 'Ejecutivo',
+      width: 120,
+      filter: 'agSetColumnFilter',
+    },
+    {
+      field: 'booking',
+      headerName: 'Booking',
+      width: 120,
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'contenedor',
+      headerName: 'Contenedor',
+      width: 150,
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        if (Array.isArray(params.value)) {
+          return params.value.join(', ');
+        }
+        return params.value || '';
       },
     },
     {
-      field: 'ciudad',
-      headerName: 'Ciudad',
-      width: 150,
+      field: 'naviera',
+      headerName: 'Naviera',
+      width: 120,
       filter: 'agSetColumnFilter',
     },
     {
-      field: 'activo',
-      headerName: 'Activo',
-      width: 100,
+      field: 'naveInicial',
+      headerName: 'Nave',
+      width: 120,
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'especie',
+      headerName: 'Especie',
+      width: 120,
+      filter: 'agSetColumnFilter',
+    },
+    {
+      field: 'pol',
+      headerName: 'POL',
+      width: 120,
+      filter: 'agSetColumnFilter',
+    },
+    {
+      field: 'pod',
+      headerName: 'POD',
+      width: 120,
+      filter: 'agSetColumnFilter',
+    },
+    {
+      field: 'deposito',
+      headerName: 'Depósito',
+      width: 120,
+      filter: 'agSetColumnFilter',
+    },
+    {
+      field: 'etd',
+      headerName: 'ETD',
+      width: 120,
+      filter: 'agDateColumnFilter',
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'eta',
+      headerName: 'ETA',
+      width: 120,
+      filter: 'agDateColumnFilter',
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'estado',
+      headerName: 'Estado',
+      width: 120,
       filter: 'agSetColumnFilter',
       cellRenderer: (params: ICellRendererParams) => {
-        return params.value ? (
-          <span style={{ color: '#22c55e', fontWeight: 'bold' }}>✓ Sí</span>
-        ) : (
-          <span style={{ color: '#ef4444', fontWeight: 'bold' }}>✗ No</span>
+        const estado = params.value;
+        const colors: Record<string, string> = {
+          'CONFIRMADO': '#22c55e',
+          'PENDIENTE': '#f59e0b',
+          'CANCELADO': '#ef4444',
+        };
+        return (
+          <span style={{ color: colors[estado] || '#666', fontWeight: 'bold' }}>
+            {estado}
+          </span>
         );
       },
     },
     {
-      field: 'salario',
-      headerName: 'Salario',
-      width: 120,
+      field: 'flete',
+      headerName: 'Flete',
+      width: 100,
+      filter: 'agSetColumnFilter',
+    },
+    {
+      field: 'temperatura',
+      headerName: 'Temp (°C)',
+      width: 100,
       filter: 'agNumberColumnFilter',
       valueFormatter: (params) => {
-        return `$${params.value.toLocaleString('es-CL')}`;
+        return params.value ? `${params.value}°C` : '';
       },
-      cellStyle: { textAlign: 'right' },
+    },
+    {
+      field: 'cbm',
+      headerName: 'CBM',
+      width: 100,
+      filter: 'agNumberColumnFilter',
     },
   ], []);
 
@@ -186,9 +281,21 @@ export default function TablasPersonalizadasPage() {
       // Rows
       ...rowData.map(row => 
         columnDefs.map(col => {
-          const value = row[col.field as keyof typeof row];
+          const field = col.field as keyof Registro;
+          let value = row[field];
+          
+          // Formatear valores especiales
+          if (value instanceof Date) {
+            value = value.toLocaleDateString('es-CL');
+          } else if (Array.isArray(value)) {
+            value = value.join(', ');
+          } else if (value === null || value === undefined) {
+            value = '';
+          }
+          
           // Escape commas and quotes in CSV
-          return typeof value === 'string' ? `"${value.replace(/"/g, '""')}"` : value;
+          const stringValue = String(value);
+          return `"${stringValue.replace(/"/g, '""')}"`;
         }).join(',')
       )
     ].join('\n');
@@ -197,7 +304,7 @@ export default function TablasPersonalizadasPage() {
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `tabla_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `registros_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -205,9 +312,8 @@ export default function TablasPersonalizadasPage() {
     success('CSV exportado exitosamente');
   };
 
-  const handleResetData = () => {
-    setRowData([...sampleData]);
-    success('Datos reseteados');
+  const handleRefreshData = () => {
+    loadRegistros();
   };
 
   if (loading) {
@@ -270,15 +376,18 @@ export default function TablasPersonalizadasPage() {
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center space-x-4">
               <button
-                onClick={handleResetData}
+                onClick={handleRefreshData}
+                disabled={loadingData}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  theme === 'dark'
+                  loadingData
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : theme === 'dark'
                     ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                 }`}
               >
-                <RefreshCw className="w-4 h-4" />
-                <span>Resetear Datos</span>
+                <RefreshCw className={`w-4 h-4 ${loadingData ? 'animate-spin' : ''}`} />
+                <span>{loadingData ? 'Cargando...' : 'Recargar Datos'}</span>
               </button>
               <button
                 onClick={handleExportCSV}
@@ -297,22 +406,31 @@ export default function TablasPersonalizadasPage() {
         </div>
 
         {/* AG Grid */}
-        <div className={`${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`} style={{ height: '600px', width: '100%' }}>
-          <AgGridReact
-            rowData={rowData}
-            columnDefs={columnDefs}
-            gridOptions={gridOptions}
-            onGridReady={onGridReady}
-            rowSelection="multiple"
-            animateRows={true}
-            suppressRowClickSelection={true}
-          />
-        </div>
+        {loadingData ? (
+          <div className={`flex items-center justify-center h-[600px] ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-lg`}>
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Cargando registros...</p>
+            </div>
+          </div>
+        ) : (
+          <div className={`${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`} style={{ height: '600px', width: '100%' }}>
+            <AgGridReact
+              rowData={rowData}
+              columnDefs={columnDefs}
+              gridOptions={gridOptions}
+              onGridReady={onGridReady}
+              rowSelection="multiple"
+              animateRows={true}
+              suppressRowClickSelection={true}
+            />
+          </div>
+        )}
 
         {/* Info Section */}
         <div className={`mt-6 p-6 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'} shadow-sm`}>
           <h2 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            Características de AG Grid
+            Tabla de Registros con AG Grid
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}>
