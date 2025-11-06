@@ -370,10 +370,12 @@ export default function TablasPersonalizadasPage() {
       {/* Profile Modal */}
       {showProfileModal && userInfo && (
         <UserProfileModal
-          user={user}
           userInfo={userInfo}
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
+          onUserUpdate={(updatedUser) => {
+            setUserInfo(updatedUser);
+          }}
         />
       )}
     </div>
