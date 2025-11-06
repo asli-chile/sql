@@ -313,11 +313,6 @@ export default function DocumentosPage() {
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                     theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
                   }`}>
-                    Plantilla
-                  </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
                     Valor Total
                   </th>
                   <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
@@ -356,11 +351,6 @@ export default function DocumentosPage() {
                         theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                       }`}>
                         {factura.exportador.nombre}
-                      </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        {factura.clientePlantilla}
                       </td>
                       <td className={`px-6 py-4 whitespace-nowrap ${
                         theme === 'dark' ? 'text-white' : 'text-gray-900'

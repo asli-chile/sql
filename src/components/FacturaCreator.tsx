@@ -265,11 +265,7 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
 
           {/* Vista previa (70%) */}
           <div className="flex-1 overflow-y-auto p-4 bg-white">
-            {(factura.exportador.nombre?.toUpperCase().includes('FRUIT ANDES') || factura.clientePlantilla === 'FRUIT ANDES SUR') ? (
-              <PlantillaFruitAndes factura={{ ...factura, totales: totalesCalculados }} />
-            ) : (
-              <PlantillaAlma factura={{ ...factura, totales: totalesCalculados }} />
-            )}
+            <PlantillaAlma factura={{ ...factura, totales: totalesCalculados }} />
           </div>
         </div>
 
@@ -1113,7 +1109,7 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
       valorTotal: 0,
       valorTotalTexto: '',
     },
-    clientePlantilla: registro.shipper === 'ALMAFRUIT' ? 'ALMAFRUIT' : 'ALMAFRUIT', // Por ahora solo ALMA
+    clientePlantilla: 'ALMAFRUIT', // Siempre usar plantilla ALMA
   };
 }
 
