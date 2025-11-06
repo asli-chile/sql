@@ -500,7 +500,11 @@ export default function TablasPersonalizadasPage() {
   const onSelectionChanged = () => {
     if (!gridApi) return;
     const selectedNodes = gridApi.getSelectedRows();
-    const selectedIds = new Set(selectedNodes.map((node: Registro) => node.id).filter(Boolean));
+    const selectedIds = new Set<string>(
+      selectedNodes
+        .map((node: Registro) => node.id)
+        .filter((id): id is string => typeof id === 'string' && id.length > 0)
+    );
     setSelectedRows(selectedIds);
     setSelectedRegistros(selectedNodes);
   };
