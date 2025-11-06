@@ -76,6 +76,8 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
 
     console.log('🔵 Iniciando guardado de factura...');
     console.log('Datos de factura:', factura);
+    console.log('Registro ID:', registro.id);
+    console.log('REF ASLI:', factura.refAsli);
 
     // Validaciones básicas
     if (!factura.exportador.nombre || !factura.exportador.nombre.trim()) {
@@ -289,7 +291,12 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
           </button>
           <button
             type="button"
-            onClick={(e) => handleSave(e)}
+            onClick={(e) => {
+              console.log('🔵 Botón Guardar clickeado');
+              e.preventDefault();
+              e.stopPropagation();
+              handleSave(e);
+            }}
             disabled={guardando}
             className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
               guardando
