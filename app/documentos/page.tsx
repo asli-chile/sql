@@ -330,7 +330,7 @@ export default function DocumentosPage() {
               <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
                 {facturas.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className={`px-6 py-8 text-center ${
+                    <td colSpan={5} className={`px-6 py-8 text-center ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                     }`}>
                       No hay facturas generadas. Crea una nueva factura desde un registro.
