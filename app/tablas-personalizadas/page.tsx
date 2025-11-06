@@ -418,7 +418,7 @@ export default function TablasPersonalizadasPage() {
         return { backgroundColor: 'rgba(254, 249, 195, 0.8)', color: '#854d0e' };
       }
     }
-    return null;
+    return undefined;
   };
 
   const handleExportCSV = () => {
