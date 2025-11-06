@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/useToast';
 export default function DocumentosPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { currentUser } = useUser();
+  const { currentUser, setCurrentUser } = useUser();
   const { success, error: showError } = useToast();
   
   const [facturas, setFacturas] = useState<Factura[]>([]);
@@ -27,6 +27,57 @@ export default function DocumentosPage() {
   const [registroSeleccionado, setRegistroSeleccionado] = useState<Registro | null>(null);
   
   const supabase = createClient();
+
+  // Cargar datos del usuario desde Supabase
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) throw error;
+      
+      if (!user) {
+        router.push('/auth');
+        return;
+      }
+
+      // Cargar datos del usuario desde la tabla usuarios
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error loading user data:', userError);
+        // Si no existe en la tabla usuarios, crear un usuario básico
+        const basicUser = {
+          id: user.id,
+          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
+          email: user.email || '',
+          rol: 'usuario',
+          activo: true
+        };
+        setCurrentUser(basicUser);
+      } else if (userData) {
+        // Usuario existe en la tabla, usar esos datos
+        const usuarioActualizado = {
+          id: userData.id,
+          nombre: userData.nombre,
+          email: userData.email,
+          rol: userData.rol,
+          activo: userData.activo
+        };
+        setCurrentUser(usuarioActualizado);
+      }
+    } catch (err: any) {
+      console.error('Error checking user:', err);
+      router.push('/auth');
+    }
+  };
 
   const loadRegistros = useCallback(async () => {
     try {
