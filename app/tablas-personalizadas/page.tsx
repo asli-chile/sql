@@ -76,6 +76,60 @@ export default function TablasPersonalizadasPage() {
     suppressMenuHide: true, // Mantener menú visible
   });
 
+  const loadCatalogos = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data: catalogos, error } = await supabase
+        .from('catalogos')
+        .select('*');
+
+      if (error) {
+        console.error('Error loading catalogos:', error);
+        return;
+      }
+
+      // Procesar catálogos
+      catalogos.forEach(catalogo => {
+        const valores = catalogo.valores || [];
+        const mapping = catalogo.mapping;
+
+        switch (catalogo.categoria) {
+          case 'naves':
+            setNavesUnicas(valores);
+            break;
+          case 'navierasNavesMapping':
+            if (mapping && typeof mapping === 'object') {
+              const cleanMapping: Record<string, string[]> = {};
+              Object.keys(mapping).forEach(key => {
+                const naves = (mapping[key] || []) as string[];
+                cleanMapping[key] = naves.map((nave: string) => {
+                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                  return match ? match[1].trim() : nave.trim();
+                });
+              });
+              setNavierasNavesMapping(cleanMapping);
+            }
+            break;
+          case 'consorciosNavesMapping':
+            if (mapping && typeof mapping === 'object') {
+              const cleanMapping: Record<string, string[]> = {};
+              Object.keys(mapping).forEach(key => {
+                const naves = (mapping[key] || []) as string[];
+                cleanMapping[key] = naves.map((nave: string) => {
+                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                  return match ? match[1].trim() : nave.trim();
+                });
+              });
+              setConsorciosNavesMapping(cleanMapping);
+            }
+            break;
+        }
+      });
+    } catch (error) {
+      console.error('Error loading catalogos:', error);
+    }
+  }, []);
+
   const loadRegistros = useCallback(async () => {
     setLoadingData(true);
     try {
@@ -159,7 +213,8 @@ export default function TablasPersonalizadasPage() {
           setUserInfo(userData);
         }
 
-        // Cargar registros
+        // Cargar catálogos y registros
+        await loadCatalogos();
         await loadRegistros();
       } catch (error) {
         console.error('Error checking user:', error);
@@ -170,7 +225,7 @@ export default function TablasPersonalizadasPage() {
     };
 
     checkUser();
-  }, [router, loadRegistros]);
+  }, [router, loadRegistros, loadCatalogos]);
 
   useEffect(() => {
     // Ajustar tema según el tema del sistema
