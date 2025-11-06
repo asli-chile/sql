@@ -401,8 +401,10 @@ export default function TablasPersonalizadasPage() {
   };
 
   // Función para obtener el estilo de la fila según el estado
-  const getRowStyle = (params: any) => {
+  const getRowStyle = useCallback((params: any) => {
     const estado = params.data?.estado;
+    if (!estado) return undefined;
+    
     if (theme === 'dark') {
       if (estado === 'CANCELADO') {
         return { backgroundColor: 'rgba(220, 38, 38, 0.3)', color: '#fca5a5' };
@@ -419,7 +421,7 @@ export default function TablasPersonalizadasPage() {
       }
     }
     return undefined;
-  };
+  }, [theme]);
 
   const handleExportCSV = () => {
     const csvContent = [
