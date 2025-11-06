@@ -500,7 +500,7 @@ export default function TablasPersonalizadasPage() {
   const onSelectionChanged = () => {
     if (!gridApi) return;
     const selectedNodes = gridApi.getSelectedRows();
-    const selectedIdsArray = selectedNodes.reduce<string[]>((acc, node: Registro) => {
+    const selectedIdsArray = selectedNodes.reduce((acc: string[], node: Registro) => {
       if (typeof node.id === 'string' && node.id.length > 0) {
         acc.push(node.id);
       }
