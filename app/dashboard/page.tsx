@@ -20,7 +20,8 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
-  Map as MapIcon
+  Map as MapIcon,
+  Grid3x3
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
@@ -281,6 +282,16 @@ export default function DashboardPage() {
       icon: FileText,
       color: 'bg-purple-500',
       hoverColor: 'hover:bg-purple-600',
+      available: true,
+      stats: null
+    },
+    {
+      id: 'tablas-personalizadas',
+      title: 'Tablas Personalizadas',
+      description: 'Crea y personaliza tablas con AG Grid',
+      icon: Grid3x3,
+      color: 'bg-indigo-500',
+      hoverColor: 'hover:bg-indigo-600',
       available: true,
       stats: null
     }

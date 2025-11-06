@@ -68,7 +68,7 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getSession();
 
   // Rutas que requieren autenticación
-  const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas'];
+  const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas', '/tablas-personalizadas'];
   const authRoutes = ['/auth'];
 
   const { pathname } = req.nextUrl;
