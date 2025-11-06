@@ -21,12 +21,15 @@ import {
   Settings,
   Grid3x3,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Send,
+  X
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
+import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 
 export default function TablasPersonalizadasPage() {
   const router = useRouter();
@@ -51,6 +54,13 @@ export default function TablasPersonalizadasPage() {
   const [fletesUnicos, setFletesUnicos] = useState<string[]>([]);
   const [estadosUnicos, setEstadosUnicos] = useState<string[]>([]);
   const [tipoIngresoUnicos, setTipoIngresoUnicos] = useState<string[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [selectedRegistros, setSelectedRegistros] = useState<Registro[]>([]);
+  const [showEditNaveViajeModal, setShowEditNaveViajeModal] = useState(false);
+  const [navesUnicas, setNavesUnicas] = useState<string[]>([]);
+  const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
+  const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
+  const [gridApi, setGridApi] = useState<any>(null);
   const [gridOptions, setGridOptions] = useState<GridOptions>({
     pagination: true,
     paginationPageSize: 10,
@@ -107,6 +117,14 @@ export default function TablasPersonalizadasPage() {
       setFletesUnicos(fletes);
       setEstadosUnicos(estados);
       setTipoIngresoUnicos(tipoIngreso);
+      
+      // Extraer naves únicas
+      const naves = [...new Set(registrosConvertidos.map(r => {
+        let nave = r.naveInicial || '';
+        const match = nave.match(/^(.+?)\s*\[(.+?)\]$/);
+        return match ? match[1].trim() : nave.trim();
+      }).filter(Boolean))].sort();
+      setNavesUnicas(naves);
       
       success(`${registrosConvertidos.length} registros cargados`);
     } catch (error: any) {
@@ -421,6 +439,15 @@ export default function TablasPersonalizadasPage() {
 
   const onGridReady = (params: GridReadyEvent) => {
     console.log('Grid ready:', params);
+    setGridApi(params.api);
+  };
+
+  const onSelectionChanged = () => {
+    if (!gridApi) return;
+    const selectedNodes = gridApi.getSelectedRows();
+    const selectedIds = new Set(selectedNodes.map((node: Registro) => node.id).filter(Boolean));
+    setSelectedRows(selectedIds);
+    setSelectedRegistros(selectedNodes);
   };
 
   // Función para obtener el estilo de la fila según el estado
@@ -486,6 +513,47 @@ export default function TablasPersonalizadasPage() {
 
   const handleRefreshData = () => {
     loadRegistros();
+  };
+
+  const handleClearSelection = () => {
+    if (gridApi) {
+      gridApi.deselectAll();
+      setSelectedRows(new Set());
+      setSelectedRegistros([]);
+    }
+  };
+
+  const handleBulkEditNaveViaje = () => {
+    if (selectedRegistros.length > 0) {
+      setShowEditNaveViajeModal(true);
+    }
+  };
+
+  const handleBulkSaveNaveViaje = async (nave: string, viaje: string, records: Registro[]) => {
+    try {
+      const supabase = createClient();
+      const recordIds = records.map(r => r.id).filter((id): id is string => Boolean(id));
+      
+      if (recordIds.length === 0) return;
+
+      const { error } = await supabase
+        .from('registros')
+        .update({
+          nave_inicial: nave,
+          viaje: viaje,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', recordIds);
+
+      if (error) throw error;
+
+      success(`${records.length} registros actualizados con nave y viaje`);
+      handleClearSelection();
+      await loadRegistros();
+    } catch (error: any) {
+      console.error('Error actualizando nave/viaje:', error);
+      showError('Error al actualizar nave/viaje: ' + error.message);
+    }
   };
 
   if (loading) {
@@ -575,6 +643,39 @@ export default function TablasPersonalizadasPage() {
               </span>
             </div>
           </div>
+          
+          {/* Barra de acciones para filas seleccionadas */}
+          {selectedRows.size > 0 && (
+            <div className={`mt-4 p-3 rounded-lg flex items-center justify-between ${
+              theme === 'dark' ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200'
+            }`}>
+              <div className="flex items-center space-x-4">
+                <span className={`text-sm font-medium ${
+                  theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
+                }`}>
+                  {selectedRows.size} registro{selectedRows.size > 1 ? 's' : ''} seleccionado{selectedRows.size > 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={handleClearSelection}
+                  className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${
+                    theme === 'dark' ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  <X className="w-3 h-3" />
+                  <span>Limpiar</span>
+                </button>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleBulkEditNaveViaje}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>Enviar a</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* AG Grid */}
@@ -586,12 +687,20 @@ export default function TablasPersonalizadasPage() {
             </div>
           </div>
         ) : (
-          <div className={`${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`} style={{ height: '600px', width: '100%' }}>
+          <div 
+            className={`${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`} 
+            style={{ 
+              height: '600px', 
+              width: '100%',
+              backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff'
+            }}
+          >
             <AgGridReact
               rowData={rowData}
               columnDefs={columnDefs}
               gridOptions={gridOptions}
               onGridReady={onGridReady}
+              onSelectionChanged={onSelectionChanged}
               rowSelection="multiple"
               animateRows={true}
               suppressRowClickSelection={true}
@@ -669,6 +778,21 @@ export default function TablasPersonalizadasPage() {
           onUserUpdate={(updatedUser) => {
             setUserInfo(updatedUser);
           }}
+        />
+      )}
+
+      {/* Edit Nave/Viaje Modal */}
+      {showEditNaveViajeModal && selectedRegistros.length > 0 && (
+        <EditNaveViajeModal
+          isOpen={showEditNaveViajeModal}
+          onClose={() => setShowEditNaveViajeModal(false)}
+          record={selectedRegistros[0]}
+          records={selectedRegistros}
+          navesUnicas={navesUnicas}
+          navierasNavesMapping={navierasNavesMapping}
+          consorciosNavesMapping={consorciosNavesMapping}
+          onSave={async () => {}}
+          onBulkSave={handleBulkSaveNaveViaje}
         />
       )}
     </div>
