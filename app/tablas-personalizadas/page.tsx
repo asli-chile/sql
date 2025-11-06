@@ -39,6 +39,18 @@ export default function TablasPersonalizadasPage() {
   const [rowData, setRowData] = useState<Registro[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<'quartz' | 'quartz-dark'>('quartz');
+  
+  // Valores únicos para filtros
+  const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
+  const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
+  const [especiesUnicas, setEspeciesUnicas] = useState<string[]>([]);
+  const [clientesUnicos, setClientesUnicos] = useState<string[]>([]);
+  const [polsUnicos, setPolsUnicos] = useState<string[]>([]);
+  const [destinosUnicos, setDestinosUnicos] = useState<string[]>([]);
+  const [depositosUnicos, setDepositosUnicos] = useState<string[]>([]);
+  const [fletesUnicos, setFletesUnicos] = useState<string[]>([]);
+  const [estadosUnicos, setEstadosUnicos] = useState<string[]>([]);
+  const [tipoIngresoUnicos, setTipoIngresoUnicos] = useState<string[]>([]);
   const [gridOptions, setGridOptions] = useState<GridOptions>({
     pagination: true,
     paginationPageSize: 10,
@@ -68,6 +80,30 @@ export default function TablasPersonalizadasPage() {
 
       const registrosConvertidos = (data || []).map(convertSupabaseToApp);
       setRowData(registrosConvertidos);
+      
+      // Extraer valores únicos para filtros
+      const navieras = [...new Set(registrosConvertidos.map(r => r.naviera).filter(Boolean))].sort();
+      const ejecutivos = [...new Set(registrosConvertidos.map(r => r.ejecutivo).filter(Boolean))].sort();
+      const especies = [...new Set(registrosConvertidos.map(r => r.especie).filter(Boolean))].sort();
+      const clientes = [...new Set(registrosConvertidos.map(r => r.shipper).filter(Boolean))].sort();
+      const pols = [...new Set(registrosConvertidos.map(r => r.pol).filter(Boolean))].sort();
+      const destinos = [...new Set(registrosConvertidos.map(r => r.pod).filter(Boolean))].sort();
+      const depositos = [...new Set(registrosConvertidos.map(r => r.deposito).filter(Boolean))].sort();
+      const fletes = [...new Set(registrosConvertidos.map(r => r.flete).filter(Boolean))].sort();
+      const estados = [...new Set(registrosConvertidos.map(r => r.estado).filter(Boolean))].sort();
+      const tipoIngreso = [...new Set(registrosConvertidos.map(r => r.tipoIngreso).filter(Boolean))].sort();
+      
+      setNavierasUnicas(navieras);
+      setEjecutivosUnicos(ejecutivos);
+      setEspeciesUnicas(especies);
+      setClientesUnicos(clientes);
+      setPolsUnicos(pols);
+      setDestinosUnicos(destinos);
+      setDepositosUnicos(depositos);
+      setFletesUnicos(fletes);
+      setEstadosUnicos(estados);
+      setTipoIngresoUnicos(tipoIngreso);
+      
       success(`${registrosConvertidos.length} registros cargados`);
     } catch (error: any) {
       console.error('Error loading registros:', error);
@@ -144,18 +180,43 @@ export default function TablasPersonalizadasPage() {
       checkboxSelection: true,
       headerCheckboxSelection: true,
       filter: 'agTextColumnFilter',
-    },
-    {
-      field: 'shipper',
-      headerName: 'Cliente',
-      width: 150,
-      filter: 'agTextColumnFilter',
+      cellRenderer: (params: ICellRendererParams) => {
+        const registro = params.data as Registro;
+        const tipoIngreso = registro.tipoIngreso;
+        let textColor = 'text-green-600 dark:text-green-400';
+        
+        if (tipoIngreso === 'EARLY') {
+          textColor = 'text-cyan-600 dark:text-cyan-400';
+        } else if (tipoIngreso === 'LATE') {
+          textColor = 'text-yellow-600 dark:text-yellow-400';
+        } else if (tipoIngreso === 'EXTRA LATE') {
+          textColor = 'text-red-600 dark:text-red-400';
+        }
+        
+        return (
+          <span className={`font-semibold ${textColor}`}>
+            {params.value}
+          </span>
+        );
+      },
     },
     {
       field: 'ejecutivo',
       headerName: 'Ejecutivo',
       width: 120,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: ejecutivosUnicos,
+      },
+    },
+    {
+      field: 'shipper',
+      headerName: 'Cliente',
+      width: 150,
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        values: clientesUnicos,
+      },
     },
     {
       field: 'booking',
@@ -178,43 +239,66 @@ export default function TablasPersonalizadasPage() {
     {
       field: 'naviera',
       headerName: 'Naviera',
-      width: 120,
+      width: 130,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: navierasUnicas,
+      },
     },
     {
       field: 'naveInicial',
       headerName: 'Nave',
-      width: 120,
+      width: 130,
       filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        let value = params.value || '';
+        const registro = params.data as Registro;
+        if (registro.viaje) {
+          value = `${value} [${registro.viaje}]`;
+        }
+        return value;
+      },
     },
     {
       field: 'especie',
       headerName: 'Especie',
       width: 120,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: especiesUnicas,
+      },
     },
     {
       field: 'pol',
       headerName: 'POL',
       width: 120,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: polsUnicos,
+      },
     },
     {
       field: 'pod',
       headerName: 'POD',
       width: 120,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: destinosUnicos,
+      },
     },
     {
       field: 'deposito',
       headerName: 'Depósito',
       width: 120,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: depositosUnicos,
+      },
     },
     {
       field: 'etd',
       headerName: 'ETD',
-      width: 120,
+      width: 100,
       filter: 'agDateColumnFilter',
       valueFormatter: (params) => {
         if (!params.value) return '';
@@ -224,7 +308,7 @@ export default function TablasPersonalizadasPage() {
     {
       field: 'eta',
       headerName: 'ETA',
-      width: 120,
+      width: 100,
       filter: 'agDateColumnFilter',
       valueFormatter: (params) => {
         if (!params.value) return '';
@@ -232,10 +316,19 @@ export default function TablasPersonalizadasPage() {
       },
     },
     {
+      field: 'tt',
+      headerName: 'TT',
+      width: 60,
+      filter: 'agNumberColumnFilter',
+    },
+    {
       field: 'estado',
       headerName: 'Estado',
       width: 120,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: estadosUnicos,
+      },
       cellRenderer: (params: ICellRendererParams) => {
         const estado = params.value;
         const colors: Record<string, string> = {
@@ -255,11 +348,41 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Flete',
       width: 100,
       filter: 'agSetColumnFilter',
+      filterParams: {
+        values: fletesUnicos,
+      },
+    },
+    {
+      field: 'tipoIngreso',
+      headerName: 'Tipo Ingreso',
+      width: 120,
+      filter: 'agSetColumnFilter',
+      filterParams: {
+        values: tipoIngresoUnicos,
+      },
+      cellRenderer: (params: ICellRendererParams) => {
+        const tipoIngreso = params.value;
+        let textColor = 'text-green-600 dark:text-green-400';
+        
+        if (tipoIngreso === 'EARLY') {
+          textColor = 'text-cyan-600 dark:text-cyan-400';
+        } else if (tipoIngreso === 'LATE') {
+          textColor = 'text-yellow-600 dark:text-yellow-400';
+        } else if (tipoIngreso === 'EXTRA LATE') {
+          textColor = 'text-red-600 dark:text-red-400';
+        }
+        
+        return (
+          <span className={`font-semibold ${textColor}`}>
+            {tipoIngreso}
+          </span>
+        );
+      },
     },
     {
       field: 'temperatura',
       headerName: 'Temp (°C)',
-      width: 100,
+      width: 90,
       filter: 'agNumberColumnFilter',
       valueFormatter: (params) => {
         return params.value ? `${params.value}°C` : '';
@@ -268,13 +391,34 @@ export default function TablasPersonalizadasPage() {
     {
       field: 'cbm',
       headerName: 'CBM',
-      width: 100,
+      width: 70,
       filter: 'agNumberColumnFilter',
     },
-  ], []);
+  ], [navierasUnicas, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos]);
 
   const onGridReady = (params: GridReadyEvent) => {
     console.log('Grid ready:', params);
+  };
+
+  // Función para obtener el estilo de la fila según el estado
+  const getRowStyle = (params: any) => {
+    const estado = params.data?.estado;
+    if (theme === 'dark') {
+      if (estado === 'CANCELADO') {
+        return { backgroundColor: 'rgba(220, 38, 38, 0.3)', color: '#fca5a5' };
+      }
+      if (estado === 'PENDIENTE') {
+        return { backgroundColor: 'rgba(234, 179, 8, 0.3)', color: '#fde047' };
+      }
+    } else {
+      if (estado === 'CANCELADO') {
+        return { backgroundColor: 'rgba(254, 226, 226, 0.8)', color: '#991b1b' };
+      }
+      if (estado === 'PENDIENTE') {
+        return { backgroundColor: 'rgba(254, 249, 195, 0.8)', color: '#854d0e' };
+      }
+    }
+    return null;
   };
 
   const handleExportCSV = () => {
@@ -426,6 +570,9 @@ export default function TablasPersonalizadasPage() {
               rowSelection="multiple"
               animateRows={true}
               suppressRowClickSelection={true}
+              getRowStyle={getRowStyle}
+              rowHeight={35}
+              headerHeight={40}
             />
           </div>
         )}
