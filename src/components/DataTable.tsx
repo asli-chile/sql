@@ -148,6 +148,7 @@ export function DataTable({
   const [showFilters, setShowFilters] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [isCompact, setIsCompact] = useState(false);
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
   
@@ -497,14 +498,47 @@ export function DataTable({
     closeContextMenu();
   };
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    const mediaQuery = window.matchMedia('(max-width: 1024px)');
+    const handleMatch = (event?: MediaQueryListEvent) => {
+      setIsCompact(event ? event.matches : mediaQuery.matches);
+    };
+    handleMatch();
+    mediaQuery.addEventListener('change', handleMatch);
+    return () => mediaQuery.removeEventListener('change', handleMatch);
+  }, []);
+
+  useEffect(() => {
+    if (isCompact && viewMode !== 'cards') {
+      setViewMode('cards');
+    }
+  }, [isCompact, viewMode]);
+
+  const outerLayoutClasses = isCompact ? 'flex flex-col gap-3' : 'flex flex-col gap-3';
+  const mainRowClasses = isCompact
+    ? 'flex w-full flex-col gap-3'
+    : 'flex flex-wrap items-center justify-between gap-3';
+  const primaryActionGroupClasses = isCompact
+    ? 'flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center'
+    : 'flex flex-wrap items-center gap-2';
+  const secondaryActionGroupClasses = isCompact
+    ? 'flex w-full flex-wrap items-center gap-2 justify-start'
+    : 'flex flex-wrap items-center gap-2';
+  const bulkActionsRowClasses = isCompact
+    ? 'flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between'
+    : 'flex flex-wrap items-center justify-between gap-2';
+
   return (
     <div className="w-full space-y-4">
       {/* Header con controles */}
       <div className={`${panelClasses} rounded-2xl px-4 py-4 backdrop-blur`}
       >
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
+        <div className={outerLayoutClasses}>
+          <div className={mainRowClasses}>
+            <div className={primaryActionGroupClasses}>
               {canAdd && onAdd && (
                 <button
                   onClick={onAdd}
@@ -515,7 +549,7 @@ export function DataTable({
                 </button>
               )}
 
-              <div className="relative">
+              <div className={`relative ${isCompact ? 'w-full' : ''}`}>
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
                   type="search"
@@ -526,7 +560,7 @@ export function DataTable({
                     isDark
                       ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
                       : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
-                  }`}
+                  } ${isCompact ? 'w-full' : 'w-auto min-w-[220px]'}`}
                 />
               </div>
 
@@ -539,13 +573,15 @@ export function DataTable({
                 Filtros
               </button>
 
-              <button
-                onClick={handleToggleViewMode}
-                className={toolbarButtonClasses}
-              >
-                {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
-              </button>
+              {!isCompact && (
+                <button
+                  onClick={handleToggleViewMode}
+                  className={toolbarButtonClasses}
+                >
+                  {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                  {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
+                </button>
+              )}
 
               {columnToggleOptions.length > 0 && (
                 <ColumnToggle
@@ -557,7 +593,7 @@ export function DataTable({
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className={secondaryActionGroupClasses}>
               <button className={toolbarButtonClasses} disabled>
                 <RotateCcw className="h-4 w-4" />
                 Deshacer
@@ -587,7 +623,7 @@ export function DataTable({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className={bulkActionsRowClasses}>
             <div className="flex flex-wrap items-center gap-2">
               {onSelectAll && (
                 <button
