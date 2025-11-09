@@ -1523,7 +1523,7 @@ export default function RegistrosPage() {
 
             <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
               <div className="overflow-x-auto">
-                <div className="min-w-[1100px] px-2 pb-4">
+                <div className="min-w-full md:min-w-[1100px] px-2 pb-4">
                   <DataTable
                     data={registros}
                     columns={columns}
