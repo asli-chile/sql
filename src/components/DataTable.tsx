@@ -149,6 +149,8 @@ export function DataTable({
   const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isCompact, setIsCompact] = useState(false);
+  const manualViewToggleRef = useRef(false);
+  const [mobileToolbarTab, setMobileToolbarTab] = useState<'primary' | 'advanced'>('primary');
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
   
@@ -511,6 +513,17 @@ export function DataTable({
     return () => mediaQuery.removeEventListener('change', handleMatch);
   }, []);
 
+  useEffect(() => {
+    if (isCompact) {
+      if (!manualViewToggleRef.current) {
+        setViewMode('cards');
+      }
+    } else {
+      manualViewToggleRef.current = false;
+      setMobileToolbarTab('primary');
+    }
+  }, [isCompact]);
+
   const renderToolbar = () => {
     if (isCompact) {
       return (
@@ -540,94 +553,134 @@ export function DataTable({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className={`flex items-center gap-2 rounded-full border ${isDark ? 'border-slate-800/60 bg-slate-900/70' : 'border-gray-200 bg-white'} p-1 text-xs font-semibold`}>
             <button
-              data-filter-button
-              onClick={handleToggleFilters}
-              className={`${showFilters ? controlButtonActive : toolbarButtonClasses} text-[11px]`}
+              onClick={() => setMobileToolbarTab('primary')}
+              className={`flex-1 rounded-full px-3 py-1 transition-colors ${
+                mobileToolbarTab === 'primary'
+                  ? 'bg-sky-500 text-white shadow'
+                  : isDark
+                    ? 'text-slate-300 hover:bg-slate-800/60'
+                    : 'text-gray-600 hover:bg-gray-100'
+              }`}
             >
-              <Filter className="h-4 w-4" />
-              Filtros
-            </button>
-            <button
-              onClick={handleToggleViewMode}
-              className={`${toolbarButtonClasses} text-[11px]`}
-            >
-              {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-              {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
-            </button>
-            <div className="col-span-2">
-              <ColumnToggle
-                columns={columnToggleOptions}
-                onToggleColumn={handleToggleColumn}
-                onToggleAll={handleToggleAllColumns}
-                alwaysVisibleColumns={alwaysVisibleColumns}
-              />
-            </div>
-            <button
-              className={`${toolbarButtonClasses} text-[11px]`}
-              onClick={() => setShowReportGenerator(true)}
-            >
-              <Download className="h-4 w-4" />
-              Exportar
+              Principal
             </button>
             <button
-              className={`${toolbarButtonClasses} text-[11px] border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
-              onClick={handleResetTable}
+              onClick={() => setMobileToolbarTab('advanced')}
+              className={`flex-1 rounded-full px-3 py-1 transition-colors ${
+                mobileToolbarTab === 'advanced'
+                  ? 'bg-sky-500 text-white shadow'
+                  : isDark
+                    ? 'text-slate-300 hover:bg-slate-800/60'
+                    : 'text-gray-600 hover:bg-gray-100'
+              }`}
             >
-              <RefreshCw className="h-4 w-4" />
-              Reiniciar
-            </button>
-            <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
-              <RotateCcw className="h-4 w-4" />
-              Deshacer
-            </button>
-            <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
-              <RotateCw className="h-4 w-4" />
-              Rehacer
-            </button>
-            <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
-              <SlidersHorizontal className="h-4 w-4" />
-              Densidad
+              Avanzado
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            {onSelectAll && (
-              <button
-                onClick={handleSelectAllClick}
-                className={`${toolbarButtonClasses} text-[11px]`}
-              >
-                <CheckSquare className="h-4 w-4" />
-                Seleccionar todo
-              </button>
-            )}
-            {onClearSelection && (
-              <button
-                onClick={handleClearSelectionClick}
-                className={`${toolbarButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!hasSelection}
-              >
-                <RotateCcw className="h-4 w-4" />
-                Limpiar selección
-              </button>
-            )}
-            {canDelete && onBulkDelete && (
-              <button
-                onClick={handleBulkDeleteClick}
-                className={`${destructiveButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={!hasSelection}
-              >
-                <Trash2 className="h-4 w-4" />
-                Eliminar selección
-              </button>
-            )}
-            {hasSelection && (
-              <span className="col-span-2 inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold border border-sky-500/40 bg-sky-500/10 text-sky-200">
-                {selectedCount} seleccionados
-              </span>
-            )}
-          </div>
+          {mobileToolbarTab === 'primary' ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  data-filter-button
+                  onClick={handleToggleFilters}
+                  className={`${showFilters ? controlButtonActive : toolbarButtonClasses} text-[11px]`}
+                >
+                  <Filter className="h-4 w-4" />
+                  Filtros
+                </button>
+                <button
+                  onClick={() => {
+                    manualViewToggleRef.current = true;
+                    handleToggleViewMode();
+                  }}
+                  className={`${toolbarButtonClasses} text-[11px]`}
+                >
+                  {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                  {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
+                </button>
+                <div className="col-span-2">
+                  <ColumnToggle
+                    columns={columnToggleOptions}
+                    onToggleColumn={handleToggleColumn}
+                    onToggleAll={handleToggleAllColumns}
+                    alwaysVisibleColumns={alwaysVisibleColumns}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  className={`${toolbarButtonClasses} text-[11px]`}
+                  onClick={() => setShowReportGenerator(true)}
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar
+                </button>
+                <button
+                  className={`${toolbarButtonClasses} text-[11px] border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+                  onClick={handleResetTable}
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Reiniciar
+                </button>
+                <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
+                  <RotateCcw className="h-4 w-4" />
+                  Deshacer
+                </button>
+                <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
+                  <RotateCw className="h-4 w-4" />
+                  Rehacer
+                </button>
+                <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Densidad
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {onSelectAll && (
+                  <button
+                    onClick={handleSelectAllClick}
+                    className={`${toolbarButtonClasses} text-[11px]`}
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                    Seleccionar todo
+                  </button>
+                )}
+                {onClearSelection && (
+                  <button
+                    onClick={handleClearSelectionClick}
+                    className={`${toolbarButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!hasSelection}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Limpiar selección
+                  </button>
+                )}
+                {canDelete && onBulkDelete && (
+                  <button
+                    onClick={handleBulkDeleteClick}
+                    className={`${destructiveButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={!hasSelection}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Eliminar selección
+                  </button>
+                )}
+              </div>
+
+              {hasSelection && (
+                <span className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold border border-sky-500/40 bg-sky-500/10 text-sky-200">
+                  {selectedCount} seleccionados
+                </span>
+              )}
+            </div>
+          )}
         </div>
       );
     }
@@ -671,7 +724,10 @@ export function DataTable({
             </button>
 
             <button
-              onClick={handleToggleViewMode}
+              onClick={() => {
+                manualViewToggleRef.current = true;
+                handleToggleViewMode();
+              }}
               className={toolbarButtonClasses}
             >
               {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
