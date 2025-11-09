@@ -169,7 +169,15 @@ export function DataTable({
   // Estado para el menú contextual
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro } | null>(null);
   
-  const initialDateFilters = {
+  const initialDateFilters: {
+    semanaIngreso: string;
+    semanaEtd: string;
+    semanaEta: string;
+    mesIngreso: string;
+    mesEtd: string;
+    mesEta: string;
+    year: string;
+  } = {
     semanaIngreso: '',
     semanaEtd: '',
     semanaEta: '',
@@ -177,7 +185,7 @@ export function DataTable({
     mesEtd: '',
     mesEta: '',
     year: '',
-  } as const;
+  };
   
   // Estado para filtros de fechas
   const [dateFilters, setDateFilters] = useState<typeof initialDateFilters>(initialDateFilters);
@@ -395,7 +403,6 @@ export function DataTable({
     },
     columnResizeMode: 'onChange',
     enableColumnResizing: true,
-    enableColumnVirtualization: false,
   });
 
   const handleResetTable = () => {
@@ -436,7 +443,7 @@ export function DataTable({
         visible: column.getIsVisible(),
       };
     }).filter((option) => option.id && !option.id.startsWith('_'));
-  }, [table, columnVisibility]);
+  }, [table]);
 
   const handleToggleFilters = () => setShowFilters((prev) => !prev);
 
@@ -1348,17 +1355,7 @@ export function DataTable({
       {showReportGenerator && (
         <ReportGenerator
           isOpen={showReportGenerator}
-          onClose={() => setShowReportGenerator(false)}
-          data={data}
-          columns={columns}
-          navierasUnicas={navierasUnicas}
-          ejecutivosUnicos={ejecutivosUnicos}
-          especiesUnicas={especiesUnicas}
-          clientesUnicos={clientesUnicos}
-          polsUnicos={polsUnicos}
-          destinosUnicos={destinosUnicos}
-          depositosUnicos={depositosUnicos}
-          yearsUnicos={yearsUnicos}
+          registros={filteredData}
           onClose={() => setShowReportGenerator(false)}
         />
       )}

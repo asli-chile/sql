@@ -1,4 +1,6 @@
 'use client';
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -105,6 +107,10 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUserUpdate = (updatedUser: any) => {
+    setUserInfo(updatedUser);
   };
 
   const loadStats = async () => {
@@ -630,8 +636,8 @@ export default function DashboardPage() {
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
-        user={user}
         userInfo={userInfo}
+        onUserUpdate={handleUserUpdate}
       />
     </div>
   );

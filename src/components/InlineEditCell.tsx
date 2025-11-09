@@ -309,7 +309,8 @@ export function InlineEditCell({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSave(e.currentTarget.value);
+      const target = e.currentTarget as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+      handleSave(target.value);
     } else if (e.key === 'Escape') {
       handleCancel();
     }
