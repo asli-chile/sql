@@ -1420,45 +1420,48 @@ export default function RegistrosPage() {
 
         <div className="flex flex-1 flex-col">
           <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-4 px-4 py-5 sm:px-6 lg:px-8">
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
-                  <h1 className="text-2xl font-semibold text-white">Registros de Embarques</h1>
-                  <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
-                </div>
+            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
+                <h1 className="text-2xl font-semibold text-white">Registros de Embarques</h1>
+                <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
               </div>
 
-              <div className="flex-1" />
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => router.push('/facturas')}
-                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
-                >
-                  <Receipt className="h-4 w-4" />
-                  Facturas
-                </button>
-                <QRGenerator />
-                <ThemeTest />
-                <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300">
-                  <UserIcon className="h-4 w-4" />
-                  <span>{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:justify-end">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                  <button
+                    onClick={() => router.push('/facturas')}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 sm:w-auto"
+                  >
+                    <Receipt className="h-4 w-4" />
+                    Facturas
+                  </button>
+                  <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+                    <QRGenerator />
+                    <ThemeTest />
+                  </div>
                 </div>
-                <button
-                  onClick={() => setIsTrashModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Papelera
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Salir
-                </button>
+
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+                  <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300">
+                    <UserIcon className="h-4 w-4" />
+                    <span className="truncate max-w-[160px] sm:max-w-none">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+                  </div>
+                  <button
+                    onClick={() => setIsTrashModalOpen(true)}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200 sm:w-auto"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Papelera
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 sm:w-auto"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Salir
+                  </button>
+                </div>
               </div>
             </div>
           </header>
