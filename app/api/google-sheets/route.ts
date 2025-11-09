@@ -26,7 +26,7 @@ const columnLettersToIndex = (letters: string): number => {
   return result - 1; // Convert to zero-based index
 };
 
-const parseA1Range = (range?: string) => {
+const parseA1Range = (range?: string | null) => {
   if (!range) {
     return null;
   }
