@@ -517,7 +517,7 @@ export function DataTable({
     }
   }, [isCompact, viewMode]);
 
-  const outerLayoutClasses = isCompact ? 'flex flex-col gap-3' : 'flex flex-col gap-3';
+  const outerLayoutClasses = 'flex flex-col gap-3';
   const mainRowClasses = isCompact
     ? 'flex w-full flex-col gap-3'
     : 'flex flex-wrap items-center justify-between gap-3';
@@ -530,6 +530,12 @@ export function DataTable({
   const bulkActionsRowClasses = isCompact
     ? 'flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between'
     : 'flex flex-wrap items-center justify-between gap-2';
+  const compactButtonClass = isCompact ? 'w-full justify-center text-[11px] h-9 px-3' : '';
+  const compactPrimaryButtonClass = isCompact ? 'w-full justify-center text-xs py-2' : '';
+  const compactDestructiveClass = isCompact ? 'w-full justify-center text-[11px] h-9 px-3' : '';
+  const compactInputClass = isCompact ? 'w-full' : 'w-auto min-w-[220px]';
+  const compactPillClass = isCompact ? 'w-full justify-center text-[11px] py-2' : '';
+  const compactColumnToggleWrapper = isCompact ? 'w-full' : '';
 
   return (
     <div className="w-full space-y-4">
@@ -542,7 +548,7 @@ export function DataTable({
               {canAdd && onAdd && (
                 <button
                   onClick={onAdd}
-                  className={primaryActionClasses}
+                  className={`${primaryActionClasses} ${compactPrimaryButtonClass}`}
                 >
                   <Plus className="h-4 w-4" />
                   Nuevo registro
@@ -560,14 +566,14 @@ export function DataTable({
                     isDark
                       ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
                       : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
-                  } ${isCompact ? 'w-full' : 'w-auto min-w-[220px]'}`}
+                  } ${compactInputClass}`}
                 />
               </div>
 
               <button
                 data-filter-button
                 onClick={handleToggleFilters}
-                className={showFilters ? controlButtonActive : toolbarButtonClasses}
+                className={`${showFilters ? controlButtonActive : toolbarButtonClasses} ${compactButtonClass}`}
               >
                 <Filter className="h-4 w-4" />
                 Filtros
@@ -584,37 +590,43 @@ export function DataTable({
               )}
 
               {columnToggleOptions.length > 0 && (
-                <ColumnToggle
-                  columns={columnToggleOptions}
-                  onToggleColumn={handleToggleColumn}
-                  onToggleAll={handleToggleAllColumns}
-                  alwaysVisibleColumns={alwaysVisibleColumns}
-                />
+                <div className={compactColumnToggleWrapper}>
+                  <ColumnToggle
+                    columns={columnToggleOptions}
+                    onToggleColumn={handleToggleColumn}
+                    onToggleAll={handleToggleAllColumns}
+                    alwaysVisibleColumns={alwaysVisibleColumns}
+                  />
+                </div>
               )}
             </div>
 
             <div className={secondaryActionGroupClasses}>
-              <button className={toolbarButtonClasses} disabled>
-                <RotateCcw className="h-4 w-4" />
-                Deshacer
-              </button>
-              <button className={toolbarButtonClasses} disabled>
-                <RotateCw className="h-4 w-4" />
-                Rehacer
-              </button>
-              <button className={toolbarButtonClasses} disabled>
-                <SlidersHorizontal className="h-4 w-4" />
-                Densidad
-              </button>
+              {!isCompact && (
+                <>
+                  <button className={toolbarButtonClasses} disabled>
+                    <RotateCcw className="h-4 w-4" />
+                    Deshacer
+                  </button>
+                  <button className={toolbarButtonClasses} disabled>
+                    <RotateCw className="h-4 w-4" />
+                    Rehacer
+                  </button>
+                  <button className={toolbarButtonClasses} disabled>
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Densidad
+                  </button>
+                </>
+              )}
               <button
-                className={toolbarButtonClasses}
+                className={`${toolbarButtonClasses} ${compactButtonClass}`}
                 onClick={() => setShowReportGenerator(true)}
               >
                 <Download className="h-4 w-4" />
                 Exportar
               </button>
               <button
-                className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+                className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10 ${compactButtonClass}`}
                 onClick={handleResetTable}
               >
                 <RefreshCw className="h-4 w-4" />
@@ -628,7 +640,7 @@ export function DataTable({
               {onSelectAll && (
                 <button
                   onClick={handleSelectAllClick}
-                  className={toolbarButtonClasses}
+                  className={`${toolbarButtonClasses} ${compactButtonClass}`}
                 >
                   <CheckSquare className="h-4 w-4" />
                   Seleccionar todo
@@ -637,7 +649,7 @@ export function DataTable({
               {onClearSelection && (
                 <button
                   onClick={handleClearSelectionClick}
-                  className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} ${compactButtonClass}`}
                   disabled={!hasSelection}
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -647,7 +659,7 @@ export function DataTable({
               {canDelete && onBulkDelete && (
                 <button
                   onClick={handleBulkDeleteClick}
-                  className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} ${compactDestructiveClass}`}
                   disabled={!hasSelection}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -659,7 +671,7 @@ export function DataTable({
                   isDark
                     ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
                     : 'bg-blue-100 text-blue-700 border border-blue-200'
-                }`}>
+                } ${compactPillClass}`}>
                   {selectedCount} seleccionados
                 </span>
               )}
@@ -1313,7 +1325,7 @@ export function DataTable({
 
       {viewMode === 'cards' && (
         <div className={`${panelClasses} rounded-2xl p-4 backdrop-blur space-y-4`}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 ${isCompact ? 'grid-cols-1 sm:grid-cols-2' : ''}`}>
             {filteredData.map((record, index) => {
               const key = record.id ?? `registro-${record.refAsli ?? index}`;
               const estado = record.estado ?? 'SIN ESTADO';
@@ -1338,33 +1350,33 @@ export function DataTable({
               return (
                 <div
                   key={key}
-                  className="group relative rounded-2xl border border-slate-800/60 bg-slate-950/60 p-4 shadow-lg shadow-slate-950/20 transition-transform hover:-translate-y-[3px] hover:border-sky-500/60"
+                  className={`group relative border border-slate-800/60 bg-slate-950/60 shadow-lg shadow-slate-950/20 transition-transform hover:-translate-y-[3px] hover:border-sky-500/60 ${isCompact ? 'rounded-xl p-3 space-y-3' : 'rounded-2xl p-4'}`}
                   onContextMenu={handleCardContextMenu}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ref ASLI</p>
-                      <h3 className="text-lg font-semibold text-slate-100">{record.refAsli || 'Sin referencia'}</h3>
+                      <h3 className={`${isCompact ? 'text-base' : 'text-lg'} font-semibold text-slate-100`}>{record.refAsli || 'Sin referencia'}</h3>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${estadoColor}`}>
                       {estado}
                     </span>
                   </div>
 
-                  <div className="mt-3 space-y-2 text-xs text-slate-300">
-                    <div className="flex justify-between"><span className="text-slate-500">Ref Externa</span><span className="font-semibold text-slate-200">{record.refCliente || '-'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Cliente</span><span className="font-semibold text-slate-200">{record.shipper || '-'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Naviera</span><span className="font-semibold text-slate-200">{record.naviera || '-'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Booking</span><span className="font-semibold text-slate-200">{record.booking || '-'}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Contenedor</span><span className="font-semibold text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span></div>
-                    <div className="flex justify-between"><span className="text-slate-500">Ingresado</span><span className="font-semibold text-slate-200">{record.ingresado ? new Date(record.ingresado).toLocaleDateString('es-CL') : '-'}</span></div>
+                  <div className={`mt-3 grid gap-2 text-slate-300 ${isCompact ? 'text-[11px]' : 'text-xs'}`}>
+                    <div className="flex justify-between gap-3"><span className="text-slate-500">Ref Externa</span><span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-slate-500">Cliente</span><span className="font-semibold text-right text-slate-200">{record.shipper || '-'}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-slate-500">Naviera</span><span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-slate-500">Booking</span><span className="font-semibold text-right text-slate-200">{record.booking || '-'}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-slate-500">Contenedor</span><span className="font-semibold text-right text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span></div>
+                    <div className="flex justify-between gap-3"><span className="text-slate-500">Ingresado</span><span className="font-semibold text-right text-slate-200">{record.ingresado ? new Date(record.ingresado).toLocaleDateString('es-CL') : '-'}</span></div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between gap-2">
+                  <div className={`mt-4 flex gap-2 ${isCompact ? 'flex-col' : 'items-center justify-between'}`}>
                     {onEdit && (
                       <button
                         onClick={() => onEdit(record)}
-                        className={`${toolbarButtonClasses} flex-1 justify-center`}
+                        className={`${toolbarButtonClasses} flex-1 justify-center ${isCompact ? 'w-full text-[11px] py-2' : ''}`}
                       >
                         <Edit className="h-4 w-4" />
                         Editar
@@ -1373,7 +1385,7 @@ export function DataTable({
                     {onShowHistorial && (
                       <button
                         onClick={() => onShowHistorial(record)}
-                        className={`${toolbarButtonClasses} flex-1 justify-center`}
+                        className={`${toolbarButtonClasses} flex-1 justify-center ${isCompact ? 'w-full text-[11px] py-2' : ''}`}
                       >
                         <History className="h-4 w-4" />
                         Historial

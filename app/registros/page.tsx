@@ -1420,7 +1420,7 @@ export default function RegistrosPage() {
 
         <div className="flex flex-1 flex-col">
           <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-4 px-8 py-5">
+            <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-4 px-4 py-5 sm:px-6 lg:px-8">
               <div className="flex items-center gap-4">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
@@ -1464,7 +1464,7 @@ export default function RegistrosPage() {
           </header>
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="mx-auto w-full max-w-[1600px] px-6 sm:px-8 lg:px-12 pb-10 pt-8 space-y-10">
+            <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-6 space-y-8 sm:px-6 lg:px-10 lg:space-y-10">
             <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
