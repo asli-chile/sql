@@ -79,6 +79,23 @@ export const getSheetIdByName = async (
   return sheetId;
 };
 
+export const getSpreadsheetId = (): string => {
+  const envValue =
+    process.env.GOOGLE_SHEETS_SPREADSHEET_ID ??
+    process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID ??
+    '';
+
+  const spreadsheetId = envValue.trim();
+
+  if (!spreadsheetId) {
+    throw new Error(
+      'Falta configurar GOOGLE_SHEETS_SPREADSHEET_ID en las variables de entorno.'
+    );
+  }
+
+  return spreadsheetId;
+};
+
 const formatDate = (value: Date | string | null): string => {
   if (!value) {
     return '-';
