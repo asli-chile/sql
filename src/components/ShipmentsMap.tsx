@@ -60,10 +60,45 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
   const [hoveredCountry, setHoveredCountry] = useState<CountryStats | null>(null);
   const [hoveredOriginPort, setHoveredOriginPort] = useState<OriginPortStats | null>(null);
   const [vista, setVista] = useState<VistaMapa>('puerto');
+  const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [isMounted, setIsMounted] = useState(false);
   const [webglSupported, setWebglSupported] = useState(false);
   const [deckGlReady, setDeckGlReady] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  const controls = (
+    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-800/60 bg-slate-950/70 px-4 py-3 shadow-lg shadow-slate-950/40">
+      <div className="flex flex-col gap-1 text-xs text-slate-400">
+        <span className="font-semibold uppercase tracking-[0.2em] text-slate-500">Vista</span>
+        <select
+          value={vista}
+          onChange={(e) => setVista(e.target.value as VistaMapa)}
+          className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+        >
+          <option value="puerto">Por Puerto</option>
+          <option value="pais">Por País</option>
+        </select>
+      </div>
+      <div className="flex flex-1 min-w-[220px] items-center gap-3">
+        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Zoom</span>
+        <input
+          type="range"
+          min={2}
+          max={8}
+          step={0.1}
+          value={viewState.zoom}
+          onChange={(event) => {
+            const zoom = Number(event.target.value);
+            setViewState((prev) => ({ ...prev, zoom }));
+          }}
+          className="flex-1 accent-sky-500"
+        />
+        <span className="w-12 text-right text-xs font-semibold text-slate-400">
+          {viewState.zoom.toFixed(1)}x
+        </span>
+      </div>
+    </div>
+  );
 
   // Asegurar que solo se renderice en el cliente y verificar WebGL
   React.useEffect(() => {
@@ -296,7 +331,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
         
         stats = {
           country: displayName,
-          coordinates: finalCoords, // Coordenadas reales del puerto o del país como fallback
+          coordinates: finalCoords, // Coordenadas reales del puerto o del país como fallbackimage.png
           ports: {},
           totalConfirmados: 0,
           totalPendientes: 0,
@@ -456,11 +491,14 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
   // No renderizar hasta que estemos en el cliente
   if (!isMounted) {
     return (
-      <div className={`relative ${className}`} style={{ height: '600px', width: '100%' }}>
-        <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-900 rounded-lg">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Cargando mapa...</p>
+      <div className={`space-y-4 ${className}`}>
+        {controls}
+        <div className="relative h-[600px] w-full rounded-2xl border border-slate-800/60 bg-slate-950/60">
+          <div className="flex h-full items-center justify-center rounded-2xl bg-slate-950/60">
+            <div className="text-center">
+              <div className="mb-4 mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-sky-500"></div>
+              <p className="text-slate-400 text-sm">Cargando mapa...</p>
+            </div>
           </div>
         </div>
       </div>
@@ -470,23 +508,24 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
   // Mostrar mensaje si WebGL no está disponible
   if (!webglSupported) {
     return (
-      <div className={`relative ${className}`} style={{ height: '600px', width: '100%' }}>
-        <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-900 rounded-lg">
-          <div className="text-center p-6">
-            <div className="text-red-600 dark:text-red-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
+      <div className={`space-y-4 ${className}`}>
+        {controls}
+        <div className="relative h-[600px] w-full rounded-2xl border border-slate-800/60 bg-slate-950/60">
+          <div className="flex h-full items-center justify-center rounded-2xl bg-slate-950/60">
+            <div className="text-center p-6">
+              <div className="mb-4 text-red-400">
+                <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="mb-2 text-lg font-semibold text-white">WebGL no está disponible</h3>
+              <p className="mb-3 text-sm text-slate-300">
+                Tu navegador no soporta WebGL, necesario para mostrar el mapa.
+              </p>
+              <p className="text-xs text-slate-500">
+                Por favor, actualiza tu navegador o habilita la aceleración por hardware.
+              </p>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              WebGL no está disponible
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-              Tu navegador no soporta WebGL, que es necesario para mostrar el mapa.
-            </p>
-            <p className="text-gray-500 dark:text-gray-500 text-xs">
-              Por favor, actualiza tu navegador o habilita aceleración por hardware en la configuración.
-            </p>
           </div>
         </div>
       </div>
@@ -494,49 +533,50 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
   }
 
   return (
-    <div ref={containerRef} className={`relative ${className}`} style={{ height: '600px', width: '100%' }}>
-      {/* Selector de vista */}
-      <div className="absolute top-4 right-4 z-20 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 p-2">
-        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-          Vista:
-        </label>
-        <select
-          value={vista}
-          onChange={(e) => setVista(e.target.value as VistaMapa)}
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="puerto">Por Puerto</option>
-          <option value="pais">Por País</option>
-        </select>
-      </div>
-
-      {webglSupported && deckGlReady && (
-        <div style={{ width: '100%', height: '100%' }}>
+    <div className={`space-y-4 ${className}`}>
+      {controls}
+      <div
+        ref={containerRef}
+        className="relative h-[600px] w-full overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-950/60"
+      >
+        {deckGlReady ? (
           <DeckGL
             initialViewState={INITIAL_VIEW_STATE}
-            controller={true}
+            viewState={viewState}
+            controller={{
+              scrollZoom: false,
+              dragPan: true,
+              dragRotate: false,
+              keyboard: true,
+              doubleClickZoom: false,
+            }}
+            onViewStateChange={({ viewState: nextViewState }) => {
+              setViewState(nextViewState as typeof viewState);
+            }}
             layers={[
               originPortsLayer,
-              // Capa de resaltado del país cuando está hovered (usando ScatterplotLayer con radio grande)
-              ...(hoveredCountry ? [new ScatterplotLayer<CountryStats>({
-                id: 'country-highlight',
-                data: [hoveredCountry],
-                getPosition: (d: CountryStats) => d.coordinates,
-                getRadius: vista === 'pais' ? 200000 : 80000, // Radio más grande para vista por país, más pequeño para vista por puerto
-                getFillColor: [0, 188, 212, 50], // Cyan semi-transparente
-                pickable: false,
-                radiusMinPixels: 0,
-                radiusMaxPixels: 1000,
-                updateTriggers: {
-                  getPosition: [hoveredCountry],
-                  getRadius: [vista]
-                }
-              })] : []),
-              countriesLayer
+              ...(hoveredCountry
+                ? [
+                    new ScatterplotLayer<CountryStats>({
+                      id: 'country-highlight',
+                      data: [hoveredCountry],
+                      getPosition: (d: CountryStats) => d.coordinates,
+                      getRadius: vista === 'pais' ? 200000 : 80000,
+                      getFillColor: [0, 188, 212, 50],
+                      pickable: false,
+                      radiusMinPixels: 0,
+                      radiusMaxPixels: 1000,
+                      updateTriggers: {
+                        getPosition: [hoveredCountry],
+                        getRadius: [vista],
+                      },
+                    }),
+                  ]
+                : []),
+              countriesLayer,
             ]}
             onError={(error) => {
               console.error('Error de DeckGL:', error);
-              // Si hay un error, intentar recargar después de un momento
               if (error && error.message && error.message.includes('WebGL')) {
                 console.warn('Reintentando inicialización de DeckGL...');
                 setDeckGlReady(false);
@@ -558,216 +598,147 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
               }}
             />
           </DeckGL>
-        </div>
-      )}
-      
-      {webglSupported && !deckGlReady && (
-        <div className="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-900 rounded-lg">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Inicializando mapa...</p>
-          </div>
-        </div>
-      )}
-      
-      {/* Tooltip de información del puerto de salida (POL) */}
-      {hoveredOriginPort && (
-        <div
-          className="absolute top-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 z-10 border border-gray-200 dark:border-gray-700"
-          style={{ maxWidth: '300px' }}
-        >
-          <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-red-600"></div>
-            <span>Puerto de Salida (POL)</span>
-          </h3>
-          
-          <div className="mb-3">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              {hoveredOriginPort.name}
-            </p>
-          </div>
-          
-          {/* Estadísticas */}
-          <div className="grid grid-cols-1 gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+        ) : (
+          <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                {hoveredOriginPort.totalEmbarques}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">Total de Embarques</div>
+              <div className="mb-4 mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-sky-500"></div>
+              <p className="text-sm text-slate-300">Inicializando mapa...</p>
             </div>
           </div>
-          
-          {/* Depósitos */}
-          {hoveredOriginPort.depositos.length > 0 && (
-            <div className="mb-2">
-              <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">
-                Depósitos utilizados:
-              </h4>
-              <div className="flex flex-wrap gap-1">
-                {hoveredOriginPort.depositos.map((deposito, index) => (
-                  <span
-                    key={index}
-                    className="px-2 py-1 text-xs rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200"
-                  >
-                    {deposito}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {hoveredOriginPort.depositos.length === 0 && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              No hay depósitos registrados
-            </p>
-          )}
-        </div>
-      )}
+        )}
 
-      {/* Tooltip de información del país */}
-      {hoveredCountry && !hoveredOriginPort && (
-        <div
-          className="absolute top-4 left-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 z-10 border border-gray-200 dark:border-gray-700"
-          style={{ maxWidth: '400px' }}
-        >
-          <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-3">
-            {hoveredCountry.country.includes(' - ') 
-              ? hoveredCountry.country.split(' - ')[1] 
-              : hoveredCountry.country}
-          </h3>
-          {hoveredCountry.country.includes(' - ') && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              {hoveredCountry.country.split(' - ')[0]}
-            </p>
-          )}
-          
-          {/* Resumen general */}
-          <div className="grid grid-cols-2 gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
-            <div className="text-center">
-              <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                {hoveredCountry.totalConfirmados}
+        {/* Tooltips */}
+        {hoveredOriginPort && (
+          <div
+            className="absolute top-4 left-4 z-10 max-w-[300px] rounded-lg border border-slate-800/60 bg-slate-950/90 p-4 text-slate-100 shadow-xl"
+          >
+            <h3 className="mb-3 flex items-center gap-2 font-semibold">
+              <span className="h-3 w-3 rounded-full bg-red-500"></span>
+              Puerto de Salida (POL)
+            </h3>
+            <p className="mb-3 text-sm font-medium text-slate-200">{hoveredOriginPort.name}</p>
+            <div className="mb-3 grid grid-cols-1 gap-2 border-b border-slate-800/70 pb-3 text-center">
+              <div>
+                <div className="text-xl font-bold text-red-400">{hoveredOriginPort.totalEmbarques}</div>
+                <div className="text-xs text-slate-300">Total de Embarques</div>
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">Confirmados</div>
             </div>
-            <div className="text-center">
-              <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                {hoveredCountry.totalCancelados}
+            {hoveredOriginPort.depositos.length > 0 ? (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-slate-200">Depósitos utilizados:</h4>
+                <div className="flex flex-wrap gap-1">
+                  {hoveredOriginPort.depositos.map((deposito, index) => (
+                    <span
+                      key={index}
+                      className="rounded bg-sky-500/15 px-2 py-1 text-xs text-sky-200"
+                    >
+                      {deposito}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">Cancelados</div>
-            </div>
+            ) : (
+              <p className="text-xs text-slate-400">No hay depósitos registrados</p>
+            )}
           </div>
-          
-          {/* Fechas cumplidas y pendientes */}
-          <div className="grid grid-cols-4 gap-2 mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {hoveredCountry.totalEtdCumplida}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">ETD Cumplida</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                {hoveredCountry.totalEtdPendiente}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">ETD Pendiente</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {hoveredCountry.totalEtaCumplida}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">ETA Cumplida</div>
-            </div>
-            <div className="text-center">
-              <div className="text-lg font-bold text-orange-600 dark:text-orange-400">
-                {hoveredCountry.totalEtaPendiente}
-              </div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">ETA Pendiente</div>
-            </div>
-          </div>
+        )}
 
-          {/* Detalle por puerto */}
-          <div className="space-y-2">
-            <h4 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-2">
-              Detalle por puerto:
-            </h4>
-            {Object.entries(hoveredCountry.ports)
-              .sort((a, b) => b[1].total - a[1].total) // Ordenar por total descendente
-              .map(([portName, portStats]) => (
-                <div
-                  key={portName}
-                  className="p-2 bg-gray-50 dark:bg-gray-700 rounded text-sm"
-                >
-                  <div className="font-medium text-gray-900 dark:text-white mb-1">
-                    {portName}
-                  </div>
-                  <div className="space-y-1 text-xs">
+        {hoveredCountry && !hoveredOriginPort && (
+          <div
+            className="absolute top-4 left-4 z-10 max-w-[420px] rounded-lg border border-slate-800/60 bg-slate-950/90 p-4 text-slate-100 shadow-xl"
+          >
+            <h3 className="mb-1 text-lg font-semibold">
+              {hoveredCountry.country.includes(' - ')
+                ? hoveredCountry.country.split(' - ')[1]
+                : hoveredCountry.country}
+            </h3>
+            {hoveredCountry.country.includes(' - ') && (
+              <p className="mb-3 text-xs text-slate-400">
+                {hoveredCountry.country.split(' - ')[0]}
+              </p>
+            )}
+            <div className="mb-3 grid grid-cols-2 gap-2 border-b border-slate-800/70 pb-3 text-center text-xs">
+              <div>
+                <div className="text-xl font-bold text-green-300">{hoveredCountry.totalConfirmados}</div>
+                <div className="text-slate-400">Confirmados</div>
+              </div>
+              <div>
+                <div className="text-xl font-bold text-red-300">{hoveredCountry.totalCancelados}</div>
+                <div className="text-slate-400">Cancelados</div>
+              </div>
+            </div>
+            <div className="mb-4 grid grid-cols-4 gap-2 border-b border-slate-800/70 pb-3 text-center text-xs">
+              <div>
+                <div className="text-lg font-semibold text-sky-300">{hoveredCountry.totalEtdCumplida}</div>
+                <div className="text-slate-400">ETD Cumplida</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-amber-300">{hoveredCountry.totalEtdPendiente}</div>
+                <div className="text-slate-400">ETD Pendiente</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-sky-300">{hoveredCountry.totalEtaCumplida}</div>
+                <div className="text-slate-400">ETA Cumplida</div>
+              </div>
+              <div>
+                <div className="text-lg font-semibold text-amber-300">{hoveredCountry.totalEtaPendiente}</div>
+                <div className="text-slate-400">ETA Pendiente</div>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-slate-200">Detalle por puerto:</h4>
+              {Object.entries(hoveredCountry.ports)
+                .sort((a, b) => b[1].total - a[1].total)
+                .map(([portName, portStats]) => (
+                  <div key={portName} className="rounded-lg bg-slate-900/60 p-2 text-xs">
+                    <div className="mb-1 font-medium text-slate-200">{portName}</div>
                     <div className="flex items-center justify-between">
-                      {portStats.confirmados > 0 && (
-                        <span className="text-green-600 dark:text-green-400">
-                          ✅ {portStats.confirmados} confirmados
-                        </span>
-                      )}
-                      {portStats.cancelados > 0 && (
-                        <span className="text-red-600 dark:text-red-400">
-                          ❌ {portStats.cancelados} cancelados
-                        </span>
-                      )}
-                      <span className="text-gray-600 dark:text-gray-400 font-semibold">
-                        Total: {portStats.total}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {portStats.confirmados > 0 && (
+                          <span className="text-green-300">✅ {portStats.confirmados} confirmados</span>
+                        )}
+                        {portStats.cancelados > 0 && (
+                          <span className="text-red-300">❌ {portStats.cancelados} cancelados</span>
+                        )}
+                      </div>
+                      <span className="font-semibold text-slate-300">Total: {portStats.total}</span>
                     </div>
                     {(portStats.etdCumplida > 0 || portStats.etdPendiente > 0 || portStats.etaCumplida > 0 || portStats.etaPendiente > 0) && (
-                      <div className="flex items-center justify-between pt-1 border-t border-gray-200 dark:border-gray-600">
-                        <div className="flex flex-col space-y-0.5">
-                          {portStats.etdCumplida > 0 && (
-                            <span className="text-blue-600 dark:text-blue-400 text-xs">
-                              ✓ ETD cumplida: {portStats.etdCumplida}
-                            </span>
-                          )}
-                          {portStats.etdPendiente > 0 && (
-                            <span className="text-orange-600 dark:text-orange-400 text-xs">
-                              ⏳ ETD pendiente: {portStats.etdPendiente}
-                            </span>
-                          )}
-                          {portStats.etaCumplida > 0 && (
-                            <span className="text-blue-600 dark:text-blue-400 text-xs">
-                              ✓ ETA cumplida: {portStats.etaCumplida}
-                            </span>
-                          )}
-                          {portStats.etaPendiente > 0 && (
-                            <span className="text-orange-600 dark:text-orange-400 text-xs">
-                              ⏳ ETA pendiente: {portStats.etaPendiente}
-                            </span>
-                          )}
+                      <div className="mt-2 border-t border-slate-800/60 pt-2">
+                        <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-400">
+                          {portStats.etdCumplida > 0 && <span>✓ ETD cumplida: {portStats.etdCumplida}</span>}
+                          {portStats.etdPendiente > 0 && <span>⏳ ETD pendiente: {portStats.etdPendiente}</span>}
+                          {portStats.etaCumplida > 0 && <span>✓ ETA cumplida: {portStats.etaCumplida}</span>}
+                          {portStats.etaPendiente > 0 && <span>⏳ ETA pendiente: {portStats.etaPendiente}</span>}
                         </div>
                       </div>
                     )}
                   </div>
-                </div>
-              ))}
+                ))}
+            </div>
           </div>
-        </div>
-      )}
-      
-      {/* Leyenda */}
-      <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 z-10 border border-gray-200 dark:border-gray-700" style={{ maxWidth: '200px' }}>
-        <h4 className="font-semibold text-gray-900 dark:text-white mb-2 text-sm">Leyenda</h4>
-        <div className="space-y-2 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-gray-600 dark:text-gray-300">ETA cumplida</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <span className="text-gray-600 dark:text-gray-300">ETD cumplida</span>
-          </div>
-          <div className="flex items-center space-x-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <div className="w-3 h-3 rounded-full bg-red-600 border-2 border-white dark:border-gray-800"></div>
-            <span className="text-gray-600 dark:text-gray-300 text-xs">Puertos de salida (POL)</span>
-          </div>
-          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-            <p className="text-gray-500 dark:text-gray-400 text-xs">
-              Pasa el mouse sobre un destino para ver detalles
+        )}
+
+        {/* Leyenda */}
+        <div className="absolute bottom-4 right-4 z-10 max-w-[220px] rounded-lg border border-slate-800/60 bg-slate-950/90 p-4 text-xs text-slate-100 shadow-xl">
+          <h4 className="mb-2 text-sm font-semibold text-white">Leyenda</h4>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-green-500"></span>
+              <span>ETA cumplida</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="h-3 w-3 rounded-full bg-yellow-500"></span>
+              <span>ETD cumplida</span>
+            </div>
+            <div className="mt-2 border-t border-slate-800/60 pt-2">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full border-2 border-slate-900 bg-red-600"></span>
+                <span>Puertos de salida (POL)</span>
+              </div>
+            </div>
+            <p className="mt-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-400">
+              Pasa el mouse sobre un destino para ver detalles.
             </p>
           </div>
         </div>

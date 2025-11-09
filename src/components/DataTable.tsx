@@ -13,12 +13,8 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send } from 'lucide-react';
+import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, RotateCw, Download, RefreshCw, SlidersHorizontal, History } from 'lucide-react';
 
-// Constante para el ancho de la columna select (necesaria para sticky)
-const COLUMN_WIDTHS = {
-  select: 30, // Ancho fijo para columna sticky - reducido para acercar columnas
-};
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -48,6 +44,7 @@ interface DataTableProps {
   onBulkDelete?: () => void;
   // Prop para mantener filtros
   preserveFilters?: boolean;
+  onShowHistorial?: (record: Registro) => void;
 }
 
 export function DataTable({
@@ -72,6 +69,7 @@ export function DataTable({
   onClearSelection,
   onBulkDelete,
   preserveFilters = true,
+  onShowHistorial,
 }: DataTableProps) {
   // Log muy básico al inicio
   console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO - VERSION 1.0.5-FINAL');
@@ -83,6 +81,28 @@ export function DataTable({
   
   const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
   
+  const isDark = theme === 'dark';
+  const panelClasses = isDark
+    ? 'border border-slate-800/60 bg-slate-950/60 shadow-lg shadow-slate-950/30'
+    : 'border border-gray-200 bg-white shadow-sm';
+  const chipClasses = isDark
+    ? 'rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-200'
+    : 'rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700';
+  const controlButtonBase = 'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  const controlButtonDefault = isDark
+    ? `${controlButtonBase} border border-slate-800/70 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
+    : `${controlButtonBase} border border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
+  const controlButtonActive = isDark
+    ? `${controlButtonBase} border border-sky-500/70 bg-sky-500/10 text-sky-200 shadow-[0_0_12px_rgba(14,165,233,0.2)] focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
+    : `${controlButtonBase} border border-blue-500 bg-blue-50 text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
+  const toolbarButtonClasses = `${controlButtonDefault} shadow-inner shadow-slate-950/20`;
+  const primaryActionClasses = isDark
+    ? 'inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
+    : 'inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+  const destructiveButtonClasses = isDark
+    ? `${controlButtonBase} border border-rose-500/60 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 focus-visible:ring-rose-500/40 focus-visible:ring-offset-slate-950`
+    : `${controlButtonBase} border border-red-500 bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-400/40 focus-visible:ring-offset-white`;
+
   // Debug básico
   console.log('🚀 DataTable se está renderizando');
   console.log('🔍 DataTable Debug (Temporal):', {
@@ -129,6 +149,7 @@ export function DataTable({
   const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showReportGenerator, setShowReportGenerator] = useState(false);
+  const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
   
   // Estado para visibilidad de columnas
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -143,13 +164,12 @@ export function DataTable({
   });
 
   // Columnas que nunca se pueden ocultar
-  const alwaysVisibleColumns = ['select', 'refAsli', 'booking', 'historial'];
+  const alwaysVisibleColumns = ['refAsli', 'refCliente', 'booking', 'historial'];
   
   // Estado para el menú contextual
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro } | null>(null);
   
-  // Estado para filtros de fechas
-  const [dateFilters, setDateFilters] = useState({
+  const initialDateFilters = {
     semanaIngreso: '',
     semanaEtd: '',
     semanaEta: '',
@@ -157,7 +177,10 @@ export function DataTable({
     mesEtd: '',
     mesEta: '',
     year: '',
-  });
+  } as const;
+  
+  // Estado para filtros de fechas
+  const [dateFilters, setDateFilters] = useState<typeof initialDateFilters>(initialDateFilters);
   
   // Meses en español
   const months = [
@@ -184,15 +207,15 @@ export function DataTable({
   // Helper function para calcular clases de fila (fuera del map para optimización)
   const getRowClasses = (theme: string, isSelected: boolean, isCancelado: boolean, isPendiente: boolean) => {
     if (theme === 'dark') {
-      if (isSelected) return { bg: 'bg-blue-900/40', hover: 'hover:bg-blue-900/60', text: 'text-blue-100 font-medium' };
-      if (isCancelado) return { bg: 'bg-red-800/60', hover: 'hover:bg-red-800/80', text: 'text-red-100 font-medium' };
-      if (isPendiente) return { bg: 'bg-yellow-800/60', hover: 'hover:bg-yellow-800/80', text: 'text-yellow-100 font-medium' };
-      return { bg: 'bg-gray-800', hover: 'hover:bg-gray-700', text: 'text-gray-100' };
+      if (isSelected) return { bg: 'bg-sky-500/15', hover: 'hover:bg-sky-500/25', text: 'text-sky-100 font-semibold', border: 'border-sky-500/40', refAsliBg: 'rgba(12,74,110,1)' };
+      if (isCancelado) return { bg: 'bg-rose-900/40', hover: 'hover:bg-rose-900/55', text: 'text-rose-200 font-medium', border: 'border-rose-500/40', refAsliBg: 'rgba(76,5,25,1)' };
+      if (isPendiente) return { bg: 'bg-amber-900/40', hover: 'hover:bg-amber-900/55', text: 'text-amber-100 font-medium', border: 'border-amber-500/30', refAsliBg: 'rgba(88,53,1,1)' };
+      return { bg: 'bg-slate-950/40', hover: 'hover:bg-slate-900/55', text: 'text-slate-200', border: 'border-slate-800/50', refAsliBg: 'rgba(15,23,42,1)' };
     } else {
-      if (isSelected) return { bg: 'bg-blue-100', hover: 'hover:bg-blue-200', text: 'text-blue-800 font-medium' };
-      if (isCancelado) return { bg: 'bg-red-100', hover: 'hover:bg-red-200', text: 'text-red-900 font-medium' };
-      if (isPendiente) return { bg: 'bg-yellow-100', hover: 'hover:bg-yellow-200', text: 'text-yellow-900 font-medium' };
-      return { bg: 'bg-white', hover: 'hover:bg-gray-50', text: 'text-gray-900' };
+      if (isSelected) return { bg: 'bg-blue-100', hover: 'hover:bg-blue-200', text: 'text-blue-800 font-semibold', border: 'border-blue-300', refAsliBg: '#bfdbfe' };
+      if (isCancelado) return { bg: 'bg-red-100', hover: 'hover:bg-red-200', text: 'text-red-900 font-medium', border: 'border-red-200', refAsliBg: '#fecaca' };
+      if (isPendiente) return { bg: 'bg-yellow-100', hover: 'hover:bg-yellow-200', text: 'text-yellow-900 font-medium', border: 'border-yellow-200', refAsliBg: '#fef08a' };
+      return { bg: 'bg-white', hover: 'hover:bg-gray-50', text: 'text-gray-900', border: 'border-gray-200', refAsliBg: '#ffffff' };
     }
   };
 
@@ -362,251 +385,283 @@ export function DataTable({
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
+    onColumnSizingChange: setColumnSizing,
     state: {
       sorting,
       columnFilters,
       globalFilter,
       columnVisibility,
+      columnSizing,
     },
+    columnResizeMode: 'onChange',
+    enableColumnResizing: true,
+    enableColumnVirtualization: false,
   });
+
+  const handleResetTable = () => {
+    table.resetSorting();
+    table.resetColumnSizing();
+    table.resetColumnVisibility();
+    table.resetColumnOrder();
+    setColumnFilters([]);
+    setGlobalFilter('');
+    setDateFilters({ ...initialDateFilters });
+  };
 
   // Virtualización para optimizar el renderizado de muchas filas
   const { rows } = table.getRowModel();
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 32, // Altura estimada de cada fila en píxeles
+    estimateSize: () => 44, // Altura estimada de cada fila en píxeles
     overscan: 10, // Renderizar 10 filas adicionales fuera del viewport para scroll suave
   });
+
+  const selectedCount = selectedRows?.size ?? 0;
+  const hasSelection = selectedCount > 0;
+
+  const selectedRecordsList = useMemo(() => {
+    if (!selectedRows || selectedRows.size === 0) return [] as Registro[];
+    return data.filter((record) => record.id && selectedRows.has(record.id));
+  }, [data, selectedRows]);
+
+  const columnToggleOptions = useMemo(() => {
+    return table.getAllLeafColumns().map((column) => {
+      const headerLabel = typeof column.columnDef.header === 'string'
+        ? column.columnDef.header
+        : (column.id?.toUpperCase() ?? '');
+      return {
+        id: column.id ?? headerLabel,
+        header: headerLabel,
+        visible: column.getIsVisible(),
+      };
+    }).filter((option) => option.id && !option.id.startsWith('_'));
+  }, [table, columnVisibility]);
+
+  const handleToggleFilters = () => setShowFilters((prev) => !prev);
+
+  const handleSelectAllClick = () => {
+    if (!onSelectAll) return;
+    onSelectAll(filteredData);
+  };
+
+  const handleClearSelectionClick = () => {
+    onClearSelection?.();
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (!hasSelection) return;
+    onBulkDelete?.();
+  };
+
+  const handleToggleViewMode = () => {
+    setViewMode((prev) => (prev === 'table' ? 'cards' : 'table'));
+  };
+
+  const handleGlobalSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setGlobalFilter(event.target.value);
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  const handleContextEdit = () => {
+    if (!contextMenu || !onEdit) return;
+    onEdit(contextMenu.record);
+    closeContextMenu();
+  };
+
+  const handleContextEditNaveViaje = () => {
+    if (!contextMenu) return;
+    if (selectedRecordsList.length > 1 && onBulkEditNaveViaje) {
+      onBulkEditNaveViaje(selectedRecordsList);
+    } else if (onEditNaveViaje) {
+      onEditNaveViaje(contextMenu.record);
+    }
+    closeContextMenu();
+  };
+
+  const handleContextDelete = () => {
+    if (!contextMenu) return;
+    if (hasSelection && onBulkDelete) {
+      onBulkDelete();
+    } else if (onDelete) {
+      onDelete(contextMenu.record);
+    }
+    closeContextMenu();
+  };
 
   return (
     <div className="w-full space-y-4">
       {/* Header con controles */}
-      <div className="flex flex-col gap-3">
-        {/* Primera fila: Búsqueda */}
-        <div className="w-full">
-          <div className="relative">
-            <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${
-              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-            }`} />
-            <input
-              placeholder="Buscar en todos los campos..."
-              value={globalFilter ?? ''}
-              onChange={(e) => setGlobalFilter(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                theme === 'dark'
-                  ? 'border-gray-600 bg-gray-700 text-white placeholder:text-gray-400'
-                  : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-500'
-              }`}
-            />
-          </div>
-        </div>
-        
-        {/* Segunda fila: Controles */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Filtros */}
-            {/* Filtros */}
-            <button 
-              data-filter-button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 border rounded-lg text-xs sm:text-sm transition-colors ${
-                (columnFilters.length > 0 || Object.values(dateFilters).some(value => value !== ''))
-                  ? theme === 'dark'
-                    ? 'border-blue-500 bg-blue-900/30 text-blue-300'
-                    : 'border-blue-500 bg-blue-50 text-blue-600'
-                  : theme === 'dark'
-                    ? 'border-gray-600 hover:bg-gray-700 text-gray-300'
-                    : 'border-gray-300 hover:bg-gray-50 text-gray-600'
-              }`}
-            >
-              <Filter className={`h-3 w-3 sm:h-4 sm:w-4 ${
-                (columnFilters.length > 0 || Object.values(dateFilters).some(value => value !== ''))
-                  ? theme === 'dark' ? 'text-blue-300' : 'text-blue-600'
-                  : theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`} />
-              <span className="hidden sm:inline">Filtros</span>
-              {(columnFilters.length > 0 || Object.values(dateFilters).some(value => value !== '')) && (
-                <span className="bg-blue-600 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded-full">
-                  {columnFilters.length + Object.values(dateFilters).filter(value => value !== '').length}
-                </span>
+      <div className={`${panelClasses} rounded-2xl px-4 py-4 backdrop-blur`}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {canAdd && onAdd && (
+                <button
+                  onClick={onAdd}
+                  className={primaryActionClasses}
+                >
+                  <Plus className="h-4 w-4" />
+                  Nuevo registro
+                </button>
               )}
-            </button>
 
-            {/* Toggle de Vista */}
-            <div className="flex border rounded-lg overflow-hidden">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="search"
+                  value={globalFilter ?? ''}
+                  onChange={handleGlobalSearchChange}
+                  placeholder="Buscar en la tabla..."
+                  className={`pl-9 pr-3 py-2 text-xs rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                    isDark
+                      ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
+                      : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
+                  }`}
+                />
+              </div>
+
               <button
-                onClick={() => setViewMode('table')}
-                className={`px-2 sm:px-3 py-2 text-xs sm:text-sm transition-colors ${
-                  viewMode === 'table'
-                    ? theme === 'dark'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-blue-500 text-white'
-                    : theme === 'dark'
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title="Vista de tabla"
+                data-filter-button
+                onClick={handleToggleFilters}
+                className={showFilters ? controlButtonActive : toolbarButtonClasses}
               >
-                <List className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Filter className="h-4 w-4" />
+                Filtros
               </button>
+
               <button
-                onClick={() => setViewMode('cards')}
-                className={`px-2 sm:px-3 py-2 text-xs sm:text-sm transition-colors ${
-                  viewMode === 'cards'
-                    ? theme === 'dark'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-blue-500 text-white'
-                    : theme === 'dark'
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-                title="Vista de tarjetas"
+                onClick={handleToggleViewMode}
+                className={toolbarButtonClasses}
               >
-                <Grid className="h-3 w-3 sm:h-4 sm:w-4" />
+                {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
               </button>
+
+              {columnToggleOptions.length > 0 && (
+                <ColumnToggle
+                  columns={columnToggleOptions}
+                  onToggleColumn={handleToggleColumn}
+                  onToggleAll={handleToggleAllColumns}
+                  alwaysVisibleColumns={alwaysVisibleColumns}
+                />
+              )}
             </div>
 
-            {/* Toggle de Columnas */}
-            <ColumnToggle
-              columns={columns.map(col => ({
-                id: col.id || '',
-                header: typeof col.header === 'string' ? col.header : 'Columna',
-                visible: columnVisibility[col.id || ''] ?? true
-              }))}
-              onToggleColumn={handleToggleColumn}
-              onToggleAll={handleToggleAllColumns}
-              alwaysVisibleColumns={alwaysVisibleColumns}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              <button className={toolbarButtonClasses} disabled>
+                <RotateCcw className="h-4 w-4" />
+                Deshacer
+              </button>
+              <button className={toolbarButtonClasses} disabled>
+                <RotateCw className="h-4 w-4" />
+                Rehacer
+              </button>
+              <button className={toolbarButtonClasses} disabled>
+                <SlidersHorizontal className="h-4 w-4" />
+                Densidad
+              </button>
+              <button
+                className={toolbarButtonClasses}
+                onClick={() => setShowReportGenerator(true)}
+              >
+                <Download className="h-4 w-4" />
+                Exportar
+              </button>
+              <button
+                className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+                onClick={handleResetTable}
+              >
+                <RefreshCw className="h-4 w-4" />
+                Reiniciar tabla
+              </button>
+            </div>
           </div>
 
-          {/* Botones de acción */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Seleccionar todos */}
-            {onSelectAll && filteredData.length > 0 && (
-              <button
-                onClick={() => {
-                  const visibleRows = table.getFilteredRowModel().rows.map(row => row.original);
-                  onSelectAll(visibleRows);
-                }}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-purple-600 text-white hover:bg-purple-700'
-                }`}
-                title={selectedRows.size === table.getFilteredRowModel().rows.length ? 'Deseleccionar todos' : 'Seleccionar todos los registros visibles'}
-              >
-                <CheckSquare className="h-4 w-4" />
-                <span className="hidden xs:inline">
-                  {selectedRows.size === table.getFilteredRowModel().rows.length ? 'Deseleccionar' : 'Seleccionar todos'}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {onSelectAll && (
+                <button
+                  onClick={handleSelectAllClick}
+                  className={toolbarButtonClasses}
+                >
+                  <CheckSquare className="h-4 w-4" />
+                  Seleccionar todo
+                </button>
+              )}
+              {onClearSelection && (
+                <button
+                  onClick={handleClearSelectionClick}
+                  className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!hasSelection}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Limpiar selección
+                </button>
+              )}
+              {canDelete && onBulkDelete && (
+                <button
+                  onClick={handleBulkDeleteClick}
+                  className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={!hasSelection}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Eliminar selección
+                </button>
+              )}
+              {hasSelection && (
+                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                  isDark
+                    ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
+                    : 'bg-blue-100 text-blue-700 border border-blue-200'
+                }`}>
+                  {selectedCount} seleccionados
                 </span>
-                <span className="xs:hidden">{selectedRows.size === table.getFilteredRowModel().rows.length ? 'Des.' : 'Sel.'}</span>
-              </button>
-            )}
-
-            {/* Agregar */}
-            {onAdd && canAdd && (
-              <button
-                onClick={onAdd}
-                className="flex items-center space-x-1 sm:space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
-                title="Agregar nuevo registro de embarque"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden xs:inline">Agregar</span>
-              </button>
-            )}
-
-
-            {/* Generar Reporte */}
-            {selectedRows.size > 0 && (
-              <button
-                onClick={() => setShowReportGenerator(true)}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-green-600 text-white hover:bg-green-700'
-                    : 'bg-green-600 text-white hover:bg-green-700'
-                }`}
-                title="Generar reportes con los registros seleccionados"
-              >
-                <Send className="h-4 w-4" />
-                <span className="hidden xs:inline">Enviar a ({selectedRows.size})</span>
-                <span className="xs:hidden">Enviar</span>
-              </button>
-            )}
-
-            {/* Limpiar selección */}
-            {selectedRows.size > 0 && onClearSelection && (
-              <button
-                onClick={onClearSelection}
-                className={`flex items-center space-x-1 sm:space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 border border-gray-600'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300'
-                }`}
-                title="Limpiar selección"
-              >
-                <X className="h-4 w-4" />
-                <span className="hidden xs:inline">Limpiar ({selectedRows.size})</span>
-                <span className="xs:hidden">{selectedRows.size}</span>
-              </button>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Panel de filtros */}
       {showFilters && (
-        <div 
-          ref={filterPanelRef} 
-          className={`border rounded-lg p-4 transition-colors ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-600'
-              : 'bg-white border-gray-200'
-          }`}
+        <div
+          ref={filterPanelRef}
+          className={`${panelClasses} rounded-2xl border border-slate-800/60 bg-slate-950/70 p-5 backdrop-blur transition-all`}
         >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className={`font-medium ${
-              theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-            }`}>Filtros por columna</h3>
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => {
-                  setColumnFilters([]);
-                  setDateFilters({
-                    semanaIngreso: '',
-                    semanaEtd: '',
-                    semanaEta: '',
-                    mesIngreso: '',
-                    mesEtd: '',
-                    mesEta: '',
-                    year: '',
-                  });
-                }}
-                className={`text-sm transition-colors ${
-                  theme === 'dark'
-                    ? 'text-blue-400 hover:text-blue-300'
-                    : 'text-blue-600 hover:text-blue-800'
-                }`}
-              >
-                Limpiar todos
-              </button>
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Controles avanzados</p>
+              <h3 className="text-sm font-semibold text-slate-100">Filtros por columna</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              {(columnFilters.length > 0 || Object.values(dateFilters).some((value) => value !== '')) && (
+                <button
+                  onClick={() => {
+                    setColumnFilters([]);
+                    setDateFilters({ ...initialDateFilters });
+                  }}
+                  className={`${controlButtonActive} px-3 py-1 text-[11px]`}
+                >
+                  Limpiar filtros
+                </button>
+              )}
               <button
                 onClick={() => setShowFilters(false)}
-                className={`transition-colors ${
-                  theme === 'dark'
-                    ? 'text-gray-400 hover:text-gray-300'
-                    : 'text-gray-600 hover:text-gray-800'
-                }`}
+                className={`${toolbarButtonClasses} px-3 py-1 text-[11px]`}
               >
                 <X className="h-4 w-4" />
+                Cerrar
               </button>
             </div>
           </div>
-          
-                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {/* Filtros de columnas principales */}
             {table.getAllLeafColumns().map((column) => {
-              if (column.id === 'select' || column.id.startsWith('_')) {
+              if (column.id.startsWith('_')) {
                 return null;
               }
               
@@ -777,13 +832,13 @@ export function DataTable({
               if (column.id === 'ejecutivo') {
                 return (
                   <div key={column.id} className="space-y-1">
-                    <label className="text-xs font-medium text-black/50">
-                      Ejecutivo
+                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
+                      Ejecutivo {hasFilter && '(✓)'}
                     </label>
                     <select
                       value={filterValue}
                       onChange={(e) => column.setFilterValue(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black/50 bg-white"
+                      className={getFilterStyles(hasFilter)}
                     >
                       <option value="">Todos</option>
                       {ejecutivosUnicos.map((ejecutivo) => (
@@ -821,15 +876,15 @@ export function DataTable({
               
               return (
                 <div key={column.id} className="space-y-1">
-                  <label className="text-xs font-medium text-black/50">
-                    {column.id}
+                  <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
+                    {column.id.toUpperCase()} {hasFilter && '(✓)'}
                   </label>
                   <input
                     type="text"
                     value={filterValue}
                     onChange={(e) => column.setFilterValue(e.target.value)}
                     placeholder={`Filtrar por ${column.id}...`}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black/50 placeholder:text-black/30"
+                    className={getFilterStyles(hasFilter)}
                   />
                 </div>
               );
@@ -960,560 +1015,410 @@ export function DataTable({
 
       {/* Tabla con scroll interno */}
       {viewMode === 'table' && (
-       <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800">
+       <div className={`${panelClasses} rounded-2xl overflow-hidden backdrop-blur`}
+       >
          <div 
            ref={tableContainerRef}
-           className="max-h-[70vh] overflow-y-auto overflow-x-auto"
+           className={`max-h-[70vh] overflow-y-auto overflow-x-auto ${isDark ? 'bg-slate-950/40' : 'bg-white'}`}
            style={{
              willChange: 'scroll-position',
              WebkitOverflowScrolling: 'touch'
            }}
          >
-          <table style={{ tableLayout: 'auto', width: '100%' }}>
-                         <thead className="sticky top-0 z-50 shadow-sm">
-               {table.getHeaderGroups().map((headerGroup) => (
-                 <tr key={headerGroup.id}>
-                   {headerGroup.headers.map((header) => {
-                     const canSort = header.column.getCanSort();
-                     const sortDirection = header.column.getIsSorted();
-                     const isSelectColumn = header.id === 'select';
-                     const isRefAsliColumn = header.id === 'refAsli';
-                     
-                     // Clases para sticky
-                     let stickyClasses = '';
-                     let stickyStyles: React.CSSProperties = {};
-                     
+          <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}>
+            <thead className="sticky top-0 z-[250] shadow-[0_10px_24px_rgba(8,15,30,0.45)]">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    const canSort = header.column.getCanSort();
+                    const sortDirection = header.column.getIsSorted();
+                    const isRefAsliColumn = header.id === 'refAsli';
+
+                    let stickyClasses = '';
+                    let stickyStyles: React.CSSProperties = {};
+                    
                     const columnMinSize = header.column.columnDef.minSize || 100;
                     const columnMaxSize = header.column.columnDef.maxSize || 300;
-                    const columnSize = header.column.getSize() || columnMinSize;
+                    const columnSize = Math.min(
+                      Math.max(header.column.getSize() || columnMinSize, columnMinSize),
+                      columnMaxSize
+                    );
+                    const headerBorderColor = isDark ? 'rgba(56, 74, 110, 0.9)' : 'rgba(209, 213, 219, 0.9)';
                     
-                    // Aplicar fondo azul oscuro a todos los headers
                     const baseHeaderStyle = {
-                      backgroundColor: '#1e3a8a',
-                      color: 'white',
+                      background: isDark
+                        ? 'linear-gradient(180deg, #10203f 0%, #0c1a36 100%)'
+                        : 'linear-gradient(180deg, #f9fafb 0%, #e5e7eb 100%)',
+                      color: isDark ? '#f8fafc' : '#0f172a',
+                      backdropFilter: 'blur(12px)',
                     };
                     
-                    if (isSelectColumn) {
-                      stickyClasses = 'sticky left-0 z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
-                      stickyStyles = { 
-                        ...baseHeaderStyle,
-                        left: 0, 
-                        width: `${COLUMN_WIDTHS.select}px`,
-                        minWidth: `${COLUMN_WIDTHS.select}px`,
-                        maxWidth: `${COLUMN_WIDTHS.select}px`,
-                        transform: 'translateZ(0)',
-                        WebkitBackfaceVisibility: 'hidden',
-                        backfaceVisibility: 'hidden' as any,
-                        willChange: 'transform'
-                      };
-                    } else if (isRefAsliColumn) {
-                      stickyClasses = 'sticky z-40 shadow-[2px_0_5px_rgba(0,0,0,0.1)]';
-                      stickyStyles = { 
-                        ...baseHeaderStyle,
-                        left: `${COLUMN_WIDTHS.select}px`, 
-                        minWidth: `${columnMinSize}px`,
-                        maxWidth: `${columnMaxSize}px`,
-                        transform: 'translateZ(0)',
-                        WebkitBackfaceVisibility: 'hidden',
-                        backfaceVisibility: 'hidden' as any,
-                        willChange: 'transform'
-                      };
-                    } else {
-                      // Para columnas no sticky, solo aplicar el fondo
+                    if (isRefAsliColumn) {
+                      stickyClasses = 'sticky left-0 z-[260]';
                       stickyStyles = {
                         ...baseHeaderStyle,
-                        minWidth: `${columnMinSize}px`,
-                        maxWidth: `${columnMaxSize}px`,
+                        left: 0,
+                        top: 0,
+                        width: `${columnSize}px`,
+                        minWidth: `${columnSize}px`,
+                        maxWidth: `${columnSize}px`,
+                        transform: 'translateZ(0)',
+                        WebkitBackfaceVisibility: 'hidden',
+                        backfaceVisibility: 'hidden' as any,
+                        willChange: 'transform',
+                        borderBottom: `1px solid ${headerBorderColor}`,
+                        borderRight: `1px solid ${headerBorderColor}`,
+                        boxShadow: 'none',
+                        opacity: 1,
+                      };
+                    } else {
+                      stickyClasses = 'relative z-[220]';
+                      stickyStyles = {
+                        ...baseHeaderStyle,
+                        width: `${columnSize}px`,
+                        minWidth: `${columnSize}px`,
+                        maxWidth: `${columnSize}px`,
+                        borderRight: `1px solid ${headerBorderColor}`,
+                        borderBottom: `1px solid ${headerBorderColor}`,
                       };
                     }
-                    
-                     const columnStyles = {
-                       ...stickyStyles,
-                       minWidth: isSelectColumn ? `${COLUMN_WIDTHS.select}px` : `${columnMinSize}px`,
-                       maxWidth: isSelectColumn ? `${COLUMN_WIDTHS.select}px` : `${columnMaxSize}px`,
-                       whiteSpace: 'nowrap',
-                     };
-                     
-                     return (
-                       <th
-                         key={header.id}
-                        className={`${isSelectColumn ? 'px-0.5' : isRefAsliColumn ? 'px-1' : 'px-2'} py-2.5 text-center text-[10px] font-bold uppercase tracking-wider whitespace-nowrap border-r border-blue-700 ${
-                          canSort ? 'cursor-pointer select-none hover:bg-blue-800 transition-colors' : ''
-                        } ${stickyClasses}`}
-                         style={columnStyles}
-                         onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
-                       >
-                         <div className="flex items-center justify-center gap-1 min-h-[32px]">
-                           {isSelectColumn && onSelectAll ? (
-                             <div className="flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                               <input
-                                 type="checkbox"
-                                 checked={selectedRows.size > 0 && selectedRows.size === table.getFilteredRowModel().rows.length}
-                                 onChange={(e) => {
-                                   e.stopPropagation();
-                                   const visibleRows = table.getFilteredRowModel().rows.map(row => row.original);
-                                   onSelectAll(visibleRows);
-                                 }}
-                                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                                 title={selectedRows.size === table.getFilteredRowModel().rows.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                               />
-                             </div>
-                           ) : header.isPlaceholder ? null : (
-                             flexRender(
-                               header.column.columnDef.header,
-                               header.getContext()
-                             )
-                           )}
-                           {canSort && !isSelectColumn && (
-                             <span className="inline-flex flex-col ml-1">
-                               {sortDirection === 'asc' && (
-                                 <ArrowUp className="h-3 w-3" />
-                               )}
-                               {sortDirection === 'desc' && (
-                                 <ArrowDown className="h-3 w-3" />
-                               )}
-                               {!sortDirection && (
-                                 <ArrowUpDown className="h-3 w-3 opacity-50" />
-                               )}
-                             </span>
-                           )}
-                         </div>
-                       </th>
-                     );
-                   })}
-                 </tr>
-               ))}
-             </thead>
-                         <tbody 
+
+                    const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+                      if (!canSort) return;
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        header.column.toggleSorting();
+                      }
+                    };
+
+                    return (
+                      <th
+                        key={header.id}
+                        colSpan={header.colSpan}
+                        className={`p-0 ${stickyClasses}`}
+                        style={stickyStyles}
+                      >
+                        <div
+                          className={`relative flex min-h-[44px] w-full items-center justify-between gap-1.5 px-3 py-2 select-none`}
+                        >
+                          <div
+                            {...(canSort
+                              ? {
+                                  role: 'button',
+                                  tabIndex: 0,
+                                  onClick: header.column.getToggleSortingHandler(),
+                                  onKeyDown: handleKeyDown,
+                                }
+                              : {})}
+                            className={`flex items-center gap-2 ${
+                              canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'
+                            }`}
+                          >
+                            <span className={`block whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.1em] ${
+                              isDark ? 'text-slate-100' : 'text-slate-700'
+                            }`}>
+                              {flexRender(header.column.columnDef.header, header.getContext())}
+                            </span>
+                            {sortDirection ? (
+                              sortDirection === 'asc' ? (
+                                <ArrowUp size={12} />
+                              ) : (
+                                <ArrowDown size={12} />
+                              )
+                            ) : (
+                              canSort && <ArrowUpDown size={12} />
+                            )}
+                          </div>
+                          {header.column.getCanResize() && (
+                            <div
+                              onMouseDown={header.getResizeHandler()}
+                              onTouchStart={header.getResizeHandler()}
+                              className="absolute top-0 right-0 h-full w-2 cursor-col-resize select-none"
+                            >
+                              <div className="h-full w-[2px] bg-white/20 hover:bg-white/60" />
+                            </div>
+                          )}
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              ))}
+            </thead>
+            <tbody
               ref={tableBodyRef}
-              className={`divide-y transition-colors ${
-                theme === 'dark' 
-                  ? 'bg-gray-900 divide-gray-700' 
-                  : 'bg-white divide-gray-200'
+              className={`transition-colors ${
+                isDark ? 'bg-transparent divide-slate-800/60' : 'bg-white divide-gray-200'
               }`}
             >
-              {/* Spacer para filas que están antes del viewport */}
               {rowVirtualizer.getVirtualItems().length > 0 && (
                 <tr>
-                  <td 
-                    colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length} 
-                    style={{ 
+                  <td
+                    colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length}
+                    style={{
                       height: `${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px`,
                       padding: 0,
-                      border: 'none'
-                    }} 
+                      border: 'none',
+                    }}
                   />
                 </tr>
               )}
-              
-              {/* Renderizar solo las filas virtuales visibles */}
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const row = rows[virtualRow.index];
                 if (!row) return null;
-                
+
                 const isCancelado = row.original.estado === 'CANCELADO';
                 const isPendiente = row.original.estado === 'PENDIENTE';
                 const isSelected = selectedRows?.has(row.original.id || '');
                 const rowClasses = getRowClasses(theme, isSelected, isCancelado, isPendiente);
-                const rowBgColor = theme === 'dark' 
-                  ? (row.index % 2 === 0 ? '#1f2937' : '#111827')
-                  : (row.index % 2 === 0 ? '#ffffff' : '#f9fafb');
-                
+                const borderColor = isDark ? 'rgba(30, 41, 59, 0.9)' : 'rgba(229, 231, 235, 1)';
+                const refAsliShadow = isDark ? '8px 0 14px rgba(8, 15, 30, 0.45)' : '2px 0 6px rgba(148, 163, 184, 0.2)';
+
                 return (
                   <tr
                     key={row.id}
-                    className={`${rowClasses.bg} ${rowClasses.hover}`}
-                    style={{
-                      height: `${virtualRow.size}px`,
-                    }}
+                    className={`relative border-b ${rowClasses.border} ${rowClasses.bg} ${rowClasses.hover}`}
+                    style={{ height: `${virtualRow.size}px` }}
                     onContextMenu={(e) => {
                       e.preventDefault();
-                      // Verificar si hay opciones disponibles antes de mostrar el menú
-                      const hasEditNaveViaje = currentUser?.rol === 'admin' && ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
+                      const hasEditNaveViaje = currentUser?.rol === 'admin' &&
+                        ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
                       const hasDelete = canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete);
-                      
-                      // Solo mostrar el menú si hay al menos una opción disponible
                       if (hasEditNaveViaje || hasDelete) {
                         setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
                       }
                     }}
                   >
                     {row.getVisibleCells().map((cell) => {
-                      const isSelectColumn = cell.column.id === 'select';
-                      const isRefAsliColumn = cell.column.id === 'refAsli';
-                      
-                      // Clases para sticky
+                      const isRefAsliColumnCell = cell.column.id === 'refAsli';
+
                       let stickyClasses = '';
                       let stickyStyles: React.CSSProperties = {};
-                      
+
                       const columnMinSize = cell.column.columnDef.minSize || 100;
                       const columnMaxSize = cell.column.columnDef.maxSize || 300;
-                      
-                      if (isSelectColumn) {
-                        stickyClasses = `sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        stickyStyles = { 
-                          left: 0, 
-                          width: `${COLUMN_WIDTHS.select}px`,
-                          minWidth: `${COLUMN_WIDTHS.select}px`,
-                          maxWidth: `${COLUMN_WIDTHS.select}px`,
-                          backgroundColor: rowBgColor,
+                      const columnWidth = Math.min(
+                        Math.max(cell.column.getSize() || columnMinSize, columnMinSize),
+                        columnMaxSize
+                      );
+
+                      if (isRefAsliColumnCell) {
+                        stickyClasses = `sticky z-[240]`;
+                        stickyStyles = {
+                          left: 0,
+                          width: `${columnWidth}px`,
+                          minWidth: `${columnWidth}px`,
+                          maxWidth: `${columnWidth}px`,
                           transform: 'translateZ(0)',
                           WebkitBackfaceVisibility: 'hidden',
                           backfaceVisibility: 'hidden' as any,
-                          willChange: 'transform'
-                        };
-                      } else if (isRefAsliColumn) {
-                        stickyClasses = `sticky z-10 shadow-[2px_0_5px_rgba(0,0,0,0.1)]`;
-                        stickyStyles = { 
-                          left: `${COLUMN_WIDTHS.select}px`,
-                          minWidth: `${columnMinSize}px`,
-                          maxWidth: `${columnMaxSize}px`,
-                          backgroundColor: rowBgColor,
-                          transform: 'translateZ(0)',
-                          WebkitBackfaceVisibility: 'hidden',
-                          backfaceVisibility: 'hidden' as any,
-                          willChange: 'transform'
+                          willChange: 'transform',
+                          boxShadow: `${refAsliShadow}, inset 0 -1px 0 0 ${borderColor}`,
+                          borderRight: `1px solid ${borderColor}`,
+                          background: rowClasses.refAsliBg,
                         };
                       } else {
-                        // Para columnas no sticky, usar min y max width dinámicos
+                        stickyClasses = 'relative z-[120]';
                         stickyStyles = {
-                          minWidth: `${columnMinSize}px`,
-                          maxWidth: `${columnMaxSize}px`,
+                          width: `${columnWidth}px`,
+                          minWidth: `${columnWidth}px`,
+                          maxWidth: `${columnWidth}px`,
                         };
                       }
-                      
+
                       return (
-                        <td 
-                          key={cell.id} 
-                          className={`${isSelectColumn ? 'px-0.5' : isRefAsliColumn ? 'px-1' : 'px-1 sm:px-2'} py-1 whitespace-nowrap text-[10px] text-center border-r border-b border-gray-200 dark:border-gray-700 overflow-hidden ${rowClasses.text} ${stickyClasses}`}
+                        <td
+                          key={cell.id}
+                          className={`p-0 whitespace-nowrap border-r ${
+                            isDark ? 'border-slate-800/40' : 'border-gray-200'
+                          } overflow-hidden ${rowClasses.text} ${stickyClasses}`}
                           style={stickyStyles}
                         >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          <div
+                            className={`flex h-full w-full items-center ${
+                              isRefAsliColumnCell ? 'justify-start px-1.5 py-0.5' : 'justify-start px-3 py-2'
+                            } text-[11px] sm:text-xs`}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </div>
                         </td>
                       );
                     })}
                   </tr>
                 );
               })}
-              
-              {/* Spacer para filas que están después del viewport */}
               {rowVirtualizer.getVirtualItems().length > 0 && (
                 <tr>
-                  <td 
-                    colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length} 
-                    style={{ 
-                      height: `${rowVirtualizer.getTotalSize() - (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end ?? 0)}px`,
+                  <td
+                    colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length}
+                    style={{
+                      height: `${
+                        rowVirtualizer.getTotalSize() -
+                        (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end ?? 0)
+                      }px`,
                       padding: 0,
-                      border: 'none'
-                    }} 
+                      border: 'none',
+                    }}
                   />
                 </tr>
               )}
-             </tbody>
+            </tbody>
           </table>
-        </div>
-      </div>
+         </div>
+       </div>
       )}
 
-      {/* Vista de Tarjetas para Móviles */}
       {viewMode === 'cards' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {table.getRowModel().rows.map((row) => {
-            const registro = row.original;
-            const isCancelado = registro.estado === 'CANCELADO';
-            const isPendiente = registro.estado === 'PENDIENTE';
-            
-            return (
-              <div
-                key={row.id}
-                className={`p-4 rounded-lg border transition-colors ${
-                  theme === 'dark'
-                    ? isCancelado
-                      ? 'bg-red-800/60 border-red-600'
-                      : isPendiente
-                      ? 'bg-yellow-800/60 border-yellow-600'
-                      : 'bg-gray-800 border-gray-600'
-                    : isCancelado
-                    ? 'bg-red-50 border-red-200'
-                    : isPendiente
-                    ? 'bg-yellow-50 border-yellow-200'
-                    : 'bg-white border-gray-200'
-                }`}
-              >
-                {/* Header de la tarjeta */}
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <h3 className={`font-bold text-sm ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}>
-                      {registro.refAsli}
-                    </h3>
-                    <p className={`text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>
-                      {registro.naviera} - {registro.naveInicial}
-                    </p>
-                    {registro.viaje && (
-                      <p className={`text-xs font-mono ${
-                        theme === 'dark' ? 'text-blue-300' : 'text-blue-600'
-                      }`}>
-                        [{registro.viaje}]
-                      </p>
+        <div className={`${panelClasses} rounded-2xl p-4 backdrop-blur space-y-4`}>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {filteredData.map((record, index) => {
+              const key = record.id ?? `registro-${record.refAsli ?? index}`;
+              const estado = record.estado ?? 'SIN ESTADO';
+              const estadoColor = estado === 'CONFIRMADO'
+                ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'
+                : estado === 'PENDIENTE'
+                  ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
+                  : estado === 'CANCELADO'
+                    ? 'bg-rose-500/15 text-rose-200 border border-rose-500/30'
+                    : 'bg-slate-500/15 text-slate-200 border border-slate-500/30';
+
+              const handleCardContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+                event.preventDefault();
+                const hasEditNaveViaje = currentUser?.rol === 'admin' &&
+                  ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
+                const hasDelete = canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete);
+                if (onEdit || hasEditNaveViaje || hasDelete) {
+                  setContextMenu({ x: event.clientX, y: event.clientY, record });
+                }
+              };
+
+              return (
+                <div
+                  key={key}
+                  className="group relative rounded-2xl border border-slate-800/60 bg-slate-950/60 p-4 shadow-lg shadow-slate-950/20 transition-transform hover:-translate-y-[3px] hover:border-sky-500/60"
+                  onContextMenu={handleCardContextMenu}
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ref ASLI</p>
+                      <h3 className="text-lg font-semibold text-slate-100">{record.refAsli || 'Sin referencia'}</h3>
+                    </div>
+                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${estadoColor}`}>
+                      {estado}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-2 text-xs text-slate-300">
+                    <div className="flex justify-between"><span className="text-slate-500">Ref Externa</span><span className="font-semibold text-slate-200">{record.refCliente || '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Cliente</span><span className="font-semibold text-slate-200">{record.shipper || '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Naviera</span><span className="font-semibold text-slate-200">{record.naviera || '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Booking</span><span className="font-semibold text-slate-200">{record.booking || '-'}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Contenedor</span><span className="font-semibold text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span></div>
+                    <div className="flex justify-between"><span className="text-slate-500">Ingresado</span><span className="font-semibold text-slate-200">{record.ingresado ? new Date(record.ingresado).toLocaleDateString('es-CL') : '-'}</span></div>
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    {onEdit && (
+                      <button
+                        onClick={() => onEdit(record)}
+                        className={`${toolbarButtonClasses} flex-1 justify-center`}
+                      >
+                        <Edit className="h-4 w-4" />
+                        Editar
+                      </button>
+                    )}
+                    {onShowHistorial && (
+                      <button
+                        onClick={() => onShowHistorial(record)}
+                        className={`${toolbarButtonClasses} flex-1 justify-center`}
+                      >
+                        <History className="h-4 w-4" />
+                        Historial
+                      </button>
                     )}
                   </div>
-                  <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                    registro.estado === 'CONFIRMADO'
-                      ? theme === 'dark'
-                        ? 'bg-green-800/60 text-green-200'
-                        : 'bg-green-100 text-green-800'
-                      : registro.estado === 'CANCELADO'
-                      ? theme === 'dark'
-                        ? 'bg-red-800/60 text-red-200'
-                        : 'bg-red-100 text-red-800'
-                      : theme === 'dark'
-                        ? 'bg-yellow-800/60 text-yellow-200'
-                        : 'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {registro.estado}
-                  </div>
-           </div>
-           
-                {/* Detalles principales */}
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between">
-                    <span className={`text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>Cliente:</span>
-                    <span className={`text-xs font-medium ${
-                      theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                    }`}>{registro.shipper}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>Ejecutivo:</span>
-                    <span className={`text-xs font-medium ${
-                      theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                    }`}>{registro.ejecutivo}</span>
-                  </div>
-                  {registro.booking && (
-                    <div className="flex justify-between">
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>Booking:</span>
-                      <span className={`text-xs font-medium ${
-                        theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                      }`}>{registro.booking}</span>
-                    </div>
-                  )}
-                  {registro.contenedor && (
-                    <div className="flex justify-between">
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>Contenedor:</span>
-                      <div 
-                        className="container-vertical" 
-                        style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          gap: '0.25rem', 
-                          width: '100%',
-                          alignItems: 'stretch'
-                        }}
-                      >
-                        {(() => {
-                          const contenedor = registro.contenedor;
-                          if (!contenedor || contenedor === '') return null;
-                          
-                          // Si ya es un array, mostrarlo directamente
-                          if (Array.isArray(contenedor)) {
-                            return contenedor.map((container, index) => (
-                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded ${
-                                theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
-                              }`}>
-                                {container}
-             </span>
-                            ));
-                          }
-                          
-                          // Si es string con espacios, convertir a array
-                          if (typeof contenedor === 'string' && contenedor.includes(' ')) {
-                            const containers = contenedor.split(/\s+/).filter(c => c.trim() !== '');
-                            return containers.map((container, index) => (
-                              <span key={index} className={`text-xs font-mono px-1 py-0.5 rounded ${
-                                theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
-                              }`}>
-                                {container}
-                              </span>
-                            ));
-                          }
-                          
-                          // Si es un solo contenedor
-                          return (
-                            <span className={`text-xs font-mono px-1 py-0.5 rounded ${
-                              theme === 'dark' ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-900'
-                            }`}>
-                              {contenedor}
-                            </span>
-                          );
-                        })()}
-           </div>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className={`text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>Especie:</span>
-                    <span className={`text-xs font-medium ${
-                      theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                    }`}>{registro.especie}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>POL:</span>
-                    <span className={`text-xs font-medium ${
-                      theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                    }`}>{registro.pol}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={`text-xs ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>POD:</span>
-                    <span className={`text-xs font-medium ${
-                      theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                    }`}>{registro.pod}</span>
-                  </div>
-                  {registro.etd && (
-                    <div className="flex justify-between">
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>ETD:</span>
-                      <span className={`text-xs font-medium ${
-                        theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                      }`}>
-                        {typeof registro.etd === 'string' ? registro.etd : 
-                         registro.etd instanceof Date ? registro.etd.toLocaleDateString() : 
-                         String(registro.etd)}
-                      </span>
-                    </div>
-                  )}
-                  {registro.eta && (
-                    <div className="flex justify-between">
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>ETA:</span>
-                      <span className={`text-xs font-medium ${
-                        theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
-                      }`}>
-                        {typeof registro.eta === 'string' ? registro.eta : 
-                         registro.eta instanceof Date ? registro.eta.toLocaleDateString() : 
-                         String(registro.eta)}
-                      </span>
-                    </div>
-                  )}
                 </div>
-
-                {/* Botones de acción */}
-                <div className="flex justify-end space-x-2">
-           </div>
-         </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
-             {/* Footer con información de registros y logo */}
-       <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-         {/* Información de registros - Izquierda */}
-         <div className="flex-1 text-left">
-           <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
-             Mostrando {table.getFilteredRowModel().rows.length} registros
-             {table.getFilteredRowModel().rows.length !== data.length && 
-               ` (filtrados de ${data.length} total)`
-             }
-           </span>
-         </div>
-         
-         {/* Logo ASLI - Centro */}
-         <div className="flex-shrink-0 flex justify-center">
-           <img 
-             src="https://asli.cl/img/LOGO%20ASLI%20SIN%20FONDO%20BLLANCO.png" 
-             alt="ASLI Logo" 
-             className="h-8 w-auto opacity-70 hover:opacity-100 transition-opacity"
-           />
-         </div>
-         
-         {/* Espacio derecho (puede usarse para paginación futura) */}
-         <div className="flex-1"></div>
-       </div>
-       
-       {/* Menú contextual */}
-       {contextMenu && (
-         <div
-           ref={contextMenuRef}
-           className="fixed z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-2 min-w-[180px]"
-           style={{
-             left: `${contextMenu.x}px`,
-             top: `${contextMenu.y}px`,
-           }}
-         >
-           {/* Solo mostrar opción de editar Nave y Viaje si el usuario es admin */}
-           {currentUser?.rol === 'admin' && ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje) && (
-             <button
-               onClick={() => {
-                 if (selectedRows.size > 0 && onBulkEditNaveViaje) {
-                   // Obtener los registros seleccionados
-                   const selectedRecords = data.filter(r => r.id && selectedRows.has(r.id));
-                   onBulkEditNaveViaje(selectedRecords);
-                 } else if (onEditNaveViaje) {
-                   onEditNaveViaje(contextMenu.record);
-                 }
-                 setContextMenu(null);
-               }}
-               className="w-full text-left px-4 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center space-x-2"
-             >
-               <Edit className="h-4 w-4" />
-               <span>
-                 {selectedRows.size > 0 
-                   ? `Editar Nave y Viaje (${selectedRows.size})`
-                   : 'Editar Nave y Viaje'
-                 }
-               </span>
-             </button>
-           )}
-           {canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete) && (
-             <button
-               onClick={() => {
-                 if (selectedRows.size > 0 && onBulkDelete) {
-                   // Si hay filas seleccionadas, eliminar todas las seleccionadas
-                   onBulkDelete();
-                 } else if (onDelete) {
-                   // Si no hay selección, eliminar solo el registro del clic derecho
-                   onDelete(contextMenu.record);
-                 }
-                 setContextMenu(null);
-               }}
-               className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center space-x-2"
-             >
-               <Trash2 className="h-4 w-4" />
-               <span>
-                 {selectedRows.size > 0 
-                   ? `Eliminar selección (${selectedRows.size})`
-                   : 'Eliminar'
-                 }
-               </span>
-             </button>
-           )}
-         </div>
-       )}
+      {/* Report Generator Modal */}
+      {showReportGenerator && (
+        <ReportGenerator
+          isOpen={showReportGenerator}
+          onClose={() => setShowReportGenerator(false)}
+          data={data}
+          columns={columns}
+          navierasUnicas={navierasUnicas}
+          ejecutivosUnicos={ejecutivosUnicos}
+          especiesUnicas={especiesUnicas}
+          clientesUnicos={clientesUnicos}
+          polsUnicos={polsUnicos}
+          destinosUnicos={destinosUnicos}
+          depositosUnicos={depositosUnicos}
+          yearsUnicos={yearsUnicos}
+          onClose={() => setShowReportGenerator(false)}
+        />
+      )}
 
-      {/* Generador de Reportes */}
-      <ReportGenerator
-        registros={data.filter(record => record.id && selectedRows.has(record.id))}
-        isOpen={showReportGenerator}
-        onClose={() => setShowReportGenerator(false)}
-      />
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className={`fixed z-[999] min-w-[220px] overflow-hidden rounded-2xl border shadow-2xl ${
+            isDark
+              ? 'border-slate-800/70 bg-slate-950/95 text-slate-100'
+              : 'border-gray-200 bg-white text-gray-900'
+          }`}
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <div className={`border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] ${
+            isDark ? 'border-slate-800/60 text-slate-400' : 'border-gray-200 text-gray-500'
+          }`}>
+            Acciones rápidas
+          </div>
+          <div className="flex flex-col py-1 text-sm">
+            {onEdit && (
+              <button
+                onClick={handleContextEdit}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-sky-500/15 hover:text-sky-200"
+              >
+                <Edit className="h-4 w-4" />
+                Editar registro
+              </button>
+            )}
+            {(onEditNaveViaje || onBulkEditNaveViaje) && (
+              <button
+                onClick={handleContextEditNaveViaje}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-sky-500/15 hover:text-sky-200"
+              >
+                <Send className="h-4 w-4" />
+                Editar Nave / Viaje
+              </button>
+            )}
+            {(canDelete && (onDelete || onBulkDelete)) && (
+              <button
+                onClick={handleContextDelete}
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-rose-200 transition-colors hover:bg-rose-500/15"
+              >
+                <Trash2 className="h-4 w-4" />
+                {hasSelection ? 'Eliminar selección' : 'Eliminar registro'}
+              </button>
+            )}
+          </div>
+          <button
+            onClick={closeContextMenu}
+            className={`w-full border-t px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors ${
+              isDark
+                ? 'border-slate-800/60 text-slate-500 hover:bg-slate-900/70'
+                : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+            }`}
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,23 +5,23 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserProfileModal } from '@/components/UserProfileModal';
 import { 
   Ship, 
-  Package, 
   Truck, 
-  CreditCard, 
   LogOut, 
   User as UserIcon, 
-  Settings,
   ArrowRight,
   Clock,
-  CheckCircle,
-  AlertCircle,
   FileText,
-  Map as MapIcon,
-  Grid3x3
+  Grid3x3,
+  Search,
+  Filter,
+  Eye,
+  Plus,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
@@ -52,6 +52,7 @@ export default function DashboardPage() {
     cancelados: 0
   });
   const [registrosParaMapa, setRegistrosParaMapa] = useState<Registro[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -254,6 +255,8 @@ export default function DashboardPage() {
     }
   };
 
+  const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
+
   const modules = [
     {
       id: 'registros',
@@ -266,14 +269,14 @@ export default function DashboardPage() {
       stats: stats
     },
     {
-      id: 'transporte',
+      id: 'transportes',
       title: 'Registros de Transporte',
       description: 'Control de flota y rutas de transporte',
       icon: Truck,
       color: 'bg-green-500',
       hoverColor: 'hover:bg-green-600',
-      available: false,
-      comingSoon: true
+      available: true,
+      stats: null
     },
     {
       id: 'documentos',
@@ -282,16 +285,6 @@ export default function DashboardPage() {
       icon: FileText,
       color: 'bg-purple-500',
       hoverColor: 'hover:bg-purple-600',
-      available: true,
-      stats: null
-    },
-    {
-      id: 'tablas-personalizadas',
-      title: 'Tablas Personalizadas',
-      description: 'Crea y personaliza tablas con AG Grid',
-      icon: Grid3x3,
-      color: 'bg-indigo-500',
-      hoverColor: 'hover:bg-indigo-600',
       available: true,
       stats: null
     }
@@ -328,204 +321,317 @@ export default function DashboardPage() {
     return null;
   }
 
+  const toneBadgeClasses = {
+    sky: 'bg-sky-500/20 text-sky-300',
+    rose: 'bg-rose-500/20 text-rose-300',
+    violet: 'bg-violet-500/20 text-violet-300',
+    lime: 'bg-lime-500/20 text-lime-300',
+  } as const;
+
+  type SidebarNavItem =
+    | { label: string; id: string; isActive?: boolean }
+    | { label: string; counter: number; tone: keyof typeof toneBadgeClasses };
+
+  type SidebarSection = {
+    title: string;
+    items: SidebarNavItem[];
+  };
+
+  const sidebarNav: SidebarSection[] = [
+    {
+      title: 'Favoritos',
+      items: [
+        { label: 'Embarques', id: 'registros', isActive: true },
+        { label: 'Transportes', id: 'transportes', isActive: false },
+        { label: 'Documentos', id: 'documentos', isActive: false },
+      ],
+    },
+    {
+      title: 'Espacios de trabajo',
+      items: [
+        { label: 'Embarques 2025-2026', counter: stats.total, tone: 'sky' },
+        { label: 'Embarques 2024', counter: 469, tone: 'rose' },
+        { label: 'Embarques 2023', counter: 439, tone: 'violet' },
+        { label: 'Embarques 2022', counter: 376, tone: 'lime' },
+      ],
+    },
+  ];
+
+  const headerActions = [
+    { label: 'Buscar', icon: Search },
+    { label: 'Persona', icon: UserIcon },
+    { label: 'Filtrar', icon: Filter },
+    { label: 'Ordenar', icon: ArrowUpDown },
+    { label: 'Ocultar', icon: Eye, counter: 2 },
+    { label: 'Agrupar', icon: Grid3x3 },
+  ];
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+      {/* Sidebar */}
+      <aside
+        className={`hidden lg:flex relative flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-20' : 'w-64'
+        } sticky top-0 h-screen`}
+      >
+        <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-800/60">
+          <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-900/70 flex items-center justify-center">
+            <img
+              src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
+              alt="ASLI Gestión Logística"
+              className="h-8 w-8 object-contain"
+              onError={(event) => {
+                event.currentTarget.style.display = 'none';
+              }}
+            />
+          </div>
+          {!isSidebarCollapsed && (
+            <div>
+              <p className="text-sm font-semibold text-slate-200">ASLI Gestión Logística</p>
+              <p className="text-xs text-slate-500">Plataforma Operativa</p>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={toggleSidebar}
+          className="absolute top-16 -right-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/60 bg-slate-950 text-slate-300 shadow-lg shadow-slate-950/60 hover:border-sky-500/60 hover:text-sky-200 transition"
+          aria-label={isSidebarCollapsed ? 'Expandir panel lateral' : 'Contraer panel lateral'}
+        >
+          {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+        </button>
+ 
+        {!isSidebarCollapsed && (
+          <>
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+              {sidebarNav.map((section) => (
+                <div key={section.title} className="space-y-3">
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500/60">{section.title}</p>
+                  <div className="space-y-1.5">
+                    {section.items.map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={() => {
+                          if ('id' in item) {
+                            router.push(`/${item.id}`);
+                          }
+                        }}
+                        className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+                          'id' in item && item.isActive
+                            ? 'bg-slate-800/80 text-white'
+                            : 'hover:bg-slate-800/40 text-slate-300'
+                        }`}
+                      >
+                        <span className="text-sm font-medium">{item.label}</span>
+                        {'counter' in item && (
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]}`}>
+                            {item.counter}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="px-4 py-6 border-t border-slate-800/60">
+              <button className="w-full rounded-lg border border-slate-700/60 px-3 py-2 text-sm text-slate-300 hover:border-sky-500/60 hover:text-sky-200 transition-colors">
+                + Agregar espacio de trabajo
+              </button>
+            </div>
+          </>
+        )}
+      </aside>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col">
+        <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
+          <div className="flex flex-wrap items-center gap-4 px-6 py-5">
+            <div className="flex items-center gap-4">
+              <div className="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/15">
                 <img
                   src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                   alt="ASLI Logo"
-                  className="max-w-full max-h-full object-contain logo-glow"
+                  className="h-10 w-10 object-contain"
                   onError={(e) => {
-                    console.log('Error cargando logo:', e);
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">ASLI Gestión Logística</h1>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Dashboard Principal</p>
+                <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Panel General</p>
+                <h1 className="text-2xl font-semibold text-white">Embarques</h1>
+                <p className="text-sm text-slate-400">Coordinación integral de embarques y transportes</p>
               </div>
             </div>
 
-            {/* User menu */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              <ThemeToggle />
-              <div className="flex items-center space-x-2">
-                <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
-                <button
-                  onClick={() => setShowProfileModal(true)}
-                  className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                >
-                  {userInfo?.nombre || user.email}
-                </button>
+            <div className="flex-1 min-w-[240px] max-w-xl">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="search"
+                  placeholder="Buscar registros, clientes o contenedores"
+                  className="w-full rounded-full border border-slate-800 bg-slate-900/80 py-2.5 pl-9 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                />
               </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push('/registros')}
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+              >
+                <Plus className="h-4 w-4" />
+                Agregar registro
+              </button>
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className="hidden sm:flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-sky-400/60 hover:text-sky-200"
+              >
+                <UserIcon className="h-4 w-4" />
+                {userInfo?.nombre || user.email}
+              </button>
               <button
                 onClick={handleLogout}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="flex items-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
               >
-                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-sm">Cerrar Sesión</span>
+                <LogOut className="h-4 w-4" />
+                Salir
               </button>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome section */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            ¡Bienvenido, {userInfo?.nombre || user.user_metadata?.full_name || 'Usuario'}!
-          </h2>
-          <p className="text-gray-600">
-            Selecciona el módulo al que deseas acceder
-          </p>
-        </div>
-
-        {/* Modules grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {modules.map((module) => {
-            const IconComponent = module.icon;
-            
-            return (
-              <div
-                key={module.id}
-                className={`bg-white rounded-xl shadow-sm border-2 transition-all duration-200 ${
-                  module.available
-                    ? 'border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer'
-                    : 'border-gray-100 opacity-60 cursor-not-allowed'
-                }`}
-                onClick={() => {
-                  if (module.available) {
-                    router.push(`/${module.id}`);
-                  }
-                }}
-              >
-                <div className="p-6">
-                  {/* Icon and status */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 ${module.color} rounded-lg flex items-center justify-center`}>
-                      <IconComponent className="w-6 h-6 text-white" />
-                    </div>
-                    
-                    {module.available ? (
-                      <div className="flex items-center space-x-1 text-green-600">
-                        <CheckCircle className="w-4 h-4" />
-                        <span className="text-xs font-medium">Disponible</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center space-x-1 text-orange-600">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-xs font-medium">Próximamente</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Title and description */}
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {module.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    {module.description}
-                  </p>
-
-                  {/* Stats (only for available modules) */}
-                  {module.available && module.stats && (
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                      <div className="text-center p-2 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-bold text-gray-900">
-                          {module.stats.total.toLocaleString()}
-                        </div>
-                        <div className="text-xs text-gray-600">Total</div>
-                      </div>
-                      <div className="text-center p-2 bg-gray-50 rounded-lg">
-                        <div className="text-lg font-bold text-blue-600">
-                          {module.stats.pendientes}
-                        </div>
-                        <div className="text-xs text-gray-600">Pendientes</div>
-                      </div>
-                    </div>
+          <div className="flex flex-wrap items-center gap-3 px-6 pb-4">
+            {headerActions.map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <button
+                  key={action.label}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 transition-colors"
+                >
+                  <ActionIcon className="h-3.5 w-3.5" />
+                  {action.label}
+                  {action.counter && (
+                    <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
+                      {action.counter}
+                    </span>
                   )}
+                </button>
+              );
+            })}
+          </div>
+        </header>
 
-                  {/* Action button */}
-                  <div className="flex items-center justify-between">
-                    {module.available ? (
-                      <div className="flex items-center text-blue-600 text-sm font-medium">
-                        <span>Acceder</span>
-                        <ArrowRight className="w-4 h-4 ml-1" />
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-gray-400 text-sm">
-                        <AlertCircle className="w-4 h-4 mr-1" />
-                        <span>En desarrollo</span>
-                      </div>
-                    )}
-                  </div>
+        <main className="flex-1 overflow-y-auto px-6 pb-10 pt-8 space-y-10">
+          <section className="rounded-2xl border border-slate-800/60 bg-slate-950/60 p-6 shadow-xl shadow-sky-900/10">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-sm text-slate-400">Bienvenido de nuevo</p>
+                <h2 className="text-2xl font-semibold text-white">
+                  {userInfo?.nombre || user.user_metadata?.full_name || 'Usuario'}
+                </h2>
+              </div>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="rounded-full bg-green-500/15 px-3 py-1 text-green-300">
+                  {stats.confirmados} Confirmados
+                </div>
+                <div className="rounded-full bg-yellow-500/15 px-3 py-1 text-yellow-300">
+                  {stats.pendientes} Pendientes
+                </div>
+                <div className="rounded-full bg-red-500/15 px-3 py-1 text-red-300">
+                  {stats.cancelados} Cancelados
+                </div>
+                <div className="rounded-full border border-slate-700/80 px-3 py-1 text-slate-300">
+                  {stats.totalContenedores} Contenedores
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </section>
 
-        {/* Mapa de Rutas */}
-        {registrosParaMapa.length > 0 && (
-          <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <MapIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Mapa de Rutas de Embarques
-              </h3>
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Módulos principales</h3>
+              <button className="text-xs text-sky-300 hover:text-sky-200">Ver todo</button>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Visualiza las rutas marítimas entre puertos de origen (POL) y destino (POD)
-            </p>
-            <ShipmentsMap registros={registrosParaMapa} />
-          </div>
-        )}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {modules.map((module) => {
+                const IconComponent = module.icon;
+                const isDisabled = !module.available;
 
-        {/* Quick stats */}
-        <div className="mt-12 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Resumen General</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <Package className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.totalContenedores.toLocaleString()}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Total Contenedores</div>
+                return (
+                  <button
+                    key={module.id}
+                    onClick={() => {
+                      if (!isDisabled) {
+                        router.push(`/${module.id}`);
+                      }
+                    }}
+                    disabled={isDisabled}
+                    className={`group relative overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/60 p-5 text-left transition-all ${
+                      isDisabled
+                        ? 'opacity-60 cursor-not-allowed'
+                        : 'hover:border-sky-500/60 hover:shadow-lg hover:shadow-sky-900/20 active:scale-[0.98]'
+                    }`}
+                  >
+                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-sky-600 opacity-40 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/15 text-sky-300">
+                          <IconComponent className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <h4 className="text-lg font-semibold text-white">{module.title}</h4>
+                          <p className="text-sm text-slate-400">{module.description}</p>
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-sky-300 transition" />
+                    </div>
+                    {module.stats && (
+                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-300">
+                        <div className="rounded-lg bg-slate-900/60 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Total</p>
+                          <p className="text-lg font-semibold text-white">{module.stats.total}</p>
+                        </div>
+                        <div className="rounded-lg bg-slate-900/60 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Contenedores</p>
+                          <p className="text-lg font-semibold text-white">{module.stats.totalContenedores}</p>
+                        </div>
+                        <div className="rounded-lg bg-green-500/10 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-green-300">Confirmados</p>
+                          <p className="text-lg font-semibold text-green-200">{module.stats.confirmados}</p>
+                        </div>
+                        <div className="rounded-lg bg-yellow-500/10 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-300">Pendientes</p>
+                          <p className="text-lg font-semibold text-yellow-200">{module.stats.pendientes}</p>
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
-            <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <Clock className="w-8 h-8 text-yellow-600 dark:text-yellow-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.pendientes}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Pendientes</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.confirmados}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Confirmados</div>
-            </div>
-            <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.cancelados}</div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Cancelados</div>
-            </div>
-          </div>
-        </div>
-      </main>
+          </section>
 
-      {/* User Profile Modal */}
+          <section className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Mapa de embarques</h3>
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Clock className="h-4 w-4" />
+                Actualizado hace 15 min
+              </div>
+            </div>
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+              <ShipmentsMap registros={registrosParaMapa} />
+            </div>
+          </section>
+        </main>
+      </div>
+
       <UserProfileModal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
+        user={user}
         userInfo={userInfo}
-        onUserUpdate={(updatedUser) => {
-          setUserInfo(updatedUser);
-          setShowProfileModal(false);
-        }}
       />
     </div>
   );

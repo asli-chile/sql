@@ -1,0 +1,40 @@
+{
+  "name": "@asli-tools/png-to-ico-converter",
+  "version": "0.1.0",
+  "description": "Conversor de imágenes PNG/JPG a iconos .ico multipropósito",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "png-to-ico-converter": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rimraf dist",
+    "dev": "tsx src/cli.ts"
+  },
+  "keywords": [
+    "icon",
+    "ico",
+    "converter",
+    "png",
+    "jpg",
+    "windows"
+  ],
+  "author": "ASLI",
+  "license": "MIT",
+  "dependencies": {
+    "png-to-ico": "^2.1.8",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "rimraf": "^5.0.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
+

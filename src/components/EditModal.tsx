@@ -18,10 +18,12 @@ interface EditModalProps {
   temperaturasUnicas?: string[];
   navierasNavesMapping?: Record<string, string[]>;
   consorciosNavesMapping?: Record<string, string[]>;
+  refExternasUnicas?: string[];
 }
 
 interface EditFormData {
   refAsli?: string;
+  refCliente?: string;
   ejecutivo?: string;
   shipper?: string;
   booking?: string;
@@ -61,7 +63,7 @@ interface EditFormData {
   ingresoStacking?: string; // String para input type="date"
 }
 
-export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas = [], navesUnicas = [], fletesUnicos = [], temperaturasUnicas = [], navierasNavesMapping = {}, consorciosNavesMapping = {} }: EditModalProps) {
+export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas = [], navesUnicas = [], fletesUnicos = [], temperaturasUnicas = [], navierasNavesMapping = {}, consorciosNavesMapping = {}, refExternasUnicas = [] }: EditModalProps) {
   
   // Función para procesar contenedores múltiples
   const processContainers = (containerValue: string): string => {
@@ -82,6 +84,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
     if (record) {
       setFormData({
         refAsli: record.refAsli || '',
+        refCliente: record.refCliente || '',
         ejecutivo: record.ejecutivo || '',
         shipper: record.shipper || '',
         booking: record.booking || '',
@@ -116,6 +119,54 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
     }
   }, [record]);
 
+  const upsertRefClienteCatalog = async (valor: string | null | undefined) => {
+    const trimmed = (valor || '').trim();
+    if (!trimmed) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('catalogos')
+        .select('id, valores')
+        .eq('categoria', 'refCliente')
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error leyendo catálogo refCliente:', error);
+        return;
+      }
+
+      let valores: string[] = [];
+      let recordId: string | undefined;
+
+      if (data) {
+        recordId = (data as any).id;
+        valores = Array.isArray(data.valores) ? data.valores : [];
+      }
+
+      if (!valores.includes(trimmed)) {
+        const nuevosValores = [...valores, trimmed];
+        const payload = {
+          categoria: 'refCliente',
+          valores: nuevosValores,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (recordId) {
+          await supabase
+            .from('catalogos')
+            .update(payload)
+            .eq('id', recordId);
+        } else {
+          await supabase
+            .from('catalogos')
+            .insert({ ...payload, created_at: new Date().toISOString() });
+        }
+      }
+    } catch (catalogError) {
+      console.error('Error actualizando catálogo refCliente:', catalogError);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!record || !record.id) return;
@@ -127,6 +178,7 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
       // Convertir datos del formulario al formato de Supabase
       const updatedData: any = {
         ref_asli: formData.refAsli,
+        ref_cliente: formData.refCliente,
         ejecutivo: formData.ejecutivo,
         shipper: formData.shipper,
         booking: formData.booking,
@@ -180,7 +232,9 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
         setError('Error al actualizar el registro. Por favor, intenta de nuevo.');
         return;
       }
-      
+
+      await upsertRefClienteCatalog(formData.refCliente);
+
       onSuccess();
       onClose();
     } catch (err) {
@@ -330,6 +384,26 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
               {/* Sección Editable */}
               <div className="md:col-span-2">
                 <h3 className="text-xs font-bold text-blue-800 mb-1">Campos Editables</h3>
+              </div>
+
+              {/* Booking */}
+              <div>
+                <label className="block text-xs font-medium text-gray-900 mb-0.5">
+                  Ref Externa
+                </label>
+                <input
+                  type="text"
+                  name="refCliente"
+                  value={formData.refCliente || ''}
+                  onChange={handleChange}
+                  list="catalogo-ref-externa-edit"
+                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
+                />
+                <datalist id="catalogo-ref-externa-edit">
+                  {refExternasUnicas.map((ref) => (
+                    <option key={ref} value={ref} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Booking */}

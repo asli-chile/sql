@@ -11,7 +11,6 @@ import 'ag-grid-community/styles/ag-theme-quartz.css';
 
 // Registrar todos los módulos de AG Grid Community
 ModuleRegistry.registerModules([AllCommunityModule]);
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { UserProfileModal } from '@/components/UserProfileModal';
 import { 
   LogOut, 
@@ -648,7 +647,6 @@ export default function TablasPersonalizadasPage() {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <ThemeToggle />
               <button
                 onClick={() => setShowProfileModal(true)}
                 className={`p-2 rounded-lg transition-colors ${

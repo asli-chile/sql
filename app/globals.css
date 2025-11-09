@@ -243,3 +243,29 @@ body {
   }
 }
 
+/* Column resize handle for DataTable */
+.resize-handle,
+th [class*="cursor-col-resize"],
+.resize-handle * {
+  cursor: col-resize;
+}
+
+.resize-handle {
+  position: relative;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: transparent;
+}
+
+.resize-handle:hover::after {
+  background: rgba(255, 255, 255, 0.5);
+}
+

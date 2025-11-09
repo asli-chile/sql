@@ -58,8 +58,8 @@ const allowsBulkEdit = (field: keyof Registro): boolean => {
 
 // Mapeo de anchos mínimos y máximos para cada columna (dinámico según contenido)
 const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
-  select: { min: 30, max: 30 }, // Fijo para sticky
-  refAsli: { min: 90, max: 130 }, // Fijo para sticky pero con rango
+  refAsli: { min: 150, max: 220 }, // Fijo para sticky pero con rango
+  refCliente: { min: 120, max: 200 },
   ejecutivo: { min: 120, max: 200 },
   usuario: { min: 120, max: 200 },
   ingresado: { min: 90, max: 120 },
@@ -129,32 +129,6 @@ export const createRegistrosColumns = (
     return data.filter(record => record.id && selectedRows.has(record.id));
   };
   const baseColumns: ColumnDef<Registro>[] = [
-    {
-      id: 'select',
-      header: () => null,
-      size: COLUMN_WIDTHS.select.min,
-      minSize: COLUMN_WIDTHS.select.min,
-      maxSize: COLUMN_WIDTHS.select.max,
-      cell: ({ row }: any) => {
-        const rowId = row.original.id || '';
-        const isSelected = selectedRows?.has(rowId) || false;
-        const rowIndex = row.index;
-        return (
-          <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleRowSelection?.(rowId, rowIndex, e as any);
-              }}
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-            />
-          </div>
-        );
-      },
-      enableSorting: false,
-    },
   {
     id: 'refAsli',
     accessorKey: 'refAsli',
@@ -168,6 +142,9 @@ export const createRegistrosColumns = (
       const selectedRecordsArray = getSelectedRecords();
       const isCurrentRecordSelected = selectedRecordsArray.some(selected => selected.id === row.original.id);
       const shouldShowIndicator = selectedRecordsArray.length > 1 && isCurrentRecordSelected;
+      const rowId = row.original.id || '';
+      const isSelected = selectedRows?.has(rowId) || false;
+      const rowIndex = row.index;
       
       // Color del texto según tipoIngreso, sin fondo de color en la celda
       let textColor = 'text-green-600 dark:text-green-400';
@@ -181,16 +158,51 @@ export const createRegistrosColumns = (
       }
       
       return (
-        <div className="flex items-center gap-1 overflow-hidden">
-          <span className={`font-semibold ${textColor} truncate`}>
-            {refAsli}
-          </span>
-          {shouldShowIndicator && (
-            <span className="text-[10px] bg-blue-500 text-white px-1 py-0.5 rounded-full font-semibold flex-shrink-0">
-              {selectedRecordsArray.length}
+        <div className="flex w-full items-center justify-center gap-3 overflow-hidden px-2">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleRowSelection?.(rowId, rowIndex, e as any);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="h-4 w-4 cursor-pointer rounded border-slate-500 text-blue-500 focus:ring-blue-500"
+          />
+          <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
+            <span className={`truncate text-center font-semibold ${textColor}`}>
+              {refAsli}
             </span>
-          )}
+            {shouldShowIndicator && (
+              <span className="flex-shrink-0 text-[10px] font-semibold text-white bg-blue-500 rounded-full px-1 py-0.5">
+                {selectedRecordsArray.length}
+              </span>
+            )}
+          </div>
         </div>
+      );
+    },
+  },
+  {
+    id: 'refCliente',
+    accessorKey: 'refCliente',
+    size: COLUMN_WIDTHS.refCliente.min,
+    minSize: COLUMN_WIDTHS.refCliente.min,
+    maxSize: COLUMN_WIDTHS.refCliente.max,
+    header: 'Ref Externa',
+    cell: ({ row }) => {
+      return (
+        <InlineEditCell
+          value={row.original.refCliente || ''}
+          field="refCliente"
+          record={row.original}
+          onSave={onUpdateRecord || (() => {})}
+          onBulkSave={onBulkUpdate}
+          type="text"
+          selectedRecords={getSelectedRecords()}
+          isSelectionMode={true}
+          className="justify-center text-center"
+        />
       );
     },
   },
@@ -226,7 +238,7 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const value = row.getValue('usuario') as string || row.original.createdBy || '';
       return (
-        <span className="text-[10px] text-gray-700 dark:text-gray-300">
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
           {value || '-'}
         </span>
       );
@@ -239,8 +251,20 @@ export const createRegistrosColumns = (
     maxSize: COLUMN_WIDTHS.ingresado.max,
     header: 'Ingresado',
     cell: ({ row }) => {
-      const ingresado = row.getValue('ingresado') as Date;
-      return <span className="font-semibold text-gray-900">{ingresado ? ingresado.toLocaleDateString('es-CL') : '-'}</span>;
+      const rawValue = row.getValue('ingresado');
+      let display = '-';
+
+      if (rawValue) {
+        const parsedDate = typeof rawValue === 'string' || typeof rawValue === 'number'
+          ? new Date(rawValue)
+          : (rawValue as Date);
+
+        if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
+          display = parsedDate.toLocaleDateString('es-CL');
+        }
+      }
+
+      return <span className="font-semibold text-gray-900 dark:text-slate-100">{display}</span>;
     },
   },
   {

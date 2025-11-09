@@ -14,6 +14,7 @@ interface AddModalProps {
   onSuccess: () => void;
   ejecutivosUnicos: string[];
   clientesUnicos: string[];
+  refExternasUnicas: string[];
   navierasUnicas: string[];
   especiesUnicas: string[];
   polsUnicos: string[];
@@ -36,6 +37,7 @@ export function AddModal({
   onSuccess,
   ejecutivosUnicos,
   clientesUnicos,
+  refExternasUnicas,
   navierasUnicas,
   especiesUnicas,
   polsUnicos,
@@ -57,24 +59,25 @@ export function AddModal({
   // Helper para obtener estilos de select según el tema
   const getSelectStyles = () => {
     return theme === 'dark'
-      ? 'w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-700'
-      : 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white';
+      ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30'
+      : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
   };
 
   const getLabelStyles = () => {
-    return theme === 'dark' ? 'text-gray-200' : 'text-gray-900';
+    return theme === 'dark' ? 'text-slate-200' : 'text-gray-900';
   };
 
   const getInputStyles = () => {
     return theme === 'dark'
-      ? 'w-full px-3 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-700 placeholder:text-gray-400'
-      : 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white placeholder:text-gray-500';
+      ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30'
+      : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
   };
 
   
   const viajeInputRef = React.useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     refAsli: '',
+    refCliente: '',
     ejecutivo: '',
     shipper: '',
     naviera: '',
@@ -101,6 +104,54 @@ export function AddModal({
   const [error, setError] = useState('');
   const [generatingRef, setGeneratingRef] = useState(true);
   const [numberOfCopies, setNumberOfCopies] = useState(1);
+
+  const upsertRefClienteCatalog = async (supabaseClient: ReturnType<typeof createClient>, valor: string | null | undefined) => {
+    const trimmed = (valor || '').trim();
+    if (!trimmed) return;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('catalogos')
+        .select('id, valores')
+        .eq('categoria', 'refCliente')
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error leyendo catálogo refCliente:', error);
+        return;
+      }
+
+      let valores: string[] = [];
+      let recordId: string | undefined;
+
+      if (data) {
+        recordId = (data as any).id;
+        valores = Array.isArray(data.valores) ? data.valores : [];
+      }
+
+      if (!valores.includes(trimmed)) {
+        const nuevosValores = [...valores, trimmed];
+        const payload = {
+          categoria: 'refCliente',
+          valores: nuevosValores,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (recordId) {
+          await supabaseClient
+            .from('catalogos')
+            .update(payload)
+            .eq('id', recordId);
+        } else {
+          await supabaseClient
+            .from('catalogos')
+            .insert({ ...payload, created_at: new Date().toISOString() });
+        }
+      }
+    } catch (catalogError) {
+      console.error('Error actualizando catálogo refCliente:', catalogError);
+    }
+  };
 
   // Generar REF ASLI automáticamente al abrir el modal y pre-seleccionar cliente si hay coincidencia
   useEffect(() => {
@@ -166,6 +217,8 @@ export function AddModal({
 
       // Crear múltiples copias
       const baseRegistroData = {
+        ingresado: formData.ingresado ? new Date(formData.ingresado).toISOString() : new Date().toISOString(),
+        ref_cliente: formData.refCliente || null,
         ejecutivo: formData.ejecutivo,
         shipper: formData.shipper,
         naviera: formData.naviera,
@@ -246,7 +299,8 @@ export function AddModal({
         return;
       }
 
-      
+      await upsertRefClienteCatalog(supabase, formData.refCliente);
+
       onSuccess();
       onClose();
       setNumberOfCopies(1);
@@ -254,6 +308,7 @@ export function AddModal({
       // Limpiar formulario
       setFormData({
         refAsli: '',
+        refCliente: '',
         ejecutivo: '',
         shipper: '',
         naviera: '',
@@ -348,35 +403,25 @@ export function AddModal({
     return navesNaviera.sort();
   };
 
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6 border-b border-gray-200 flex-shrink-0">
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <Save className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Agregar Nuevo Registro</h2>
+  return isOpen ? (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-xl px-3 sm:px-6 py-6 sm:py-10">
+      <div className="relative flex max-h-[92vh] w-full max-w-[95vw] 2xl:max-w-[1100px] flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-950/90 shadow-2xl shadow-slate-950/40">
+        <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-950/80 px-6 py-4">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-100">Agregar nuevo registro</h2>
+            <p className="text-sm text-slate-400">Completa la información del embarque</p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-800/70 text-slate-300 hover:border-sky-500/60 hover:text-sky-200"
+            title="Cerrar"
           >
-            <X className="h-5 w-5 text-gray-700" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center space-x-2">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-              <span className="text-red-700 text-sm">{error}</span>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {/* REF ASLI */}
             <div className="space-y-2">
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
@@ -389,11 +434,7 @@ export function AddModal({
                   value={formData.refAsli}
                   readOnly
                   disabled={generatingRef}
-                  className={`w-full px-3 py-2 border rounded-md cursor-not-allowed ${
-                    theme === 'dark'
-                      ? 'border-gray-600 bg-gray-700 text-gray-300'
-                      : 'border-gray-300 bg-gray-50 text-gray-700'
-                  }`}
+                  className={`w-full cursor-not-allowed rounded-xl border border-slate-800/60 bg-slate-900/50 px-3 py-2 text-sm text-slate-400`}
                   placeholder={generatingRef ? "Generando..." : "A0001"}
                 />
                 {generatingRef && (
@@ -402,7 +443,7 @@ export function AddModal({
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-700">
+              <p className="text-xs text-slate-400">
                 El REF ASLI se genera automáticamente para evitar duplicados
               </p>
               <button
@@ -419,10 +460,30 @@ export function AddModal({
                   }
                 }}
                 disabled={generatingRef}
-                className="mt-2 px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 disabled:opacity-50"
               >
-                {generatingRef ? 'Generando...' : '🔄 Regenerar REF ASLI'}
+                {generatingRef ? 'Generando…' : 'Regenerar REF ASLI'}
               </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                Ref. Externa
+              </label>
+              <input
+                type="text"
+                name="refCliente"
+                value={formData.refCliente}
+                onChange={handleChange}
+                list="catalogo-ref-externa"
+                className={getInputStyles()}
+                placeholder="Ref. externa del cliente"
+              />
+              <datalist id="catalogo-ref-externa">
+                {refExternasUnicas.map((ref) => (
+                  <option key={ref} value={ref} />
+                ))}
+              </datalist>
             </div>
 
             {/* Ejecutivo */}
@@ -455,8 +516,8 @@ export function AddModal({
                 onChange={handleChange}
                 className={clienteFijadoPorCoincidencia 
                   ? theme === 'dark'
-                    ? 'w-full px-3 py-2 border border-gray-600 rounded-md bg-gray-700 text-gray-400 cursor-not-allowed'
-                    : 'w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600 cursor-not-allowed'
+                    ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 cursor-not-allowed'
+                    : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 cursor-not-allowed'
                   : getSelectStyles()
                 }
                 required
@@ -544,17 +605,7 @@ export function AddModal({
                 onChange={handleChange}
                 required={!!formData.naveInicial}
                 disabled={!formData.naveInicial}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                  formData.naveInicial && !formData.viaje && error.includes('Viaje')
-                    ? 'border-red-500 focus:ring-red-500 bg-red-50'
-                    : !formData.naveInicial 
-                    ? theme === 'dark'
-                      ? 'bg-gray-700 cursor-not-allowed text-gray-400 border-gray-600'
-                      : 'bg-gray-100 cursor-not-allowed text-gray-500 border-gray-300'
-                    : theme === 'dark'
-                        ? 'bg-gray-700 text-white border-gray-600 focus:ring-blue-500'
-                        : 'bg-white text-gray-900 border-gray-300 focus:ring-blue-500'
-                }`}
+                className={`w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
                 placeholder={formData.naveInicial ? "Ej: 001E" : "Primero selecciona una nave"}
               />
               {formData.naveInicial && !formData.viaje && error.includes('Viaje') && (
@@ -880,41 +931,35 @@ export function AddModal({
               value={formData.comentario}
               onChange={handleChange}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
-              placeholder="Comentarios adicionales..."
+              className={getInputStyles()}
+              placeholder="Comentarios adicionales"
             />
           </div>
         </form>
 
-        {/* Footer */}
-        <div className="p-3 sm:p-4 lg:p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 flex-shrink-0">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-gray-900 bg-white border border-gray-300 rounded-md hover:bg-gray-50 text-sm sm:text-base"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={loading || generatingRef}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 text-sm sm:text-base"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Guardando...</span>
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4" />
-                <span>Guardar</span>
-              </>
-            )}
-          </button>
-        </div>
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
+            <div className="flex flex-wrap items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-400" />
+              <span>Todos los campos marcados con (*) son obligatorios.</span>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-4 py-2 text-sm font-medium text-slate-300 hover:border-slate-500/70 hover:text-white"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
+              >
+                {loading ? 'Guardando…' : 'Guardar registro'}
+              </button>
+            </div>
+          </div>
       </div>
     </div>
-  );
+  ) : null;
 }

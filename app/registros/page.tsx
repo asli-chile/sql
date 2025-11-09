@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, ArrowLeft, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/DataTable';
@@ -14,7 +14,6 @@ import { AddModal } from '@/components/AddModal';
 import { TrashModal } from '@/components/TrashModal';
 import { HistorialModal } from '@/components/HistorialModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { ThemeTest } from '@/components/ThemeTest';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -25,7 +24,7 @@ import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Ship, Package, Clock, CheckCircle, Container, Trash2, FileText, Receipt } from 'lucide-react';
+import { Package, CheckCircle, Container, Trash2, FileText, Receipt } from 'lucide-react';
 import { QRGenerator } from '@/components/QRGenerator';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/FacturaViewer';
@@ -46,12 +45,15 @@ export default function RegistrosPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
   const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
   const [especiesUnicas, setEspeciesUnicas] = useState<string[]>([]);
   const [clientesUnicos, setClientesUnicos] = useState<string[]>([]);
+  const [refExternasUnicas, setRefExternasUnicas] = useState<string[]>([]);
   const [polsUnicos, setPolsUnicos] = useState<string[]>([]);
   const [destinosUnicos, setDestinosUnicos] = useState<string[]>([]);
   const [depositosUnicos, setDepositosUnicos] = useState<string[]>([]);
@@ -91,14 +93,6 @@ export default function RegistrosPage() {
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
   const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
   
-  // Estado para preservar filtros del DataTable
-  const [preservedFilters, setPreservedFilters] = useState({
-    globalFilter: '',
-    columnFilters: [] as any[],
-    dateFilters: {} as any,
-    columnVisibility: {} as Record<string, boolean>
-  });
-
   // Estado para selección múltiple
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
@@ -290,6 +284,19 @@ export default function RegistrosPage() {
 
       const registrosConvertidos = data.map(convertSupabaseToApp);
       setRegistros(registrosConvertidos);
+
+      const refClienteSet = new Set<string>();
+      registrosConvertidos.forEach((registro) => {
+        if (registro.refCliente && registro.refCliente.trim().length > 0) {
+          refClienteSet.add(registro.refCliente.trim());
+        }
+      });
+      if (refClienteSet.size > 0) {
+        setRefExternasUnicas((prev) => {
+          const merged = new Set([...prev, ...Array.from(refClienteSet)]);
+          return Array.from(merged).sort();
+        });
+      }
     } catch (error) {
       console.error('Error loading registros:', error);
     }
@@ -376,6 +383,9 @@ export default function RegistrosPage() {
             setClientesUnicos(valores);
             setClientesFiltro(valores);
             }
+            break;
+          case 'refCliente':
+            setRefExternasUnicas(valores);
             break;
           case 'pols':
             setPolsUnicos(valores);
@@ -1281,239 +1291,267 @@ export default function RegistrosPage() {
     return null;
   }
 
+  const totalRegistros = new Set(registros.map(r => r.refAsli).filter(Boolean)).size;
+  const totalBookings = registros.filter(r => r.booking && r.booking !== '-').length;
+  const totalContenedores = registros
+    .filter(r => r.contenedor && r.contenedor !== '-' && r.contenedor !== null && r.contenedor !== '')
+    .flatMap(r => {
+      const contenedorStr = r.contenedor.toString().trim();
+      const containerPattern = /[A-Za-z]{4}\s+.{7}/g;
+      const containerMatches = contenedorStr.match(containerPattern);
+      if (containerMatches && containerMatches.length > 0) {
+        return containerMatches;
+      }
+      const contenedores = contenedorStr.split(/\s+/);
+      return contenedores.filter(contenedor => /[a-zA-Z0-9]/.test(contenedor));
+    }).length;
+  const totalConfirmados = registros.filter(r => r.estado === 'CONFIRMADO').length;
+  const totalPendientes = registros.filter(r => r.estado === 'PENDIENTE').length;
+  const totalCancelados = registros.filter(r => r.estado === 'CANCELADO').length;
+
+  const toneBadgeClasses = {
+    sky: 'bg-sky-500/20 text-sky-300',
+    violet: 'bg-violet-500/20 text-violet-300',
+    emerald: 'bg-emerald-500/20 text-emerald-300',
+  } as const;
+
+  type SidebarNavItem = {
+    label: string;
+    id?: string;
+    counter?: number;
+    tone?: keyof typeof toneBadgeClasses;
+    isActive?: boolean;
+  };
+
+  type SidebarSection = {
+    title: string;
+    items: SidebarNavItem[];
+  };
+
+  const sidebarSections: SidebarSection[] = [
+    {
+      title: 'Principal',
+      items: [
+        { label: 'Dashboard', id: '/dashboard' },
+        { label: 'Facturas', id: '/facturas' },
+      ],
+    },
+    {
+      title: 'Módulos',
+      items: [
+        { label: 'Registros de Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky' },
+        { label: 'Transportes', id: '/transportes' },
+        { label: 'Documentos', id: '/documentos' },
+      ],
+    },
+  ];
+
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
+
   return (
     <EditingCellProvider>
-    <div 
-      className="min-h-screen transition-colors"
-      style={{
-        backgroundColor: theme === 'dark' ? '#0a0a0a' : '#f9fafb'
-      }}
-    >
-      {/* Header */}
-      <header 
-        className="shadow-sm border-b transition-colors"
-        style={{
-          backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-          borderColor: theme === 'dark' ? '#374151' : '#e5e7eb'
-        }}
-      >
-        <div className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 gap-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="flex items-center space-x-2 text-gray-800 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="text-sm sm:text-base">Volver al Dashboard</span>
-              </button>
-              <div className="hidden sm:block w-px h-6 bg-gray-300 dark:bg-gray-600"></div>
-              <div className="flex items-center space-x-3">
-                <div className="w-14 h-14 sm:w-20 sm:h-20 flex items-center justify-center">
-                  <img
-                    src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                    alt="ASLI Logo"
-                    className="max-w-full max-h-full object-contain logo-glow"
-                    onError={(e) => {
-                      console.log('Error cargando logo:', e);
-                      e.currentTarget.style.display = 'none';
-                    }}
+      <div className="flex min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
+        <aside
+          className={`hidden lg:flex sticky top-0 h-screen flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 ${
+            isSidebarCollapsed ? 'w-20' : 'w-64'
+          }`}
+        >
+          <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-800/60">
+            <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-900/70 flex items-center justify-center">
+              <img
+                src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
+                alt="ASLI Gestión Logística"
+                className="h-8 w-8 object-contain"
+                onError={(event) => {
+                  event.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+            {!isSidebarCollapsed && (
+              <div>
+                <p className="text-sm font-semibold text-slate-200">ASLI Gestión Logística</p>
+                <p className="text-xs text-slate-500">Plataforma Operativa</p>
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="absolute top-16 -right-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/60 bg-slate-950 text-slate-300 shadow-lg shadow-slate-950/60 hover:border-sky-500/60 hover:text-sky-200 transition"
+              aria-label={isSidebarCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
+            >
+              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+            {sidebarSections.map((section) => (
+              <div key={section.title} className="space-y-3">
+                {!isSidebarCollapsed && (
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500/60">{section.title}</p>
+                )}
+                <div className="space-y-1.5">
+                  {section.items.map((item) => (
+                    <button
+                      key={item.label}
+                      onClick={() => {
+                        if (item.id) {
+                          router.push(item.id);
+                        }
+                      }}
+                      className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
+                        item.isActive
+                          ? 'bg-slate-800/80 text-white'
+                          : 'hover:bg-slate-800/40 text-slate-300'
+                      }`}
+                    >
+                      <span className={`text-sm font-medium ${isSidebarCollapsed ? 'truncate' : ''}`}>{item.label}</span>
+                      {!isSidebarCollapsed && item.counter !== undefined && item.tone && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]}`}>
+                          {item.counter}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <div className="flex flex-1 flex-col">
+          <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
+            <div className="mx-auto flex w-full max-w-[1600px] flex-wrap items-center gap-4 px-8 py-5">
+              <div className="flex items-center gap-4">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
+                  <h1 className="text-2xl font-semibold text-white">Registros de Embarques</h1>
+                  <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
+                </div>
+              </div>
+
+              <div className="flex-1" />
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => router.push('/facturas')}
+                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                >
+                  <Receipt className="h-4 w-4" />
+                  Facturas
+                </button>
+                <QRGenerator />
+                <ThemeTest />
+                <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300">
+                  <UserIcon className="h-4 w-4" />
+                  <span>{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+                </div>
+                <button
+                  onClick={() => setIsTrashModalOpen(true)}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Papelera
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Salir
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+            <div className="mx-auto w-full max-w-[1600px] px-6 sm:px-8 lg:px-12 pb-10 pt-8 space-y-10">
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Total Registros</CardTitle>
+                  <Package className="h-4 w-4 text-slate-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-white">{totalRegistros}</div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Total Bookings</CardTitle>
+                  <FileText className="h-4 w-4 text-slate-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-400">{totalBookings}</div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Total Contenedores</CardTitle>
+                  <Container className="h-4 w-4 text-slate-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-purple-400">{totalContenedores}</div>
+                  <p className="text-xs text-slate-400 mt-1">Total contenedores (divididos por espacios)</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-300">Estados</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-slate-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-xs font-medium">
+                    <div className="flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2 text-emerald-200">
+                      <span>Confirmados</span>
+                      <span className="text-lg font-semibold">{totalConfirmados}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-amber-500/15 px-3 py-2 text-amber-200">
+                      <span>Pendientes</span>
+                      <span className="text-lg font-semibold">{totalPendientes}</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-rose-500/15 px-3 py-2 text-rose-200">
+                      <span>Cancelados</span>
+                      <span className="text-lg font-semibold">{totalCancelados}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
+              <div className="overflow-x-auto">
+                <div className="min-w-[1100px] px-2 pb-4">
+                  <DataTable
+                    data={registros}
+                    columns={columns}
+                    navierasUnicas={navierasFiltro}
+                    ejecutivosUnicos={ejecutivosFiltro}
+                    especiesUnicas={especiesFiltro}
+                    clientesUnicos={clientesFiltro}
+                    polsUnicos={polsFiltro}
+                    destinosUnicos={destinosFiltro}
+                    depositosUnicos={depositosFiltro}
+                    yearsUnicos={yearsFiltro}
+                    onAdd={handleAdd}
+                    onEdit={handleEdit}
+                    onEditNaveViaje={handleEditNaveViaje}
+                    onBulkEditNaveViaje={handleBulkEditNaveViaje}
+                    onDelete={handleDelete}
+                    selectedRows={selectedRows}
+                    onToggleRowSelection={handleToggleRowSelection}
+                    onSelectAll={handleSelectAll}
+                    onClearSelection={handleClearSelection}
+                    onBulkDelete={handleBulkDelete}
+                    preserveFilters={true}
                   />
                 </div>
-                <div>
-                  <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Registros de Embarques</h1>
-                  <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-300">Gestión de contenedores y embarques</p>
-                </div>
               </div>
+            </section>
             </div>
-
-            {/* User menu */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-              <button
-                onClick={() => router.push('/facturas')}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 rounded-lg transition-colors bg-purple-600 text-white hover:bg-purple-700"
-                title="Ir a Facturas"
-              >
-                <Receipt className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-sm hidden sm:inline">Facturas</span>
-              </button>
-              <QRGenerator />
-              <ThemeToggle />
-              <ThemeTest />
-              <div className="flex items-center space-x-2">
-                <UserIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-gray-400" />
-                <span className="text-xs sm:text-sm text-gray-800 dark:text-gray-200">
-                  {currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}
-                </span>
-              </div>
-              <button
-                onClick={() => setIsTrashModalOpen(true)}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-gray-800 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-sm">Papelera</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-gray-800 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-              >
-                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-sm">Cerrar Sesión</span>
-              </button>
-            </div>
-          </div>
+          </main>
         </div>
-      </header>
-
-      {/* Main content */}
-      <main className="max-w-[98%] mx-auto px-2 sm:px-4 lg:px-6 py-8">
-        {/* Estadísticas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <Card 
-            className="transition-colors"
-            style={{
-              backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
-              borderColor: theme === 'dark' ? '#374151' : '#e5e7eb'
-            }}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle 
-                className="text-sm font-medium"
-                style={{ color: theme === 'dark' ? '#f9fafb' : '#111827' }}
-              >
-                Total Registros
-              </CardTitle>
-              <Package 
-                className="h-4 w-4"
-                style={{ color: theme === 'dark' ? '#9ca3af' : '#6b7280' }}
-              />
-            </CardHeader>
-            <CardContent>
-              <div 
-                className="text-2xl font-bold"
-                style={{ color: theme === 'dark' ? '#f9fafb' : '#111827' }}
-              >
-                {new Set(registros.map(r => r.refAsli).filter(Boolean)).size}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Total Bookings</CardTitle>
-              <FileText className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {registros.filter(r => r.booking && r.booking !== '-').length}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Total Contenedores</CardTitle>
-              <Container className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                {registros
-                  .filter(r => r.contenedor && r.contenedor !== '-' && r.contenedor !== null && r.contenedor !== '')
-                  .flatMap(r => {
-                    const contenedorStr = r.contenedor.toString().trim();
-                    
-                    // Detectar patrones como "MSDU 902964-3", "mnbu 1234567", etc.
-                    // Patrón: 4 letras (mayúsculas o minúsculas) + espacio + 7 caracteres
-                    const containerPattern = /[A-Za-z]{4}\s+.{7}/g;
-                    const containerMatches = contenedorStr.match(containerPattern);
-                    
-                    if (containerMatches && containerMatches.length > 0) {
-                      // Si hay patrones de contenedor, usarlos directamente
-                      return containerMatches;
-                    }
-                    
-                    // Para otros formatos, dividir por espacios
-                    const contenedores = contenedorStr.split(/\s+/);
-                    return contenedores.filter(contenedor => {
-                      // Excluir si es solo símbolos (sin letras ni números)
-                      const hasLetterOrNumber = /[a-zA-Z0-9]/.test(contenedor);
-                      return hasLetterOrNumber;
-                    });
-                  })
-                  .length}
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Total contenedores (divididos por espacios)
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900 dark:text-white">Estados</CardTitle>
-              <CheckCircle className="h-4 w-4 text-gray-600 dark:text-gray-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between items-center p-2 rounded-lg" style={{
-                  backgroundColor: theme === 'dark' ? '#065f46' : '#dcfce7',
-                  color: theme === 'dark' ? '#10b981' : '#166534'
-                }}>
-                  <span className="text-sm font-medium">Confirmados:</span>
-                  <span className="text-lg font-bold">
-                    {registros.filter(r => r.estado === 'CONFIRMADO').length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-lg" style={{
-                  backgroundColor: theme === 'dark' ? '#92400e' : '#fef3c7',
-                  color: theme === 'dark' ? '#f59e0b' : '#92400e'
-                }}>
-                  <span className="text-sm font-medium">Pendientes:</span>
-                  <span className="text-lg font-bold">
-                    {registros.filter(r => r.estado === 'PENDIENTE').length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center p-2 rounded-lg" style={{
-                  backgroundColor: theme === 'dark' ? '#991b1b' : '#fee2e2',
-                  color: theme === 'dark' ? '#ffffff' : '#991b1b'
-                }}>
-                  <span className="text-sm font-medium">Cancelados:</span>
-                  <span className="text-lg font-bold">
-                    {registros.filter(r => r.estado === 'CANCELADO').length}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Data Table */}
-        <div className="bg-white rounded-lg shadow">
-          <DataTable
-            data={registros}
-            columns={columns}
-            navierasUnicas={navierasFiltro}
-            ejecutivosUnicos={ejecutivosFiltro}
-            especiesUnicas={especiesFiltro}
-            clientesUnicos={clientesFiltro}
-            polsUnicos={polsFiltro}
-            destinosUnicos={destinosFiltro}
-            depositosUnicos={depositosFiltro}
-            yearsUnicos={yearsFiltro}
-            onAdd={handleAdd}
-            onEdit={handleEdit}
-            onEditNaveViaje={handleEditNaveViaje}
-            onBulkEditNaveViaje={handleBulkEditNaveViaje}
-            onDelete={handleDelete}
-            selectedRows={selectedRows}
-            onToggleRowSelection={handleToggleRowSelection}
-            onSelectAll={handleSelectAll}
-            onClearSelection={handleClearSelection}
-            onBulkDelete={handleBulkDelete}
-            preserveFilters={true}
-          />
-        </div>
-      </main>
+      </div>
 
       {/* Modals */}
       <AddModal
@@ -1521,12 +1559,14 @@ export default function RegistrosPage() {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
           loadRegistros();
+          loadCatalogos();
           setIsAddModalOpen(false);
         }}
         navierasUnicas={navierasUnicas}
         ejecutivosUnicos={ejecutivosUnicos}
         especiesUnicas={especiesUnicas}
         clientesUnicos={clientesUnicos}
+        refExternasUnicas={refExternasUnicas}
         polsUnicos={polsUnicos}
         destinosUnicos={destinosUnicos}
         depositosUnicos={depositosUnicos}
@@ -1539,10 +1579,8 @@ export default function RegistrosPage() {
         co2sUnicos={co2sUnicos}
         o2sUnicos={o2sUnicos}
         clienteFijadoPorCoincidencia={
-          // Si el usuario NO es ejecutivo y tiene exactamente 1 cliente asignado,
-          // significa que fue agregado por coincidencia de nombre
-          !isEjecutivo && clientesAsignados.length === 1 
-            ? clientesAsignados[0] 
+          !isEjecutivo && clientesAsignados.length === 1
+            ? clientesAsignados[0]
             : undefined
         }
       />
@@ -1552,6 +1590,7 @@ export default function RegistrosPage() {
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={() => {
           loadRegistros();
+          loadCatalogos();
           setIsEditModalOpen(false);
         }}
         record={selectedRecord}
@@ -1559,6 +1598,7 @@ export default function RegistrosPage() {
         navesUnicas={navesUnicas}
         navierasNavesMapping={navierasNavesMapping}
         consorciosNavesMapping={consorciosNavesMapping}
+        refExternasUnicas={refExternasUnicas}
       />
 
       <TrashModal
@@ -1607,10 +1647,7 @@ export default function RegistrosPage() {
         />
       )}
 
-      {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
-
-    </div>
     </EditingCellProvider>
   );
 }

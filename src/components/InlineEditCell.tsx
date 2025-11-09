@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Check, X, Edit3 } from 'lucide-react';
+import { Edit3 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { createClient } from '@/lib/supabase-browser';
 import { parseDateString } from '@/lib/date-utils';
@@ -62,6 +62,54 @@ export function InlineEditCell({
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   const [showTapHint, setShowTapHint] = useState(false);
   
+  const upsertRefClienteCatalog = async (supabaseClient: ReturnType<typeof createClient>, valor: string | null | undefined) => {
+    const trimmed = (valor || '').trim();
+    if (!trimmed) return;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('catalogos')
+        .select('id, valores')
+        .eq('categoria', 'refCliente')
+        .maybeSingle();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error leyendo catálogo refCliente:', error);
+        return;
+      }
+
+      let valores: string[] = [];
+      let recordId: string | undefined;
+
+      if (data) {
+        recordId = (data as any).id;
+        valores = Array.isArray(data.valores) ? data.valores : [];
+      }
+
+      if (!valores.includes(trimmed)) {
+        const nuevosValores = [...valores, trimmed];
+        const payload = {
+          categoria: 'refCliente',
+          valores: nuevosValores,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (recordId) {
+          await supabaseClient
+            .from('catalogos')
+            .update(payload)
+            .eq('id', recordId);
+        } else {
+          await supabaseClient
+            .from('catalogos')
+            .insert({ ...payload, created_at: new Date().toISOString() });
+        }
+      }
+    } catch (catalogError) {
+      console.error('Error actualizando catálogo refCliente:', catalogError);
+    }
+  };
+
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
   
@@ -94,21 +142,24 @@ export function InlineEditCell({
       'tipoIngreso': 'tipo_ingreso',
       'roleadaDesde': 'roleada_desde',
       'ingresoStacking': 'ingreso_stacking',
-      'refAsli': 'ref_asli'
+      'refAsli': 'ref_asli',
+      'refCliente': 'ref_cliente'
     };
     
     return fieldMapping[fieldName] || fieldName;
   };
 
-  const handleSave = async () => {
-    if (editValue === value) {
+  const handleSave = async (overrideValue?: any) => {
+    const currentValue = overrideValue !== undefined ? overrideValue : editValue;
+
+    if (currentValue === value) {
       clearEditing();
       return;
     }
 
     // Validaciones básicas
-    if (type === 'number' && editValue !== '' && editValue !== null) {
-      const numValue = parseFloat(editValue);
+    if (type === 'number' && currentValue !== '' && currentValue !== null) {
+      const numValue = parseFloat(currentValue);
       if (isNaN(numValue)) {
         setError('Debe ser un número válido');
         return;
@@ -133,20 +184,20 @@ export function InlineEditCell({
 
     // Si hay registros seleccionados y estamos en modo selección, usar edición masiva
     if (isSelectionMode && selectedRecords.length > 1 && onBulkSave) {
-      let processedValue = editValue;
+      let processedValue = currentValue;
       
       // Procesar diferentes tipos de datos
       if (type === 'number') {
-        processedValue = editValue === '' ? null : parseFloat(editValue);
+        processedValue = currentValue === '' ? null : parseFloat(currentValue);
       } else if (type === 'date') {
-        if (editValue) {
-          processedValue = parseDateString(editValue).toISOString();
+        if (currentValue) {
+          processedValue = parseDateString(currentValue).toISOString();
         } else {
           processedValue = null;
         }
       } else if (field === 'contenedor') {
         // Procesar contenedores: convertir string a lista si hay múltiples
-        processedValue = processContainers(editValue);
+        processedValue = processContainers(currentValue);
       }
       
       onBulkSave(field, processedValue, selectedRecords);
@@ -158,20 +209,20 @@ export function InlineEditCell({
     setError('');
 
     try {
-      let processedValue = editValue;
+      let processedValue = currentValue;
 
       // Procesar diferentes tipos de datos
       if (type === 'number') {
-        processedValue = editValue === '' ? null : parseFloat(editValue);
+        processedValue = currentValue === '' ? null : parseFloat(currentValue);
       } else if (type === 'date') {
-        if (editValue) {
-          processedValue = parseDateString(editValue).toISOString();
+        if (currentValue) {
+          processedValue = parseDateString(currentValue).toISOString();
         } else {
           processedValue = null;
         }
       } else if (field === 'contenedor') {
         // Procesar contenedores: convertir string a lista si hay múltiples
-        processedValue = processContainers(editValue);
+        processedValue = processContainers(currentValue);
       }
 
       // Obtener el nombre del campo en la base de datos
@@ -195,28 +246,22 @@ export function InlineEditCell({
       const { data, error: updateError } = await supabase
         .from('registros')
         .update(updateData)
-        .eq('id', record.id);
+        .eq('id', record.id)
+        .select()
+        .single();
 
-      if (updateError) {
-        throw updateError;
+      if (!data) {
+        clearEditing();
+        return;
       }
 
-      // Crear historial manualmente
-      try {
-        await supabase.rpc('crear_historial_manual', {
-          registro_uuid: record.id,
-          campo: field,
-          valor_anterior: value || 'NULL',
-          valor_nuevo: processedValue || 'NULL'
-        });
-      } catch (historialError) {
-        console.warn('⚠️ Error creando historial:', historialError);
-        // No fallar la operación por el historial
+      if (field === 'refCliente' && typeof processedValue === 'string') {
+        await upsertRefClienteCatalog(supabase, processedValue);
       }
 
-      // Actualizar el registro local
-      const updatedRecord = {
+      const updatedRecord: Registro = {
         ...record,
+        ...data,
         [field]: processedValue,
         ...(field === 'etd' || field === 'eta' ? { tt: updateData.tt } : {})
       };
@@ -264,7 +309,7 @@ export function InlineEditCell({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSave();
+      handleSave(e.currentTarget.value);
     } else if (e.key === 'Escape') {
       handleCancel();
     }
@@ -339,8 +384,11 @@ export function InlineEditCell({
         {type === 'select' ? (
           <select
             value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setEditValue(newValue);
+              handleSave(newValue);
+            }}
             className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
           >
@@ -353,6 +401,7 @@ export function InlineEditCell({
             type="date"
             value={editValue ? new Date(editValue).toISOString().split('T')[0] : ''}
             onChange={(e) => setEditValue(e.target.value)}
+            onBlur={(e) => handleSave(e.target.value)}
             onKeyDown={handleKeyDown}
             className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
@@ -361,6 +410,7 @@ export function InlineEditCell({
           <textarea
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onBlur={(e) => handleSave(e.target.value)}
             onKeyDown={handleKeyDown}
             className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600 resize-none"
             rows={3}
@@ -372,33 +422,15 @@ export function InlineEditCell({
             type={type}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
+            onBlur={(e) => handleSave(e.target.value)}
             onKeyDown={handleKeyDown}
             className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoComplete="off"
             autoFocus
           />
         )}
-        
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
-          title="Guardar"
-        >
-          <Check size={14} />
-        </button>
-        
-        <button
-          onClick={handleCancel}
-          disabled={loading}
-          className="p-1 text-red-600 hover:text-red-800 disabled:opacity-50"
-          title="Cancelar"
-        >
-          <X size={14} />
-        </button>
-        
         {error && (
-          <span className="text-[10px] text-red-600 ml-1 bg-red-50 px-1 py-0.5 rounded">{error}</span>
+          <span className="text-[10px] text-red-500 ml-2">{error}</span>
         )}
       </div>
     );
@@ -446,7 +478,7 @@ export function InlineEditCell({
           {customDisplay}
         </div>
       ) : (
-        <span className={`flex-1 ${getDisplayStyle(value)}`}>
+        <span className={`w-full text-center ${getDisplayStyle(value)}`}>
           {formatDisplayValue(value)}
         </span>
       )}

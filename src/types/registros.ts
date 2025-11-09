@@ -4,6 +4,7 @@ export interface Registro {
   // Datos básicos
   ingresado: Date | null;
   refAsli: string;
+  refCliente?: string;
   ejecutivo: string;
   usuario?: string;
   shipper: string;
