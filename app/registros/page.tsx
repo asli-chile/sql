@@ -1427,36 +1427,36 @@ export default function RegistrosPage() {
                 <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:justify-end">
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+              <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:justify-end">
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
                   <button
                     onClick={() => router.push('/facturas')}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 sm:w-auto"
+                    className="col-span-2 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 sm:col-auto"
                   >
                     <Receipt className="h-4 w-4" />
                     Facturas
                   </button>
-                  <div className="flex w-full items-center justify-between gap-2 sm:w-auto">
+                  <div className="col-span-2 flex items-center justify-center gap-3 sm:col-auto">
                     <QRGenerator />
                     <ThemeTest />
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-                  <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300">
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
+                  <div className="col-span-2 flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 sm:col-auto sm:min-w-[200px]">
                     <UserIcon className="h-4 w-4" />
-                    <span className="truncate max-w-[160px] sm:max-w-none">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+                    <span className="truncate max-w-[180px] sm:max-w-none">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
                   </div>
                   <button
                     onClick={() => setIsTrashModalOpen(true)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200 sm:w-auto"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
                   >
                     <Trash2 className="h-4 w-4" />
                     Papelera
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 sm:w-auto"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
                   >
                     <LogOut className="h-4 w-4" />
                     Salir
