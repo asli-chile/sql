@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, MoreVertical, X, Plus } from 'lucide-react';
 
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/DataTable';
@@ -49,6 +49,7 @@ export default function RegistrosPage() {
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
@@ -118,6 +119,12 @@ export default function RegistrosPage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (!isMobileView && isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  }, [isMobileView, isMobileMenuOpen]);
 
   const checkUser = async () => {
     try {
@@ -1431,51 +1438,127 @@ export default function RegistrosPage() {
 
         <div className="flex flex-1 flex-col">
           <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8 lg:flex-row lg:items-center lg:justify-between">
-              <div className="space-y-1">
-                <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
-                <h1 className="text-2xl font-semibold text-white">Registros de Embarques</h1>
-                <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
+            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
+                  <h1 className="text-2xl font-semibold text-white">Registros de Embarques</h1>
+                  <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
+                </div>
+                {isMobileView ? (
+                  <button
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-800/60 bg-slate-900/70 text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
+                    aria-label="Abrir acciones"
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </button>
+                ) : (
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <button
+                      onClick={() => router.push('/facturas')}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                    >
+                      <Receipt className="h-4 w-4" />
+                      Facturas
+                    </button>
+                    <QRGenerator />
+                    <ThemeTest />
+                    <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300">
+                      <UserIcon className="h-4 w-4" />
+                      <span className="truncate max-w-[180px]">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+                    </div>
+                    <button
+                      onClick={() => setIsTrashModalOpen(true)}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Papelera
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      className="inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Salir
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between lg:justify-end">
-                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
+              {isMobileView && (
+                <div className="flex items-center gap-2 rounded-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-300">
+                  <UserIcon className="h-4 w-4" />
+                  <span className="truncate">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+                </div>
+              )}
+            </div>
+          </header>
+
+          {isMobileView && isMobileMenuOpen && (
+            <div
+              className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/60 px-4 pb-6 sm:hidden"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl border border-slate-800/70 bg-slate-950/95 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-200">Acciones rápidas</p>
                   <button
-                    onClick={() => router.push('/facturas')}
-                    className="col-span-2 inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50 sm:col-auto"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="rounded-full bg-slate-900/70 p-2 text-slate-300 hover:bg-slate-800/80"
+                    aria-label="Cerrar menú móvil"
                   >
-                    <Receipt className="h-4 w-4" />
-                    Facturas
+                    <X className="h-4 w-4" />
                   </button>
-                  <div className="col-span-2 flex items-center justify-center gap-3 sm:col-auto">
+                </div>
+                <div className="flex flex-col gap-2 px-4 py-4 text-sm">
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      router.push('/facturas');
+                    }}
+                    className="inline-flex items-center justify-between gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 font-semibold text-white shadow-lg shadow-purple-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Receipt className="h-4 w-4" />
+                      Facturas
+                    </span>
+                  </button>
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/60 bg-slate-900/60 px-3 py-2">
                     <QRGenerator />
                     <ThemeTest />
                   </div>
-                </div>
-
-                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
-                  <div className="col-span-2 flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 sm:col-auto sm:min-w-[200px]">
-                    <UserIcon className="h-4 w-4" />
-                    <span className="truncate max-w-[180px] sm:max-w-none">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
-                  </div>
                   <button
-                    onClick={() => setIsTrashModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      setIsTrashModalOpen(true);
+                    }}
+                    className="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-800/70 px-3 py-2 text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
                   >
-                    <Trash2 className="h-4 w-4" />
-                    Papelera
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Papelera
+                    </span>
                   </button>
                   <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="inline-flex items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2 text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
                   >
-                    <LogOut className="h-4 w-4" />
-                    Salir
+                    <span className="flex items-center gap-2">
+                      <LogOut className="h-4 w-4" />
+                      Cerrar sesión
+                    </span>
                   </button>
                 </div>
               </div>
             </div>
-          </header>
+          )}
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
             <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-6 space-y-8 sm:px-6 lg:px-10 lg:space-y-10">
@@ -1574,6 +1657,15 @@ export default function RegistrosPage() {
             </section>
             </div>
           </main>
+          {isMobileView && (
+            <button
+              onClick={handleAdd}
+              className="fixed bottom-24 right-5 z-[1250] inline-flex h-12 w-12 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 sm:hidden"
+              aria-label="Agregar registro"
+            >
+              <Plus className="h-6 w-6" />
+            </button>
+          )}
         </div>
       </div>
 

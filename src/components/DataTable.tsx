@@ -150,7 +150,7 @@ export function DataTable({
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [isCompact, setIsCompact] = useState(false);
   const manualViewToggleRef = useRef(false);
-  const [mobileToolbarTab, setMobileToolbarTab] = useState<'primary' | 'advanced'>('primary');
+  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
   
@@ -520,7 +520,7 @@ export function DataTable({
       }
     } else {
       manualViewToggleRef.current = false;
-      setMobileToolbarTab('primary');
+      setMobileActionsOpen(false);
     }
   }, [isCompact]);
 
@@ -553,132 +553,157 @@ export function DataTable({
             />
           </div>
 
-          <div className={`flex items-center gap-2 rounded-full border ${isDark ? 'border-slate-800/60 bg-slate-900/70' : 'border-gray-200 bg-white'} p-1 text-xs font-semibold`}>
+          <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => setMobileToolbarTab('primary')}
-              className={`flex-1 rounded-full px-3 py-1 transition-colors ${
-                mobileToolbarTab === 'primary'
-                  ? 'bg-sky-500 text-white shadow'
-                  : isDark
-                    ? 'text-slate-300 hover:bg-slate-800/60'
-                    : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              data-filter-button
+              onClick={handleToggleFilters}
+              className={`${showFilters ? controlButtonActive : toolbarButtonClasses} flex-1 justify-center text-[11px]`}
             >
-              Principal
+              <Filter className="h-4 w-4" />
+              Filtros
             </button>
             <button
-              onClick={() => setMobileToolbarTab('advanced')}
-              className={`flex-1 rounded-full px-3 py-1 transition-colors ${
-                mobileToolbarTab === 'advanced'
-                  ? 'bg-sky-500 text-white shadow'
-                  : isDark
-                    ? 'text-slate-300 hover:bg-slate-800/60'
-                    : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              onClick={() => {
+                manualViewToggleRef.current = true;
+                handleToggleViewMode();
+              }}
+              className={`${toolbarButtonClasses} flex-1 justify-center text-[11px]`}
             >
-              Avanzado
+              {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+              {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
+            </button>
+            <button
+              onClick={() => setMobileActionsOpen(true)}
+              className={`${toolbarButtonClasses} flex-1 justify-center text-[11px]`}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Acciones
             </button>
           </div>
 
-          {mobileToolbarTab === 'primary' ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  data-filter-button
-                  onClick={handleToggleFilters}
-                  className={`${showFilters ? controlButtonActive : toolbarButtonClasses} text-[11px]`}
-                >
-                  <Filter className="h-4 w-4" />
-                  Filtros
-                </button>
-                <button
-                  onClick={() => {
-                    manualViewToggleRef.current = true;
-                    handleToggleViewMode();
-                  }}
-                  className={`${toolbarButtonClasses} text-[11px]`}
-                >
-                  {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                  {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
-                </button>
-                <div className="col-span-2">
-                  <ColumnToggle
-                    columns={columnToggleOptions}
-                    onToggleColumn={handleToggleColumn}
-                    onToggleAll={handleToggleAllColumns}
-                    alwaysVisibleColumns={alwaysVisibleColumns}
-                  />
+          {mobileActionsOpen && (
+            <div
+              className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/60 px-4 pb-6 sm:hidden"
+              onClick={() => setMobileActionsOpen(false)}
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl border border-slate-800/70 bg-slate-950/95 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
+                  <p className="text-sm font-semibold text-slate-200">Acciones</p>
+                  <button
+                    onClick={() => setMobileActionsOpen(false)}
+                    className="rounded-full bg-slate-900/70 p-2 text-slate-300 hover:bg-slate-800/80"
+                    aria-label="Cerrar acciones"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2 px-4 py-4 text-[12px]">
+                  <button
+                    onClick={() => {
+                      setShowReportGenerator(true);
+                      setMobileActionsOpen(false);
+                    }}
+                    className={`${toolbarButtonClasses} justify-between`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Exportar reporte
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleResetTable();
+                      setMobileActionsOpen(false);
+                    }}
+                    className={`${toolbarButtonClasses} justify-between border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Reiniciar tabla
+                    </span>
+                  </button>
+                  <button className={`${toolbarButtonClasses} justify-between`} disabled>
+                    <span className="flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4" />
+                      Deshacer
+                    </span>
+                  </button>
+                  <button className={`${toolbarButtonClasses} justify-between`} disabled>
+                    <span className="flex items-center gap-2">
+                      <RotateCw className="h-4 w-4" />
+                      Rehacer
+                    </span>
+                  </button>
+                  <button className={`${toolbarButtonClasses} justify-between`} disabled>
+                    <span className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4" />
+                      Densidad
+                    </span>
+                  </button>
+                  {onSelectAll && (
+                    <button
+                      onClick={() => {
+                        handleSelectAllClick();
+                        setMobileActionsOpen(false);
+                      }}
+                      className={`${toolbarButtonClasses} justify-between`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <CheckSquare className="h-4 w-4" />
+                        Seleccionar todo
+                      </span>
+                    </button>
+                  )}
+                  {onClearSelection && (
+                    <button
+                      onClick={() => {
+                        handleClearSelectionClick();
+                        setMobileActionsOpen(false);
+                      }}
+                      className={`${toolbarButtonClasses} justify-between ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!hasSelection}
+                    >
+                      <span className="flex items-center gap-2">
+                        <RotateCcw className="h-4 w-4" />
+                        Limpiar selección
+                      </span>
+                    </button>
+                  )}
+                  {canDelete && onBulkDelete && (
+                    <button
+                      onClick={() => {
+                        handleBulkDeleteClick();
+                        setMobileActionsOpen(false);
+                      }}
+                      className={`${destructiveButtonClasses} justify-between ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={!hasSelection}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Trash2 className="h-4 w-4" />
+                        Eliminar selección
+                      </span>
+                    </button>
+                  )}
+                  {columnToggleOptions.length > 0 && (
+                    <div className="mt-2 rounded-xl border border-slate-800/60 bg-slate-900/60 p-2">
+                      <ColumnToggle
+                        columns={columnToggleOptions}
+                        onToggleColumn={handleToggleColumn}
+                        onToggleAll={handleToggleAllColumns}
+                        alwaysVisibleColumns={alwaysVisibleColumns}
+                      />
+                    </div>
+                  )}
+                  {hasSelection && (
+                    <span className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold border border-sky-500/40 bg-sky-500/10 text-sky-200">
+                      {selectedCount} seleccionados
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  className={`${toolbarButtonClasses} text-[11px]`}
-                  onClick={() => setShowReportGenerator(true)}
-                >
-                  <Download className="h-4 w-4" />
-                  Exportar
-                </button>
-                <button
-                  className={`${toolbarButtonClasses} text-[11px] border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
-                  onClick={handleResetTable}
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Reiniciar
-                </button>
-                <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
-                  <RotateCcw className="h-4 w-4" />
-                  Deshacer
-                </button>
-                <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
-                  <RotateCw className="h-4 w-4" />
-                  Rehacer
-                </button>
-                <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Densidad
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                {onSelectAll && (
-                  <button
-                    onClick={handleSelectAllClick}
-                    className={`${toolbarButtonClasses} text-[11px]`}
-                  >
-                    <CheckSquare className="h-4 w-4" />
-                    Seleccionar todo
-                  </button>
-                )}
-                {onClearSelection && (
-                  <button
-                    onClick={handleClearSelectionClick}
-                    className={`${toolbarButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!hasSelection}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Limpiar selección
-                  </button>
-                )}
-                {canDelete && onBulkDelete && (
-                  <button
-                    onClick={handleBulkDeleteClick}
-                    className={`${destructiveButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    disabled={!hasSelection}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Eliminar selección
-                  </button>
-                )}
-              </div>
-
-              {hasSelection && (
-                <span className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold border border-sky-500/40 bg-sky-500/10 text-sky-200">
-                  {selectedCount} seleccionados
-                </span>
-              )}
             </div>
           )}
         </div>
