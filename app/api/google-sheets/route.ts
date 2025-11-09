@@ -96,54 +96,43 @@ export async function POST(request: NextRequest) {
 
     const safeSheetName = sheetName.replace(/'/g, "''");
 
-    const [headerResponse, dataResponse, sheetId] = await Promise.all([
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${safeSheetName}'!1:1`,
-        majorDimension: 'ROWS'
-      }),
-      sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `'${safeSheetName}'!A2:A`,
-        majorDimension: 'ROWS'
-      }),
-      getSheetIdByName(sheets, spreadsheetId, sheetName)
-    ]);
+    const sheetId = await getSheetIdByName(sheets, spreadsheetId, sheetName);
 
-    const firstRow = headerResponse.data.values?.[0] ?? [];
-    const hasHeader = firstRow.some((cell) => typeof cell === 'string' && cell.trim().length > 0);
-    const hasExistingDataRows = dataResponse.data.values
-      ? dataResponse.data.values.some((row) =>
-          Array.isArray(row)
-            ? row.some((cell) => typeof cell === 'string' && cell.trim().length > 0)
-            : false
-        )
-      : false;
+    const blankRow = new Array(headers.length).fill('');
+    const blockValues = [blankRow, headers, ...rows];
+    const totalInsertedRows = blockValues.length;
 
-    const valuesToInsert: string[][] = [];
-
-    if (!hasHeader) {
-      valuesToInsert.push(headers);
-    } else if (hasExistingDataRows) {
-      valuesToInsert.push(new Array(headers.length).fill(''));
-      valuesToInsert.push(headers);
-    }
-
-    valuesToInsert.push(...rows);
-
-    const appendResponse = await sheets.spreadsheets.values.append({
+    await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
-      range: `'${safeSheetName}'!A:A`,
-      valueInputOption: 'USER_ENTERED',
-      insertDataOption: 'INSERT_ROWS',
       requestBody: {
-        values: valuesToInsert
+        requests: [
+          {
+            insertDimension: {
+              range: {
+                sheetId,
+                dimension: 'ROWS',
+                startIndex: 3,
+                endIndex: 3 + totalInsertedRows
+              },
+              inheritFromBefore: false
+            }
+          }
+        ]
       }
     });
 
-    const updatedRangeInfo = parseA1Range(appendResponse.data.updates?.updatedRange);
-    const startRowIndex = updatedRangeInfo?.startRowIndex ?? 0;
-    const totalInsertedRows = valuesToInsert.length;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `'${safeSheetName}'!A4`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: blockValues
+      }
+    });
+
+    const startRowIndex = 3;
+    const headerRowIndex = startRowIndex + 1;
+    const dataStartRowIndex = headerRowIndex + 1;
     const endRowIndex = startRowIndex + totalInsertedRows;
 
     const headerBackgroundColor = {
@@ -153,27 +142,6 @@ export async function POST(request: NextRequest) {
     };
 
     const requests: sheets_v4.Schema$Request[] = [];
-
-    const headerRanges: sheets_v4.Schema$GridRange[] = [];
-
-    if (!hasHeader) {
-      headerRanges.push({
-        sheetId,
-        startRowIndex,
-        endRowIndex: startRowIndex + 1,
-        startColumnIndex: 0,
-        endColumnIndex: headers.length
-      });
-    } else if (hasExistingDataRows) {
-      headerRanges.push({
-        sheetId,
-        startRowIndex: startRowIndex + 1,
-        endRowIndex: startRowIndex + 2,
-        startColumnIndex: 0,
-        endColumnIndex: headers.length
-      });
-    }
-
     const headerFormat: sheets_v4.Schema$CellFormat = {
       backgroundColor: headerBackgroundColor,
       horizontalAlignment: 'CENTER',
@@ -185,30 +153,22 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    headerRanges.forEach((range) => {
-      requests.push({
-        repeatCell: {
-          range,
-          cell: {
-            userEnteredFormat: headerFormat
-          },
-          fields:
-            'userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat.foregroundColor,textFormat.bold,textFormat.fontSize)'
-        }
-      });
+    requests.push({
+      repeatCell: {
+        range: {
+          sheetId,
+          startRowIndex: headerRowIndex,
+          endRowIndex: headerRowIndex + 1,
+          startColumnIndex: 0,
+          endColumnIndex: headers.length
+        },
+        cell: {
+          userEnteredFormat: headerFormat
+        },
+        fields:
+          'userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat.foregroundColor,textFormat.bold,textFormat.fontSize)'
+      }
     });
-
-    const dataStartRowIndex = (() => {
-      if (!hasHeader) {
-        return startRowIndex + 1;
-      }
-
-      if (hasExistingDataRows) {
-        return startRowIndex + 2;
-      }
-
-      return startRowIndex;
-    })();
 
     if (dataStartRowIndex < endRowIndex) {
       requests.push({
