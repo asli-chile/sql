@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, X, Loader2 } from 'lucide-react';
+import { FileText, X, Loader2, Send } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { generarReporte, descargarExcel, tiposReportes, TipoReporte } from '@/lib/reportes';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUser } from '@/hooks/useUser';
 
 interface ReportGeneratorProps {
   registros: Registro[];
@@ -15,7 +16,27 @@ interface ReportGeneratorProps {
 export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorProps) {
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoReporte | null>(null);
   const [generando, setGenerando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const { theme } = useTheme();
+  const { currentUser } = useUser();
+  const generatedBy =
+    (currentUser?.nombre && currentUser.nombre.trim().length > 0 && currentUser.nombre) ||
+    currentUser?.email ||
+    'Usuario desconocido';
+
+  const resetState = () => {
+    setTipoSeleccionado(null);
+    setFeedback(null);
+  };
+
+  const handleClose = () => {
+    if (generando || enviando) {
+      return;
+    }
+    resetState();
+    onClose();
+  };
 
   const handleGenerar = async () => {
     if (!tipoSeleccionado || registros.length === 0) return;
@@ -29,15 +50,83 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
       descargarExcel(buffer, nombreReporte);
       
       setTimeout(() => {
-        onClose();
-        setTipoSeleccionado(null);
         setGenerando(false);
+        resetState();
+        onClose();
       }, 500);
     } catch (error) {
       console.error('Error al generar reporte:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       alert(`Error al generar el reporte: ${errorMessage}\n\nPor favor, intenta nuevamente.`);
       setGenerando(false);
+    }
+  };
+
+  const handleEnviarGoogleSheets = async () => {
+    if (!tipoSeleccionado) {
+      setFeedback({
+        type: 'error',
+        message: 'Selecciona un tipo de reporte antes de enviar a Google Sheets.'
+      });
+      return;
+    }
+
+    if (registros.length === 0) {
+      setFeedback({
+        type: 'error',
+        message: 'No hay registros disponibles para enviar.'
+      });
+      return;
+    }
+
+    setEnviando(true);
+    setFeedback(null);
+
+    try {
+      const response = await fetch('/api/google-sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          tipoReporte: tipoSeleccionado,
+          registros,
+          usuario: generatedBy
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.ok) {
+        const message =
+          (data && typeof data.message === 'string')
+            ? data.message
+            : 'Error al enviar datos a Google Sheets.';
+        throw new Error(message);
+      }
+
+      const registrosInsertados = data?.inserted ?? registros.length;
+      const nombreHoja = data?.sheetName ?? 'hoja';
+
+      setFeedback({
+        type: 'success',
+        message: `Se enviaron ${registrosInsertados} registro(s) correctamente a "${nombreHoja}".`
+      });
+
+      setTimeout(() => {
+        resetState();
+        onClose();
+      }, 1200);
+    } catch (error) {
+      console.error('Error al enviar a Google Sheets:', error);
+      const mensaje =
+        error instanceof Error ? error.message : 'Error inesperado al conectar con Google Sheets.';
+      setFeedback({
+        type: 'error',
+        message: mensaje
+      });
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -67,12 +156,13 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
             </h2>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={`p-1 rounded hover:bg-opacity-20 transition-colors ${
               theme === 'dark'
                 ? 'text-gray-400 hover:bg-white'
                 : 'text-gray-600 hover:bg-gray-200'
-            }`}
+            } ${generando || enviando ? 'opacity-60 cursor-not-allowed' : ''}`}
+            disabled={generando || enviando}
           >
             <X className="w-5 h-5" />
           </button>
@@ -146,30 +236,73 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
           </div>
         </div>
 
+        {feedback && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`mx-6 mb-4 rounded-lg border px-4 py-3 text-sm ${
+              feedback.type === 'success'
+                ? theme === 'dark'
+                  ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-200'
+                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : theme === 'dark'
+                ? 'border-rose-500/50 bg-rose-500/10 text-rose-200'
+                : 'border-rose-200 bg-rose-50 text-rose-700'
+            }`}
+          >
+            {feedback.message}
+          </div>
+        )}
+
         {/* Footer */}
         <div
-          className={`flex items-center justify-end space-x-3 p-4 border-t ${
+          className={`flex flex-wrap items-center justify-end gap-3 p-4 border-t ${
             theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
           }`}
         >
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className={`px-4 py-2 rounded-lg transition-colors ${
               theme === 'dark'
                 ? 'text-gray-300 hover:bg-gray-700'
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
-            disabled={generando}
+            disabled={generando || enviando}
           >
             Cancelar
           </button>
           <button
-            onClick={handleGenerar}
-            disabled={!tipoSeleccionado || generando}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-              tipoSeleccionado && !generando
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
+            onClick={handleEnviarGoogleSheets}
+            disabled={!tipoSeleccionado || enviando || generando}
+            className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
+              tipoSeleccionado && !enviando && !generando
+                ? theme === 'dark'
+                  ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white hover:from-sky-400 hover:to-indigo-400'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+            }`}
+          >
+            {enviando ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Enviando...</span>
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                <span>Enviar a Google Sheets</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleGenerar}
+            disabled={!tipoSeleccionado || generando || enviando}
+            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+              tipoSeleccionado && !generando && !enviando
+                ? theme === 'dark'
+                  ? 'border border-blue-400 text-blue-200 hover:bg-blue-500/10'
+                  : 'border border-blue-500 text-blue-600 hover:bg-blue-50'
+                : 'border border-gray-300 text-gray-400 cursor-not-allowed'
             }`}
           >
             {generando ? (

@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, RotateCw, Download, RefreshCw, SlidersHorizontal, History } from 'lucide-react';
+import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, RotateCw, Download, RefreshCw, SlidersHorizontal, History, Eye, ExternalLink } from 'lucide-react';
 
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -152,7 +152,10 @@ export function DataTable({
   const manualViewToggleRef = useRef(false);
   const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [showReportGenerator, setShowReportGenerator] = useState(false);
+  const [showSheetsPreview, setShowSheetsPreview] = useState(false);
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
+  const sheetsPreviewUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL ?? '';
+  const canPreviewSheets = Boolean(sheetsPreviewUrl);
   
   // Estado para visibilidad de columnas
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -515,14 +518,21 @@ export function DataTable({
 
   useEffect(() => {
     if (isCompact) {
-      if (!manualViewToggleRef.current) {
-        setViewMode('cards');
-      }
-    } else {
       manualViewToggleRef.current = false;
       setMobileActionsOpen(false);
+      setViewMode('table');
+      return;
     }
+
+    manualViewToggleRef.current = false;
+    setMobileActionsOpen(false);
   }, [isCompact]);
+
+  useEffect(() => {
+    if (!canPreviewSheets) {
+      setShowSheetsPreview(false);
+    }
+  }, [canPreviewSheets]);
 
   const renderToolbar = () => {
     if (isCompact) {
@@ -561,16 +571,6 @@ export function DataTable({
             >
               <Filter className="h-4 w-4" />
               Filtros
-            </button>
-            <button
-              onClick={() => {
-                manualViewToggleRef.current = true;
-                handleToggleViewMode();
-              }}
-              className={`${toolbarButtonClasses} flex-1 justify-center text-[11px]`}
-            >
-              {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-              {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
             </button>
             <button
               onClick={() => setMobileActionsOpen(true)}
@@ -613,6 +613,23 @@ export function DataTable({
                       Exportar reporte
                     </span>
                   </button>
+                  {canPreviewSheets && (
+                    <button
+                      onClick={() => {
+                        setShowSheetsPreview((prev) => {
+                          const next = !prev;
+                          return next;
+                        });
+                        setMobileActionsOpen(false);
+                      }}
+                      className={`${showSheetsPreview ? controlButtonActive : toolbarButtonClasses} justify-between`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        {showSheetsPreview ? 'Ocultar Google Sheets' : 'Ver Google Sheets'}
+                      </span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       handleResetTable();
@@ -782,6 +799,15 @@ export function DataTable({
               <SlidersHorizontal className="h-4 w-4" />
               Densidad
             </button>
+            {canPreviewSheets && (
+              <button
+                className={showSheetsPreview ? controlButtonActive : toolbarButtonClasses}
+                onClick={() => setShowSheetsPreview((prev) => !prev)}
+              >
+                <Eye className="h-4 w-4" />
+                {showSheetsPreview ? 'Ocultar Google Sheets' : 'Ver Google Sheets'}
+              </button>
+            )}
             <button
               className={toolbarButtonClasses}
               onClick={() => setShowReportGenerator(true)}
@@ -852,6 +878,54 @@ export function DataTable({
       >
         {renderToolbar()}
       </div>
+
+      {canPreviewSheets && showSheetsPreview && (
+        <div className={`${panelClasses} overflow-hidden rounded-2xl`}>
+          <div
+            className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${
+              isDark ? 'border-slate-800/60 bg-slate-950/80' : 'border-gray-200 bg-slate-50'
+            }`}
+          >
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">Previsualización</p>
+              <h3
+                className={`text-sm font-semibold ${isDark ? 'text-slate-100' : 'text-slate-900'}`}
+              >
+                Google Sheets
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  window.open(sheetsPreviewUrl, '_blank', 'noopener,noreferrer');
+                }}
+                className={`${toolbarButtonClasses} text-xs`}
+                aria-label="Abrir hoja de Google Sheets en una nueva pestaña"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Abrir en pestaña
+              </button>
+              <button
+                onClick={() => setShowSheetsPreview(false)}
+                className={`${toolbarButtonClasses} text-xs`}
+                aria-label="Cerrar previsualización de Google Sheets"
+              >
+                <X className="h-4 w-4" />
+                Cerrar vista
+              </button>
+            </div>
+          </div>
+          <div className="relative h-[420px] w-full">
+            <iframe
+              src={sheetsPreviewUrl}
+              title="Previsualización Google Sheets"
+              className="h-full w-full border-0"
+              loading="lazy"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
 
       {/* Panel de filtros */}
       {showFilters && (
@@ -1576,7 +1650,7 @@ export function DataTable({
       {showReportGenerator && (
         <ReportGenerator
           isOpen={showReportGenerator}
-          registros={filteredData}
+          registros={hasSelection ? selectedRecordsList : filteredData}
           onClose={() => setShowReportGenerator(false)}
         />
       )}
