@@ -871,10 +871,15 @@ export function DataTable({
     );
   };
 
+  const stickyTopDesktop = 'top-24';
+  const stickyTopMobile = 'top-16';
+  const stickyTopClass = isCompact ? stickyTopMobile : stickyTopDesktop;
+
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-4 -mt-4 sm:-mt-6 lg:-mt-8">
       {/* Header con controles */}
-      <div className={`${panelClasses} rounded-2xl px-4 py-4 backdrop-blur`}
+      <div
+        className={`sticky ${stickyTopClass} z-40 ${panelClasses} rounded-2xl px-3 py-3 sm:px-4 sm:py-4 backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}
       >
         {renderToolbar()}
       </div>

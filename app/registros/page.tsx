@@ -1561,64 +1561,64 @@ export default function RegistrosPage() {
           )}
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-6 space-y-8 sm:px-6 lg:px-10 lg:space-y-10">
-            <section className={isMobileView ? 'flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory' : 'grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4'}>
+            <div className="mx-auto w-full max-w-[1600px] px-4 pb-8 pt-4 space-y-6 sm:px-6 lg:px-10 lg:space-y-8">
+            <section className={isMobileView ? 'flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory' : 'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}>
               <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
-                <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Total Registros</CardTitle>
                     <Package className="h-4 w-4 text-slate-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-white">{totalRegistros}</div>
+                  <CardContent className="pt-0">
+                    <div className="text-xl font-semibold text-white sm:text-2xl">{totalRegistros}</div>
                   </CardContent>
                 </Card>
               </div>
 
               <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
-                <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Total Bookings</CardTitle>
                     <FileText className="h-4 w-4 text-slate-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-blue-400">{totalBookings}</div>
+                  <CardContent className="pt-0">
+                    <div className="text-xl font-semibold text-blue-400 sm:text-2xl">{totalBookings}</div>
                   </CardContent>
                 </Card>
               </div>
 
               <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
-                <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Total Contenedores</CardTitle>
                     <Container className="h-4 w-4 text-slate-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-purple-400">{totalContenedores}</div>
-                    <p className="text-xs text-slate-400 mt-1">Total contenedores (divididos por espacios)</p>
+                  <CardContent className="pt-0">
+                    <div className="text-xl font-semibold text-purple-400 sm:text-2xl">{totalContenedores}</div>
+                    <p className="mt-1 text-[11px] text-slate-400 sm:text-xs">Total contenedores (divididos por espacios)</p>
                   </CardContent>
                 </Card>
               </div>
 
               <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
-                <Card className="border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Estados</CardTitle>
                     <CheckCircle className="h-4 w-4 text-slate-500" />
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-xs font-medium">
+                  <CardContent className="pt-0">
+                    <div className="space-y-2 text-[11px] font-medium sm:text-xs">
                       <div className="flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2 text-emerald-200">
                         <span>Confirmados</span>
-                        <span className="text-lg font-semibold">{totalConfirmados}</span>
+                        <span className="text-base font-semibold sm:text-lg">{totalConfirmados}</span>
                       </div>
                       <div className="flex items-center justify-between rounded-lg bg-amber-500/15 px-3 py-2 text-amber-200">
                         <span>Pendientes</span>
-                        <span className="text-lg font-semibold">{totalPendientes}</span>
+                        <span className="text-base font-semibold sm:text-lg">{totalPendientes}</span>
                       </div>
                       <div className="flex items-center justify-between rounded-lg bg-rose-500/15 px-3 py-2 text-rose-200">
                         <span>Cancelados</span>
-                        <span className="text-lg font-semibold">{totalCancelados}</span>
+                        <span className="text-base font-semibold sm:text-lg">{totalCancelados}</span>
                       </div>
                     </div>
                   </CardContent>
@@ -1626,9 +1626,21 @@ export default function RegistrosPage() {
               </div>
             </section>
 
-            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
-              <div className="overflow-x-auto">
-                <div className="min-w-full md:min-w-[1100px] px-2 pb-4">
+            <section
+              className={
+                isMobileView
+                  ? 'w-full'
+                  : 'rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20'
+              }
+            >
+              <div className={isMobileView ? 'w-full overflow-x-auto' : 'overflow-x-auto'}>
+                <div
+                  className={
+                    isMobileView
+                      ? 'w-full min-w-full px-0 pb-4'
+                      : 'min-w-full md:min-w-[1100px] px-2 pb-4'
+                  }
+                >
                   <DataTable
                     data={registros}
                     columns={columns}
