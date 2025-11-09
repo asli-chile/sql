@@ -517,167 +517,269 @@ export function DataTable({
     }
   }, [isCompact, viewMode]);
 
-  const outerLayoutClasses = 'flex flex-col gap-3';
-  const mainRowClasses = isCompact
-    ? 'flex w-full flex-col gap-3'
-    : 'flex flex-wrap items-center justify-between gap-3';
-  const primaryActionGroupClasses = isCompact
-    ? 'flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center'
-    : 'flex flex-wrap items-center gap-2';
-  const secondaryActionGroupClasses = isCompact
-    ? 'flex w-full flex-wrap items-center gap-2 justify-start'
-    : 'flex flex-wrap items-center gap-2';
-  const bulkActionsRowClasses = isCompact
-    ? 'flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between'
-    : 'flex flex-wrap items-center justify-between gap-2';
-  const compactButtonClass = isCompact ? 'w-full justify-center text-[11px] h-9 px-3' : '';
-  const compactPrimaryButtonClass = isCompact ? 'w-full justify-center text-xs py-2' : '';
-  const compactDestructiveClass = isCompact ? 'w-full justify-center text-[11px] h-9 px-3' : '';
-  const compactInputClass = isCompact ? 'w-full' : 'w-auto min-w-[220px]';
-  const compactPillClass = isCompact ? 'w-full justify-center text-[11px] py-2' : '';
-  const compactColumnToggleWrapper = isCompact ? 'w-full' : '';
+  const renderToolbar = () => {
+    if (isCompact) {
+      return (
+        <div className="flex flex-col gap-3">
+          {canAdd && onAdd && (
+            <button
+              onClick={onAdd}
+              className={`${primaryActionClasses} w-full justify-center text-sm py-3`}
+            >
+              <Plus className="h-4 w-4" />
+              Nuevo registro
+            </button>
+          )}
+
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="search"
+              value={globalFilter ?? ''}
+              onChange={handleGlobalSearchChange}
+              placeholder="Buscar en la tabla..."
+              className={`w-full pl-9 pr-3 py-2 text-xs rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isDark
+                  ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
+                  : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
+              }`}
+            />
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            <button
+              data-filter-button
+              onClick={handleToggleFilters}
+              className={`${showFilters ? controlButtonActive : toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`}
+            >
+              <Filter className="h-4 w-4" />
+              Filtros
+            </button>
+
+            <div className="shrink-0">
+              <ColumnToggle
+                columns={columnToggleOptions}
+                onToggleColumn={handleToggleColumn}
+                onToggleAll={handleToggleAllColumns}
+                alwaysVisibleColumns={alwaysVisibleColumns}
+              />
+            </div>
+
+            <button
+              className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`}
+              onClick={() => setShowReportGenerator(true)}
+            >
+              <Download className="h-4 w-4" />
+              Exportar
+            </button>
+            <button
+              className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2 border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+              onClick={handleResetTable}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reiniciar
+            </button>
+            <button className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`} disabled>
+              <RotateCcw className="h-4 w-4" />
+              Deshacer
+            </button>
+            <button className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`} disabled>
+              <RotateCw className="h-4 w-4" />
+              Rehacer
+            </button>
+            <button className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`} disabled>
+              <SlidersHorizontal className="h-4 w-4" />
+              Densidad
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+            {onSelectAll && (
+              <button
+                onClick={handleSelectAllClick}
+                className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Seleccionar todo
+              </button>
+            )}
+            {onClearSelection && (
+              <button
+                onClick={handleClearSelectionClick}
+                className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2 ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!hasSelection}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Limpiar selección
+              </button>
+            )}
+            {canDelete && onBulkDelete && (
+              <button
+                onClick={handleBulkDeleteClick}
+                className={`${destructiveButtonClasses} shrink-0 text-[11px] px-3 py-2 ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!hasSelection}
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar selección
+              </button>
+            )}
+            {hasSelection && (
+              <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold ${
+                isDark
+                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
+                  : 'bg-blue-100 text-blue-700 border border-blue-200'
+              }`}>
+                {selectedCount} seleccionados
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const mainRowClasses = 'flex flex-wrap items-center justify-between gap-3';
+    const primaryActionGroupClasses = 'flex flex-wrap items-center gap-2';
+    const secondaryActionGroupClasses = 'flex flex-wrap items-center gap-2';
+    const bulkActionsRowClasses = 'flex flex-wrap items-center justify-between gap-2';
+
+    return (
+      <div className="flex flex-col gap-3">
+        <div className={mainRowClasses}>
+          <div className={primaryActionGroupClasses}>
+            {canAdd && onAdd && (
+              <button
+                onClick={onAdd}
+                className={primaryActionClasses}
+              >
+                <Plus className="h-4 w-4" />
+                Nuevo registro
+              </button>
+            )}
+
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="search"
+                value={globalFilter ?? ''}
+                onChange={handleGlobalSearchChange}
+                placeholder="Buscar en la tabla..."
+                className={`pl-9 pr-3 py-2 text-xs rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                  isDark
+                    ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
+                    : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
+                }`}
+              />
+            </div>
+
+            <button
+              data-filter-button
+              onClick={handleToggleFilters}
+              className={showFilters ? controlButtonActive : toolbarButtonClasses}
+            >
+              <Filter className="h-4 w-4" />
+              Filtros
+            </button>
+
+            <button
+              onClick={handleToggleViewMode}
+              className={toolbarButtonClasses}
+            >
+              {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+              {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
+            </button>
+
+            {columnToggleOptions.length > 0 && (
+              <ColumnToggle
+                columns={columnToggleOptions}
+                onToggleColumn={handleToggleColumn}
+                onToggleAll={handleToggleAllColumns}
+                alwaysVisibleColumns={alwaysVisibleColumns}
+              />
+            )}
+          </div>
+
+          <div className={secondaryActionGroupClasses}>
+            <button className={toolbarButtonClasses} disabled>
+              <RotateCcw className="h-4 w-4" />
+              Deshacer
+            </button>
+            <button className={toolbarButtonClasses} disabled>
+              <RotateCw className="h-4 w-4" />
+              Rehacer
+            </button>
+            <button className={toolbarButtonClasses} disabled>
+              <SlidersHorizontal className="h-4 w-4" />
+              Densidad
+            </button>
+            <button
+              className={toolbarButtonClasses}
+              onClick={() => setShowReportGenerator(true)}
+            >
+              <Download className="h-4 w-4" />
+              Exportar
+            </button>
+            <button
+              className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+              onClick={handleResetTable}
+            >
+              <RefreshCw className="h-4 w-4" />
+              Reiniciar tabla
+            </button>
+          </div>
+        </div>
+
+        <div className={bulkActionsRowClasses}>
+          <div className="flex flex-wrap items-center gap-2">
+            {onSelectAll && (
+              <button
+                onClick={handleSelectAllClick}
+                className={toolbarButtonClasses}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Seleccionar todo
+              </button>
+            )}
+            {onClearSelection && (
+              <button
+                onClick={handleClearSelectionClick}
+                className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!hasSelection}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Limpiar selección
+              </button>
+            )}
+            {canDelete && onBulkDelete && (
+              <button
+                onClick={handleBulkDeleteClick}
+                className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={!hasSelection}
+              >
+                <Trash2 className="h-4 w-4" />
+                Eliminar selección
+              </button>
+            )}
+            {hasSelection && (
+              <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
+                isDark
+                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
+                  : 'bg-blue-100 text-blue-700 border border-blue-200'
+              }`}>
+                {selectedCount} seleccionados
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="w-full space-y-4">
       {/* Header con controles */}
       <div className={`${panelClasses} rounded-2xl px-4 py-4 backdrop-blur`}
       >
-        <div className={outerLayoutClasses}>
-          <div className={mainRowClasses}>
-            <div className={primaryActionGroupClasses}>
-              {canAdd && onAdd && (
-                <button
-                  onClick={onAdd}
-                  className={`${primaryActionClasses} ${compactPrimaryButtonClass}`}
-                >
-                  <Plus className="h-4 w-4" />
-                  Nuevo registro
-                </button>
-              )}
-
-              <div className={`relative ${isCompact ? 'w-full' : ''}`}>
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="search"
-                  value={globalFilter ?? ''}
-                  onChange={handleGlobalSearchChange}
-                  placeholder="Buscar en la tabla..."
-                  className={`pl-9 pr-3 py-2 text-xs rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                    isDark
-                      ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
-                      : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
-                  } ${compactInputClass}`}
-                />
-              </div>
-
-              <button
-                data-filter-button
-                onClick={handleToggleFilters}
-                className={`${showFilters ? controlButtonActive : toolbarButtonClasses} ${compactButtonClass}`}
-              >
-                <Filter className="h-4 w-4" />
-                Filtros
-              </button>
-
-              {!isCompact && (
-                <button
-                  onClick={handleToggleViewMode}
-                  className={toolbarButtonClasses}
-                >
-                  {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                  {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
-                </button>
-              )}
-
-              {columnToggleOptions.length > 0 && (
-                <div className={compactColumnToggleWrapper}>
-                  <ColumnToggle
-                    columns={columnToggleOptions}
-                    onToggleColumn={handleToggleColumn}
-                    onToggleAll={handleToggleAllColumns}
-                    alwaysVisibleColumns={alwaysVisibleColumns}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className={secondaryActionGroupClasses}>
-              {!isCompact && (
-                <>
-                  <button className={toolbarButtonClasses} disabled>
-                    <RotateCcw className="h-4 w-4" />
-                    Deshacer
-                  </button>
-                  <button className={toolbarButtonClasses} disabled>
-                    <RotateCw className="h-4 w-4" />
-                    Rehacer
-                  </button>
-                  <button className={toolbarButtonClasses} disabled>
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Densidad
-                  </button>
-                </>
-              )}
-              <button
-                className={`${toolbarButtonClasses} ${compactButtonClass}`}
-                onClick={() => setShowReportGenerator(true)}
-              >
-                <Download className="h-4 w-4" />
-                Exportar
-              </button>
-              <button
-                className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10 ${compactButtonClass}`}
-                onClick={handleResetTable}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Reiniciar tabla
-              </button>
-            </div>
-          </div>
-
-          <div className={bulkActionsRowClasses}>
-            <div className="flex flex-wrap items-center gap-2">
-              {onSelectAll && (
-                <button
-                  onClick={handleSelectAllClick}
-                  className={`${toolbarButtonClasses} ${compactButtonClass}`}
-                >
-                  <CheckSquare className="h-4 w-4" />
-                  Seleccionar todo
-                </button>
-              )}
-              {onClearSelection && (
-                <button
-                  onClick={handleClearSelectionClick}
-                  className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} ${compactButtonClass}`}
-                  disabled={!hasSelection}
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Limpiar selección
-                </button>
-              )}
-              {canDelete && onBulkDelete && (
-                <button
-                  onClick={handleBulkDeleteClick}
-                  className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} ${compactDestructiveClass}`}
-                  disabled={!hasSelection}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Eliminar selección
-                </button>
-              )}
-              {hasSelection && (
-                <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                  isDark
-                    ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
-                    : 'bg-blue-100 text-blue-700 border border-blue-200'
-                } ${compactPillClass}`}>
-                  {selectedCount} seleccionados
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        {renderToolbar()}
       </div>
 
       {/* Panel de filtros */}
