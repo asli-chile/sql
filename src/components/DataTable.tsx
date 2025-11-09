@@ -503,19 +503,13 @@ export function DataTable({
       return;
     }
     const mediaQuery = window.matchMedia('(max-width: 1024px)');
-    const handleMatch = (event?: MediaQueryListEvent) => {
-      setIsCompact(event ? event.matches : mediaQuery.matches);
+    const handleMatch = () => {
+      setIsCompact(mediaQuery.matches);
     };
     handleMatch();
     mediaQuery.addEventListener('change', handleMatch);
     return () => mediaQuery.removeEventListener('change', handleMatch);
   }, []);
-
-  useEffect(() => {
-    if (isCompact && viewMode !== 'cards') {
-      setViewMode('cards');
-    }
-  }, [isCompact, viewMode]);
 
   const renderToolbar = () => {
     if (isCompact) {
@@ -546,17 +540,23 @@ export function DataTable({
             />
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <div className="grid grid-cols-2 gap-2">
             <button
               data-filter-button
               onClick={handleToggleFilters}
-              className={`${showFilters ? controlButtonActive : toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`}
+              className={`${showFilters ? controlButtonActive : toolbarButtonClasses} text-[11px]`}
             >
               <Filter className="h-4 w-4" />
               Filtros
             </button>
-
-            <div className="shrink-0">
+            <button
+              onClick={handleToggleViewMode}
+              className={`${toolbarButtonClasses} text-[11px]`}
+            >
+              {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+              {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
+            </button>
+            <div className="col-span-2">
               <ColumnToggle
                 columns={columnToggleOptions}
                 onToggleColumn={handleToggleColumn}
@@ -564,40 +564,39 @@ export function DataTable({
                 alwaysVisibleColumns={alwaysVisibleColumns}
               />
             </div>
-
             <button
-              className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`}
+              className={`${toolbarButtonClasses} text-[11px]`}
               onClick={() => setShowReportGenerator(true)}
             >
               <Download className="h-4 w-4" />
               Exportar
             </button>
             <button
-              className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2 border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+              className={`${toolbarButtonClasses} text-[11px] border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
               onClick={handleResetTable}
             >
               <RefreshCw className="h-4 w-4" />
               Reiniciar
             </button>
-            <button className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`} disabled>
+            <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
               <RotateCcw className="h-4 w-4" />
               Deshacer
             </button>
-            <button className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`} disabled>
+            <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
               <RotateCw className="h-4 w-4" />
               Rehacer
             </button>
-            <button className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`} disabled>
+            <button className={`${toolbarButtonClasses} text-[11px]`} disabled>
               <SlidersHorizontal className="h-4 w-4" />
               Densidad
             </button>
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <div className="grid grid-cols-2 gap-2">
             {onSelectAll && (
               <button
                 onClick={handleSelectAllClick}
-                className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2`}
+                className={`${toolbarButtonClasses} text-[11px]`}
               >
                 <CheckSquare className="h-4 w-4" />
                 Seleccionar todo
@@ -606,7 +605,7 @@ export function DataTable({
             {onClearSelection && (
               <button
                 onClick={handleClearSelectionClick}
-                className={`${toolbarButtonClasses} shrink-0 text-[11px] px-3 py-2 ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${toolbarButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={!hasSelection}
               >
                 <RotateCcw className="h-4 w-4" />
@@ -616,7 +615,7 @@ export function DataTable({
             {canDelete && onBulkDelete && (
               <button
                 onClick={handleBulkDeleteClick}
-                className={`${destructiveButtonClasses} shrink-0 text-[11px] px-3 py-2 ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${destructiveButtonClasses} text-[11px] ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={!hasSelection}
               >
                 <Trash2 className="h-4 w-4" />
@@ -624,11 +623,7 @@ export function DataTable({
               </button>
             )}
             {hasSelection && (
-              <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-3 py-2 text-xs font-semibold ${
-                isDark
-                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
-                  : 'bg-blue-100 text-blue-700 border border-blue-200'
-              }`}>
+              <span className="col-span-2 inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold border border-sky-500/40 bg-sky-500/10 text-sky-200">
                 {selectedCount} seleccionados
               </span>
             )}
@@ -637,15 +632,10 @@ export function DataTable({
       );
     }
 
-    const mainRowClasses = 'flex flex-wrap items-center justify-between gap-3';
-    const primaryActionGroupClasses = 'flex flex-wrap items-center gap-2';
-    const secondaryActionGroupClasses = 'flex flex-wrap items-center gap-2';
-    const bulkActionsRowClasses = 'flex flex-wrap items-center justify-between gap-2';
-
     return (
       <div className="flex flex-col gap-3">
-        <div className={mainRowClasses}>
-          <div className={primaryActionGroupClasses}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {canAdd && onAdd && (
               <button
                 onClick={onAdd}
@@ -698,7 +688,7 @@ export function DataTable({
             )}
           </div>
 
-          <div className={secondaryActionGroupClasses}>
+          <div className="flex flex-wrap items-center gap-2">
             <button className={toolbarButtonClasses} disabled>
               <RotateCcw className="h-4 w-4" />
               Deshacer
@@ -728,7 +718,7 @@ export function DataTable({
           </div>
         </div>
 
-        <div className={bulkActionsRowClasses}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {onSelectAll && (
               <button
