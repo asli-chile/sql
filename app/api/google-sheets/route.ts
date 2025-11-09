@@ -5,6 +5,7 @@ import {
   createSheetsClient,
   getSheetIdByName,
   getSheetNameFromTipo,
+  getSpreadsheetId,
   handleGoogleError,
   mapRegistrosToRows
 } from '@/lib/googleSheets';
@@ -55,17 +56,7 @@ const parseA1Range = (range?: string | null) => {
 
 export async function POST(request: NextRequest) {
   try {
-    const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-
-    if (!spreadsheetId) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message: 'Falta configurar GOOGLE_SHEETS_SPREADSHEET_ID en las variables de entorno.'
-        },
-        { status: 500 }
-      );
-    }
+    const spreadsheetId = getSpreadsheetId();
 
     const body = (await request.json()) as GoogleSheetsPayload;
     const { tipoReporte, registros, usuario } = body;
