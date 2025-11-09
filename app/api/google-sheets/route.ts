@@ -17,43 +17,6 @@ interface GoogleSheetsPayload {
   usuario?: string;
 }
 
-const columnLettersToIndex = (letters: string): number => {
-  let result = 0;
-  const uppercase = letters.toUpperCase();
-  for (let i = 0; i < uppercase.length; i += 1) {
-    const code = uppercase.charCodeAt(i) - 64; // 'A' => 1
-    result = result * 26 + code;
-  }
-  return result - 1; // Convert to zero-based index
-};
-
-const parseA1Range = (range?: string | null) => {
-  if (!range) {
-    return null;
-  }
-
-  const match = range.match(/^(?:'([^']+)'|([^!]+))!([A-Z]+)(\d+):([A-Z]+)(\d+)$/);
-  if (!match) {
-    return null;
-  }
-
-  const [, quotedSheet, unquotedSheet, startColLetters, startRowStr, endColLetters, endRowStr] = match;
-  const sheetName = quotedSheet ?? unquotedSheet;
-
-  const startRowIndex = parseInt(startRowStr, 10) - 1;
-  const endRowIndex = parseInt(endRowStr, 10);
-  const startColumnIndex = columnLettersToIndex(startColLetters);
-  const endColumnIndex = columnLettersToIndex(endColLetters) + 1;
-
-  return {
-    sheetName,
-    startRowIndex,
-    endRowIndex,
-    startColumnIndex,
-    endColumnIndex
-  };
-};
-
 export async function POST(request: NextRequest) {
   try {
     const spreadsheetId = getSpreadsheetId();
@@ -98,9 +61,23 @@ export async function POST(request: NextRequest) {
 
     const sheetId = await getSheetIdByName(sheets, spreadsheetId, sheetName);
 
-    const blankRow = new Array(headers.length).fill('');
-    const blockValues = [blankRow, headers, ...rows];
-    const totalInsertedRows = blockValues.length;
+    const existingDataResponse = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `'${safeSheetName}'!A4:A`,
+      majorDimension: 'ROWS'
+    });
+
+    const hasExistingDataRows = existingDataResponse.data.values
+      ? existingDataResponse.data.values.some(
+          (row) =>
+            Array.isArray(row) &&
+            row.some((cell) => typeof cell === 'string' && cell.trim().length > 0)
+        )
+      : false;
+
+    const blockValues = [headers, ...rows];
+    const separatorRows = hasExistingDataRows ? 1 : 0;
+    const totalInsertedRows = blockValues.length + separatorRows;
 
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
@@ -131,9 +108,9 @@ export async function POST(request: NextRequest) {
     });
 
     const startRowIndex = 3;
-    const headerRowIndex = startRowIndex + 1;
+    const headerRowIndex = startRowIndex;
     const dataStartRowIndex = headerRowIndex + 1;
-    const endRowIndex = startRowIndex + totalInsertedRows;
+    const dataEndRowIndex = startRowIndex + blockValues.length;
 
     const headerBackgroundColor = {
       red: 0,
@@ -155,13 +132,13 @@ export async function POST(request: NextRequest) {
 
     requests.push({
       repeatCell: {
-        range: {
-          sheetId,
-          startRowIndex: headerRowIndex,
-          endRowIndex: headerRowIndex + 1,
-          startColumnIndex: 0,
-          endColumnIndex: headers.length
-        },
+          range: {
+            sheetId,
+            startRowIndex: headerRowIndex,
+            endRowIndex: headerRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: headers.length
+          },
         cell: {
           userEnteredFormat: headerFormat
         },
@@ -170,13 +147,13 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    if (dataStartRowIndex < endRowIndex) {
+    if (dataStartRowIndex < dataEndRowIndex) {
       requests.push({
         repeatCell: {
           range: {
             sheetId,
             startRowIndex: dataStartRowIndex,
-            endRowIndex,
+            endRowIndex: dataEndRowIndex,
             startColumnIndex: 0,
             endColumnIndex: headers.length
           },
@@ -191,13 +168,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (totalInsertedRows > 0) {
+    if (blockValues.length > 0) {
       requests.push({
         repeatCell: {
           range: {
             sheetId,
             startRowIndex,
-            endRowIndex,
+            endRowIndex: dataEndRowIndex,
             startColumnIndex: 0,
             endColumnIndex: headers.length
           },
