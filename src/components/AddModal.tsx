@@ -113,7 +113,7 @@ export function AddModal({
   const copiesPreview =
     numberOfCopies.trim() === ''
       ? 1
-      : Math.min(Math.max(parseInt(numberOfCopies, 10) || 1, 1), 10);
+      : Math.max(parseInt(numberOfCopies, 10) || 1, 1);
 
   const ensureUniqueRefAsliList = async (refs: string[]): Promise<string[]> => {
     const uniqueRefs: string[] = [];
@@ -237,8 +237,8 @@ export function AddModal({
     const copiesInput = numberOfCopies.trim();
     const resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
 
-    if (!Number.isFinite(resolvedCopies) || resolvedCopies < 1 || resolvedCopies > 10) {
-      setError('El número de copias debe estar entre 1 y 10');
+    if (!Number.isFinite(resolvedCopies) || resolvedCopies < 1) {
+      setError('Debes ingresar una cantidad válida (1 o más)');
       setLoading(false);
       return;
     }
