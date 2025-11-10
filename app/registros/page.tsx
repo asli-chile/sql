@@ -31,6 +31,7 @@ import { QRGenerator } from '@/components/QRGenerator';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/FacturaViewer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
 
 interface User {
   id: string;
@@ -102,7 +103,7 @@ export default function RegistrosPage() {
   
   // Estado para clientes asignados al ejecutivo
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
-  const [isEjecutivo, setIsEjecutivo] = useState(false);
+const [isEjecutivo, setIsEjecutivo] = useState(false);
 
 type DeleteConfirmState = {
   registros: Registro[];
@@ -597,6 +598,54 @@ const handleCancelDelete = useCallback(() => {
   if (deleteProcessing) return;
   setDeleteConfirm(null);
 }, [deleteProcessing]);
+
+const handleRealtimeEvent = useCallback(
+  ({ event, registro }: { event: 'INSERT' | 'UPDATE' | 'DELETE'; registro: Registro }) => {
+    setRegistros((prevRegistros) => {
+      if (event === 'DELETE') {
+        return prevRegistros.filter((item) => item.id !== registro.id);
+      }
+
+      if (event === 'INSERT') {
+        const existe = prevRegistros.some((item) => item.id === registro.id);
+        if (existe) {
+          return prevRegistros;
+        }
+        return [registro, ...prevRegistros];
+      }
+
+      if (event === 'UPDATE') {
+        const existe = prevRegistros.some((item) => item.id === registro.id);
+        if (!existe) {
+          return [registro, ...prevRegistros];
+        }
+        return prevRegistros.map((item) => (item.id === registro.id ? registro : item));
+      }
+
+      return prevRegistros;
+    });
+
+    const ref = registro.refAsli ?? 'registro';
+    if (event === 'INSERT') {
+      success(`Nuevo registro ${ref} disponible`);
+    } else if (event === 'UPDATE') {
+      success(`Registro ${ref} actualizado`);
+    } else if (event === 'DELETE') {
+      warning(`Registro ${ref} fue eliminado`);
+    }
+
+    setTimeout(() => {
+      loadCatalogos();
+      loadStats();
+    }, 200);
+  },
+  [loadCatalogos, loadStats, success, warning],
+);
+
+  useRealtimeRegistros({
+    onChange: handleRealtimeEvent,
+    enabled: !loading,
+  });
 
   // Funciones de manejo de eventos
   const handleAdd = () => {
