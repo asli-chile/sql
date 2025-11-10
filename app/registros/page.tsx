@@ -1417,7 +1417,11 @@ export default function RegistrosPage() {
           </div>
         </aside>
 
-        <div className="flex flex-1 flex-col min-w-0" style={{ marginLeft: isSidebarCollapsed ? '80px' : '256px' }}>
+        <div
+          className={`flex flex-1 flex-col min-w-0 transition-all ${
+            isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+          }`}
+        >
           <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
             <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-6">
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
