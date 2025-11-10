@@ -47,6 +47,17 @@ interface DataTableProps {
   onShowHistorial?: (record: Registro) => void;
 }
 
+type ScrollLockState = {
+  bodyOverflow: string;
+  htmlOverflow: string;
+  bodyPosition: string;
+  bodyTop: string;
+  bodyLeft: string;
+  bodyRight: string;
+  bodyWidth: string;
+  scrollY: number;
+};
+
 export function DataTable({
   data,
   columns,
@@ -136,7 +147,7 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
     ? `https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}/edit`
     : '';
   const canPreviewSheets = Boolean(sheetsPreviewUrl);
-  const previousOverflow = useRef<{ body: string; html: string } | null>(null);
+  const scrollLockState = useRef<ScrollLockState | null>(null);
 
   const handleSheetsUpdated = useCallback(() => {
     setIframeKey((prev) => prev + 1);
@@ -525,24 +536,55 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
   }, [canPreviewSheets]);
 
   const lockPageScroll = useCallback(() => {
-    if (typeof window === 'undefined' || previousOverflow.current) {
+    if (typeof window === 'undefined' || scrollLockState.current) {
       return;
     }
-    previousOverflow.current = {
-      body: document.body.style.overflow,
-      html: document.documentElement.style.overflow,
+
+    const scrollY =
+      window.scrollY ||
+      window.pageYOffset ||
+      document.documentElement.scrollTop ||
+      0;
+
+    scrollLockState.current = {
+      bodyOverflow: document.body.style.overflow,
+      htmlOverflow: document.documentElement.style.overflow,
+      bodyPosition: document.body.style.position,
+      bodyTop: document.body.style.top,
+      bodyLeft: document.body.style.left,
+      bodyRight: document.body.style.right,
+      bodyWidth: document.body.style.width,
+      scrollY,
     };
+
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
   }, []);
 
   const unlockPageScroll = useCallback(() => {
-    if (typeof window === 'undefined' || !previousOverflow.current) {
+    if (typeof window === 'undefined' || !scrollLockState.current) {
       return;
     }
-    document.body.style.overflow = previousOverflow.current.body;
-    document.documentElement.style.overflow = previousOverflow.current.html;
-    previousOverflow.current = null;
+
+    const previous = scrollLockState.current;
+    document.body.style.overflow = previous.bodyOverflow;
+    document.documentElement.style.overflow = previous.htmlOverflow;
+    document.body.style.position = previous.bodyPosition;
+    document.body.style.top = previous.bodyTop;
+    document.body.style.left = previous.bodyLeft;
+    document.body.style.right = previous.bodyRight;
+    document.body.style.width = previous.bodyWidth;
+
+    scrollLockState.current = null;
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo(0, previous.scrollY);
+    });
   }, []);
 
   useEffect(() => {
