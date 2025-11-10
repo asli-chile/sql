@@ -8,7 +8,8 @@ const LOGO_URL = '/logoasli.png';
 export type TipoReporte = 
   | 'reserva-confirmada' 
   | 'zarpe' 
-  | 'arribo';
+  | 'arribo'
+  | 'gate-out';
 
 export interface OpcionReporte {
   id: TipoReporte;
@@ -35,6 +36,12 @@ export const tiposReportes: OpcionReporte[] = [
     nombre: 'Informe de Arribo',
     descripcion: 'Informe de arribo del barco',
     icono: '⚓'
+  },
+  {
+    id: 'gate-out',
+    nombre: 'Gate Out',
+    descripcion: 'Registro de salida de contenedores del depósito',
+    icono: '📤'
   }
 ];
 

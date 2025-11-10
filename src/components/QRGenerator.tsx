@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { QrCode, X, Download } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -76,6 +76,19 @@ export function QRGenerator() {
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+        setUrl('');
+        setQrValue('');
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   return (
     <>
       {/* Botón para abrir el modal */}
@@ -94,8 +107,16 @@ export function QRGenerator() {
 
       {/* Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => {
+            setIsOpen(false);
+            setUrl('');
+            setQrValue('');
+          }}
+        >
           <div
+            onClick={(event) => event.stopPropagation()}
             className={`relative w-full max-w-md rounded-lg shadow-xl ${
               theme === 'dark' ? 'bg-gray-800' : 'bg-white'
             }`}

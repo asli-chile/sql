@@ -11,9 +11,10 @@ interface ReportGeneratorProps {
   registros: Registro[];
   isOpen: boolean;
   onClose: () => void;
+  onSheetsUpdated?: () => void;
 }
 
-export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorProps) {
+export function ReportGenerator({ registros, isOpen, onClose, onSheetsUpdated }: ReportGeneratorProps) {
   const [tipoSeleccionado, setTipoSeleccionado] = useState<TipoReporte | null>(null);
   const [generando, setGenerando] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -112,6 +113,11 @@ export function ReportGenerator({ registros, isOpen, onClose }: ReportGeneratorP
         type: 'success',
         message: `Se enviaron ${registrosInsertados} registro(s) correctamente a "${nombreHoja}".`
       });
+
+      // Notificar que se actualizó Google Sheets para recargar el iframe
+      if (onSheetsUpdated) {
+        onSheetsUpdated();
+      }
 
       setTimeout(() => {
         resetState();

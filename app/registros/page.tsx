@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, MoreVertical, X, Plus } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/DataTable';
@@ -48,9 +48,6 @@ export default function RegistrosPage() {
   const router = useRouter();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileView, setIsMobileView] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
@@ -109,22 +106,6 @@ export default function RegistrosPage() {
   useEffect(() => {
     checkUser();
   }, []);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (typeof window === 'undefined') return;
-      setIsMobileView(window.innerWidth <= 768);
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (!isMobileView && isMobileMenuOpen) {
-      setIsMobileMenuOpen(false);
-    }
-  }, [isMobileView, isMobileMenuOpen]);
 
   const checkUser = async () => {
     try {
@@ -1372,7 +1353,7 @@ export default function RegistrosPage() {
     <EditingCellProvider>
       <div className="flex min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
         <aside
-          className={`hidden lg:flex sticky top-0 h-screen flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 ${
+          className={`fixed left-0 top-0 hidden h-screen flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 lg:flex ${
             isSidebarCollapsed ? 'w-20' : 'w-64'
           }`}
         >
@@ -1395,7 +1376,7 @@ export default function RegistrosPage() {
             )}
             <button
               onClick={toggleSidebar}
-              className="absolute top-16 -right-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/60 bg-slate-950 text-slate-300 shadow-lg shadow-slate-950/60 hover:border-sky-500/60 hover:text-sky-200 transition"
+              className="absolute top-[calc(4rem+30px)] -right-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/60 bg-slate-950 text-slate-300 shadow-lg shadow-slate-950/60 hover:border-sky-500/60 hover:text-sky-200 transition"
               aria-label={isSidebarCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
             >
               {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
@@ -1407,7 +1388,7 @@ export default function RegistrosPage() {
                 {!isSidebarCollapsed && (
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500/60">{section.title}</p>
                 )}
-                <div className="space-y-1.5">
+                  <div className="space-y-1.5 overflow-y-visible">
                   {section.items.map((item) => (
                     <button
                       key={item.label}
@@ -1436,134 +1417,49 @@ export default function RegistrosPage() {
           </div>
         </aside>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col min-w-0" style={{ marginLeft: isSidebarCollapsed ? '80px' : '256px' }}>
           <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-5 sm:px-6 lg:px-8">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Módulo Operativo</p>
-                  <h1 className="text-2xl font-semibold text-white">Registros de Embarques</h1>
-                  <p className="text-sm text-slate-400">Gestión de contenedores y embarques</p>
+            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-[9px] uppercase tracking-[0.25em] text-slate-500/80">Módulo Operativo</p>
+                  <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-white">Registros de Embarques</h1>
+                  <p className="hidden text-[11px] text-slate-400 md:block">Gestión de contenedores y embarques</p>
                 </div>
-                {isMobileView ? (
-                  <button
-                    onClick={() => setIsMobileMenuOpen(true)}
-                    className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-800/60 bg-slate-900/70 text-slate-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50"
-                    aria-label="Abrir acciones"
-                  >
-                    <MoreVertical className="h-5 w-5" />
-                  </button>
-                ) : (
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    <button
-                      onClick={() => router.push('/facturas')}
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
-                    >
-                      <Receipt className="h-4 w-4" />
-                      Facturas
-                    </button>
+                <div className="flex flex-wrap items-center justify-end gap-1">
+                  <div className="flex items-center gap-1">
                     <QRGenerator />
                     <ThemeTest />
-                    <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300">
-                      <UserIcon className="h-4 w-4" />
-                      <span className="truncate max-w-[180px]">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
-                    </div>
-                    <button
-                      onClick={() => setIsTrashModalOpen(true)}
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-2 text-sm text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Papelera
-                    </button>
-                    <button
-                      onClick={handleLogout}
-                      className="inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-3 py-2 text-sm text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Salir
-                    </button>
                   </div>
-                )}
-              </div>
-
-              {isMobileView && (
-                <div className="flex items-center gap-2 rounded-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-300">
-                  <UserIcon className="h-4 w-4" />
-                  <span className="truncate">{currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}</span>
+                  <div className="flex items-center gap-1 rounded-full border border-slate-800/70 px-2 py-1 text-[11px] text-slate-300">
+                    <UserIcon className="h-3 w-3" />
+                    <span className="max-w-[140px] truncate text-xs sm:text-[11px]">
+                      {currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => setIsTrashModalOpen(true)}
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-800/70 px-2 py-1 text-[11px] text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span className="hidden 2xl:inline">Papelera</span>
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="inline-flex items-center justify-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                  >
+                    <LogOut className="h-3 w-3" />
+                    <span className="hidden 2xl:inline">Salir</span>
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           </header>
 
-          {isMobileView && isMobileMenuOpen && (
-            <div
-              className="fixed inset-0 z-[1300] flex items-end justify-center bg-black/60 px-4 pb-6 sm:hidden"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <div
-                className="w-full max-w-sm rounded-2xl border border-slate-800/70 bg-slate-950/95 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-200">Acciones rápidas</p>
-                  <button
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className="rounded-full bg-slate-900/70 p-2 text-slate-300 hover:bg-slate-800/80"
-                    aria-label="Cerrar menú móvil"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex flex-col gap-2 px-4 py-4 text-sm">
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      router.push('/facturas');
-                    }}
-                    className="inline-flex items-center justify-between gap-2 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 px-4 py-2 font-semibold text-white shadow-lg shadow-purple-500/20 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Receipt className="h-4 w-4" />
-                      Facturas
-                    </span>
-                  </button>
-                  <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-800/60 bg-slate-900/60 px-3 py-2">
-                    <QRGenerator />
-                    <ThemeTest />
-                  </div>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsTrashModalOpen(true);
-                    }}
-                    className="inline-flex items-center justify-between gap-2 rounded-xl border border-slate-800/70 px-3 py-2 text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Trash2 className="h-4 w-4" />
-                      Papelera
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      handleLogout();
-                    }}
-                    className="inline-flex items-center justify-between gap-2 rounded-xl border border-transparent px-3 py-2 text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                  >
-                    <span className="flex items-center gap-2">
-                      <LogOut className="h-4 w-4" />
-                      Cerrar sesión
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="mx-auto w-full max-w-[1600px] px-4 pb-8 pt-4 space-y-6 sm:px-6 lg:px-10 lg:space-y-8">
-            <section className={isMobileView ? 'flex gap-3 overflow-x-auto pb-2 no-scrollbar snap-x snap-mandatory' : 'grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'}>
-              <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
+          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+            <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
+            <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div>
                 <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Total Registros</CardTitle>
@@ -1575,7 +1471,7 @@ export default function RegistrosPage() {
                 </Card>
               </div>
 
-              <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
+              <div>
                 <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Total Bookings</CardTitle>
@@ -1587,7 +1483,7 @@ export default function RegistrosPage() {
                 </Card>
               </div>
 
-              <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
+              <div>
                 <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Total Contenedores</CardTitle>
@@ -1600,7 +1496,7 @@ export default function RegistrosPage() {
                 </Card>
               </div>
 
-              <div className={isMobileView ? 'min-w-[220px] snap-start flex-shrink-0' : ''}>
+              <div>
                 <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                     <CardTitle className="text-sm font-medium text-slate-300">Estados</CardTitle>
@@ -1626,21 +1522,9 @@ export default function RegistrosPage() {
               </div>
             </section>
 
-            <section
-              className={
-                isMobileView
-                  ? 'w-full'
-                  : 'rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20'
-              }
-            >
-              <div className={isMobileView ? 'w-full overflow-x-auto' : 'overflow-x-auto'}>
-                <div
-                  className={
-                    isMobileView
-                      ? 'w-full min-w-full px-0 pb-4'
-                      : 'min-w-full md:min-w-[1100px] px-2 pb-4'
-                  }
-                >
+            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
+              <div className="overflow-x-auto">
+                <div className="min-w-full px-2 pb-4 md:min-w-[1100px]">
                   <DataTable
                     data={registros}
                     columns={columns}
@@ -1669,15 +1553,6 @@ export default function RegistrosPage() {
             </section>
             </div>
           </main>
-          {isMobileView && (
-            <button
-              onClick={handleAdd}
-              className="fixed bottom-24 right-5 z-[1250] inline-flex h-12 w-12 items-center justify-center rounded-full bg-sky-500 text-white shadow-lg shadow-sky-500/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 sm:hidden"
-              aria-label="Agregar registro"
-            >
-              <Plus className="h-6 w-6" />
-            </button>
-          )}
         </div>
       </div>
 

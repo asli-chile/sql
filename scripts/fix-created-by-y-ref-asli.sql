@@ -60,41 +60,40 @@ CREATE TRIGGER set_registros_user_fields
 CREATE OR REPLACE FUNCTION get_next_ref_asli()
 RETURNS TEXT AS $$
 DECLARE
-  max_numero INTEGER;
   siguiente_numero INTEGER;
   ref_asli_result TEXT;
 BEGIN
-  -- Obtener el número máximo de REF ASLI existentes
-  -- Buscar todos los REF ASLI que coincidan con el patrón A####
-  SELECT COALESCE(MAX(
-    CASE 
-      WHEN ref_asli ~ '^A\d+$' THEN 
-        CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
-      ELSE 0
-    END
-  ), 0) INTO max_numero
-  FROM registros
-  WHERE deleted_at IS NULL
-    AND ref_asli ~ '^A\d+$';
+  SELECT gs.candidate INTO siguiente_numero
+  FROM (
+    SELECT generate_series(
+      1,
+      COALESCE((
+        SELECT COALESCE(MAX(
+          CASE 
+            WHEN ref_asli ~ '^A\d+$' THEN 
+              CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
+            ELSE 0
+          END
+        ), 0)
+        FROM registros
+        WHERE ref_asli ~ '^A\d+$'
+      ), 0) + 1
+    ) AS candidate
+  ) AS gs
+  LEFT JOIN (
+    SELECT DISTINCT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) AS existente
+    FROM registros
+    WHERE ref_asli ~ '^A\d+$'
+  ) AS existentes
+  ON existentes.existente = gs.candidate
+  WHERE existentes.existente IS NULL
+  ORDER BY gs.candidate
+  LIMIT 1;
   
-  -- Si no hay registros, empezar desde 1
-  IF max_numero IS NULL OR max_numero = 0 THEN
+  IF siguiente_numero IS NULL OR siguiente_numero < 1 THEN
     siguiente_numero := 1;
-  ELSE
-    siguiente_numero := max_numero + 1;
   END IF;
   
-  -- Buscar el primer número disponible (por si hay huecos)
-  WHILE EXISTS (
-    SELECT 1 
-    FROM registros 
-    WHERE deleted_at IS NULL
-      AND ref_asli = 'A' || LPAD(siguiente_numero::TEXT, 4, '0')
-  ) LOOP
-    siguiente_numero := siguiente_numero + 1;
-  END LOOP;
-  
-  -- Generar el REF ASLI con formato A0001
   ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
   
   RETURN ref_asli_result;
@@ -106,42 +105,25 @@ CREATE OR REPLACE FUNCTION get_multiple_ref_asli(cantidad INTEGER)
 RETURNS TEXT[] AS $$
 DECLARE
   ref_asli_list TEXT[] := ARRAY[]::TEXT[];
-  max_numero INTEGER;
-  siguiente_numero INTEGER;
+  existing_numbers INTEGER[];
+  siguiente_numero INTEGER := 1;
   ref_asli_result TEXT;
-  i INTEGER;
 BEGIN
-  -- Obtener el número máximo
-  SELECT COALESCE(MAX(
-    CASE 
-      WHEN ref_asli ~ '^A\d+$' THEN 
-        CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER)
-      ELSE 0
-    END
-  ), 0) INTO max_numero
+  SELECT ARRAY_AGG(DISTINCT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) ORDER BY 1)
+    INTO existing_numbers
   FROM registros
-  WHERE deleted_at IS NULL
-    AND ref_asli ~ '^A\d+$';
+  WHERE ref_asli ~ '^A\d+$';
   
-  -- Empezar desde el siguiente al máximo
-  siguiente_numero := COALESCE(max_numero, 0) + 1;
+  IF existing_numbers IS NULL THEN
+    existing_numbers := ARRAY[]::INTEGER[];
+  END IF;
   
-  -- Generar los REF ASLI
-  FOR i IN 1..cantidad LOOP
-    -- Buscar el siguiente número disponible
-    WHILE EXISTS (
-      SELECT 1 
-      FROM registros 
-      WHERE deleted_at IS NULL
-        AND ref_asli = 'A' || LPAD(siguiente_numero::TEXT, 4, '0')
-    ) LOOP
-      siguiente_numero := siguiente_numero + 1;
-    END LOOP;
-    
-    -- Generar el REF ASLI
-    ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
-    ref_asli_list := array_append(ref_asli_list, ref_asli_result);
-    
+  WHILE array_length(ref_asli_list, 1) < cantidad LOOP
+    IF NOT (siguiente_numero = ANY(existing_numbers)) THEN
+      ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
+      ref_asli_list := array_append(ref_asli_list, ref_asli_result);
+      existing_numbers := array_append(existing_numbers, siguiente_numero);
+    END IF;
     siguiente_numero := siguiente_numero + 1;
   END LOOP;
   

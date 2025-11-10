@@ -13,7 +13,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, RotateCw, Download, RefreshCw, SlidersHorizontal, History, Eye, ExternalLink } from 'lucide-react';
+import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink } from 'lucide-react';
 
 import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -71,12 +71,6 @@ export function DataTable({
   preserveFilters = true,
   onShowHistorial,
 }: DataTableProps) {
-  // Log muy básico al inicio
-  console.log('🚀🚀🚀 DataTable INICIANDO RENDERIZADO - VERSION 1.0.5-FINAL');
-  console.log('📊 Número de columnas recibidas:', columns.length);
-  console.log('📋 IDs de columnas:', columns.map(c => c.id).filter(Boolean));
-  console.log('📋 Headers de columnas:', columns.map(c => typeof c.header === 'string' ? c.header : 'Complex Header'));
-  
   const { theme } = useTheme();
   
   const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
@@ -88,34 +82,20 @@ export function DataTable({
   const chipClasses = isDark
     ? 'rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-200'
     : 'rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700';
-  const controlButtonBase = 'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+  const controlButtonBase = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
   const controlButtonDefault = isDark
     ? `${controlButtonBase} border border-slate-800/70 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
     : `${controlButtonBase} border border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
   const controlButtonActive = isDark
-    ? `${controlButtonBase} border border-sky-500/70 bg-sky-500/10 text-sky-200 shadow-[0_0_12px_rgba(14,165,233,0.2)] focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
+    ? `${controlButtonBase} border border-sky-500/70 bg-sky-500/10 text-sky-200 shadow-[0_0_8px_rgba(14,165,233,0.15)] focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
     : `${controlButtonBase} border border-blue-500 bg-blue-50 text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
   const toolbarButtonClasses = `${controlButtonDefault} shadow-inner shadow-slate-950/20`;
   const primaryActionClasses = isDark
-    ? 'inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950'
-    : 'inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+    ? 'inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-2.5 py-1 text-[11px] font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950'
+    : 'inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:ring-offset-1 focus-visible:ring-offset-white';
   const destructiveButtonClasses = isDark
     ? `${controlButtonBase} border border-rose-500/60 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 focus-visible:ring-rose-500/40 focus-visible:ring-offset-slate-950`
     : `${controlButtonBase} border border-red-500 bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-400/40 focus-visible:ring-offset-white`;
-
-  // Debug básico
-  console.log('🚀 DataTable se está renderizando');
-  console.log('🔍 DataTable Debug (Temporal):', {
-    canEdit,
-    canAdd,
-    canDelete,
-    canExport,
-    currentUser,
-    onAdd: !!onAdd,
-    onEdit: !!onEdit,
-    onDelete: !!onDelete,
-    dataLength: data.length
-  });
   
   // Helper para obtener estilos de filtro según el tema
   const getFilterStyles = (hasFilter: boolean) => {
@@ -146,16 +126,20 @@ export function DataTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  const [isCompact, setIsCompact] = useState(false);
-  const manualViewToggleRef = useRef(false);
-  const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [showSheetsPreview, setShowSheetsPreview] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
   const sheetsPreviewUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL ?? '';
+  const sheetsEditUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID 
+    ? `https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}/edit`
+    : '';
   const canPreviewSheets = Boolean(sheetsPreviewUrl);
+
+  const handleSheetsUpdated = useCallback(() => {
+    setIframeKey((prev) => prev + 1);
+  }, []);
   
   // Estado para visibilidad de columnas
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -195,6 +179,12 @@ export function DataTable({
   
   // Estado para filtros de fechas
   const [dateFilters, setDateFilters] = useState<typeof initialDateFilters>(initialDateFilters);
+  const hasDateFilters = useMemo(
+    () => Object.values(dateFilters).some((value) => value !== ''),
+    [dateFilters]
+  );
+  const hasGlobalFilter = typeof globalFilter === 'string' && globalFilter.trim().length > 0;
+  const hasActiveFilters = columnFilters.length > 0 || hasGlobalFilter || hasDateFilters;
   
   // Meses en español
   const months = [
@@ -455,7 +445,8 @@ export function DataTable({
 
   const handleSelectAllClick = () => {
     if (!onSelectAll) return;
-    onSelectAll(filteredData);
+    const visibleRecords = table.getRowModel().rows.map(row => row.original);
+    onSelectAll(visibleRecords);
   };
 
   const handleClearSelectionClick = () => {
@@ -504,336 +495,91 @@ export function DataTable({
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const mediaQuery = window.matchMedia('(max-width: 1024px)');
-    const handleMatch = () => {
-      setIsCompact(mediaQuery.matches);
-    };
-    handleMatch();
-    mediaQuery.addEventListener('change', handleMatch);
-    return () => mediaQuery.removeEventListener('change', handleMatch);
-  }, []);
-
-  useEffect(() => {
-    if (isCompact) {
-      manualViewToggleRef.current = false;
-      setMobileActionsOpen(false);
-      setViewMode('table');
-      return;
-    }
-
-    manualViewToggleRef.current = false;
-    setMobileActionsOpen(false);
-  }, [isCompact]);
-
-  useEffect(() => {
     if (!canPreviewSheets) {
       setShowSheetsPreview(false);
     }
   }, [canPreviewSheets]);
 
   const renderToolbar = () => {
-    if (isCompact) {
-      return (
-        <div className="flex flex-col gap-3">
-          {canAdd && onAdd && (
-            <button
-              onClick={onAdd}
-              className={`${primaryActionClasses} w-full justify-center text-sm py-3`}
-            >
-              <Plus className="h-4 w-4" />
-              Nuevo registro
-            </button>
-          )}
-
-          <div className="relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              value={globalFilter ?? ''}
-              onChange={handleGlobalSearchChange}
-              placeholder="Buscar en la tabla..."
-              className={`w-full pl-9 pr-3 py-2 text-xs rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                isDark
-                  ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
-                  : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
-              }`}
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              data-filter-button
-              onClick={handleToggleFilters}
-              className={`${showFilters ? controlButtonActive : toolbarButtonClasses} flex-1 justify-center text-[11px]`}
-            >
-              <Filter className="h-4 w-4" />
-              Filtros
-            </button>
-            <button
-              onClick={() => setMobileActionsOpen(true)}
-              className={`${toolbarButtonClasses} flex-1 justify-center text-[11px]`}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Acciones
-            </button>
-          </div>
-
-          {mobileActionsOpen && (
-            <div
-              className="fixed inset-0 z-[1200] flex items-end justify-center bg-black/60 px-4 pb-6 sm:hidden"
-              onClick={() => setMobileActionsOpen(false)}
-            >
-              <div
-                className="w-full max-w-sm rounded-2xl border border-slate-800/70 bg-slate-950/95 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
-                  <p className="text-sm font-semibold text-slate-200">Acciones</p>
-                  <button
-                    onClick={() => setMobileActionsOpen(false)}
-                    className="rounded-full bg-slate-900/70 p-2 text-slate-300 hover:bg-slate-800/80"
-                    aria-label="Cerrar acciones"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <div className="flex flex-col gap-2 px-4 py-4 text-[12px]">
-                  <button
-                    onClick={() => {
-                      setShowReportGenerator(true);
-                      setMobileActionsOpen(false);
-                    }}
-                    className={`${toolbarButtonClasses} justify-between`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Download className="h-4 w-4" />
-                      Exportar reporte
-                    </span>
-                  </button>
-                  {canPreviewSheets && (
-                    <button
-                      onClick={() => {
-                        setShowSheetsPreview((prev) => {
-                          const next = !prev;
-                          return next;
-                        });
-                        setMobileActionsOpen(false);
-                      }}
-                      className={`${showSheetsPreview ? controlButtonActive : toolbarButtonClasses} justify-between`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Eye className="h-4 w-4" />
-                        {showSheetsPreview ? 'Ocultar Google Sheets' : 'Ver Google Sheets'}
-                      </span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      handleResetTable();
-                      setMobileActionsOpen(false);
-                    }}
-                    className={`${toolbarButtonClasses} justify-between border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <RefreshCw className="h-4 w-4" />
-                      Reiniciar tabla
-                    </span>
-                  </button>
-                  <button className={`${toolbarButtonClasses} justify-between`} disabled>
-                    <span className="flex items-center gap-2">
-                      <RotateCcw className="h-4 w-4" />
-                      Deshacer
-                    </span>
-                  </button>
-                  <button className={`${toolbarButtonClasses} justify-between`} disabled>
-                    <span className="flex items-center gap-2">
-                      <RotateCw className="h-4 w-4" />
-                      Rehacer
-                    </span>
-                  </button>
-                  <button className={`${toolbarButtonClasses} justify-between`} disabled>
-                    <span className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-4 w-4" />
-                      Densidad
-                    </span>
-                  </button>
-                  {onSelectAll && (
-                    <button
-                      onClick={() => {
-                        handleSelectAllClick();
-                        setMobileActionsOpen(false);
-                      }}
-                      className={`${toolbarButtonClasses} justify-between`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <CheckSquare className="h-4 w-4" />
-                        Seleccionar todo
-                      </span>
-                    </button>
-                  )}
-                  {onClearSelection && (
-                    <button
-                      onClick={() => {
-                        handleClearSelectionClick();
-                        setMobileActionsOpen(false);
-                      }}
-                      className={`${toolbarButtonClasses} justify-between ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={!hasSelection}
-                    >
-                      <span className="flex items-center gap-2">
-                        <RotateCcw className="h-4 w-4" />
-                        Limpiar selección
-                      </span>
-                    </button>
-                  )}
-                  {canDelete && onBulkDelete && (
-                    <button
-                      onClick={() => {
-                        handleBulkDeleteClick();
-                        setMobileActionsOpen(false);
-                      }}
-                      className={`${destructiveButtonClasses} justify-between ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={!hasSelection}
-                    >
-                      <span className="flex items-center gap-2">
-                        <Trash2 className="h-4 w-4" />
-                        Eliminar selección
-                      </span>
-                    </button>
-                  )}
-                  {columnToggleOptions.length > 0 && (
-                    <div className="mt-2 rounded-xl border border-slate-800/60 bg-slate-900/60 p-2">
-                      <ColumnToggle
-                        columns={columnToggleOptions}
-                        onToggleColumn={handleToggleColumn}
-                        onToggleAll={handleToggleAllColumns}
-                        alwaysVisibleColumns={alwaysVisibleColumns}
-                      />
-                    </div>
-                  )}
-                  {hasSelection && (
-                    <span className="inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-semibold border border-sky-500/40 bg-sky-500/10 text-sky-200">
-                      {selectedCount} seleccionados
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
-
     return (
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             {canAdd && onAdd && (
-              <button
-                onClick={onAdd}
-                className={primaryActionClasses}
-              >
-                <Plus className="h-4 w-4" />
-                Nuevo registro
+              <button onClick={onAdd} className={`${primaryActionClasses} justify-center`}>
+                <Plus className="h-3 w-3" />
+                <span className="hidden sm:inline">Nuevo</span>
               </button>
             )}
-
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 value={globalFilter ?? ''}
                 onChange={handleGlobalSearchChange}
-                placeholder="Buscar en la tabla..."
-                className={`pl-9 pr-3 py-2 text-xs rounded-full border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                placeholder="Buscar..."
+                className={`w-32 rounded-full border pl-7 pr-2 py-1 text-[11px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${
                   isDark
                     ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
                     : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
-                }`}
+                } sm:w-40 md:w-48`}
               />
             </div>
-
             <button
               data-filter-button
               onClick={handleToggleFilters}
-              className={showFilters ? controlButtonActive : toolbarButtonClasses}
+              className={showFilters || hasActiveFilters ? controlButtonActive : toolbarButtonClasses}
             >
-              <Filter className="h-4 w-4" />
-              Filtros
+              <div className="flex items-center gap-1">
+                <Filter className="h-3 w-3" />
+                <span className="hidden lg:inline">Filtros</span>
+                {hasActiveFilters && <span className="inline-flex h-2 w-2 rounded-full bg-sky-400"></span>}
+              </div>
             </button>
-
-            <button
-              onClick={() => {
-                manualViewToggleRef.current = true;
-                handleToggleViewMode();
-              }}
-              className={toolbarButtonClasses}
-            >
-              {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-              {viewMode === 'table' ? 'Ver tarjetas' : 'Ver tabla'}
+            <button onClick={handleToggleViewMode} className={toolbarButtonClasses}>
+              {viewMode === 'table' ? <Grid className="h-3 w-3" /> : <List className="h-3 w-3" />}
+              <span className="hidden xl:inline">{viewMode === 'table' ? 'Tarjetas' : 'Tabla'}</span>
             </button>
-
             {columnToggleOptions.length > 0 && (
-              <ColumnToggle
-                columns={columnToggleOptions}
-                onToggleColumn={handleToggleColumn}
-                onToggleAll={handleToggleAllColumns}
-                alwaysVisibleColumns={alwaysVisibleColumns}
-              />
+              <div className="hidden xl:block">
+                <ColumnToggle
+                  columns={columnToggleOptions}
+                  onToggleColumn={handleToggleColumn}
+                  onToggleAll={handleToggleAllColumns}
+                  alwaysVisibleColumns={alwaysVisibleColumns}
+                />
+              </div>
             )}
           </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <button className={toolbarButtonClasses} disabled>
-              <RotateCcw className="h-4 w-4" />
-              Deshacer
-            </button>
-            <button className={toolbarButtonClasses} disabled>
-              <RotateCw className="h-4 w-4" />
-              Rehacer
-            </button>
-            <button className={toolbarButtonClasses} disabled>
-              <SlidersHorizontal className="h-4 w-4" />
-              Densidad
-            </button>
+          <div className="flex flex-wrap items-center gap-1">
             {canPreviewSheets && (
               <button
                 className={showSheetsPreview ? controlButtonActive : toolbarButtonClasses}
                 onClick={() => setShowSheetsPreview((prev) => !prev)}
               >
-                <Eye className="h-4 w-4" />
-                {showSheetsPreview ? 'Ocultar Google Sheets' : 'Ver Google Sheets'}
+                <Eye className="h-3 w-3" />
+                <span className="hidden xl:inline">{showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets</span>
               </button>
             )}
-            <button
-              className={toolbarButtonClasses}
-              onClick={() => setShowReportGenerator(true)}
-            >
-              <Download className="h-4 w-4" />
-              Exportar
+            <button className={toolbarButtonClasses} onClick={() => setShowReportGenerator(true)}>
+              <Download className="h-3 w-3" />
+              <span className="hidden sm:inline">Exportar</span>
             </button>
             <button
               className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
               onClick={handleResetTable}
             >
-              <RefreshCw className="h-4 w-4" />
-              Reiniciar tabla
+              <RefreshCw className="h-3 w-3" />
+              <span className="hidden xl:inline">Reset</span>
             </button>
           </div>
         </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-1">
+          <div className="flex flex-wrap items-center gap-1">
             {onSelectAll && (
-              <button
-                onClick={handleSelectAllClick}
-                className={toolbarButtonClasses}
-              >
-                <CheckSquare className="h-4 w-4" />
-                Seleccionar todo
+              <button onClick={handleSelectAllClick} className={toolbarButtonClasses}>
+                <CheckSquare className="h-3 w-3" />
+                <span className="hidden lg:inline">Todo</span>
               </button>
             )}
             {onClearSelection && (
@@ -842,8 +588,8 @@ export function DataTable({
                 className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={!hasSelection}
               >
-                <RotateCcw className="h-4 w-4" />
-                Limpiar selección
+                <RotateCcw className="h-3 w-3" />
+                <span className="hidden lg:inline">Limpiar</span>
               </button>
             )}
             {canDelete && onBulkDelete && (
@@ -852,17 +598,19 @@ export function DataTable({
                 className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={!hasSelection}
               >
-                <Trash2 className="h-4 w-4" />
-                Eliminar selección
+                <Trash2 className="h-3 w-3" />
+                <span className="hidden lg:inline">Eliminar</span>
               </button>
             )}
             {hasSelection && (
-              <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${
-                isDark
-                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
-                  : 'bg-blue-100 text-blue-700 border border-blue-200'
-              }`}>
-                {selectedCount} seleccionados
+              <span
+                className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  isDark
+                    ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
+                    : 'bg-blue-100 text-blue-700 border border-blue-200'
+                }`}
+              >
+                {selectedCount}
               </span>
             )}
           </div>
@@ -871,16 +619,10 @@ export function DataTable({
     );
   };
 
-  const stickyTopDesktop = 'top-24';
-  const stickyTopMobile = 'top-16';
-  const stickyTopClass = isCompact ? stickyTopMobile : stickyTopDesktop;
-
   return (
-    <div className="w-full space-y-4 -mt-4 sm:-mt-6 lg:-mt-8">
+    <div className="w-full space-y-4">
       {/* Header con controles */}
-      <div
-        className={`sticky ${stickyTopClass} z-40 ${panelClasses} rounded-2xl px-3 py-3 sm:px-4 sm:py-4 backdrop-blur supports-[backdrop-filter]:bg-opacity-90`}
-      >
+      <div className={`${panelClasses} rounded-2xl px-2.5 py-2`}>
         {renderToolbar()}
       </div>
 
@@ -902,7 +644,9 @@ export function DataTable({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  window.open(sheetsPreviewUrl, '_blank', 'noopener,noreferrer');
+                  if (sheetsEditUrl) {
+                    window.open(sheetsEditUrl, '_blank', 'noopener,noreferrer');
+                  }
                 }}
                 className={`${toolbarButtonClasses} text-xs`}
                 aria-label="Abrir hoja de Google Sheets en una nueva pestaña"
@@ -922,6 +666,7 @@ export function DataTable({
           </div>
           <div className="relative h-[420px] w-full">
             <iframe
+              key={iframeKey}
               src={sheetsPreviewUrl}
               title="Previsualización Google Sheets"
               className="h-full w-full border-0"
@@ -1576,8 +1321,8 @@ export function DataTable({
       )}
 
       {viewMode === 'cards' && (
-        <div className={`${panelClasses} rounded-2xl p-4 backdrop-blur space-y-4`}>
-          <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 ${isCompact ? 'grid-cols-1 sm:grid-cols-2' : ''}`}>
+        <div className={`${panelClasses} rounded-2xl space-y-4 p-4 backdrop-blur`}>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredData.map((record, index) => {
               const key = record.id ?? `registro-${record.refAsli ?? index}`;
               const estado = record.estado ?? 'SIN ESTADO';
@@ -1602,20 +1347,20 @@ export function DataTable({
               return (
                 <div
                   key={key}
-                  className={`group relative border border-slate-800/60 bg-slate-950/60 shadow-lg shadow-slate-950/20 transition-transform hover:-translate-y-[3px] hover:border-sky-500/60 ${isCompact ? 'rounded-xl p-3 space-y-3' : 'rounded-2xl p-4'}`}
+                  className="group relative space-y-3 rounded-2xl border border-slate-800/60 bg-slate-950/60 p-4 shadow-lg shadow-slate-950/20 transition-transform hover:-translate-y-[3px] hover:border-sky-500/60 sm:p-5"
                   onContextMenu={handleCardContextMenu}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ref ASLI</p>
-                      <h3 className={`${isCompact ? 'text-base' : 'text-lg'} font-semibold text-slate-100`}>{record.refAsli || 'Sin referencia'}</h3>
+                      <h3 className="text-base font-semibold text-slate-100 sm:text-lg">{record.refAsli || 'Sin referencia'}</h3>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${estadoColor}`}>
                       {estado}
                     </span>
                   </div>
 
-                  <div className={`mt-3 grid gap-2 text-slate-300 ${isCompact ? 'text-[11px]' : 'text-xs'}`}>
+                  <div className="mt-3 grid gap-2 text-slate-300 text-[11px] sm:text-xs">
                     <div className="flex justify-between gap-3"><span className="text-slate-500">Ref Externa</span><span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span></div>
                     <div className="flex justify-between gap-3"><span className="text-slate-500">Cliente</span><span className="font-semibold text-right text-slate-200">{record.shipper || '-'}</span></div>
                     <div className="flex justify-between gap-3"><span className="text-slate-500">Naviera</span><span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span></div>
@@ -1624,11 +1369,11 @@ export function DataTable({
                     <div className="flex justify-between gap-3"><span className="text-slate-500">Ingresado</span><span className="font-semibold text-right text-slate-200">{record.ingresado ? new Date(record.ingresado).toLocaleDateString('es-CL') : '-'}</span></div>
                   </div>
 
-                  <div className={`mt-4 flex gap-2 ${isCompact ? 'flex-col' : 'items-center justify-between'}`}>
+                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     {onEdit && (
                       <button
                         onClick={() => onEdit(record)}
-                        className={`${toolbarButtonClasses} flex-1 justify-center ${isCompact ? 'w-full text-[11px] py-2' : ''}`}
+                        className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
                       >
                         <Edit className="h-4 w-4" />
                         Editar
@@ -1637,7 +1382,7 @@ export function DataTable({
                     {onShowHistorial && (
                       <button
                         onClick={() => onShowHistorial(record)}
-                        className={`${toolbarButtonClasses} flex-1 justify-center ${isCompact ? 'w-full text-[11px] py-2' : ''}`}
+                        className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
                       >
                         <History className="h-4 w-4" />
                         Historial
@@ -1657,6 +1402,7 @@ export function DataTable({
           isOpen={showReportGenerator}
           registros={hasSelection ? selectedRecordsList : filteredData}
           onClose={() => setShowReportGenerator(false)}
+          onSheetsUpdated={handleSheetsUpdated}
         />
       )}
 

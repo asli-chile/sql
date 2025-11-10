@@ -10,7 +10,8 @@ const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TIPO_REPORTE_TO_SHEET: Record<TipoReporte, string> = {
   'reserva-confirmada': 'RESERVA CONFIRMADA + STACKING',
   zarpe: 'ZARPE',
-  arribo: 'ARRIBO'
+  arribo: 'ARRIBO',
+  'gate-out': 'GATE OUT'
 };
 
 const normalizePrivateKey = (value?: string): string | undefined => {
@@ -187,6 +188,7 @@ export const mapRegistrosToRows = (
     const baseHeaders = [
       'Generado por',
       'REF ASLI',
+      'REF EXTERNA',
       'Cliente',
       'Naviera',
       'Nave',
@@ -202,7 +204,7 @@ export const mapRegistrosToRows = (
       'Depósito'
     ];
 
-    const baseWidths = [180, 90, 140, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
+    const baseWidths = [180, 90, 110, 140, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
 
     const headers = [...baseHeaders];
     const columnWidths = [...baseWidths];
@@ -221,6 +223,7 @@ export const mapRegistrosToRows = (
       const row: string[] = [
         generatedBy,
         registro.refAsli ?? '-',
+        registro.refCliente ?? '-',
         registro.shipper ?? '-',
         registro.naviera ?? '-',
         registro.naveInicial ?? '-',
@@ -270,6 +273,7 @@ export const mapRegistrosToRows = (
     const headers = [
       'Generado por',
       'REF ASLI',
+      'REF EXTERNA',
       'Cliente',
       'Naviera',
       'Nave',
@@ -287,11 +291,12 @@ export const mapRegistrosToRows = (
       'Depósito'
     ];
 
-    const columnWidths = [180, 90, 140, 140, 160, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
+    const columnWidths = [180, 90, 110, 140, 140, 160, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
 
     const rows = registros.map((registro) => [
       generatedBy,
       registro.refAsli ?? '-',
+      registro.refCliente ?? '-',
       registro.shipper ?? '-',
       registro.naviera ?? '-',
       registro.naveInicial ?? '-',
@@ -310,6 +315,32 @@ export const mapRegistrosToRows = (
         ? String(registro.cbm)
         : '-',
       registro.flete ?? '-',
+      registro.deposito ?? '-'
+    ]);
+
+    return {
+      headers,
+      rows,
+      columnWidths
+    };
+  }
+
+  if (tipo === 'gate-out') {
+    const headers = [
+      'Generado por',
+      'Naviera',
+      'Nave',
+      'Booking',
+      'Depósito'
+    ];
+
+    const columnWidths = [180, 140, 160, 140, 160];
+
+    const rows = registros.map((registro) => [
+      generatedBy,
+      registro.naviera ?? '-',
+      registro.naveInicial ?? '-',
+      registro.booking ?? '-',
       registro.deposito ?? '-'
     ]);
 

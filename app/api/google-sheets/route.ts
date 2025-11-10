@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
         )
       : false;
 
-    const blockValues = [headers, ...rows];
-    const separatorRows = hasExistingDataRows ? 1 : 0;
-    const totalInsertedRows = blockValues.length + separatorRows;
+    const blankRow = new Array(headers.length).fill('');
+    const blockValues = hasExistingDataRows ? [blankRow, headers, ...rows] : [headers, ...rows];
+    const totalInsertedRows = blockValues.length;
 
     await sheets.spreadsheets.batchUpdate({
       spreadsheetId,
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     });
 
     const startRowIndex = 3;
-    const headerRowIndex = startRowIndex;
+    const headerRowIndex = hasExistingDataRows ? startRowIndex + 1 : startRowIndex;
     const dataStartRowIndex = headerRowIndex + 1;
     const dataEndRowIndex = startRowIndex + blockValues.length;
 
@@ -118,7 +118,41 @@ export async function POST(request: NextRequest) {
       blue: 96 / 255
     };
 
+    const whiteBackgroundColor = {
+      red: 1,
+      green: 1,
+      blue: 1
+    };
+
     const requests: sheets_v4.Schema$Request[] = [];
+    
+    // Si hay separador, formatear la fila vacía con fondo blanco
+    if (hasExistingDataRows) {
+      requests.push({
+        repeatCell: {
+          range: {
+            sheetId,
+            startRowIndex: startRowIndex,
+            endRowIndex: startRowIndex + 1,
+            startColumnIndex: 0,
+            endColumnIndex: headers.length
+          },
+          cell: {
+            userEnteredFormat: {
+              backgroundColor: whiteBackgroundColor
+            }
+          },
+          fields: 'userEnteredFormat(backgroundColor)'
+        }
+      });
+    }
+    
+    const dottedBorder = {
+      style: 'DOTTED' as const,
+      color: { red: 0.7, green: 0.7, blue: 0.7 }
+    };
+
+    // Formatear el encabezado con azul y texto blanco
     const headerFormat: sheets_v4.Schema$CellFormat = {
       backgroundColor: headerBackgroundColor,
       horizontalAlignment: 'CENTER',
@@ -127,6 +161,12 @@ export async function POST(request: NextRequest) {
         foregroundColor: { red: 1, green: 1, blue: 1 },
         bold: true,
         fontSize: 12
+      },
+      borders: {
+        top: dottedBorder,
+        bottom: dottedBorder,
+        left: dottedBorder,
+        right: dottedBorder
       }
     };
 
@@ -143,7 +183,7 @@ export async function POST(request: NextRequest) {
           userEnteredFormat: headerFormat
         },
         fields:
-          'userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat.foregroundColor,textFormat.bold,textFormat.fontSize)'
+          'userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat.foregroundColor,textFormat.bold,textFormat.fontSize,borders)'
       }
     });
 
@@ -159,11 +199,23 @@ export async function POST(request: NextRequest) {
           },
           cell: {
             userEnteredFormat: {
+              backgroundColor: { red: 1, green: 1, blue: 1 },
               horizontalAlignment: 'CENTER',
-              verticalAlignment: 'MIDDLE'
+              verticalAlignment: 'MIDDLE',
+              textFormat: {
+                foregroundColor: { red: 0, green: 0, blue: 0 },
+                bold: false,
+                fontSize: 10
+              },
+              borders: {
+                top: dottedBorder,
+                bottom: dottedBorder,
+                left: dottedBorder,
+                right: dottedBorder
+              }
             }
           },
-          fields: 'userEnteredFormat(horizontalAlignment,verticalAlignment)'
+          fields: 'userEnteredFormat(backgroundColor,horizontalAlignment,verticalAlignment,textFormat.foregroundColor,textFormat.bold,textFormat.fontSize,borders)'
         }
       });
     }

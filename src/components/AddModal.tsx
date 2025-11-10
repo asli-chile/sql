@@ -1,8 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, AlertCircle } from 'lucide-react';
-import { generateUniqueRefAsli, generateMultipleUniqueRefAsli } from '@/lib/ref-asli-utils';
+import { X, AlertCircle } from 'lucide-react';
+import {
+  generateUniqueRefAsli,
+  generateMultipleUniqueRefAsli,
+  validateUniqueRefAsli,
+} from '@/lib/ref-asli-utils';
 import { createClient } from '@/lib/supabase-browser';
 import { parseDateString, formatDateForInput } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
@@ -104,7 +108,47 @@ export function AddModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [generatingRef, setGeneratingRef] = useState(true);
-  const [numberOfCopies, setNumberOfCopies] = useState(1);
+  const [numberOfCopies, setNumberOfCopies] = useState<string>('');
+
+  const copiesPreview =
+    numberOfCopies.trim() === ''
+      ? 1
+      : Math.min(Math.max(parseInt(numberOfCopies, 10) || 1, 1), 10);
+
+  const ensureUniqueRefAsliList = async (refs: string[]): Promise<string[]> => {
+    const uniqueRefs: string[] = [];
+    const seen = new Set<string>();
+
+    for (const originalRef of refs) {
+      let candidate = originalRef;
+      let attempts = 0;
+      let isUnique = false;
+
+      while (attempts < 8) {
+        const alreadyGenerated = seen.has(candidate);
+        const uniqueInDb = await validateUniqueRefAsli(candidate);
+
+        if (!alreadyGenerated && uniqueInDb) {
+          isUnique = true;
+          break;
+        }
+
+        candidate = await generateUniqueRefAsli();
+        attempts += 1;
+      }
+
+      if (!isUnique) {
+        throw new Error(
+          'No se pudo generar un REF ASLI único. Intenta nuevamente o contacta a soporte.',
+        );
+      }
+
+      seen.add(candidate);
+      uniqueRefs.push(candidate);
+    }
+
+    return uniqueRefs;
+  };
 
   const upsertRefClienteCatalog = async (supabaseClient: ReturnType<typeof createClient>, valor: string | null | undefined) => {
     const trimmed = (valor || '').trim();
@@ -160,6 +204,8 @@ export function AddModal({
       if (!isOpen) return;
       
       setGeneratingRef(true);
+      setError('');
+      setNumberOfCopies('');
       try {
         const newRefAsli = await generateUniqueRefAsli();
         setFormData(prev => ({ 
@@ -188,8 +234,10 @@ export function AddModal({
     setLoading(true);
     setError('');
 
-    // Validar número de copias
-    if (numberOfCopies < 1 || numberOfCopies > 10) {
+    const copiesInput = numberOfCopies.trim();
+    const resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
+
+    if (!Number.isFinite(resolvedCopies) || resolvedCopies < 1 || resolvedCopies > 10) {
       setError('El número de copias debe estar entre 1 y 10');
       setLoading(false);
       return;
@@ -214,7 +262,8 @@ export function AddModal({
         : formData.naveInicial || '';
 
       // Generar REF ASLI únicos para todas las copias
-      const refAsliList = await generateMultipleUniqueRefAsli(numberOfCopies);
+      const refAsliList = await generateMultipleUniqueRefAsli(resolvedCopies);
+      const uniqueRefAsliList = await ensureUniqueRefAsliList(refAsliList);
 
       // Crear múltiples copias
       const baseRegistroData = {
@@ -261,7 +310,7 @@ export function AddModal({
       };
 
       // Agregar múltiples documentos con REF ASLI únicos
-      const recordsToInsert = refAsliList.map(refAsli => ({
+      const recordsToInsert = uniqueRefAsliList.map((refAsli) => ({
         ...baseRegistroData,
         ref_asli: refAsli,
       }));
@@ -295,7 +344,13 @@ export function AddModal({
             `Error técnico: ${insertError.message}`;
         }
         
-        setError(`Error al crear los registros: ${errorMessage}`);
+        if (insertError.code === '23505') {
+          setError(
+            'No se pudo crear el registro porque el REF ASLI ya existe. Se regeneró la referencia, intenta nuevamente.',
+          );
+        } else {
+          setError(`Error al crear los registros: ${errorMessage}`);
+        }
         return;
       }
 
@@ -303,7 +358,7 @@ export function AddModal({
 
       onSuccess();
       onClose();
-      setNumberOfCopies(1);
+      setNumberOfCopies('');
       
       // Limpiar formulario
       setFormData({
@@ -332,9 +387,11 @@ export function AddModal({
         co2: '',
         o2: '',
       });
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error al crear registro:', err);
-      setError('Error al crear el registro. Por favor, intenta de nuevo.');
+      const message =
+        err instanceof Error ? err.message : 'Error al crear el registro. Por favor, intenta de nuevo.';
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -811,16 +868,31 @@ export function AddModal({
                 min="1"
                 max="10"
                 value={numberOfCopies}
+                placeholder="Ingresa cantidad (1-10)"
                 onChange={(e) => {
-                  const value = parseInt(e.target.value) || 1;
-                  // Limitar a máximo 10 copias
-                  const limitedValue = Math.min(Math.max(value, 1), 10);
-                  setNumberOfCopies(limitedValue);
+                  const value = e.target.value;
+                  if (value === '') {
+                    setNumberOfCopies('');
+                    return;
+                  }
+                  const numericValue = parseInt(value, 10);
+                  if (Number.isNaN(numericValue)) {
+                    return;
+                  }
+                  if (numericValue > 10) {
+                    setNumberOfCopies('10');
+                    return;
+                  }
+                  if (numericValue < 1) {
+                    setNumberOfCopies('');
+                    return;
+                  }
+                  setNumberOfCopies(String(numericValue));
                 }}
                 className={getInputStyles()}
               />
               <p className="text-xs text-gray-700 dark:text-gray-400">
-                Se generarán {numberOfCopies} REF ASLI únicos automáticamente (máximo 10)
+                Se generarán {copiesPreview} REF ASLI únicos automáticamente (máximo 10)
               </p>
             </div>
 
@@ -936,9 +1008,15 @@ export function AddModal({
               placeholder="Comentarios adicionales"
             />
           </div>
-        </form>
-
-        <div className="flex flex-col gap-4 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
+          {error && (
+            <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-xs text-red-200">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            </div>
+          )}
+          <div className="flex flex-col gap-4 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3 text-xs text-slate-400">
             <div className="flex flex-wrap items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-400" />
               <span>Todos los campos marcados con (*) son obligatorios.</span>
@@ -960,6 +1038,7 @@ export function AddModal({
               </button>
             </div>
           </div>
+        </form>
       </div>
     </div>
   ) : null;

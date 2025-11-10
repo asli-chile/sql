@@ -32,6 +32,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+      </head>
       <body
         className={`${firaSans.variable} antialiased`}
         style={{ fontFamily: 'var(--font-fira-sans), sans-serif' }}

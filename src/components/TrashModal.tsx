@@ -125,7 +125,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
 
   const handleBulkDelete = async () => {
     if (selectedRecords.size === 0) return;
-    
+
     const confirmMessage = `¿Estás seguro de que deseas eliminar permanentemente ${selectedRecords.size} registro(s)? Esta acción no se puede deshacer.`;
     if (!confirm(confirmMessage)) return;
 
@@ -133,28 +133,33 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     try {
       const supabase = createClient();
       const selectedIds = Array.from(selectedRecords);
-      const { error } = await supabase
-        .from('registros')
-        .delete()
-        .in('id', selectedIds);
+      const { data, error } = await supabase.rpc('delete_registros_permanente', {
+        ids: selectedIds,
+      });
 
       if (error) {
         console.error('Error al eliminar registros:', error);
-        if (onError) onError('Error al eliminar los registros permanentemente');
+        if (onError) onError(error.message || 'Error al eliminar los registros permanentemente');
         return;
       }
 
-      console.log(`✅ Eliminados permanentemente ${selectedIds.length} registros`);
-      if (onSuccess) onSuccess(`✅ Se eliminaron ${selectedIds.length} registros permanentemente`);
+      const eliminados = typeof data === 'number' ? data : selectedIds.length;
+      console.log(`✅ Eliminados permanentemente ${eliminados} registros`);
+      if (onSuccess)
+        onSuccess(`✅ Se eliminaron ${eliminados} registro(s) permanentemente`);
       clearSelection();
       loadDeletedRecords();
-      
+
       if (onRestore) {
         onRestore();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar registros:', error);
-      if (onError) onError('Error al eliminar los registros permanentemente');
+      if (onError) {
+        onError(
+          error?.message ?? 'Error inesperado al eliminar los registros permanentemente',
+        );
+      }
     } finally {
       setBulkLoading(false);
     }
@@ -193,32 +198,37 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
   };
 
   const handlePermanentDelete = async (recordId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar permanentemente este registro? Esta acción no se puede deshacer.')) {
+    if (
+      !confirm(
+        '¿Estás seguro de que deseas eliminar permanentemente este registro? Esta acción no se puede deshacer.',
+      )
+    ) {
       return;
     }
 
     try {
       const supabase = createClient();
-      const { error } = await supabase
-        .from('registros')
-        .delete()
-        .eq('id', recordId);
+      const { data, error } = await supabase.rpc('delete_registros_permanente', {
+        ids: [recordId],
+      });
 
       if (error) {
         console.error('Error al eliminar permanentemente:', error);
-        if (onError) onError('Error al eliminar permanentemente el registro');
+        if (onError) onError(error.message || 'Error al eliminar permanentemente el registro');
         return;
       }
 
-      if (onSuccess) onSuccess('✅ Registro eliminado permanentemente');
+      const eliminados = typeof data === 'number' ? data : 1;
+      if (onSuccess) onSuccess(`✅ Registro eliminado permanentemente (${eliminados})`);
       loadDeletedRecords();
-      
+
       if (onRestore) {
         onRestore();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error al eliminar permanentemente:', error);
-      if (onError) onError('Error al eliminar permanentemente el registro');
+      if (onError)
+        onError(error?.message ?? 'Error inesperado al eliminar permanentemente el registro');
     }
   };
 
@@ -244,97 +254,93 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur">
+      <div className="relative flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-950 shadow-2xl shadow-slate-950/50">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <Trash2 className="h-6 w-6 text-red-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Papelera</h2>
+        <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-950/80 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Papelera</h2>
+              <p className="text-[12px] text-slate-400">Gestiona los registros eliminados</p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-800/70 bg-slate-900/70 text-slate-300 transition-colors hover:border-slate-600 hover:text-white"
           >
-            <X className="h-5 w-5 text-gray-700" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         {/* Controls */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50">
-          <div className="space-y-4">
-            {/* Primera fila: Configuración de días */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <label className="text-sm font-medium text-gray-700">
-                  Conservar registros eliminados por:
-                </label>
-                <select
-                  value={selectedDays}
-                  onChange={(e) => setSelectedDays(Number(e.target.value))}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value={7}>7 días</option>
-                  <option value={14}>14 días</option>
-                  <option value={30}>30 días</option>
-                  <option value={90}>90 días</option>
-                </select>
-              </div>
+        <div className="border-b border-slate-800/60 bg-slate-950/80 px-6 py-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm font-medium text-slate-300">
+                Conservar registros eliminados por:
+              </label>
+              <select
+                value={selectedDays}
+                onChange={(e) => setSelectedDays(Number(e.target.value))}
+                className="rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+              >
+                <option value={7}>7 días</option>
+                <option value={14}>14 días</option>
+                <option value={30}>30 días</option>
+                <option value={90}>90 días</option>
+              </select>
               <button
                 onClick={loadDeletedRecords}
                 disabled={loading}
-                className="flex items-center space-x-2 px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sky-500/20 transition disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                <span>Actualizar</span>
+                Actualizar
               </button>
             </div>
 
-            {/* Segunda fila: Selección múltiple */}
             {deletedRecords.length > 0 && (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={isAllSelected ? clearSelection : selectAllRecords}
-                    className="flex items-center space-x-2 px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 text-sm"
-                  >
-                    {isAllSelected ? (
-                      <CheckSquare className="h-4 w-4 text-blue-600" />
-                    ) : isPartiallySelected ? (
-                      <div className="h-4 w-4 border-2 border-blue-600 rounded bg-blue-600/20" />
-                    ) : (
-                      <Square className="h-4 w-4 text-gray-600" />
-                    )}
-                    <span>
-                      {isAllSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
-                    </span>
-                  </button>
-                  {selectedRecords.size > 0 && (
-                    <span className="text-sm text-gray-600">
-                      {selectedRecords.size} registro(s) seleccionado(s)
-                    </span>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={isAllSelected ? clearSelection : selectAllRecords}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200"
+                >
+                  {isAllSelected ? (
+                    <CheckSquare className="h-4 w-4 text-sky-300" />
+                  ) : isPartiallySelected ? (
+                    <div className="h-4 w-4 rounded border-2 border-sky-400 bg-sky-400/20" />
+                  ) : (
+                    <Square className="h-4 w-4 text-slate-400" />
                   )}
-                </div>
-                
+                  {isAllSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
+                </button>
                 {selectedRecords.size > 0 && (
-                  <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-200">
+                    {selectedRecords.size} seleccionado(s)
+                  </span>
+                )}
+                {selectedRecords.size > 0 && (
+                  <>
                     <button
                       onClick={handleBulkRestore}
                       disabled={bulkLoading}
-                      className="flex items-center space-x-1 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm"
+                      className="inline-flex items-center gap-2 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
                     >
                       <RotateCcw className="h-4 w-4" />
-                      <span>Restaurar ({selectedRecords.size})</span>
+                      Restaurar
                     </button>
                     <button
                       onClick={handleBulkDelete}
                       disabled={bulkLoading}
-                      className="flex items-center space-x-1 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 text-sm"
+                      className="inline-flex items-center gap-2 rounded-full border border-rose-500/60 bg-rose-500/10 px-3 py-1.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4" />
-                      <span>Eliminar ({selectedRecords.size})</span>
+                      Eliminar
                     </button>
-                  </div>
+                  </>
                 )}
               </div>
             )}
@@ -342,82 +348,80 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-auto max-h-[60vh]">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <span className="ml-3 text-gray-600">Cargando registros eliminados...</span>
+            <div className="flex items-center justify-center py-10 text-slate-300">
+              <div className="mr-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-sky-400" />
+              Cargando registros eliminados…
             </div>
           ) : deletedRecords.length === 0 ? (
-            <div className="text-center py-8">
-              <Trash2 className="h-12 w-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-700">No hay registros eliminados</p>
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800/60 bg-slate-950/70 py-12 text-slate-400">
+              <Trash2 className="mb-3 h-10 w-10" />
+              <p className="text-sm">No hay registros en la papelera.</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {deletedRecords.map((record) => (
                 <div
                   key={record.id}
-                  className={`bg-gray-50 border rounded-lg p-4 transition-colors ${
-                    selectedRecords.has(record.id!) 
-                      ? 'border-blue-500 bg-blue-50' 
-                      : 'border-gray-200'
+                  className={`rounded-2xl border px-4 py-4 transition ${
+                    selectedRecords.has(record.id!)
+                      ? 'border-sky-500/50 bg-sky-500/10'
+                      : 'border-slate-800/60 bg-slate-900/60'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 flex-1">
-                      {/* Checkbox de selección */}
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex items-start gap-3">
                       <button
                         onClick={() => toggleRecordSelection(record.id!)}
-                        className="flex-shrink-0 p-1 hover:bg-gray-200 rounded"
+                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-slate-800/60 bg-slate-900/60 text-slate-300 transition hover:border-sky-500/60 hover:text-sky-200"
                       >
                         {selectedRecords.has(record.id!) ? (
-                          <CheckSquare className="h-5 w-5 text-blue-600" />
+                          <CheckSquare className="h-4 w-4 text-sky-300" />
                         ) : (
-                          <Square className="h-5 w-5 text-gray-600" />
+                          <Square className="h-4 w-4 text-slate-400" />
                         )}
                       </button>
-                      
-                      {/* Información del registro */}
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-4 mb-2">
-                          <span className="font-medium text-gray-900">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-200">
                             {record.refAsli}
                           </span>
-                          <span className="text-sm text-gray-600">
-                            {record.ejecutivo} - {record.shipper}
+                          <span className="text-sm text-slate-300">
+                            {record.ejecutivo} · {record.shipper}
                           </span>
-                          <span className="text-sm text-gray-600">
-                            {record.naviera} - {record.especie}
+                          <span className="text-sm text-slate-400">
+                            {record.naviera} · {record.especie}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-700">
-                          <span>Eliminado: {formatDate(record.deletedAt || null)}</span>
-                          <span className="mx-2">•</span>
-                          <span>Por: {record.deletedBy || 'Usuario'}</span>
-                          <span className="mx-2">•</span>
-                          <span className="text-orange-600">
-                            Se eliminará permanentemente en {calculateDaysRemaining(record.deletedAt || null)} días
+                        <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-slate-400">
+                          <span className="inline-flex items-center gap-1">
+                            Eliminado: <span className="font-semibold text-slate-200">{formatDate(record.deletedAt || null)}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            Por: <span className="font-semibold text-slate-200">{record.deletedBy || 'Usuario'}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-amber-300">
+                            Se eliminará en {calculateDaysRemaining(record.deletedAt || null)} días
                           </span>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Botones de acción individual */}
-                    <div className="flex items-center space-x-2">
+
+                    <div className="flex flex-shrink-0 items-center gap-2">
                       <button
                         onClick={() => handleRestore(record.id!)}
-                        className="flex items-center space-x-1 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                        className="inline-flex items-center gap-1 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
                       >
                         <RotateCcw className="h-4 w-4" />
-                        <span>Restaurar</span>
+                        Restaurar
                       </button>
                       <button
                         onClick={() => handlePermanentDelete(record.id!)}
-                        className="flex items-center space-x-1 px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm"
+                        className="inline-flex items-center gap-1 rounded-full border border-rose-500/60 bg-rose-500/10 px-3 py-1.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/20"
                       >
                         <Trash2 className="h-4 w-4" />
-                        <span>Eliminar</span>
+                        Eliminar
                       </button>
                     </div>
                   </div>
@@ -428,19 +432,15 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              {deletedRecords.length} registro(s) eliminado(s)
-            </p>
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={onClose}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cerrar
-              </button>
-            </div>
+        <div className="border-t border-slate-800/60 bg-slate-950/75 px-6 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
+            <p>{deletedRecords.length} registro(s) eliminado(s)</p>
+            <button
+              onClick={onClose}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-4 py-1.5 text-sm font-medium text-slate-200 hover:border-slate-600 hover:text-white"
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
