@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Edit3 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { createClient } from '@/lib/supabase-browser';
+import { logHistoryEntry } from '@/lib/history';
 import { parseDateString } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -208,6 +209,9 @@ export function InlineEditCell({
     setLoading(true);
     setError('');
 
+    const previousValue = record[field];
+    const previousTransitTime = record.tt;
+
     try {
       let processedValue = currentValue;
 
@@ -257,6 +261,22 @@ export function InlineEditCell({
 
       if (field === 'refCliente' && typeof processedValue === 'string') {
         await upsertRefClienteCatalog(supabase, processedValue);
+      }
+
+      await logHistoryEntry(supabase, {
+        registroId: record.id,
+        field,
+        previousValue,
+        newValue: processedValue,
+      });
+
+      if ((field === 'etd' || field === 'eta') && updateData.tt !== undefined) {
+        await logHistoryEntry(supabase, {
+          registroId: record.id,
+          field: 'tt',
+          previousValue: previousTransitTime,
+          newValue: updateData.tt,
+        });
       }
 
       const updatedRecord: Registro = {

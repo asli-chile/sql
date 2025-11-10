@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { X, Trash2, RotateCcw, RefreshCw, CheckSquare, Square } from 'lucide-react';
+import { useState, useEffect, useCallback, ComponentType } from 'react';
+import { X, Trash2, RotateCcw, RefreshCw, CheckSquare, Square, Loader2 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { createClient } from '@/lib/supabase-browser';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
@@ -14,12 +14,27 @@ interface TrashModalProps {
   onError?: (message: string) => void;
 }
 
+type ConfirmActionState =
+  | { type: 'bulk-restore'; count: number }
+  | { type: 'bulk-delete'; count: number }
+  | { type: 'permanent-delete'; recordId: string };
+
+type ConfirmDialogConfig = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  tone: 'sky' | 'rose';
+  Icon: ComponentType<{ className?: string }>;
+};
+
 export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: TrashModalProps) {
   const [deletedRecords, setDeletedRecords] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDays, setSelectedDays] = useState(7); // Días para conservar registros eliminados
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmActionState | null>(null);
+  const [confirmProcessing, setConfirmProcessing] = useState(false);
 
   const loadDeletedRecords = useCallback(async () => {
     setLoading(true);
@@ -58,6 +73,24 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     }
   }, [isOpen, loadDeletedRecords]);
 
+  useEffect(() => {
+    if (!confirmAction) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (!confirmProcessing && !bulkLoading) {
+          setConfirmAction(null);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [confirmAction, confirmProcessing, bulkLoading]);
+
   // Funciones para selección múltiple
   const toggleRecordSelection = (recordId: string) => {
     const newSelected = new Set(selectedRecords);
@@ -82,11 +115,8 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
   const isPartiallySelected = selectedRecords.size > 0 && selectedRecords.size < deletedRecords.length;
 
   // Funciones para operaciones masivas
-  const handleBulkRestore = async () => {
+  const performBulkRestore = useCallback(async () => {
     if (selectedRecords.size === 0) return;
-    
-    const confirmMessage = `¿Estás seguro de que deseas restaurar ${selectedRecords.size} registro(s)?`;
-    if (!confirm(confirmMessage)) return;
 
     setBulkLoading(true);
     try {
@@ -111,7 +141,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
       if (onSuccess) onSuccess(`✅ Se restauraron ${selectedIds.length} registros exitosamente`);
       clearSelection();
       loadDeletedRecords();
-      
+
       if (onRestore) {
         onRestore();
       }
@@ -121,13 +151,10 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     } finally {
       setBulkLoading(false);
     }
-  };
+  }, [selectedRecords, onError, onSuccess, onRestore, loadDeletedRecords]);
 
-  const handleBulkDelete = async () => {
+  const performBulkDelete = useCallback(async () => {
     if (selectedRecords.size === 0) return;
-
-    const confirmMessage = `¿Estás seguro de que deseas eliminar permanentemente ${selectedRecords.size} registro(s)? Esta acción no se puede deshacer.`;
-    if (!confirm(confirmMessage)) return;
 
     setBulkLoading(true);
     try {
@@ -163,6 +190,16 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     } finally {
       setBulkLoading(false);
     }
+  }, [selectedRecords, onError, onSuccess, onRestore, loadDeletedRecords]);
+
+  const handleBulkRestore = () => {
+    if (selectedRecords.size === 0) return;
+    setConfirmAction({ type: 'bulk-restore', count: selectedRecords.size });
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedRecords.size === 0) return;
+    setConfirmAction({ type: 'bulk-delete', count: selectedRecords.size });
   };
 
   const handleRestore = async (recordId: string) => {
@@ -197,38 +234,93 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
     }
   };
 
-  const handlePermanentDelete = async (recordId: string) => {
-    if (
-      !confirm(
-        '¿Estás seguro de que deseas eliminar permanentemente este registro? Esta acción no se puede deshacer.',
-      )
-    ) {
-      return;
-    }
+  const performPermanentDelete = useCallback(
+    async (recordId: string) => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.rpc('delete_registros_permanente', {
+          ids: [recordId],
+        });
 
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase.rpc('delete_registros_permanente', {
-        ids: [recordId],
-      });
+        if (error) {
+          console.error('Error al eliminar permanentemente:', error);
+          if (onError) onError(error.message || 'Error al eliminar permanentemente el registro');
+          return;
+        }
 
-      if (error) {
+        const eliminados = typeof data === 'number' ? data : 1;
+        if (onSuccess) onSuccess(`✅ Registro eliminado permanentemente (${eliminados})`);
+        loadDeletedRecords();
+
+        if (onRestore) {
+          onRestore();
+        }
+      } catch (error: any) {
         console.error('Error al eliminar permanentemente:', error);
-        if (onError) onError(error.message || 'Error al eliminar permanentemente el registro');
-        return;
+        if (onError)
+          onError(error?.message ?? 'Error inesperado al eliminar permanentemente el registro');
       }
+    },
+    [onError, onSuccess, onRestore, loadDeletedRecords],
+  );
 
-      const eliminados = typeof data === 'number' ? data : 1;
-      if (onSuccess) onSuccess(`✅ Registro eliminado permanentemente (${eliminados})`);
-      loadDeletedRecords();
+  const handlePermanentDelete = (recordId: string) => {
+    setConfirmAction({ type: 'permanent-delete', recordId });
+  };
 
-      if (onRestore) {
-        onRestore();
+  const confirmConfig: ConfirmDialogConfig | null = confirmAction
+    ? (() => {
+        switch (confirmAction.type) {
+          case 'bulk-restore':
+            return {
+              title: 'Restaurar registros',
+              description: `¿Estás seguro de que deseas restaurar ${confirmAction.count} registro(s)?`,
+              confirmLabel: 'Restaurar',
+              tone: 'sky',
+              Icon: RotateCcw,
+            };
+          case 'bulk-delete':
+            return {
+              title: 'Eliminar permanentemente',
+              description: `¿Quieres eliminar permanentemente ${confirmAction.count} registro(s)? Esta acción no se puede deshacer.`,
+              confirmLabel: 'Eliminar',
+              tone: 'rose',
+              Icon: Trash2,
+            };
+          case 'permanent-delete':
+            return {
+              title: 'Eliminar permanentemente',
+              description:
+                '¿Quieres eliminar permanentemente este registro? Esta acción no se puede deshacer.',
+              confirmLabel: 'Eliminar',
+              tone: 'rose',
+              Icon: Trash2,
+            };
+          default:
+            return null;
+        }
+      })()
+    : null;
+
+  const cancelConfirmAction = () => {
+    if (confirmProcessing || bulkLoading) return;
+    setConfirmAction(null);
+  };
+
+  const executeConfirmAction = async () => {
+    if (!confirmAction) return;
+    setConfirmProcessing(true);
+    try {
+      if (confirmAction.type === 'bulk-restore') {
+        await performBulkRestore();
+      } else if (confirmAction.type === 'bulk-delete') {
+        await performBulkDelete();
+      } else if (confirmAction.type === 'permanent-delete') {
+        await performPermanentDelete(confirmAction.recordId);
       }
-    } catch (error: any) {
-      console.error('Error al eliminar permanentemente:', error);
-      if (onError)
-        onError(error?.message ?? 'Error inesperado al eliminar permanentemente el registro');
+      setConfirmAction(null);
+    } finally {
+      setConfirmProcessing(false);
     }
   };
 
@@ -443,6 +535,71 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
             </button>
           </div>
         </div>
+        {confirmConfig && (
+          <div
+            className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
+            onClick={cancelConfirmAction}
+            role="presentation"
+          >
+            <div
+              className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="trash-confirm-title"
+            >
+              <div className="flex items-start gap-4">
+                <span
+                  className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+                    confirmConfig.tone === 'sky'
+                      ? 'border-sky-500/40 bg-sky-500/15 text-sky-200'
+                      : 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                  }`}
+                >
+                  <confirmConfig.Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 id="trash-confirm-title" className="text-lg font-semibold text-white">
+                    {confirmConfig.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-300">{confirmConfig.description}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={cancelConfirmAction}
+                  disabled={confirmProcessing || bulkLoading}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={executeConfirmAction}
+                  disabled={confirmProcessing || bulkLoading}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                    confirmConfig.tone === 'sky'
+                      ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20'
+                      : 'bg-gradient-to-r from-rose-500 to-red-500 shadow-rose-500/20'
+                  }`}
+                >
+                  {confirmProcessing || bulkLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      Procesando…
+                    </>
+                  ) : (
+                    <>
+                      {confirmConfig.confirmLabel}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -16,7 +16,6 @@ import { AddModal } from '@/components/AddModal';
 import { TrashModal } from '@/components/TrashModal';
 import { HistorialModal } from '@/components/HistorialModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
-import { ThemeTest } from '@/components/ThemeTest';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/hooks/useToast';
@@ -24,12 +23,14 @@ import { ToastContainer } from '@/components/Toast';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
+import { logHistoryEntry } from '@/lib/history';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, CheckCircle, Container, Trash2, FileText, Receipt } from 'lucide-react';
+import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2 } from 'lucide-react';
 import { QRGenerator } from '@/components/QRGenerator';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/FacturaViewer';
+import LoadingScreen from '@/components/ui/LoadingScreen';
 
 interface User {
   id: string;
@@ -103,9 +104,34 @@ export default function RegistrosPage() {
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
   const [isEjecutivo, setIsEjecutivo] = useState(false);
 
+type DeleteConfirmState = {
+  registros: Registro[];
+  mode: 'single' | 'bulk';
+};
+const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
+const [deleteProcessing, setDeleteProcessing] = useState(false);
+
   useEffect(() => {
     checkUser();
   }, []);
+
+useEffect(() => {
+  if (!deleteConfirm) {
+    return;
+  }
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape' && !deleteProcessing) {
+      event.preventDefault();
+      setDeleteConfirm(null);
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown);
+  };
+}, [deleteConfirm, deleteProcessing]);
 
   const checkUser = async () => {
     try {
@@ -501,6 +527,77 @@ export default function RegistrosPage() {
     console.log('Stats reloaded');
   };
 
+const performSoftDelete = useCallback(
+  async (targets: Registro[], mode: 'single' | 'bulk') => {
+    if (targets.length === 0) {
+      setDeleteConfirm(null);
+      return;
+    }
+
+    setDeleteProcessing(true);
+
+    try {
+      const supabase = createClient();
+      const ids = targets.map((registro) => registro.id).filter((id): id is string => Boolean(id));
+
+      if (ids.length === 0) {
+        error('No se encontraron registros válidos para eliminar.');
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from('registros')
+        .update({
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', ids);
+
+      if (updateError) {
+        console.error('Error al eliminar registros:', updateError);
+        error('Error al enviar los registros a la papelera.');
+        return;
+      }
+
+      setRegistros((prevRegistros) =>
+        prevRegistros.filter((registro) => !ids.includes(registro.id ?? '')),
+      );
+
+      if (mode === 'bulk') {
+        setSelectedRows(new Set());
+        setSelectionMode(false);
+      }
+
+      await loadStats();
+
+      if (mode === 'single') {
+        const ref = targets[0]?.refAsli ?? 'registro';
+        success(`Registro ${ref} enviado a la papelera`);
+      } else {
+        success(`${ids.length} registro(s) enviados a la papelera`);
+      }
+
+      setDeleteConfirm(null);
+    } catch (err: any) {
+      console.error('Error inesperado al eliminar registros:', err);
+      error(err?.message ?? 'Error inesperado al eliminar los registros.');
+    } finally {
+      setDeleteProcessing(false);
+    }
+  },
+  [error, success, loadStats, setSelectedRows, setSelectionMode],
+);
+
+const handleConfirmDelete = useCallback(() => {
+  if (!deleteConfirm) return;
+  void performSoftDelete(deleteConfirm.registros, deleteConfirm.mode);
+}, [deleteConfirm, performSoftDelete]);
+
+const handleCancelDelete = useCallback(() => {
+  if (deleteProcessing) return;
+  setDeleteConfirm(null);
+}, [deleteProcessing]);
+
   // Funciones de manejo de eventos
   const handleAdd = () => {
     setIsAddModalOpen(true);
@@ -519,12 +616,9 @@ export default function RegistrosPage() {
   };
 
   const handleDelete = async (registro: Registro) => {
-    // Los admins pueden borrar cualquier registro (sin restricciones)
     const esAdmin = currentUser?.rol === 'admin';
-    
-    // Si NO es admin, validar permisos de ejecutivo
+
     if (!esAdmin) {
-      // Validar que el ejecutivo solo pueda eliminar registros de sus clientes
       if (isEjecutivo && clientesAsignados.length > 0) {
         if (!clientesAsignados.includes(registro.shipper || '')) {
           error('No tienes permiso para eliminar este registro');
@@ -533,41 +627,7 @@ export default function RegistrosPage() {
       }
     }
 
-    if (!confirm(`¿Estás seguro de que quieres eliminar el registro ${registro.refAsli}?`)) {
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      
-      // Marcar como eliminado (soft delete)
-      const { error } = await supabase
-        .from('registros')
-        .update({ 
-          deleted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', registro.id);
-
-      if (error) {
-        console.error('Error al eliminar registro:', error);
-        alert('Error al eliminar el registro: ' + error.message);
-        return;
-      }
-
-      // Actualizar el estado local
-      setRegistros(prevRegistros => 
-        prevRegistros.filter(r => r.id !== registro.id)
-      );
-
-      // Actualizar estadísticas
-      await loadStats();
-      
-      alert('Registro eliminado correctamente');
-    } catch (error) {
-      console.error('Error inesperado:', error);
-      alert('Error inesperado al eliminar el registro');
-    }
+    setDeleteConfirm({ registros: [registro], mode: 'single' });
   };
 
 
@@ -810,70 +870,31 @@ export default function RegistrosPage() {
 
   const handleBulkDelete = async () => {
     if (selectedRows.size === 0) return;
-    
-    // Los admins pueden borrar cualquier registro (sin restricciones)
+
     const esAdmin = currentUser?.rol === 'admin';
-    
-    // Obtener registros seleccionados
-    const registrosSeleccionados = registros.filter(r => r.id && selectedRows.has(r.id));
-    
-    // Si NO es admin, validar permisos de ejecutivo
+
+    const registrosSeleccionados = registros.filter((r) => r.id && selectedRows.has(r.id));
+
     let registrosParaEliminar = registrosSeleccionados;
     if (!esAdmin) {
-      // Si es ejecutivo, filtrar solo registros de sus clientes
       if (isEjecutivo && clientesAsignados.length > 0) {
-        registrosParaEliminar = registrosSeleccionados.filter(r => 
-          clientesAsignados.includes(r.shipper || '')
+        registrosParaEliminar = registrosSeleccionados.filter((r) =>
+          clientesAsignados.includes(r.shipper || ''),
         );
-        
+
         if (registrosParaEliminar.length !== registrosSeleccionados.length) {
           error('No tienes permiso para eliminar algunos de los registros seleccionados');
           return;
         }
       }
     }
-    
-    const confirmMessage = `¿Estás seguro de que quieres eliminar ${registrosParaEliminar.length} registro(s)?`;
-    if (!confirm(confirmMessage)) {
+
+    if (registrosParaEliminar.length === 0) {
+      warning('No hay registros válidos para eliminar.');
       return;
     }
 
-    try {
-      const supabase = createClient();
-      
-      // Marcar múltiples registros como eliminados (soft delete)
-      const idsParaEliminar = registrosParaEliminar.map(r => r.id).filter((id): id is string => Boolean(id));
-      const { error } = await supabase
-        .from('registros')
-        .update({ 
-          deleted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .in('id', idsParaEliminar);
-
-      if (error) {
-        console.error('Error al eliminar registros:', error);
-        alert('Error al eliminar los registros: ' + error.message);
-        return;
-      }
-
-      // Actualizar el estado local
-      setRegistros(prevRegistros => 
-        prevRegistros.filter(r => r.id && !selectedRows.has(r.id))
-      );
-
-      // Limpiar selección y salir del modo selección
-      setSelectedRows(new Set());
-      setSelectionMode(false);
-      
-      // Actualizar estadísticas
-      await loadStats();
-      
-      success(`${registrosParaEliminar.length} registro(s) eliminado(s) correctamente`);
-    } catch (error) {
-      console.error('Error inesperado:', error);
-      alert('Error inesperado al eliminar los registros');
-    }
+    setDeleteConfirm({ registros: registrosParaEliminar, mode: 'bulk' });
   };
 
   const handleUpdateRecord = useCallback((updatedRecord: Registro) => {
@@ -942,14 +963,13 @@ export default function RegistrosPage() {
         throw updateError;
       }
 
-      // Crear historial para cada registro actualizado
       for (const record of registrosParaActualizar) {
         try {
-          await supabase.rpc('crear_historial_manual', {
-            registro_uuid: record.id,
-            campo: dbFieldName, // Usar el nombre de campo de la base de datos
-            valor_anterior: record[field] || 'NULL',
-            valor_nuevo: value || 'NULL'
+          await logHistoryEntry(supabase, {
+            registroId: record.id,
+            field,
+            previousValue: record[field],
+            newValue: value,
           });
         } catch (historialError) {
           console.warn(`⚠️ Error creando historial para registro ${record.id}:`, historialError);
@@ -1262,30 +1282,7 @@ export default function RegistrosPage() {
   ]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#0a1628' }}>
-        <div className="text-center w-full max-w-4xl px-8">
-          <div className="w-64 h-64 mx-auto mb-8 flex items-center justify-center">
-            <img
-              src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-              alt="ASLI Logo"
-              className="max-w-full max-h-full object-contain"
-              style={{
-                animation: 'zoomInOut 2s ease-in-out infinite'
-              }}
-              onError={(e) => {
-                console.log('Error cargando logo:', e);
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-bold mb-4 px-4" style={{ color: '#ffffff' }}>
-            Asesorías y Servicios Logísticos Integrales Ltda.
-          </h2>
-          <p className="text-lg" style={{ color: '#ffffff' }}>Cargando registros...</p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Cargando registros..." />;
   }
 
   if (!user) {
@@ -1433,7 +1430,6 @@ export default function RegistrosPage() {
                 <div className="flex flex-wrap items-center justify-end gap-1">
                   <div className="flex items-center gap-1">
                     <QRGenerator />
-                    <ThemeTest />
                   </div>
                   <div className="flex items-center gap-1 rounded-full border border-slate-800/70 px-2 py-1 text-[11px] text-slate-300">
                     <UserIcon className="h-3 w-3" />
@@ -1603,8 +1599,8 @@ export default function RegistrosPage() {
         record={selectedRecord}
         navierasUnicas={navierasUnicas}
         navesUnicas={navesUnicas}
-        navierasNavesMapping={navierasNavesMapping}
-        consorciosNavesMapping={consorciosNavesMapping}
+        navierasNavesMapping={navierasNavesMappingCatalog}
+        consorciosNavesMapping={consorciosNavesMappingCatalog}
         refExternasUnicas={refExternasUnicas}
       />
 
@@ -1638,6 +1634,64 @@ export default function RegistrosPage() {
           }}
           onUpdate={loadFacturas}
         />
+      )}
+
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
+          onClick={handleCancelDelete}
+          role="presentation"
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-confirm-title"
+          >
+            <div className="flex items-start gap-4">
+              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-200">
+                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div>
+                <h3 id="delete-confirm-title" className="text-lg font-semibold text-white">
+                  {deleteConfirm.mode === 'bulk' ? 'Eliminar registros' : 'Eliminar registro'}
+                </h3>
+                <p className="mt-2 text-sm text-slate-300">
+                  {deleteConfirm.mode === 'bulk'
+                    ? `¿Quieres enviar ${deleteConfirm.registros.length} registro(s) a la papelera?`
+                    : `¿Quieres enviar el registro ${deleteConfirm.registros[0]?.refAsli ?? ''} a la papelera?`}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelDelete}
+                disabled={deleteProcessing}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleteProcessing}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deleteProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Procesando…
+                  </>
+                ) : (
+                  'Enviar a papelera'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {(selectedRegistroForNaveViaje || selectedRecordsForNaveViaje.length > 0) && (

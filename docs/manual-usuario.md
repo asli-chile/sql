@@ -1,3 +1,98 @@
+# Manual para Humanos (no técnicos)
+
+Guía rápida para sobrevivir y trabajar con la plataforma **Registros de Embarques**. Diseñada para presentar en reuniones y compartir con el equipo.
+
+---
+
+## 1. Entrar y ubicarte
+
+1. Abre la web del proyecto.
+2. Inicia sesión con tu correo/clave.
+3. Verás el panel principal con:
+   - **Tarjetas** (arriba): muestran totales de registros, bookings y contenedores, más un resumen por estado.
+   - **Barra de acciones**: botones `Nuevo`, `Buscar`, `Filtros`, `Exportar`, `Reset`, etc.
+   - **Tabla de registros**: todas las filas que podemos filtrar y editar.
+
+---
+
+## 2. Buscar y filtrar
+
+- **Buscar**: campo a la izquierda. Escribe parte de un booking, cliente o naviera.
+- **Filtros**: botón con el embudo. Selecciona criterios (cliente, naviera, estado, fechas, etc.).
+- **Reset**: botón de recarga para quitar filtros y volver al estado original.
+
+> Tip: las tarjetas de totales se actualizan según los filtros que apliques.
+
+---
+
+## 3. Crear un registro
+
+1. Pulsa `Nuevo`.
+2. Completa el formulario. Los campos con * son obligatorios.
+3. El `REF ASLI` se genera automáticamente. No hace falta inventarlo.
+4. Guarda con `Guardar registro`. Si falta algo, aparece un aviso en rojo.
+
+---
+
+## 4. Seleccionar y exportar
+
+- Marca las casillas junto a cada fila.
+- El botón `Exportar` envía los datos seleccionados a la plantilla de Google Sheets (con formato listo).
+- Si existe la URL configurada, `Ver Sheets` abre una vista previa embebida; el botón “Abrir en pestaña” te manda a la hoja editable.
+
+> Importante: las variables `NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL` y `NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID` deben estar configuradas en `.env` o Vercel.
+
+---
+
+## 5. Editar o borrar
+
+- Pulsa el icono del lápiz para editar un registro.
+- Para eliminar, selecciona la fila y usa la opción de borrar. Pasa primero por la **Papelera** antes de desaparecerlo para siempre.
+- Papelera → botón en la barra superior. Desde ahí puedes restaurar o eliminar definitivamente. El modal ahora es estilo dark y se cierra clickeando fuera.
+
+---
+
+## 6. Generador de QR
+
+- Botón `QR` en el header.
+- Pega una URL o texto.
+- `Generar` y luego `Descargar` para guardar el código como PNG.
+- Se cierra haciendo clic fuera o presionando `Esc`.
+
+---
+
+## 7. Problemas frecuentes y soluciones
+
+| Problema | Solución |
+| --- | --- |
+| Totales raros | Presiona `Reset` y revisa filtros activos |
+| Botón `Ver Sheets` no aparece | Falta la URL `NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL` |
+| Error “REF ASLI duplicado” | Se genera uno nuevo automáticamente; si persiste, contactar a TI |
+| Papelera no borra | Para eliminar permanente se usa la función `delete_registros_permanente`; revisar permisos de admin |
+| QR no se descarga | Asegúrate de generar el código antes de pulsar `Descargar` |
+
+---
+
+## 8. Buenas prácticas
+
+- Revisa tus selecciones antes de exportar a Sheets.
+- Comenta cambios significativos en el campo de observaciones.
+- Si la interfaz se ve distinta a lo esperado, toma captura y avisa (puede haber faltado una variable o filtro mal guardado).
+- Mantén la documentación en `docs/` organizada; el repositorio se limpia para evitar archivos obsoletos (`backup/`, `QR GENERATOR/`, etc.).
+
+---
+
+## 9. Para la presentación
+
+- **Slide 1**: Objetivo del sistema (control y exportación de embarques).
+- **Slide 2**: ¿Cómo se ve la pantalla principal? (tarjetas + tabla).
+- **Slide 3**: Flujo básico (completar registro, filtrar, exportar).
+- **Slide 4**: Integración con Google Sheets (botón `Exportar`, vista previa y abrir en pestaña).
+- **Slide 5**: Módulos extra (Papelera, Generador QR, botón `Nuevo` responsivo).
+- **Slide 6**: Seguridad y control (REF ASLI único, papelera con recuperación, variables de entorno).
+- **Slide 7**: Próximos pasos (limpieza de repositorio, documentación en `docs/`).
+
+Con esta guía puedes presentar el proyecto sin tecnicismos, destacando que el sistema es fácil de usar, todos los procesos críticos tienen respaldo (Papelera, Google Sheets) y que la UI está optimizada para escritorio y móvil. ¡Que la demo fluya!
 # Manual Express - Registros de Embarques
 
 Guía pensada para presentar el proyecto al equipo, sin tecnicismos.

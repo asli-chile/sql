@@ -1,14 +1,22 @@
 'use client';
-/* eslint-disable @next/next/no-img-element */
 
-import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { Eye, EyeOff, Mail, Lock, User, LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react';
+import type { FormEvent } from 'react';
+import { useState } from 'react';
 
-export default function AuthPage() {
+type AuthMode = 'login' | 'register';
+
+const inputClasses =
+  'w-full rounded-xl border border-white/10 bg-white/5 px-12 py-3 text-sm text-white placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/50';
+
+const AuthPage = () => {
   const router = useRouter();
-  const [isLogin, setIsLogin] = useState(true);
+  const supabase = createClient();
+
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -16,193 +24,286 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const supabase = createClient();
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isLogin = authMode === 'login';
+  const passwordAutoComplete = isLogin ? 'current-password' : 'new-password';
+
+  const handleToggleMode = (mode: AuthMode) => {
+    if (loading || mode === authMode) {
+      return;
+    }
+
+    setAuthMode(mode);
+    setError('');
+    setConfirmPassword('');
+  };
+
+  const handleTogglePasswordVisibility = () => {
+    setShowPassword((prevState) => !prevState);
+  };
+
+  const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
       if (isLogin) {
-        // Login
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (signInError) {
+          throw signInError;
+        }
 
-        // Redirigir al dashboard
         router.push('/dashboard');
-      } else {
-        // Registro
-        if (password !== confirmPassword) {
-          throw new Error('Las contraseñas no coinciden');
-        }
-
-        if (password.length < 6) {
-          throw new Error('La contraseña debe tener al menos 6 caracteres');
-        }
-
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              full_name: fullName,
-            },
-          },
-        });
-
-        if (error) throw error;
-
-        if (data.user && !data.user.email_confirmed_at) {
-          setError('Revisa tu email para confirmar tu cuenta');
-        } else {
-          router.push('/dashboard');
-        }
+        return;
       }
-    } catch (err: any) {
-      setError(err.message || 'Error en la autenticación');
+
+      if (password !== confirmPassword) {
+        setError('Las contraseñas no coinciden');
+        return;
+      }
+
+      if (password.length < 6) {
+        setError('La contraseña debe tener al menos 6 caracteres');
+        return;
+      }
+
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+
+      if (signUpError) {
+        throw signUpError;
+      }
+
+      if (data.user && !data.user.email_confirmed_at) {
+        setError('Revisa tu email para confirmar tu cuenta');
+        return;
+      }
+
+      router.push('/dashboard');
+    } catch (authError: any) {
+      setError(authError?.message ?? 'Error en la autenticación');
     } finally {
       setLoading(false);
     }
   };
 
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
-      <div className="max-w-md w-full">
-        {/* Logo y título */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-32 h-32 mb-6 flex items-center justify-center">
-            <img
-              src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-              alt="ASLI Logo"
-              className="max-w-full max-h-full object-contain scale-125"
-              onError={(e) => {
-                console.log('Error cargando logo:', e);
-                e.currentTarget.style.display = 'none';
-              }}
-            />
-          </div>
-          <h1 className="text-3xl font-bold text-white">ASLI Gestión Logística</h1>
-          <p className="text-gray-300 mt-2">Gestión Logística Integral</p>
-        </div>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-12">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-20 top-16 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
+        <div className="absolute bottom-12 right-12 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-500/10 blur-3xl" />
+      </div>
 
-        {/* Formulario */}
-        <div className="bg-gray-800 rounded-xl shadow-lg p-8">
-          {/* Tabs */}
-          <div className="flex mb-6">
-            <button
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-2 px-4 text-center font-medium rounded-lg transition-colors ${
-                isLogin
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
+      <section className="relative z-10 grid w-full max-w-5xl gap-8 rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-2xl md:grid-cols-[1fr_minmax(0,420px)]">
+        <aside className="hidden flex-col justify-between rounded-2xl bg-gradient-to-br from-sky-500/20 via-slate-900/60 to-blue-600/30 p-8 text-slate-100 shadow-xl md:flex">
+          <div className="space-y-6">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-medium uppercase tracking-[0.35em] text-slate-100/90">
+              Plataforma ASLI
+            </span>
+            <div className="space-y-4">
+              <h2 className="text-3xl font-semibold text-white">
+                Gestiona la logística con datos confiables y decisiones ágiles
+              </h2>
+              <p className="text-sm text-slate-200">
+                Centraliza la información de tu operación y accede a tableros inteligentes para planificar, ejecutar y medir en tiempo real.
+              </p>
+            </div>
+            <ul className="space-y-3 text-sm text-slate-100/80">
+              <li className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-sky-300" aria-hidden="true" />
+                Monitoreo continuo de embarques y documentación
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-sky-300" aria-hidden="true" />
+                Flujos colaborativos con tu equipo y clientes
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="h-2 w-2 rounded-full bg-sky-300" aria-hidden="true" />
+                Autenticación segura respaldada por Supabase
+              </li>
+            </ul>
+          </div>
+          <div className="mt-10 space-y-2 text-sm text-slate-200">
+            <p className="font-medium text-white">Soporte dedicado</p>
+            <p>Escríbenos a soporte@asli.cl o llámanos al +56 2 1234 5678</p>
+          </div>
+        </aside>
+
+        <div className="rounded-2xl bg-slate-950/70 p-6 shadow-lg sm:p-8">
+          <div className="mb-8 flex flex-col items-center gap-4 text-center md:items-start md:text-left">
+            <div
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl"
+              data-preserve-bg
             >
-              <LogIn className="w-4 h-4 inline mr-2" />
-              Iniciar Sesión
+              <Image
+                src="/logoasli.png"
+                alt="Logo ASLI"
+                width={56}
+                height={56}
+                className="h-12 w-12 object-contain drop-shadow-[0_0_16px_rgba(125,211,252,0.45)]"
+                priority
+              />
+            </div>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold text-white">
+                {isLogin ? 'Bienvenido de vuelta' : 'Crea tu acceso seguro'}
+              </h1>
+              <p className="text-sm text-slate-300">
+                {isLogin
+                  ? 'Ingresa tus credenciales para continuar gestionando tu operación.'
+                  : 'Completa los datos para habilitar tu cuenta y comienza a colaborar.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="mb-6 flex rounded-xl bg-white/5 p-1 text-sm font-medium">
+            <button
+              type="button"
+              onClick={() => handleToggleMode('login')}
+              aria-pressed={isLogin}
+              aria-controls="auth-form"
+              disabled={loading}
+              className={`group flex-1 rounded-lg px-4 py-2 transition ${isLogin ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-300 hover:bg-white/10'}`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <LogIn className="h-4 w-4" aria-hidden="true" />
+                Iniciar sesión
+              </span>
             </button>
             <button
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-2 px-4 text-center font-medium rounded-lg transition-colors ${
-                !isLogin
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
+              type="button"
+              onClick={() => handleToggleMode('register')}
+              aria-pressed={!isLogin}
+              aria-controls="auth-form"
+              disabled={loading}
+              className={`group flex-1 rounded-lg px-4 py-2 transition ${!isLogin ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-300 hover:bg-white/10'}`}
             >
-              <UserPlus className="w-4 h-4 inline mr-2" />
-              Registrarse
+              <span className="flex items-center justify-center gap-2">
+                <UserPlus className="h-4 w-4" aria-hidden="true" />
+                Registrarse
+              </span>
             </button>
           </div>
 
-          {/* Error message */}
           {error && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-500 rounded-lg flex items-center">
-              <AlertCircle className="w-4 h-4 text-red-400 mr-2" />
-              <span className="text-red-300 text-sm">{error}</span>
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+            >
+              <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleAuth} className="space-y-4">
+          <form id="auth-form" onSubmit={handleAuth} className="space-y-4" noValidate>
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Nombre Completo
+              <div className="space-y-2">
+                <label htmlFor="fullName" className="text-sm font-medium text-slate-200">
+                  Nombre completo
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                   <input
+                    id="fullName"
+                    name="fullName"
                     type="text"
+                    autoComplete="name"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-white placeholder-gray-400"
-                    placeholder="Tu nombre completo"
-                    required={!isLogin}
+                    onChange={(event) => setFullName(event.target.value)}
+                    className={inputClasses}
+                    placeholder="Ej: Ana Pérez"
+                    required
                   />
                 </div>
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
-                Email
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-sm font-medium text-slate-200">
+                Email corporativo
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <input
+                  id="email"
+                  name="email"
                   type="email"
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-white placeholder-gray-400"
-                  placeholder="tu@email.com"
+                  onChange={(event) => setEmail(event.target.value)}
+                  className={inputClasses}
+                  placeholder="tu@empresa.com"
                   required
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">
+            <div className="space-y-2">
+              <label htmlFor="password" className="text-sm font-medium text-slate-200">
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                 <input
+                  id="password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete={passwordAutoComplete}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-12 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-white placeholder-gray-400"
-                  placeholder="Tu contraseña"
+                  onChange={(event) => setPassword(event.target.value)}
+                  className={inputClasses}
+                  placeholder={isLogin ? 'Ingresa tu contraseña' : 'Crea una contraseña segura'}
                   required
+                  minLength={6}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                  onClick={handleTogglePasswordVisibility}
+                  className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-white/5 text-slate-300 transition hover:bg-white/10"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
                 </button>
               </div>
             </div>
 
             {!isLogin && (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">
-                  Confirmar Contraseña
+              <div className="space-y-2">
+                <label htmlFor="confirmPassword" className="text-sm font-medium text-slate-200">
+                  Confirmar contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
                   <input
+                    id="confirmPassword"
+                    name="confirmPassword"
                     type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-700 text-white placeholder-gray-400"
-                    placeholder="Confirma tu contraseña"
-                    required={!isLogin}
+                    onChange={(event) => setConfirmPassword(event.target.value)}
+                    className={inputClasses}
+                    placeholder="Repite tu contraseña"
+                    required
+                    minLength={6}
                   />
                 </div>
               </div>
@@ -211,38 +312,44 @@ export default function AuthPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+              aria-busy={loading}
+              className="group relative flex w-full items-center justify-center gap-3 rounded-xl bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {isLogin ? 'Iniciando sesión...' : 'Registrando...'}
-                </div>
+                <>
+                  <span className="flex h-5 w-5 items-center justify-center">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  </span>
+                  {isLogin ? 'Iniciando sesión...' : 'Creando cuenta...'}
+                </>
               ) : (
-                isLogin ? 'Iniciar Sesión' : 'Registrarse'
+                <>
+                  {isLogin ? <LogIn className="h-4 w-4" aria-hidden="true" /> : <UserPlus className="h-4 w-4" aria-hidden="true" />}
+                  {isLogin ? 'Ingresar' : 'Registrarme'}
+                </>
               )}
             </button>
           </form>
 
-
-          {/* Footer */}
-          <div className="mt-6 text-center text-sm text-gray-400">
+          <div className="mt-8 text-center text-sm text-slate-300">
             {isLogin ? (
               <p>
-                ¿No tienes cuenta?{' '}
+                ¿No tienes cuenta?
                 <button
-                  onClick={() => setIsLogin(false)}
-                  className="text-blue-400 hover:text-blue-300 font-medium"
+                  type="button"
+                  onClick={() => handleToggleMode('register')}
+                  className="ml-2 text-sky-300 underline-offset-4 transition hover:text-sky-200 hover:underline"
                 >
-                  Regístrate aquí
+                  Solicitar acceso
                 </button>
               </p>
             ) : (
               <p>
-                ¿Ya tienes cuenta?{' '}
+                ¿Ya perteneces a ASLI?
                 <button
-                  onClick={() => setIsLogin(true)}
-                  className="text-blue-400 hover:text-blue-300 font-medium"
+                  type="button"
+                  onClick={() => handleToggleMode('login')}
+                  className="ml-2 text-sky-300 underline-offset-4 transition hover:text-sky-200 hover:underline"
                 >
                   Inicia sesión aquí
                 </button>
@@ -250,7 +357,10 @@ export default function AuthPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
-}
+};
+
+export default AuthPage;
+

@@ -136,6 +136,7 @@ export function DataTable({
     ? `https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}/edit`
     : '';
   const canPreviewSheets = Boolean(sheetsPreviewUrl);
+  const previousOverflow = useRef<{ body: string; html: string } | null>(null);
 
   const handleSheetsUpdated = useCallback(() => {
     setIframeKey((prev) => prev + 1);
@@ -500,6 +501,44 @@ export function DataTable({
     }
   }, [canPreviewSheets]);
 
+  const lockPageScroll = useCallback(() => {
+    if (typeof window === 'undefined' || previousOverflow.current) {
+      return;
+    }
+    previousOverflow.current = {
+      body: document.body.style.overflow,
+      html: document.documentElement.style.overflow,
+    };
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+  }, []);
+
+  const unlockPageScroll = useCallback(() => {
+    if (typeof window === 'undefined' || !previousOverflow.current) {
+      return;
+    }
+    document.body.style.overflow = previousOverflow.current.body;
+    document.documentElement.style.overflow = previousOverflow.current.html;
+    previousOverflow.current = null;
+  }, []);
+
+  useEffect(() => {
+    if (!showSheetsPreview) {
+      unlockPageScroll();
+    }
+    return () => {
+      unlockPageScroll();
+    };
+  }, [showSheetsPreview, unlockPageScroll]);
+
+  const handleSheetsMouseEnter = () => {
+    lockPageScroll();
+  };
+
+  const handleSheetsMouseLeave = () => {
+    unlockPageScroll();
+  };
+
   const renderToolbar = () => {
     return (
       <div className="flex flex-col gap-2">
@@ -664,15 +703,21 @@ export function DataTable({
               </button>
             </div>
           </div>
-          <div className="relative h-[420px] w-full">
-            <iframe
-              key={iframeKey}
-              src={sheetsPreviewUrl}
-              title="Previsualización Google Sheets"
-              className="h-full w-full border-0"
-              loading="lazy"
-              allowFullScreen
-            />
+          <div
+            className="relative h-[600px] w-full overflow-hidden lg:h-[720px]"
+            onMouseEnter={handleSheetsMouseEnter}
+            onMouseLeave={handleSheetsMouseLeave}
+          >
+            <div className="h-full w-full origin-top-left scale-[0.8]">
+              <iframe
+                key={iframeKey}
+                src={sheetsPreviewUrl}
+                title="Previsualización Google Sheets"
+                className="h-[125%] w-[125%] border-0"
+                loading="lazy"
+                allowFullScreen
+              />
+            </div>
           </div>
         </div>
       )}
