@@ -128,7 +128,7 @@ export function DataTable({
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showReportGenerator, setShowReportGenerator] = useState(false);
-  const [showSheetsPreview, setShowSheetsPreview] = useState(false);
+const [showSheetsPreview, setShowSheetsPreview] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
   const sheetsPreviewUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL ?? '';
@@ -141,6 +141,29 @@ export function DataTable({
   const handleSheetsUpdated = useCallback(() => {
     setIframeKey((prev) => prev + 1);
   }, []);
+
+  const navesFiltrables = useMemo(() => {
+    const map = new Map<string, string>();
+
+    data.forEach((registro) => {
+      const rawNave = (registro.naveInicial ?? '').trim();
+      if (!rawNave) {
+        return;
+      }
+
+      const display = registro.viaje && !rawNave.includes('[')
+        ? `${rawNave} [${registro.viaje.trim()}]`
+        : rawNave;
+
+      if (!map.has(rawNave)) {
+        map.set(rawNave, display);
+      }
+    });
+
+    return Array.from(map.entries()).sort((a, b) =>
+      a[1].localeCompare(b[1], 'es', { sensitivity: 'base' }),
+    );
+  }, [data]);
   
   // Estado para visibilidad de columnas
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
@@ -763,7 +786,7 @@ export function DataTable({
               }
               
               // Filtrar solo las columnas importantes
-                             const importantColumns = ['refAsli', 'estado', 'naviera', 'shipper', 'pod', 'deposito', 'pol', 'especie'];
+                             const importantColumns = ['refAsli', 'estado', 'naviera', 'shipper', 'pod', 'deposito', 'pol', 'especie', 'naveInicial'];
                if (!importantColumns.includes(column.id)) {
                  return null;
                }
@@ -811,6 +834,28 @@ export function DataTable({
                       </div>
                     );
                   }
+                
+                if (column.id === 'naveInicial') {
+                  return (
+                    <div key={column.id} className="space-y-1">
+                      <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
+                        Nave (registros) {hasFilter && '(✓)'}
+                      </label>
+                      <select
+                        value={filterValue}
+                        onChange={(e) => column.setFilterValue(e.target.value)}
+                        className={getFilterStyles(hasFilter)}
+                      >
+                        <option value="">Todas</option>
+                        {navesFiltrables.map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
                 
                                                                    // Cambiar el label de pod a Destino
                   if (column.id === 'pod') {
