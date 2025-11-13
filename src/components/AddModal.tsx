@@ -32,6 +32,7 @@ interface AddModalProps {
   contratosUnicos: string[];
   co2sUnicos: string[];
   o2sUnicos: string[];
+  tratamientosDeFrioOpciones: string[];
   clienteFijadoPorCoincidencia?: string; // Cliente que debe estar preseleccionado y bloqueado
 }
 
@@ -55,10 +56,12 @@ export function AddModal({
   contratosUnicos,
   co2sUnicos,
   o2sUnicos,
+  tratamientosDeFrioOpciones = [],
   clienteFijadoPorCoincidencia,
 }: AddModalProps) {
   
   const { theme } = useTheme();
+  const MAX_COPIES = 50;
   
   // Helper para obtener estilos de select según el tema
   const getSelectStyles = () => {
@@ -104,6 +107,8 @@ export function AddModal({
     contrato: '',
     co2: '',
     o2: '',
+    tratamientoFrio: '',
+    temporada: '2025-2026',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -150,7 +155,11 @@ export function AddModal({
     return uniqueRefs;
   };
 
-  const upsertRefClienteCatalog = async (supabaseClient: ReturnType<typeof createClient>, valor: string | null | undefined) => {
+  const upsertCatalogValue = async (
+    supabaseClient: ReturnType<typeof createClient>,
+    categoria: string,
+    valor: string | null | undefined
+  ) => {
     const trimmed = (valor || '').trim();
     if (!trimmed) return;
 
@@ -158,11 +167,11 @@ export function AddModal({
       const { data, error } = await supabaseClient
         .from('catalogos')
         .select('id, valores')
-        .eq('categoria', 'refCliente')
+        .eq('categoria', categoria)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Error leyendo catálogo refCliente:', error);
+        console.error(`Error leyendo catálogo ${categoria}:`, error);
         return;
       }
 
@@ -174,10 +183,14 @@ export function AddModal({
         valores = Array.isArray(data.valores) ? data.valores : [];
       }
 
-      if (!valores.includes(trimmed)) {
+      const exists = valores.some(
+        (entry) => entry.trim().toLowerCase() === trimmed.toLowerCase()
+      );
+
+      if (!exists) {
         const nuevosValores = [...valores, trimmed];
         const payload = {
-          categoria: 'refCliente',
+          categoria,
           valores: nuevosValores,
           updated_at: new Date().toISOString(),
         };
@@ -194,7 +207,7 @@ export function AddModal({
         }
       }
     } catch (catalogError) {
-      console.error('Error actualizando catálogo refCliente:', catalogError);
+      console.error(`Error actualizando catálogo ${categoria}:`, catalogError);
     }
   };
 
@@ -235,7 +248,11 @@ export function AddModal({
     setError('');
 
     const copiesInput = numberOfCopies.trim();
-    const resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
+    let resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
+    if (Number.isNaN(resolvedCopies) || resolvedCopies < 1) {
+      resolvedCopies = 1;
+    }
+    resolvedCopies = Math.min(resolvedCopies, MAX_COPIES);
 
     if (!Number.isFinite(resolvedCopies) || resolvedCopies < 1) {
       setError('Debes ingresar una cantidad válida (1 o más)');
@@ -256,6 +273,10 @@ export function AddModal({
     }
 
     try {
+      const normalizeDateForStorage = (value: string) =>
+        formatDateForInput(parseDateString(value));
+      const todayString = formatDateForInput(new Date());
+
       // Construir el nombre completo de la nave
       const naveCompleta = formData.naveInicial && formData.viaje.trim() 
         ? `${formData.naveInicial} [${formData.viaje.trim()}]` 
@@ -267,7 +288,9 @@ export function AddModal({
 
       // Crear múltiples copias
       const baseRegistroData = {
-        ingresado: formData.ingresado ? new Date(formData.ingresado).toISOString() : new Date().toISOString(),
+        ingresado: formData.ingresado
+          ? normalizeDateForStorage(formData.ingresado)
+          : todayString,
         ref_cliente: formData.refCliente || null,
         ejecutivo: formData.ejecutivo,
         shipper: formData.shipper,
@@ -284,9 +307,9 @@ export function AddModal({
         flete: formData.flete,
         comentario: formData.comentario,
         contenedor: '',
-        ct: '',
         co2: formData.co2 ? parseFloat(formData.co2) : null,
         o2: formData.o2 ? parseFloat(formData.o2) : null,
+        ['tratamiento de frio']: formData.tratamientoFrio ? formData.tratamientoFrio : null,
         tt: null,
         roleada_desde: '',
         numero_bl: '',
@@ -295,14 +318,15 @@ export function AddModal({
         facturacion: '',
         booking_pdf: '',
         observacion: '',
+        temporada: '2025-2026',
         semana_ingreso: null,
         mes_ingreso: null,
         semana_zarpe: null,
         mes_zarpe: null,
         semana_arribo: null,
         mes_arribo: null,
-        etd: formData.etd ? new Date(formData.etd).toISOString() : null,
-        eta: formData.eta ? new Date(formData.eta).toISOString() : null,
+        etd: formData.etd ? normalizeDateForStorage(formData.etd) : null,
+        eta: formData.eta ? normalizeDateForStorage(formData.eta) : null,
         ingreso_stacking: null,
         booking: '',
         created_at: new Date().toISOString(),
@@ -318,6 +342,87 @@ export function AddModal({
       
       // Crear cliente Supabase
       const supabase = createClient();
+
+      const ensureCatalogUpdate = (
+        categoria: string,
+        valor: string | null | undefined,
+        existingValues: (string | number)[] = []
+      ) => {
+        const trimmed = (valor || '').trim();
+        if (!trimmed) return null;
+        const exists = existingValues.some(
+          (entry) => entry.toString().trim().toLowerCase() === trimmed.toLowerCase()
+        );
+        if (exists) return null;
+        return upsertCatalogValue(supabase, categoria, trimmed);
+      };
+
+      const upsertNaveMappingEntry = async (): Promise<void> => {
+        const naviera = (formData.naviera || '').trim();
+        const nave = (formData.naveInicial || '').trim();
+        if (!naviera || !nave) return;
+
+        const sanitizedNave = nave.replace(/\s*\[.*\]$/, '').trim();
+        if (!sanitizedNave) return;
+
+        const isConsorcio = naviera.includes('/');
+        const categoria = isConsorcio ? 'consorciosNavesMapping' : 'navierasNavesMapping';
+        const existingMapping = isConsorcio ? consorciosNavesMapping : navierasNavesMapping;
+
+        const existingList = (existingMapping[naviera] || []).map(item => item.trim().toLowerCase());
+        if (existingList.includes(sanitizedNave.toLowerCase())) {
+          return;
+        }
+
+        try {
+          const { data, error } = await supabase
+            .from('catalogos')
+            .select('id, mapping')
+            .eq('categoria', categoria)
+            .maybeSingle();
+
+          if (error && error.code !== 'PGRST116') {
+            console.error(`Error leyendo mapeo ${categoria}:`, error);
+            return;
+          }
+
+          const currentMapping: Record<string, string[]> =
+            data?.mapping && typeof data.mapping === 'object' ? data.mapping : {};
+
+          const updatedList = Array.from(
+            new Set([...(currentMapping[naviera] || []), sanitizedNave].map(item => item.trim()))
+          );
+
+          const updatedMapping = {
+            ...currentMapping,
+            [naviera]: updatedList,
+          };
+
+          const timestamp = new Date().toISOString();
+
+          if (data?.id) {
+            await supabase
+              .from('catalogos')
+              .update({
+                mapping: updatedMapping,
+                updated_at: timestamp,
+              })
+              .eq('id', data.id);
+          } else {
+            await supabase
+              .from('catalogos')
+              .insert({
+                categoria,
+                valores: [],
+                mapping: updatedMapping,
+                created_at: timestamp,
+                updated_at: timestamp,
+              });
+          }
+        } catch (mappingError) {
+          console.error(`Error actualizando mapeo ${categoria}:`, mappingError);
+        }
+      };
       
       // Intentar insertar directamente (el trigger manejará created_by)
       // Si hay error de transacción de solo lectura, puede ser por RLS o trigger
@@ -354,39 +459,62 @@ export function AddModal({
         return;
       }
 
-      await upsertRefClienteCatalog(supabase, formData.refCliente);
+      await Promise.all(
+        [
+          ensureCatalogUpdate('refCliente', formData.refCliente, refExternasUnicas),
+          ensureCatalogUpdate('ejecutivos', formData.ejecutivo, ejecutivosUnicos),
+          ensureCatalogUpdate('clientes', formData.shipper, clientesUnicos),
+          ensureCatalogUpdate('navieras', formData.naviera, navierasUnicas),
+          ensureCatalogUpdate('naves', formData.naveInicial, navesUnicas),
+          ensureCatalogUpdate('especies', formData.especie, especiesUnicas),
+          ensureCatalogUpdate('pols', formData.pol, polsUnicos),
+          ensureCatalogUpdate('destinos', formData.pod, destinosUnicos),
+          ensureCatalogUpdate('depositos', formData.deposito, depositosUnicos),
+          ensureCatalogUpdate('cbm', formData.cbm, cbmUnicos),
+          ensureCatalogUpdate('fletes', formData.flete, fletesUnicos),
+          ensureCatalogUpdate('contratos', formData.contrato, contratosUnicos),
+          ensureCatalogUpdate('co2', formData.co2, co2sUnicos),
+          ensureCatalogUpdate('o2', formData.o2, o2sUnicos),
+          ensureCatalogUpdate('tratamiento de frio', formData.tratamientoFrio, tratamientosDeFrioOpciones),
+        ]
+          .filter((promise): promise is Promise<void> => promise !== null),
+      );
+
+      await upsertNaveMappingEntry();
 
       onSuccess();
       onClose();
       setNumberOfCopies('');
       
       // Limpiar formulario
-      setFormData({
-        refAsli: '',
-        refCliente: '',
-        ejecutivo: '',
-        shipper: '',
-        ingresado: '',
-        naviera: '',
-        naveInicial: '',
-        viaje: '',
-        especie: '',
-        temperatura: '',
-        cbm: '',
-        pol: '',
-        pod: '',
-        deposito: '',
-        estado: 'PENDIENTE',
-        tipoIngreso: 'NORMAL',
-        flete: '',
-        comentario: '',
-        etd: '',
-        eta: '',
-        consignatario: '',
-        contrato: '',
-        co2: '',
-        o2: '',
-      });
+    setFormData({
+      refAsli: '',
+      refCliente: '',
+      ejecutivo: '',
+      shipper: '',
+      ingresado: '',
+      naviera: '',
+      naveInicial: '',
+      viaje: '',
+      especie: '',
+      temperatura: '',
+      cbm: '',
+      pol: '',
+      pod: '',
+      deposito: '',
+      estado: 'PENDIENTE',
+      tipoIngreso: 'NORMAL',
+      flete: '',
+      comentario: '',
+      etd: '',
+      eta: '',
+      consignatario: '',
+      contrato: '',
+      co2: '',
+      o2: '',
+      tratamientoFrio: '',
+      temporada: '2025-2026',
+    });
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =
@@ -397,68 +525,120 @@ export function AddModal({
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    
-    // Si cambia la naviera, limpiar la nave seleccionada
-    if (name === 'naviera') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        naveInicial: '', // Limpiar nave cuando cambia naviera
-        viaje: '', // Limpiar viaje cuando cambia nave
-      }));
-    } else if (name === 'naveInicial') {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        viaje: '', // Limpiar viaje cuando cambia nave
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-      }));
-    }
-  };
-
   // Obtener naves disponibles desde el mapping del catálogo
   const getAvailableNaves = () => {
-    if (!formData.naviera) return [];
-    
-    console.log('🔍 getAvailableNaves - Naviera seleccionada:', formData.naviera);
-    console.log('📋 navierasNavesMapping keys:', Object.keys(navierasNavesMapping));
-    console.log('📋 consorciosNavesMapping keys:', Object.keys(consorciosNavesMapping));
-    
-    // Si es un consorcio, buscar en consorciosNavesMapping
-    if (formData.naviera.includes('/')) {
-      const navesConsorcio = consorciosNavesMapping[formData.naviera] || [];
-      console.log(`🛳️ Consorcio "${formData.naviera}": ${navesConsorcio.length} naves encontradas`);
-      
-      if (navesConsorcio.length === 0) {
-        console.error('❌ Keys disponibles en consorciosNavesMapping:', Object.keys(consorciosNavesMapping));
-        console.warn('⚠️ NO se usará fallback. Por favor configura el mapping para este consorcio.');
-        return [];
-      }
-      
-      return navesConsorcio.sort();
+    if (!formData.naviera) return navesUnicas;
+
+    const navieraKey = formData.naviera;
+
+    if (navieraKey.includes('/')) {
+      const navesConsorcio = consorciosNavesMapping[navieraKey] || [];
+      return navesConsorcio.length > 0 ? [...navesConsorcio].sort() : navesUnicas;
     }
-    
-    // Si es naviera individual, buscar en navierasNavesMapping
-    const navesNaviera = navierasNavesMapping[formData.naviera] || [];
-    console.log(`🛳️ Naviera "${formData.naviera}": ${navesNaviera.length} naves encontradas`);
-    
-    if (navesNaviera.length === 0) {
-      console.error('❌ Keys disponibles en navierasNavesMapping:', Object.keys(navierasNavesMapping));
-      console.error('❌ Comparación de keys:');
-      Object.keys(navierasNavesMapping).forEach(key => {
-        console.error(`  - "${key}" === "${formData.naviera}": ${key === formData.naviera}`);
-      });
-      console.warn('⚠️ NO se usará fallback. Por favor configura el mapping para esta naviera.');
-      return [];
+
+    const navesNaviera = navierasNavesMapping[navieraKey] || [];
+    return navesNaviera.length > 0 ? [...navesNaviera].sort() : navesUnicas;
+  };
+
+  const normalizeCatalogValue = (field: string, rawValue: string) => {
+    const trimmedValue = rawValue.trim();
+    if (trimmedValue === '') {
+      return '';
     }
-    
-    return navesNaviera.sort();
+
+    let options: string[] = [];
+    switch (field) {
+      case 'ejecutivo':
+        options = ejecutivosUnicos;
+        break;
+      case 'shipper':
+        options = clientesUnicos;
+        break;
+      case 'naviera':
+        options = navierasUnicas;
+        break;
+      case 'naveInicial':
+        options = getAvailableNaves();
+        break;
+      case 'especie':
+        options = especiesUnicas;
+        break;
+      case 'pol':
+        options = polsUnicos;
+        break;
+      case 'pod':
+        options = destinosUnicos;
+        break;
+      case 'deposito':
+        options = depositosUnicos;
+        break;
+      case 'cbm':
+        options = cbmUnicos.map(String);
+        break;
+      case 'flete':
+        options = fletesUnicos;
+        break;
+      case 'contrato':
+        options = contratosUnicos;
+        break;
+      case 'co2':
+        options = co2sUnicos.map(String);
+        break;
+      case 'o2':
+        options = o2sUnicos.map(String);
+        break;
+      case 'tratamientoFrio':
+        options = tratamientosDeFrioOpciones;
+        break;
+      default:
+        options = [];
+    }
+
+    const match = options.find(
+      (option) => option.trim().toLowerCase() === trimmedValue.toLowerCase()
+    );
+
+    return match ?? trimmedValue;
+  };
+
+  let naveOptions = getAvailableNaves();
+  const typedNave = (formData.naveInicial || '').trim();
+  if (
+    typedNave &&
+    !naveOptions.some((item) => item.trim().toLowerCase() === typedNave.toLowerCase())
+  ) {
+    naveOptions = [...naveOptions, typedNave];
+  }
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    const normalizedValue = normalizeCatalogValue(name, value);
+
+    if (name === 'naviera') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: normalizedValue,
+        naveInicial: '',
+        viaje: '',
+      }));
+      return;
+    }
+
+    if (name === 'naveInicial') {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: normalizedValue,
+        viaje: '',
+      }));
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: normalizedValue,
+    }));
   };
 
   return isOpen ? (
@@ -549,18 +729,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Ejecutivo *
               </label>
-              <select
+              <input
+                type="text"
                 name="ejecutivo"
                 value={formData.ejecutivo}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-ejecutivos"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar ejecutivo</option>
-                {ejecutivosUnicos.map(ejecutivo => (
-                  <option key={ejecutivo} value={ejecutivo}>{ejecutivo}</option>
+                placeholder="Selecciona o escribe un ejecutivo"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-ejecutivos">
+                {ejecutivosUnicos.map((ejecutivo) => (
+                  <option key={ejecutivo} value={ejecutivo} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Cliente */}
@@ -568,24 +754,30 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Cliente *
               </label>
-              <select
+              <input
+                type="text"
                 name="shipper"
                 value={formData.shipper}
                 onChange={handleChange}
-                className={clienteFijadoPorCoincidencia 
+                list="catalogo-clientes"
+                className={clienteFijadoPorCoincidencia
                   ? theme === 'dark'
                     ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 cursor-not-allowed'
                     : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 cursor-not-allowed'
-                  : getSelectStyles()
+                  : getInputStyles()
                 }
                 required
                 disabled={!!clienteFijadoPorCoincidencia}
-              >
-                <option value="">Seleccionar cliente</option>
-                {clientesUnicos.map(cliente => (
-                  <option key={cliente} value={cliente}>{cliente}</option>
+                placeholder="Selecciona o escribe un cliente"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-clientes">
+                {clientesUnicos.map((cliente) => (
+                  <option key={cliente} value={cliente} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Naviera */}
@@ -593,18 +785,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Naviera *
               </label>
-              <select
+              <input
+                type="text"
                 name="naviera"
                 value={formData.naviera}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-navieras"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar naviera</option>
-                {navierasUnicas.map(naviera => (
-                  <option key={naviera} value={naviera}>{naviera}</option>
+                placeholder="Selecciona o escribe una naviera"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-navieras">
+                {navierasUnicas.map((naviera) => (
+                  <option key={naviera} value={naviera} />
                 ))}
-              </select>
+              </datalist>
               {formData.naviera && formData.naviera.includes('/') && (
                 <div className="text-xs text-gray-600">
                   <span className="text-blue-600">
@@ -620,26 +818,30 @@ export function AddModal({
                 Nave * 
                 {formData.naviera && (
                   <span className="text-xs text-blue-600 ml-2">
-                    ({getAvailableNaves().length} disponibles)
+                    ({naveOptions.length} disponibles)
                   </span>
                 )}
               </label>
-              <select
+              <input
+                type="text"
                 name="naveInicial"
                 value={formData.naveInicial}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-naves"
+                className={getInputStyles()}
                 required
                 disabled={!formData.naviera}
-              >
-                <option value="">
-                  {formData.naviera ? "Seleccionar nave" : "Primero selecciona una naviera"}
-                </option>
-                {getAvailableNaves().map(nave => (
-                  <option key={nave} value={nave}>{nave}</option>
+                placeholder={formData.naviera ? 'Selecciona o escribe una nave' : 'Primero selecciona una naviera'}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-naves">
+                {naveOptions.map((nave) => (
+                  <option key={nave} value={nave} />
                 ))}
-              </select>
-              {formData.naviera && getAvailableNaves().length === 0 && (
+              </datalist>
+              {formData.naviera && naveOptions.length === 0 && (
                 <p className="text-xs text-orange-600">
                   No hay naves disponibles para esta naviera
                 </p>
@@ -686,18 +888,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Especie *
               </label>
-              <select
+              <input
+                type="text"
                 name="especie"
                 value={formData.especie}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-especies"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar especie</option>
-                {especiesUnicas.map(especie => (
-                  <option key={especie} value={especie}>{especie}</option>
+                placeholder="Selecciona o escribe una especie"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-especies">
+                {especiesUnicas.map((especie) => (
+                  <option key={especie} value={especie} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* POL */}
@@ -705,18 +913,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 POL *
               </label>
-              <select
+              <input
+                type="text"
                 name="pol"
                 value={formData.pol}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-pol"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar POL</option>
-                {polsUnicos.map(pol => (
-                  <option key={pol} value={pol}>{pol}</option>
+                placeholder="Selecciona o escribe un POL"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-pol">
+                {polsUnicos.map((pol) => (
+                  <option key={pol} value={pol} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* POD */}
@@ -724,18 +938,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 POD *
               </label>
-              <select
+              <input
+                type="text"
                 name="pod"
                 value={formData.pod}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-pod"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar POD</option>
-                {destinosUnicos.map(destino => (
-                  <option key={destino} value={destino}>{destino}</option>
+                placeholder="Selecciona o escribe un POD"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-pod">
+                {destinosUnicos.map((destino) => (
+                  <option key={destino} value={destino} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Depósito */}
@@ -743,18 +963,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Depósito *
               </label>
-              <select
+              <input
+                type="text"
                 name="deposito"
                 value={formData.deposito}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-depositos"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar depósito</option>
-                {depositosUnicos.map(deposito => (
-                  <option key={deposito} value={deposito}>{deposito}</option>
+                placeholder="Selecciona o escribe un depósito"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-depositos">
+                {depositosUnicos.map((deposito) => (
+                  <option key={deposito} value={deposito} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Estado */}
@@ -825,18 +1051,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 CBM *
               </label>
-              <select
+              <input
+                type="number"
                 name="cbm"
                 value={formData.cbm}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-cbm"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar CBM</option>
-                {cbmUnicos.map(cbm => (
-                  <option key={cbm} value={cbm}>{cbm}</option>
+                placeholder="Selecciona o escribe un CBM"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-cbm">
+                {cbmUnicos.map((cbm) => (
+                  <option key={cbm} value={cbm} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Flete */}
@@ -844,18 +1076,24 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Flete *
               </label>
-              <select
+              <input
+                type="text"
                 name="flete"
                 value={formData.flete}
                 onChange={handleChange}
-                className={getSelectStyles()}
+                list="catalogo-fletes"
+                className={getInputStyles()}
                 required
-              >
-                <option value="">Seleccionar Flete</option>
-                {fletesUnicos.map(flete => (
-                  <option key={flete} value={flete}>{flete}</option>
+                placeholder="Selecciona o escribe un flete"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-fletes">
+                {fletesUnicos.map((flete) => (
+                  <option key={flete} value={flete} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* Número de copias */}
@@ -866,9 +1104,9 @@ export function AddModal({
               <input
                 type="number"
                 min="1"
-                max="10"
+                max={MAX_COPIES}
                 value={numberOfCopies}
-                placeholder="Ingresa cantidad (1-10)"
+                placeholder={`Ingresa cantidad (1-${MAX_COPIES})`}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === '') {
@@ -879,8 +1117,8 @@ export function AddModal({
                   if (Number.isNaN(numericValue)) {
                     return;
                   }
-                  if (numericValue > 10) {
-                    setNumberOfCopies('10');
+                  if (numericValue > MAX_COPIES) {
+                    setNumberOfCopies(String(MAX_COPIES));
                     return;
                   }
                   if (numericValue < 1) {
@@ -892,7 +1130,7 @@ export function AddModal({
                 className={getInputStyles()}
               />
               <p className="text-xs text-gray-700 dark:text-gray-400">
-                Se generarán {copiesPreview} REF ASLI únicos automáticamente (máximo 10)
+                Se generarán {copiesPreview} REF ASLI únicos automáticamente (máximo {MAX_COPIES})
               </p>
             </div>
 
@@ -944,17 +1182,23 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 Contrato
               </label>
-              <select
+              <input
+                type="text"
                 name="contrato"
                 value={formData.contrato}
                 onChange={handleChange}
-                className={getSelectStyles()}
-              >
-                <option value="">Seleccionar contrato</option>
-                {contratosUnicos.map(contrato => (
-                  <option key={contrato} value={contrato}>{contrato}</option>
+                list="catalogo-contratos"
+                className={getInputStyles()}
+                placeholder="Selecciona o escribe un contrato"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-contratos">
+                {contratosUnicos.map((contrato) => (
+                  <option key={contrato} value={contrato} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* CO2 */}
@@ -962,17 +1206,23 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 CO2
               </label>
-              <select
+              <input
+                type="number"
                 name="co2"
                 value={formData.co2}
                 onChange={handleChange}
-                className={getSelectStyles()}
-              >
-                <option value="">Seleccionar CO2</option>
-                {co2sUnicos.map(co2 => (
-                  <option key={co2} value={co2}>{co2}</option>
+                list="catalogo-co2"
+                className={getInputStyles()}
+                placeholder="Selecciona o escribe CO₂"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-co2">
+                {co2sUnicos.map((co2) => (
+                  <option key={co2} value={co2} />
                 ))}
-              </select>
+              </datalist>
             </div>
 
             {/* O2 */}
@@ -980,17 +1230,47 @@ export function AddModal({
               <label className={`block text-sm font-medium ${getLabelStyles()}`}>
                 O2
               </label>
-              <select
+              <input
+                type="number"
                 name="o2"
                 value={formData.o2}
                 onChange={handleChange}
-                className={getSelectStyles()}
-              >
-                <option value="">Seleccionar O2</option>
-                {o2sUnicos.map(o2 => (
-                  <option key={o2} value={o2}>{o2}</option>
+                list="catalogo-o2"
+                className={getInputStyles()}
+                placeholder="Selecciona o escribe O₂"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-o2">
+                {o2sUnicos.map((o2) => (
+                  <option key={o2} value={o2} />
                 ))}
-              </select>
+              </datalist>
+            </div>
+
+            {/* Tratamiento de frío */}
+            <div className="space-y-2">
+              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                Tratamiento de frío
+              </label>
+              <input
+                type="text"
+                name="tratamientoFrio"
+                value={formData.tratamientoFrio}
+                onChange={handleChange}
+                list="catalogo-tratamiento-frio"
+                className={getInputStyles()}
+                placeholder="Selecciona o escribe un tratamiento"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+              <datalist id="catalogo-tratamiento-frio">
+                {tratamientosDeFrioOpciones.map((opcion) => (
+                  <option key={opcion} value={opcion} />
+                ))}
+              </datalist>
             </div>
           </div>
 

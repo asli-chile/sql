@@ -1,7 +1,19 @@
 import { supabase } from './supabase';
 import { Registro } from '@/types/registros';
+import { parseDateString, formatDateForInput } from '@/lib/date-utils';
 
 // Función para convertir datos de Firebase a Supabase
+const normalizeFirebaseDate = (value: unknown) => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return formatDateForInput(value);
+  }
+  if (typeof value === 'string') {
+    return formatDateForInput(parseDateString(value));
+  }
+  return null;
+};
+
 export const convertFirebaseToSupabase = (firebaseData: any): any => {
   return {
     ref_asli: firebaseData.refAsli,
@@ -14,19 +26,19 @@ export const convertFirebaseToSupabase = (firebaseData: any): any => {
     especie: firebaseData.especie,
     temperatura: firebaseData.temperatura,
     cbm: firebaseData.cbm,
-    ct: firebaseData.ct,
     co2: firebaseData.co2,
     o2: firebaseData.o2,
+    ['tratamiento de frio']: firebaseData.tratamientoFrio,
     pol: firebaseData.pol,
     pod: firebaseData.pod,
     deposito: firebaseData.deposito,
-    etd: firebaseData.etd?.toISOString() || null,
-    eta: firebaseData.eta?.toISOString() || null,
+    etd: normalizeFirebaseDate(firebaseData.etd),
+    eta: normalizeFirebaseDate(firebaseData.eta),
     tt: firebaseData.tt,
     flete: firebaseData.flete,
     estado: firebaseData.estado,
     roleada_desde: firebaseData.roleadaDesde,
-    ingreso_stacking: firebaseData.ingresoStacking?.toISOString() || null,
+    ingreso_stacking: normalizeFirebaseDate(firebaseData.ingresoStacking),
     tipo_ingreso: firebaseData.tipoIngreso,
     numero_bl: firebaseData.numeroBl,
     estado_bl: firebaseData.estadoBl,
@@ -41,6 +53,7 @@ export const convertFirebaseToSupabase = (firebaseData: any): any => {
     booking_pdf: firebaseData.bookingPdf,
     comentario: firebaseData.comentario,
     observacion: firebaseData.observacion,
+    temporada: firebaseData.temporada,
     row_original: firebaseData.rowOriginal,
     created_at: firebaseData.createdAt?.toISOString() || new Date().toISOString(),
     updated_at: firebaseData.updatedAt?.toISOString() || new Date().toISOString(),
@@ -53,9 +66,25 @@ export const convertFirebaseToSupabase = (firebaseData: any): any => {
 
 // Función para convertir datos de Supabase a formato de la aplicación
 export const convertSupabaseToApp = (supabaseData: any): Registro => {
+  const normalizeSupabaseDate = (value: unknown) => {
+    if (!value) return null;
+    const stringValue =
+      typeof value === 'string'
+        ? value
+        : value instanceof Date
+          ? formatDateForInput(value)
+          : String(value);
+    const [datePart] = stringValue.includes('T')
+      ? stringValue.split('T')
+      : stringValue.includes(' ')
+        ? stringValue.split(' ')
+        : [stringValue];
+    return parseDateString(datePart);
+  };
+
   return {
     id: supabaseData.id,
-    ingresado: supabaseData.ingresado ? new Date(supabaseData.ingresado) : null,
+    ingresado: normalizeSupabaseDate(supabaseData.ingresado),
     refAsli: supabaseData.ref_asli,
     refCliente: supabaseData.ref_cliente || undefined,
     ejecutivo: supabaseData.ejecutivo,
@@ -68,19 +97,19 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     especie: supabaseData.especie,
     temperatura: supabaseData.temperatura,
     cbm: supabaseData.cbm,
-    ct: supabaseData.ct,
     co2: supabaseData.co2,
     o2: supabaseData.o2,
+    tratamientoFrio: supabaseData['tratamiento de frio'] ?? supabaseData.tratamiento_frio ?? null,
     pol: supabaseData.pol,
     pod: supabaseData.pod,
     deposito: supabaseData.deposito,
-    etd: supabaseData.etd ? new Date(supabaseData.etd) : null,
-    eta: supabaseData.eta ? new Date(supabaseData.eta) : null,
+    etd: normalizeSupabaseDate(supabaseData.etd),
+    eta: normalizeSupabaseDate(supabaseData.eta),
     tt: supabaseData.tt,
     flete: supabaseData.flete,
     estado: supabaseData.estado,
     roleadaDesde: supabaseData.roleada_desde,
-    ingresoStacking: supabaseData.ingreso_stacking ? new Date(supabaseData.ingreso_stacking) : null,
+    ingresoStacking: normalizeSupabaseDate(supabaseData.ingreso_stacking),
     tipoIngreso: supabaseData.tipo_ingreso,
     numeroBl: supabaseData.numero_bl,
     estadoBl: supabaseData.estado_bl,
@@ -95,6 +124,7 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     bookingPdf: supabaseData.booking_pdf,
     comentario: supabaseData.comentario,
     observacion: supabaseData.observacion,
+    temporada: supabaseData.temporada,
     rowOriginal: supabaseData.row_original,
     createdAt: supabaseData.created_at ? new Date(supabaseData.created_at) : undefined,
     updatedAt: supabaseData.updated_at ? new Date(supabaseData.updated_at) : undefined,

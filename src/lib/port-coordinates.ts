@@ -5,7 +5,9 @@
 export const PORT_COORDINATES: Record<string, [number, number]> = {
   // Puertos de Chile
   'VALPARAISO': [-71.6297, -33.0472],
+  'VAP': [-71.6297, -33.0472],
   'SAN ANTONIO': [-71.6178, -33.5944],
+  'SAI': [-71.6178, -33.5944],
   'LIRQUEN': [-72.9767, -36.7083],
   'CORONEL': [-73.1517, -37.0167],
   'TALCAHUANO': [-73.1167, -36.7167],
@@ -337,6 +339,8 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 export function getPortCoordinates(portName: string): [number, number] | null {
   if (!portName) return null;
   
@@ -424,13 +428,14 @@ export function getPortCoordinates(portName: string): [number, number] | null {
   
   for (const [keyword, coords] of Object.entries(keywords)) {
     if (normalized.includes(keyword)) {
-      console.log(`Puerto encontrado por palabra clave "${keyword}": ${portName}`);
       return coords;
     }
   }
   
   // Si no se encuentra, devolver null para que el componente pueda manejarlo
-  console.warn(`⚠️ Puerto no encontrado: "${portName}" (normalizado: "${normalized}"). No se mostrará en el mapa.`);
+  if (IS_DEV) {
+    console.warn(`⚠️ Puerto no encontrado: "${portName}" (normalizado: "${normalized}"). No se mostrará en el mapa.`);
+  }
   return null;
 }
 

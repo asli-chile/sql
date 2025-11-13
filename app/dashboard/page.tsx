@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
@@ -16,12 +16,7 @@ import {
   ArrowRight,
   Clock,
   FileText,
-  Grid3x3,
-  Search,
-  Filter,
-  Eye,
   Plus,
-  ArrowUpDown,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -42,21 +37,268 @@ const ShipmentsMap = dynamic(() => import('@/components/ShipmentsMap').then(mod 
   )
 });
 
+type DashboardStats = {
+  total: number;
+  totalContenedores: number;
+  pendientes: number;
+  confirmados: number;
+  cancelados: number;
+};
+
+type RawRegistroStats = {
+  ref_asli: string | null;
+  updated_at: string | null;
+  contenedor: any;
+  estado: string | null;
+  temporada?: string | null;
+  pod?: string | null;
+  shipper?: string | null;
+  ejecutivo?: string | null;
+};
+
+const EMPTY_STATS: DashboardStats = {
+  total: 0,
+  totalContenedores: 0,
+  pendientes: 0,
+  confirmados: 0,
+  cancelados: 0
+};
+
+const normalizeSeasonLabel = (value?: string | null): string => {
+  if (!value) {
+    return '';
+  }
+  return value.toString().replace(/^Temporada\s+/i, '').trim();
+};
+
+const computeStatsForRecords = (records: RawRegistroStats[]): DashboardStats => {
+  const refAsliMap = new Map<string, { estado: string | null; updated_at: string | null; contenedor: any }>();
+
+  records.forEach((record) => {
+    if (!record?.ref_asli) {
+      return;
+    }
+
+    const existing = refAsliMap.get(record.ref_asli);
+    const recordDate = record.updated_at ? new Date(record.updated_at) : null;
+    const existingDate = existing?.updated_at ? new Date(existing.updated_at) : null;
+
+    if (!existing || (recordDate && (!existingDate || recordDate > existingDate))) {
+      refAsliMap.set(record.ref_asli, {
+        estado: record.estado ?? null,
+        updated_at: record.updated_at ?? null,
+        contenedor: record.contenedor ?? null
+      });
+    }
+  });
+
+  let totalContenedores = 0;
+  const estadoCounts = {
+    pendientes: 0,
+    confirmados: 0,
+    cancelados: 0
+  };
+
+  refAsliMap.forEach((data) => {
+    let contenedorTexto = '';
+
+    if (Array.isArray(data.contenedor)) {
+      contenedorTexto = data.contenedor.join(' ');
+    } else if (typeof data.contenedor === 'string') {
+      try {
+        const parsed = JSON.parse(data.contenedor);
+        if (Array.isArray(parsed)) {
+          contenedorTexto = parsed.join(' ');
+        } else {
+          contenedorTexto = data.contenedor;
+        }
+      } catch {
+        contenedorTexto = data.contenedor;
+      }
+    }
+
+    const contenedores = contenedorTexto.trim().split(/\s+/).filter(Boolean);
+    totalContenedores += contenedores.length;
+
+    const estado = data.estado ? data.estado.toLowerCase() : '';
+    switch (estado) {
+      case 'pendiente':
+      case 'en proceso':
+        estadoCounts.pendientes++;
+        break;
+      case 'confirmado':
+      case 'completado':
+        estadoCounts.confirmados++;
+        break;
+      case 'cancelado':
+      case 'rechazado':
+        estadoCounts.cancelados++;
+        break;
+      default:
+        break;
+    }
+  });
+
+  return {
+    total: refAsliMap.size,
+    totalContenedores,
+    pendientes: estadoCounts.pendientes,
+    confirmados: estadoCounts.confirmados,
+    cancelados: estadoCounts.cancelados
+  };
+};
+
+const DEFAULT_SEASON_ORDER = ['2025-2026', '2024-2025', '2023-2024', '2022-2023'];
+
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [stats, setStats] = useState({
-    total: 0,
-    totalContenedores: 0,
-    pendientes: 0,
-    confirmados: 0,
-    cancelados: 0
-  });
+  const [rawRegistros, setRawRegistros] = useState<RawRegistroStats[]>([]);
   const [registrosParaMapa, setRegistrosParaMapa] = useState<Registro[]>([]);
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
+  const [clienteOptions, setClienteOptions] = useState<string[]>([]);
+  const [ejecutivoOptions, setEjecutivoOptions] = useState<string[]>([]);
+  const [selectedCliente, setSelectedCliente] = useState<string | null>(null);
+  const [selectedEjecutivo, setSelectedEjecutivo] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const router = useRouter();
+
+  const recordsForOptions = useMemo(() => {
+    if (!selectedSeason) {
+      return rawRegistros;
+    }
+
+    return rawRegistros.filter(
+      (record) => normalizeSeasonLabel(record.temporada) === selectedSeason
+    );
+  }, [rawRegistros, selectedSeason]);
+
+  useEffect(() => {
+    const clienteSet = new Set<string>();
+    const ejecutivoSet = new Set<string>();
+
+    recordsForOptions.forEach((record) => {
+      const cliente = record.shipper?.trim();
+      if (cliente) {
+        clienteSet.add(cliente);
+      }
+      const ejecutivo = record.ejecutivo?.trim();
+      if (ejecutivo) {
+        ejecutivoSet.add(ejecutivo);
+      }
+    });
+
+    const clientesList = Array.from(clienteSet).sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+    const ejecutivosList = Array.from(ejecutivoSet).sort((a, b) =>
+      a.localeCompare(b, 'es', { sensitivity: 'base' })
+    );
+
+    setClienteOptions(clientesList);
+    setEjecutivoOptions(ejecutivosList);
+
+    if (selectedCliente && !clienteSet.has(selectedCliente)) {
+      setSelectedCliente(null);
+    }
+    if (selectedEjecutivo && !ejecutivoSet.has(selectedEjecutivo)) {
+      setSelectedEjecutivo(null);
+    }
+  }, [recordsForOptions, selectedCliente, selectedEjecutivo, selectedSeason]);
+
+  const filteredByPersona = useMemo(() => {
+    return rawRegistros.filter((record) => {
+      if (selectedCliente) {
+        const cliente = record.shipper?.trim();
+        if (!cliente || cliente !== selectedCliente) {
+          return false;
+        }
+      }
+      if (selectedEjecutivo) {
+        const ejecutivo = record.ejecutivo?.trim();
+        if (!ejecutivo || ejecutivo !== selectedEjecutivo) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [rawRegistros, selectedCliente, selectedEjecutivo]);
+
+  const seasonAggregations = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const details: Record<string, DashboardStats> = {};
+
+    const seasonBuckets = new Map<string, RawRegistroStats[]>();
+
+    filteredByPersona.forEach((record) => {
+      const seasonKey = normalizeSeasonLabel(record.temporada);
+      if (!seasonKey) {
+        return;
+      }
+      if (!seasonBuckets.has(seasonKey)) {
+        seasonBuckets.set(seasonKey, []);
+      }
+      seasonBuckets.get(seasonKey)!.push(record);
+    });
+
+    seasonBuckets.forEach((items, key) => {
+      const statsForSeason = computeStatsForRecords(items);
+      details[key] = statsForSeason;
+      counts[key] = statsForSeason.total;
+    });
+
+    DEFAULT_SEASON_ORDER.forEach((seasonKey) => {
+      if (!(seasonKey in counts)) {
+        counts[seasonKey] = 0;
+      }
+      if (!details[seasonKey]) {
+        details[seasonKey] = { ...EMPTY_STATS };
+      }
+    });
+
+    return { counts, details };
+  }, [filteredByPersona]);
+
+  const seasonStats = seasonAggregations.counts;
+
+  const filteredByAll = useMemo(() => {
+    return filteredByPersona.filter((record) => {
+      if (selectedSeason) {
+        return normalizeSeasonLabel(record.temporada) === selectedSeason;
+      }
+      return true;
+    });
+  }, [filteredByPersona, selectedSeason]);
+
+  const displayedStats = useMemo(
+    () => computeStatsForRecords(filteredByAll),
+    [filteredByAll]
+  );
+
+  const filteredRegistrosParaMapa = useMemo(() => {
+    return registrosParaMapa.filter((registro) => {
+      if (selectedSeason && normalizeSeasonLabel(registro.temporada ?? '') !== selectedSeason) {
+        return false;
+      }
+      if (selectedCliente) {
+        const cliente = registro.shipper?.trim();
+        if (!cliente || cliente !== selectedCliente) {
+          return false;
+        }
+      }
+      if (selectedEjecutivo) {
+        const ejecutivo = registro.ejecutivo?.trim();
+        if (!ejecutivo || ejecutivo !== selectedEjecutivo) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [registrosParaMapa, selectedSeason, selectedCliente, selectedEjecutivo]);
+
+  const displayedSeasonLabel = selectedSeason ? `Temporada ${selectedSeason}` : null;
 
   useEffect(() => {
     checkUser();
@@ -99,7 +341,6 @@ export default function DashboardPage() {
         });
       } else {
         // Usar datos de la tabla usuarios (fuente de verdad)
-        console.log('✅ Usuario cargado desde BD (dashboard):', userData);
         setUserInfo(userData);
       }
     } catch (error) {
@@ -117,136 +358,23 @@ export default function DashboardPage() {
   const loadStats = async () => {
     try {
       const supabase = createClient();
-      
-      // Consulta optimizada para obtener estadísticas y datos para el mapa
+
       const { data: registros, error } = await supabase
         .from('registros')
-        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, etd, eta, deposito')
-        .is('deleted_at', null) // Solo registros no eliminados
-        .not('ref_asli', 'is', null); // Solo registros con REF ASLI
+        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, ejecutivo, etd, eta, deposito, temporada')
+        .is('deleted_at', null)
+        .not('ref_asli', 'is', null);
 
       if (error) throw error;
 
-      // Convertir registros para el mapa (todos los que tienen POD, incluso si no tienen POL)
-      const registrosConRutas = (registros || [])
-        .filter(r => r.pod) // Solo requiere POD (puerto de destino)
-        .map(registro => convertSupabaseToApp(registro));
-      
+      const registrosList = (registros || []) as RawRegistroStats[];
+
+      const registrosConRutas = registrosList
+        .filter((r) => r.pod)
+        .map((registro) => convertSupabaseToApp(registro));
+
       setRegistrosParaMapa(registrosConRutas);
-
-      console.log('═══════════════════════════════════════');
-      console.log('🚀 INICIANDO CONTEO DE CONTENEDORES');
-      console.log('═══════════════════════════════════════');
-      console.log('Total de registros obtenidos:', registros?.length || 0);
-      
-      // Contar cuántos tienen contenedor
-      const registrosConContenedor = registros?.filter(r => r.contenedor && r.contenedor.length > 0) || [];
-      console.log('Registros con contenedor:', registrosConContenedor.length);
-
-      // Agrupar por REF ASLI y obtener el estado más reciente de cada uno
-      const refAsliMap = new Map();
-      let totalContenedores = 0;
-      let ejemplosMostrados = 0;
-      const maxEjemplos = 3;
-      
-      // Primero, agrupar registros por REF ASLI y obtener el más reciente de cada uno
-      registros?.forEach(registro => {
-        const refAsli = registro.ref_asli;
-        const existing = refAsliMap.get(refAsli);
-        
-        // Guardar el registro más reciente de cada REF ASLI
-        if (!existing || new Date(registro.updated_at) > new Date(existing.updated_at)) {
-          refAsliMap.set(refAsli, {
-            estado: registro.estado,
-            updated_at: registro.updated_at,
-            contenedor: registro.contenedor // Guardar también el contenedor
-          });
-        }
-      });
-
-      // Ahora contar contenedores SOLO UNA VEZ por REF ASLI único
-      refAsliMap.forEach((data, refAsli) => {
-        if (data.contenedor) {
-          let cantidadContenedores = 0;
-          let contenedorTexto = '';
-          
-          // Si es array (datos antiguos), convertir a texto
-          if (Array.isArray(data.contenedor)) {
-            contenedorTexto = data.contenedor.join(' ');
-          } 
-          // Si es string, usarlo directamente
-          else if (typeof data.contenedor === 'string') {
-            // Intentar parsear por si viene como JSON string antiguo
-            try {
-              const parsed = JSON.parse(data.contenedor);
-              if (Array.isArray(parsed)) {
-                contenedorTexto = parsed.join(' ');
-              } else {
-                contenedorTexto = data.contenedor;
-              }
-            } catch {
-              // No es JSON, usar como texto directo
-              contenedorTexto = data.contenedor;
-            }
-          }
-          
-          // Contar contenedores: dividir por espacios y filtrar vacíos
-          const contenedores = contenedorTexto.trim().split(/\s+/).filter(c => c.length > 0);
-          cantidadContenedores = contenedores.length;
-          
-          // Mostrar solo los primeros ejemplos
-          if (ejemplosMostrados < maxEjemplos) {
-            console.log(`\n📦 Ejemplo ${ejemplosMostrados + 1}:`);
-            console.log(`   REF ASLI: ${refAsli}`);
-            console.log(`   Valor original:`, data.contenedor);
-            console.log(`   Texto procesado: "${contenedorTexto}"`);
-            console.log(`   Contenedores:`, contenedores);
-            console.log(`   ✅ Cantidad: ${cantidadContenedores}`);
-            ejemplosMostrados++;
-          }
-          
-          totalContenedores += cantidadContenedores;
-        }
-      });
-      
-      console.log('\n═══════════════════════════════════════');
-      console.log(`🎯 TOTAL REGISTROS: ${registros?.length || 0}`);
-      console.log(`🎯 TOTAL CONTENEDORES: ${totalContenedores}`);
-      console.log('═══════════════════════════════════════\n');
-
-      // Contar por estado
-      const estadoCounts = {
-        pendientes: 0,
-        confirmados: 0,
-        cancelados: 0
-      };
-
-      refAsliMap.forEach(({ estado }) => {
-        if (estado) {
-          switch (estado.toLowerCase()) {
-            case 'pendiente':
-            case 'en proceso':
-              estadoCounts.pendientes++;
-              break;
-            case 'confirmado':
-            case 'completado':
-              estadoCounts.confirmados++;
-              break;
-            case 'cancelado':
-            case 'rechazado':
-              estadoCounts.cancelados++;
-              break;
-          }
-        }
-      });
-
-      setStats({
-        total: refAsliMap.size,
-        totalContenedores: totalContenedores,
-        pendientes: estadoCounts.pendientes,
-        confirmados: estadoCounts.confirmados,
-        cancelados: estadoCounts.cancelados
-      });
+      setRawRegistros(registrosList);
     } catch (error) {
       console.error('Error loading stats:', error);
     }
@@ -273,7 +401,7 @@ export default function DashboardPage() {
       color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-600',
       available: true,
-      stats: stats
+      stats: displayedStats
     },
     {
       id: 'transportes',
@@ -314,16 +442,26 @@ export default function DashboardPage() {
 
   type SidebarNavItem =
     | { label: string; id: string; isActive?: boolean }
-    | { label: string; counter: number; tone: keyof typeof toneBadgeClasses };
+    | { label: string; counter: number; tone: keyof typeof toneBadgeClasses; onClick?: () => void; isActive?: boolean };
 
   type SidebarSection = {
     title: string;
     items: SidebarNavItem[];
   };
 
+  const toneCycle: (keyof typeof toneBadgeClasses)[] = ['sky', 'rose', 'violet', 'lime'];
+  const seasonKeys = Array.from(new Set([...DEFAULT_SEASON_ORDER, ...Object.keys(seasonStats)]));
+  const seasonNavItems: SidebarNavItem[] = seasonKeys.map((seasonKey, index) => ({
+    label: `Temporada ${seasonKey}`,
+    counter: seasonStats[seasonKey] ?? 0,
+    tone: toneCycle[index % toneCycle.length],
+    onClick: () => setSelectedSeason((prev) => (prev === seasonKey ? null : seasonKey)),
+    isActive: selectedSeason === seasonKey,
+  }));
+
   const sidebarNav: SidebarSection[] = [
     {
-      title: 'Favoritos',
+      title: 'Módulos',
       items: [
         { label: 'Embarques', id: 'registros', isActive: true },
         { label: 'Transportes', id: 'transportes', isActive: false },
@@ -332,22 +470,8 @@ export default function DashboardPage() {
     },
     {
       title: 'Espacios de trabajo',
-      items: [
-        { label: 'Embarques 2025-2026', counter: stats.total, tone: 'sky' },
-        { label: 'Embarques 2024', counter: 469, tone: 'rose' },
-        { label: 'Embarques 2023', counter: 439, tone: 'violet' },
-        { label: 'Embarques 2022', counter: 376, tone: 'lime' },
-      ],
+      items: seasonNavItems,
     },
-  ];
-
-  const headerActions = [
-    { label: 'Buscar', icon: Search },
-    { label: 'Persona', icon: UserIcon },
-    { label: 'Filtrar', icon: Filter },
-    { label: 'Ordenar', icon: ArrowUpDown },
-    { label: 'Ocultar', icon: Eye, counter: 2 },
-    { label: 'Agrupar', icon: Grid3x3 },
   ];
 
   return (
@@ -398,17 +522,24 @@ export default function DashboardPage() {
                         onClick={() => {
                           if ('id' in item) {
                             router.push(`/${item.id}`);
+                          } else if ('onClick' in item && typeof item.onClick === 'function') {
+                            item.onClick();
                           }
                         }}
+                        aria-pressed={'counter' in item ? item.isActive : undefined}
                         className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
-                          'id' in item && item.isActive
+                          ('id' in item && item.isActive) || ('counter' in item && item.isActive)
                             ? 'bg-slate-800/80 text-white'
                             : 'hover:bg-slate-800/40 text-slate-300'
                         }`}
                       >
                         <span className="text-sm font-medium">{item.label}</span>
                         {'counter' in item && (
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]}`}>
+                          <span
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]} ${
+                              item.isActive ? 'ring-1 ring-sky-400/60' : ''
+                            }`}
+                          >
                             {item.counter}
                           </span>
                         )}
@@ -417,11 +548,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
-            </div>
-            <div className="px-4 py-6 border-t border-slate-800/60">
-              <button className="w-full rounded-lg border border-slate-700/60 px-3 py-2 text-sm text-slate-300 hover:border-sky-500/60 hover:text-sky-200 transition-colors">
-                + Agregar espacio de trabajo
-              </button>
             </div>
           </>
         )}
@@ -450,13 +576,42 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex-1 min-w-[240px] max-w-xl">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="search"
-                  placeholder="Buscar registros, clientes o contenedores"
-                  className="w-full rounded-full border border-slate-800 bg-slate-900/80 py-2.5 pl-9 pr-4 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                />
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  value={selectedCliente ?? ''}
+                  onChange={(event) => setSelectedCliente(event.target.value || null)}
+                  className="min-w-[180px] rounded-full border border-slate-800 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                >
+                  <option value="">Todos los clientes</option>
+                  {clienteOptions.map((cliente) => (
+                    <option key={cliente} value={cliente}>
+                      {cliente}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedEjecutivo ?? ''}
+                  onChange={(event) => setSelectedEjecutivo(event.target.value || null)}
+                  className="min-w-[180px] rounded-full border border-slate-800 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                >
+                  <option value="">Todos los ejecutivos</option>
+                  {ejecutivoOptions.map((ejecutivo) => (
+                    <option key={ejecutivo} value={ejecutivo}>
+                      {ejecutivo}
+                    </option>
+                  ))}
+                </select>
+                {(selectedCliente || selectedEjecutivo) && (
+                  <button
+                    onClick={() => {
+                      setSelectedCliente(null);
+                      setSelectedEjecutivo(null);
+                    }}
+                    className="rounded-full border border-slate-700/80 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-sky-400/60 hover:text-sky-200"
+                  >
+                    Limpiar personas
+                  </button>
+                )}
               </div>
             </div>
 
@@ -484,26 +639,6 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center gap-3 px-6 pb-4">
-            {headerActions.map((action) => {
-              const ActionIcon = action.icon;
-              return (
-                <button
-                  key={action.label}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-slate-900/60 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 transition-colors"
-                >
-                  <ActionIcon className="h-3.5 w-3.5" />
-                  {action.label}
-                  {action.counter && (
-                    <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-300">
-                      {action.counter}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-6 pb-10 pt-8 space-y-10">
@@ -515,28 +650,38 @@ export default function DashboardPage() {
                   {userInfo?.nombre || user.user_metadata?.full_name || 'Usuario'}
                 </h2>
               </div>
-              <div className="flex items-center gap-4 text-xs">
+              <div className="flex flex-wrap items-center gap-4 text-xs">
                 <div className="rounded-full bg-green-500/15 px-3 py-1 text-green-300">
-                  {stats.confirmados} Confirmados
+                  {displayedStats.confirmados} Confirmados
                 </div>
                 <div className="rounded-full bg-yellow-500/15 px-3 py-1 text-yellow-300">
-                  {stats.pendientes} Pendientes
+                  {displayedStats.pendientes} Pendientes
                 </div>
                 <div className="rounded-full bg-red-500/15 px-3 py-1 text-red-300">
-                  {stats.cancelados} Cancelados
+                  {displayedStats.cancelados} Cancelados
                 </div>
                 <div className="rounded-full border border-slate-700/80 px-3 py-1 text-slate-300">
-                  {stats.totalContenedores} Contenedores
+                  {displayedStats.totalContenedores} Contenedores
                 </div>
               </div>
+              {displayedSeasonLabel && (
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-sky-300">
+                  <span>
+                    Mostrando datos de <span className="font-semibold">{displayedSeasonLabel}</span>
+                  </span>
+                  <button
+                    onClick={() => setSelectedSeason(null)}
+                    className="rounded-full border border-sky-400/50 px-3 py-1 font-semibold text-sky-200 hover:border-sky-300 hover:text-sky-50"
+                  >
+                    Limpiar filtro
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
           <section className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Módulos principales</h3>
-              <button className="text-xs text-sky-300 hover:text-sky-200">Ver todo</button>
-            </div>
+            <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Módulos principales</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {modules.map((module) => {
                 const IconComponent = module.icon;
@@ -605,7 +750,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
-              <ShipmentsMap registros={registrosParaMapa} />
+              <ShipmentsMap registros={filteredRegistrosParaMapa} />
             </div>
           </section>
         </main>
@@ -620,3 +765,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

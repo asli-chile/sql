@@ -85,6 +85,7 @@ const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
   cbm: { min: 50, max: 90 },
   co2: { min: 50, max: 90 },
   o2: { min: 50, max: 90 },
+  tratamientoFrio: { min: 120, max: 220 },
   facturacion: { min: 150, max: 300 },
   factura: { min: 150, max: 300 },
   proforma: { min: 70, max: 120 },
@@ -115,6 +116,7 @@ export const createRegistrosColumns = (
   cbmUnicos?: string[],
   co2sUnicos?: string[],
   o2sUnicos?: string[],
+  tratamientosFrioOpciones?: string[],
   facturacionesUnicas?: string[],
   onShowHistorial?: (registro: Registro) => void,
   facturasPorRegistro?: Map<string, Factura>,
@@ -378,6 +380,27 @@ export const createRegistrosColumns = (
         />
       );
     },
+  },
+  {
+    id: 'tratamientoFrio',
+    accessorKey: 'tratamientoFrio',
+    size: COLUMN_WIDTHS.tratamientoFrio.min,
+    minSize: COLUMN_WIDTHS.tratamientoFrio.min,
+    maxSize: COLUMN_WIDTHS.tratamientoFrio.max,
+    header: 'Trat. Frío',
+    cell: ({ row }) => (
+      <InlineEditCell
+        value={row.original.tratamientoFrio || ''}
+        field="tratamientoFrio"
+        record={row.original}
+        onSave={onUpdateRecord || (() => {})}
+        onBulkSave={onBulkUpdate}
+        type="select"
+        options={tratamientosFrioOpciones || []}
+        selectedRecords={getSelectedRecords()}
+        isSelectionMode={true}
+      />
+    ),
   },
   {
     id: 'naviera',

@@ -16,6 +16,7 @@ const CUSTOM_FIELD_MAP: Partial<Record<RegistroField, string>> = {
   ingresoStacking: 'ingreso_stacking',
   numeroBl: 'numero_bl',
   estadoBl: 'estado_bl',
+  tratamientoFrio: 'tratamiento de frio',
   createdAt: 'created_at',
   updatedAt: 'updated_at',
   createdBy: 'created_by',

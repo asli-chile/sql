@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { LogOut, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -33,6 +33,13 @@ import { FacturaViewer } from '@/components/FacturaViewer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
 
+const normalizeTemporada = (value?: string | null): string => {
+  if (!value) {
+    return '';
+  }
+  return value.toString().replace(/^Temporada\s+/i, '').trim();
+};
+
 interface User {
   id: string;
   email: string;
@@ -48,10 +55,12 @@ export default function RegistrosPage() {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
+  const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
   const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
   const [especiesUnicas, setEspeciesUnicas] = useState<string[]>([]);
@@ -69,6 +78,7 @@ export default function RegistrosPage() {
   const [temperaturasUnicas, setTemperaturasUnicas] = useState<string[]>([]);
   const [co2sUnicos, setCo2sUnicos] = useState<string[]>([]);
   const [o2sUnicos, setO2sUnicos] = useState<string[]>([]);
+  const [tratamientosFrioUnicos, setTratamientosFrioUnicos] = useState<string[]>([]);
   const [facturacionesUnicas, setFacturacionesUnicas] = useState<string[]>([]);
   
   const [navierasFiltro, setNavierasFiltro] = useState<string[]>([]);
@@ -78,7 +88,6 @@ export default function RegistrosPage() {
   const [polsFiltro, setPolsFiltro] = useState<string[]>([]);
   const [destinosFiltro, setDestinosFiltro] = useState<string[]>([]);
   const [depositosFiltro, setDepositosFiltro] = useState<string[]>([]);
-  const [yearsFiltro, setYearsFiltro] = useState<string[]>([]);
   const [navesFiltro, setNavesFiltro] = useState<string[]>([]);
   
   const [selectedRecord, setSelectedRecord] = useState<Registro | null>(null);
@@ -111,6 +120,35 @@ type DeleteConfirmState = {
 };
 const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
 const [deleteProcessing, setDeleteProcessing] = useState(false);
+
+  const temporadaParam = searchParams.get('temporada');
+
+  useEffect(() => {
+    const normalized = normalizeTemporada(temporadaParam);
+    setSelectedTemporada(normalized !== '' ? normalized : null);
+  }, [temporadaParam]);
+
+  useEffect(() => {
+    lastSelectedRowIndex.current = null;
+  }, [selectedTemporada]);
+
+  const temporadasDisponibles = useMemo(() => {
+    const temporadasSet = new Set<string>();
+    registros.forEach((registro) => {
+      const temp = normalizeTemporada(registro.temporada);
+      if (temp) {
+        temporadasSet.add(temp);
+      }
+    });
+    return Array.from(temporadasSet).sort((a, b) => b.localeCompare(a));
+  }, [registros]);
+
+  const registrosVisibles = useMemo(() => {
+    if (!selectedTemporada) {
+      return registros;
+    }
+    return registros.filter((registro) => normalizeTemporada(registro.temporada) === selectedTemporada);
+  }, [registros, selectedTemporada]);
 
   useEffect(() => {
     checkUser();
@@ -175,7 +213,6 @@ useEffect(() => {
         setClientesAsignados([]);
       } else {
         // Establecer el usuario en el contexto con datos FRESCOS desde Supabase
-        console.log('🔍 Usuario cargado desde BD (registros):', userData);
         const usuarioActualizado = {
           id: userData.id,
           nombre: userData.nombre, // Nombre desde BD (fuente de verdad)
@@ -192,14 +229,6 @@ useEffect(() => {
         // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
         await loadClientesAsignados(userData.id, userData.nombre);
         
-        console.log('✅ Usuario establecido en contexto (datos frescos desde BD):', {
-          id: userData.id,
-          nombre: userData.nombre,
-          email: userData.email,
-          rol: userData.rol,
-          activo: userData.activo,
-          isEjecutivo: emailEsEjecutivo
-        });
       }
       
       // Cargar catálogos (después de establecer isEjecutivo y clientesAsignados)
@@ -243,7 +272,6 @@ useEffect(() => {
 
       if (!error && data) {
         data.forEach(item => clientesAsignadosSet.add(item.cliente_nombre));
-        console.log('📋 Clientes asignados desde ejecutivo_clientes:', data.map(item => item.cliente_nombre));
       }
 
       // 2. Si el nombre de usuario coincide con un cliente, agregarlo también
@@ -270,15 +298,12 @@ useEffect(() => {
           
           if (clienteCoincidente) {
             clientesAsignadosSet.add(clienteCoincidente); // Usar el nombre exacto del catálogo
-            console.log(`✅ Cliente agregado automáticamente (coincidencia con nombre de usuario): ${clienteCoincidente}`);
           }
         }
       }
 
       const clientesFinales = Array.from(clientesAsignadosSet);
       setClientesAsignados(clientesFinales);
-      
-      console.log('✅ Total de clientes asignados (incluyendo coincidencias):', clientesFinales);
     } catch (error) {
       console.error('Error loading clientes asignados:', error);
       setClientesAsignados([]);
@@ -380,10 +405,21 @@ useEffect(() => {
 
       // Procesar catálogos
       catalogos.forEach(catalogo => {
-        const valores = catalogo.valores || [];
+        const categoria = (catalogo.categoria || '').toLowerCase().trim();
+        const rawValores = catalogo.valores ?? [];
+        let valores: string[] = [];
+        if (Array.isArray(rawValores)) {
+          valores = rawValores as string[];
+        } else if (typeof rawValores === 'string') {
+          try {
+            valores = JSON.parse(rawValores);
+          } catch {
+            valores = [];
+          }
+        }
         const mapping = catalogo.mapping;
 
-        switch (catalogo.categoria) {
+        switch (categoria) {
           case 'navieras':
             setNavierasUnicas(valores);
             setNavierasFiltro(valores);
@@ -412,7 +448,7 @@ useEffect(() => {
             setClientesFiltro(valores);
             }
             break;
-          case 'refCliente':
+          case 'refcliente':
             setRefExternasUnicas(valores);
             break;
           case 'pols':
@@ -439,7 +475,7 @@ useEffect(() => {
           case 'contratos':
             setContratosUnicos(valores);
             break;
-          case 'tipoIngreso':
+          case 'tipoingreso':
             setTipoIngresoUnicos(valores);
             break;
           case 'temperatura':
@@ -451,12 +487,15 @@ useEffect(() => {
           case 'o2':
             setO2sUnicos(valores);
             break;
+          case 'tratamiento de frio':
+            setTratamientosFrioUnicos(valores);
+            break;
           case 'facturacion':
             setFacturacionesUnicas(valores);
             break;
           
           // CARGAR MAPPINGS DESDE EL CATÁLOGO (SOLO para AddModal - sin números de viaje)
-          case 'navierasNavesMapping':
+          case 'navierasnavesmapping':
             if (mapping && typeof mapping === 'object') {
               // Limpiar números de viaje si los hubiera en el catálogo
               const cleanMapping: Record<string, string[]> = {};
@@ -470,11 +509,10 @@ useEffect(() => {
                 });
               });
               setNavierasNavesMappingCatalog(cleanMapping);
-              console.log('✅ Mappings de navieras cargados desde catálogo (limpios):', cleanMapping);
             }
             break;
             
-          case 'consorciosNavesMapping':
+          case 'consorciosnavesmapping':
             if (mapping && typeof mapping === 'object') {
               // Limpiar números de viaje si los hubiera en el catálogo
               const cleanMapping: Record<string, string[]> = {};
@@ -488,7 +526,6 @@ useEffect(() => {
                 });
               });
               setConsorciosNavesMappingCatalog(cleanMapping);
-              console.log('✅ Mappings de consorcios cargados desde catálogo (limpios):', cleanMapping);
             }
             break;
         }
@@ -525,7 +562,6 @@ useEffect(() => {
   const loadStats = async () => {
     // Esta función se puede usar para recargar estadísticas si es necesario
     // Por ahora no hace nada específico ya que las estadísticas se calculan en tiempo real
-    console.log('Stats reloaded');
   };
 
 const performSoftDelete = useCallback(
@@ -602,7 +638,13 @@ const handleCancelDelete = useCallback(() => {
 const handleRealtimeEvent = useCallback(
   ({ event, registro }: { event: 'INSERT' | 'UPDATE' | 'DELETE'; registro: Registro }) => {
     setRegistros((prevRegistros) => {
+      const isSoftDeleted = registro.deletedAt !== undefined && registro.deletedAt !== null;
+
       if (event === 'DELETE') {
+        return prevRegistros.filter((item) => item.id !== registro.id);
+      }
+
+      if (event === 'UPDATE' && isSoftDeleted) {
         return prevRegistros.filter((item) => item.id !== registro.id);
       }
 
@@ -831,7 +873,6 @@ const handleRealtimeEvent = useCallback(
 
   // Funciones para selección múltiple
   const handleToggleSelectionMode = () => {
-    console.log('🔄 Cambiando modo selección:', !selectionMode);
     setSelectionMode(!selectionMode);
     if (selectionMode) {
       setSelectedRows(new Set());
@@ -839,8 +880,9 @@ const handleRealtimeEvent = useCallback(
   };
 
   const handleToggleRowSelection = useCallback((recordId: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => {
+    const visibleRegistros = registrosVisibles;
     const isShiftPressed = event?.shiftKey || false;
-    const currentIndex = rowIndex ?? registros.findIndex(r => r.id === recordId);
+    const currentIndex = rowIndex ?? visibleRegistros.findIndex(r => r.id === recordId);
     
     // Early return si no se encuentra la fila
     if (currentIndex === -1) return;
@@ -855,20 +897,20 @@ const handleRealtimeEvent = useCallback(
       // Determinar si debemos seleccionar o deseleccionar el rango
       // Si la última fila seleccionada está seleccionada, seleccionamos todo el rango
       // Si no, deseleccionamos todo el rango
-      const lastSelectedId = registros[lastSelectedRowIndex.current]?.id;
+      const lastSelectedId = visibleRegistros[lastSelectedRowIndex.current]?.id;
       const shouldSelect = lastSelectedId ? selectedRows.has(lastSelectedId) : true;
       
       // Optimizar: evitar verificaciones innecesarias en el bucle
       if (shouldSelect) {
         // Agregar todas las filas del rango
         for (let i = startIndex; i <= endIndex; i++) {
-          const rowId = registros[i]?.id;
+          const rowId = visibleRegistros[i]?.id;
           if (rowId) newSelectedRows.add(rowId);
         }
       } else {
         // Eliminar todas las filas del rango
         for (let i = startIndex; i <= endIndex; i++) {
-          const rowId = registros[i]?.id;
+          const rowId = visibleRegistros[i]?.id;
           if (rowId) newSelectedRows.delete(rowId);
         }
       }
@@ -887,7 +929,7 @@ const handleRealtimeEvent = useCallback(
     }
     
     setSelectedRows(newSelectedRows);
-  }, [selectedRows, registros]);
+  }, [selectedRows, registrosVisibles]);
 
   const handleSelectAll = (filteredRecords: Registro[]) => {
     // Obtener IDs de los registros filtrados/visibles
@@ -1197,13 +1239,6 @@ const handleRealtimeEvent = useCallback(
     const navesFiltro = [...new Set(registrosData.map(r => r.naveInicial).filter(Boolean))].sort();
     const depositosFiltro = [...new Set(registrosData.map(r => r.deposito).filter(Boolean))].sort();
     
-    // Generar años únicos de las fechas
-    const yearsFiltro = [...new Set(
-      registrosData
-        .map(r => r.ingresado ? new Date(r.ingresado).getFullYear() : null)
-        .filter((year): year is number => year !== null)
-    )].map(year => year.toString()).sort();
-    
     return {
       navierasFiltro,
       especiesFiltro,
@@ -1212,8 +1247,7 @@ const handleRealtimeEvent = useCallback(
       destinosFiltro,
       ejecutivosFiltro,
       navesFiltro,
-      depositosFiltro,
-      yearsFiltro
+      depositosFiltro
     };
   }, []);
 
@@ -1237,17 +1271,17 @@ const handleRealtimeEvent = useCallback(
   };
 
   // Memoizar mapeos y filtros para evitar recalcular en cada render
-  const registrosLength = registros.length;
+  const registrosLength = registrosVisibles.length;
   useEffect(() => {
     if (registrosLength > 0) {
-      const navierasMapping = createNavierasNavesMapping(registros);
-      const consorciosMapping = createConsorciosNavesMapping(registros);
+      const navierasMapping = createNavierasNavesMapping(registrosVisibles);
+      const consorciosMapping = createConsorciosNavesMapping(registrosVisibles);
       
       setNavierasNavesMapping(navierasMapping);
       setConsorciosNavesMapping(consorciosMapping);
       
       // Generar arrays de filtro basados en datos reales
-      const filterArrays = generateFilterArrays(registros);
+      const filterArrays = generateFilterArrays(registrosVisibles);
       setNavierasFiltro(filterArrays.navierasFiltro);
       setEspeciesFiltro(filterArrays.especiesFiltro);
       setClientesFiltro(filterArrays.clientesFiltro);
@@ -1255,8 +1289,18 @@ const handleRealtimeEvent = useCallback(
       setDestinosFiltro(filterArrays.destinosFiltro);
       setEjecutivosFiltro(filterArrays.ejecutivosFiltro);
       setNavesFiltro(filterArrays.navesFiltro);
+    } else {
+      setNavierasNavesMapping({});
+      setConsorciosNavesMapping({});
+      setNavierasFiltro([]);
+      setEspeciesFiltro([]);
+      setClientesFiltro([]);
+      setPolsFiltro([]);
+      setDestinosFiltro([]);
+      setEjecutivosFiltro([]);
+      setNavesFiltro([]);
     }
-  }, [registrosLength, registros, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
+  }, [registrosLength, registrosVisibles, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
 
   // Crear mapeo de registroId a factura
   const facturasPorRegistro = useMemo(() => {
@@ -1277,7 +1321,7 @@ const handleRealtimeEvent = useCallback(
 
   // Memoizar las columnas para evitar recrearlas en cada render
   const columns = useMemo(() => createRegistrosColumns(
-    registros, // data
+    registrosVisibles, // data
     selectedRows, // selectedRows
     handleToggleRowSelection, // toggleRowSelection
     handleUpdateRecord,
@@ -1298,12 +1342,13 @@ const handleRealtimeEvent = useCallback(
     cbmUnicos,
     co2sUnicos,
     o2sUnicos,
+    tratamientosFrioUnicos,
     facturacionesUnicas,
     handleShowHistorial,
     facturasPorRegistro,
     handleViewFactura
   ), [
-    registros,
+    registrosVisibles,
     selectedRows,
     handleToggleRowSelection,
     handleUpdateRecord,
@@ -1324,6 +1369,7 @@ const handleRealtimeEvent = useCallback(
     cbmUnicos,
     co2sUnicos,
     o2sUnicos,
+    tratamientosFrioUnicos,
     facturacionesUnicas,
     handleShowHistorial,
     facturasPorRegistro,
@@ -1338,9 +1384,9 @@ const handleRealtimeEvent = useCallback(
     return null;
   }
 
-  const totalRegistros = new Set(registros.map(r => r.refAsli).filter(Boolean)).size;
-  const totalBookings = registros.filter(r => r.booking && r.booking !== '-').length;
-  const totalContenedores = registros
+  const totalRegistros = new Set(registrosVisibles.map(r => r.refAsli).filter(Boolean)).size;
+  const totalBookings = registrosVisibles.filter(r => r.booking && r.booking !== '-').length;
+  const totalContenedores = registrosVisibles
     .filter(r => r.contenedor && r.contenedor !== '-' && r.contenedor !== null && r.contenedor !== '')
     .flatMap(r => {
       const contenedorStr = r.contenedor.toString().trim();
@@ -1352,9 +1398,9 @@ const handleRealtimeEvent = useCallback(
       const contenedores = contenedorStr.split(/\s+/);
       return contenedores.filter(contenedor => /[a-zA-Z0-9]/.test(contenedor));
     }).length;
-  const totalConfirmados = registros.filter(r => r.estado === 'CONFIRMADO').length;
-  const totalPendientes = registros.filter(r => r.estado === 'PENDIENTE').length;
-  const totalCancelados = registros.filter(r => r.estado === 'CANCELADO').length;
+  const totalConfirmados = registrosVisibles.filter(r => r.estado === 'CONFIRMADO').length;
+  const totalPendientes = registrosVisibles.filter(r => r.estado === 'PENDIENTE').length;
+  const totalCancelados = registrosVisibles.filter(r => r.estado === 'CANCELADO').length;
 
   const toneBadgeClasses = {
     sky: 'bg-sky-500/20 text-sky-300',
@@ -1574,8 +1620,48 @@ const handleRealtimeEvent = useCallback(
             <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
               <div className="overflow-x-auto">
                 <div className="min-w-full px-2 pb-4 md:min-w-[1100px]">
+              {selectedTemporada && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sky-100">
+                  <span className="text-sm font-medium">
+                    Filtrando por <span className="font-semibold">Temporada {selectedTemporada}</span>
+                  </span>
+                  <button
+                    onClick={() => router.push('/registros')}
+                    className="rounded-full border border-sky-500/50 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:border-sky-300 hover:text-sky-50"
+                  >
+                    Quitar filtro
+                  </button>
+                </div>
+              )}
+              {temporadasDisponibles.length > 0 && (
+                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Selector</p>
+                    <h3 className="text-sm font-semibold text-slate-100">Temporada</h3>
+                  </div>
+                  <select
+                    value={selectedTemporada ?? ''}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (!value) {
+                        router.push('/registros');
+                      } else {
+                        router.push(`/registros?temporada=${encodeURIComponent(value)}`);
+                      }
+                    }}
+                    className="rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  >
+                    <option value="">Todas las temporadas</option>
+                    {temporadasDisponibles.map((temporada) => (
+                      <option key={temporada} value={temporada}>
+                        Temporada {temporada}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
                   <DataTable
-                    data={registros}
+                    data={registrosVisibles}
                     columns={columns}
                     navierasUnicas={navierasFiltro}
                     ejecutivosUnicos={ejecutivosFiltro}
@@ -1584,7 +1670,6 @@ const handleRealtimeEvent = useCallback(
                     polsUnicos={polsFiltro}
                     destinosUnicos={destinosFiltro}
                     depositosUnicos={depositosFiltro}
-                    yearsUnicos={yearsFiltro}
                     onAdd={handleAdd}
                     onEdit={handleEdit}
                     onEditNaveViaje={handleEditNaveViaje}
@@ -1630,6 +1715,7 @@ const handleRealtimeEvent = useCallback(
         contratosUnicos={contratosUnicos}
         co2sUnicos={co2sUnicos}
         o2sUnicos={o2sUnicos}
+        tratamientosDeFrioOpciones={tratamientosFrioUnicos}
         clienteFijadoPorCoincidencia={
           !isEjecutivo && clientesAsignados.length === 1
             ? clientesAsignados[0]
@@ -1651,6 +1737,7 @@ const handleRealtimeEvent = useCallback(
         navierasNavesMapping={navierasNavesMappingCatalog}
         consorciosNavesMapping={consorciosNavesMappingCatalog}
         refExternasUnicas={refExternasUnicas}
+        tratamientosDeFrioOpciones={tratamientosFrioUnicos}
       />
 
       <TrashModal

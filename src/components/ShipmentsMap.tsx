@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react';
 import { DeckGL } from '@deck.gl/react';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { Map as MaplibreMap } from 'react-map-gl/maplibre';
+import { CanvasContext } from '@luma.gl/core';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { getPortCoordinates } from '@/lib/port-coordinates';
 import { getCountryFromPort, getCountryCoordinates } from '@/lib/country-coordinates';
@@ -49,11 +50,45 @@ const INITIAL_VIEW_STATE = {
 
 type VistaMapa = 'puerto' | 'pais';
 
+const IS_DEV = process.env.NODE_ENV !== 'production';
+
 interface OriginPortStats {
   name: string;
   coordinates: [number, number];
   totalEmbarques: number;
   depositos: string[];
+}
+
+// Fix for deck.gl v9 bug: ResizeObserver may fire before the GPU device is ready,
+// causing CanvasContext.getMaxDrawingBufferSize to read limits from an undefined device.
+// We guard the method so it returns a sane default until the device is available.
+if (typeof window !== 'undefined') {
+  const canvasContextProto = CanvasContext?.prototype as any;
+  if (canvasContextProto && !canvasContextProto.__maxTextureGuardPatched) {
+    const originalGetMaxDrawingBufferSize = canvasContextProto.getMaxDrawingBufferSize;
+    canvasContextProto.getMaxDrawingBufferSize = function getMaxDrawingBufferSizePatched() {
+      const maxTextureDimension: number | undefined = this?.device?.limits?.maxTextureDimension2D;
+
+      if (typeof maxTextureDimension === 'number' && Number.isFinite(maxTextureDimension)) {
+        return [maxTextureDimension, maxTextureDimension];
+      }
+
+      if (typeof originalGetMaxDrawingBufferSize === 'function') {
+        try {
+          const result = originalGetMaxDrawingBufferSize.call(this);
+          if (Array.isArray(result) && result.length === 2) {
+            return result;
+          }
+        } catch {
+          // Ignore and fall back to default
+        }
+      }
+
+      // Conservative fallback that keeps deck.gl running until the device is ready.
+      return [4096, 4096];
+    };
+    canvasContextProto.__maxTextureGuardPatched = true;
+  }
 }
 
 export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
@@ -111,7 +146,6 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
         // Intentar primero WebGL1, luego WebGL2
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') || canvas.getContext('webgl2');
         if (gl) {
-          console.log('✅ WebGL disponible:', gl instanceof WebGLRenderingContext ? 'WebGL1' : 'WebGL2');
           setWebglSupported(true);
           setIsMounted(true);
           // Esperar a que el contenedor esté montado y tenga dimensiones
@@ -119,7 +153,6 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
             if (containerRef.current) {
               const rect = containerRef.current.getBoundingClientRect();
               if (rect.width > 0 && rect.height > 0) {
-                console.log('✅ Contenedor listo, inicializando DeckGL...');
                 setDeckGlReady(true);
                 return;
               }
@@ -133,7 +166,9 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
             waitForContainer();
           }, 300);
         } else {
-          console.warn('WebGL no está disponible en este navegador');
+          if (IS_DEV) {
+            console.warn('WebGL no está disponible en este navegador');
+          }
           setWebglSupported(false);
           setIsMounted(true);
         }
@@ -210,7 +245,9 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
       // Si la vista es por país, necesitamos el país
       if (vista === 'pais') {
         if (!country) {
-          console.warn(`⚠️ País no encontrado para puerto "${registro.pod}" - no se mostrará en vista por país`);
+          if (IS_DEV) {
+            console.warn(`⚠️ País no encontrado para puerto "${registro.pod}" - no se mostrará en vista por país`);
+          }
           return;
         }
       }
@@ -304,17 +341,21 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
       
       // Si no encontramos coordenadas del puerto, intentar usar coordenadas del país como fallback
       let finalCoords: [number, number] | null = portCoords;
-      if (!finalCoords && country) {
+        if (!finalCoords && country) {
         const countryCoords = getCountryCoordinates(country);
         if (countryCoords) {
           finalCoords = countryCoords;
-          console.warn(`⚠️ Coordenadas del puerto "${registro.pod}" no encontradas, usando coordenadas del país "${country}" como fallback`);
+            if (IS_DEV) {
+              console.warn(`⚠️ Coordenadas del puerto "${registro.pod}" no encontradas, usando coordenadas del país "${country}" como fallback`);
+            }
         }
       }
       
       if (!finalCoords) {
         // Si no tenemos coordenadas ni del puerto ni del país, no mostrarlo
-        console.warn(`⚠️ No se encontraron coordenadas para puerto "${registro.pod}" - no se mostrará en el mapa`);
+        if (IS_DEV) {
+          console.warn(`⚠️ No se encontraron coordenadas para puerto "${registro.pod}" - no se mostrará en el mapa`);
+        }
         return;
       }
 
@@ -576,17 +617,15 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
               countriesLayer,
             ]}
             onError={(error) => {
-              console.error('Error de DeckGL:', error);
+              if (error) {
+                console.error('Error de DeckGL:', error);
+              }
               if (error && error.message && error.message.includes('WebGL')) {
-                console.warn('Reintentando inicialización de DeckGL...');
                 setDeckGlReady(false);
                 setTimeout(() => {
                   setDeckGlReady(true);
                 }, 2000);
               }
-            }}
-            onLoad={() => {
-              console.log('✅ DeckGL cargado correctamente');
             }}
           >
             <MaplibreMap
@@ -594,7 +633,9 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
               style={{ width: '100%', height: '100%' }}
               reuseMaps={true}
               onError={(error) => {
-                console.error('Error de MapLibre:', error);
+                if (error) {
+                  console.error('Error de MapLibre:', error);
+                }
               }}
             />
           </DeckGL>

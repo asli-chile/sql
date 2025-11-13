@@ -137,7 +137,6 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
         return;
       }
 
-      console.log(`✅ Restaurados ${selectedIds.length} registros`);
       if (onSuccess) onSuccess(`✅ Se restauraron ${selectedIds.length} registros exitosamente`);
       clearSelection();
       loadDeletedRecords();
@@ -171,7 +170,6 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
       }
 
       const eliminados = typeof data === 'number' ? data : selectedIds.length;
-      console.log(`✅ Eliminados permanentemente ${eliminados} registros`);
       if (onSuccess)
         onSuccess(`✅ Se eliminaron ${eliminados} registro(s) permanentemente`);
       clearSelection();

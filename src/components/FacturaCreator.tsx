@@ -74,11 +74,6 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
       e.stopPropagation();
     }
 
-    console.log('🔵 Iniciando guardado de factura...');
-    console.log('Datos de factura:', factura);
-    console.log('Registro ID:', registro.id);
-    console.log('REF ASLI:', factura.refAsli);
-
     // Validaciones básicas
     if (!factura.exportador.nombre || !factura.exportador.nombre.trim()) {
       console.error('❌ Error: Nombre del exportador faltante');
@@ -115,8 +110,6 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
       return;
     }
 
-    console.log('✅ Validaciones pasadas, guardando...');
-
     setGuardando(true);
     try {
       // Obtener usuario actual
@@ -144,8 +137,6 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
         console.error('Error de Supabase:', error);
         throw error;
       }
-
-      console.log('✅ Factura guardada exitosamente:', data);
       success('Factura guardada exitosamente');
       
       // Cerrar modal después de un pequeño delay para que se vea el mensaje de éxito
@@ -288,7 +279,6 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
           <button
             type="button"
             onClick={(e) => {
-              console.log('🔵 Botón Guardar clickeado');
               e.preventDefault();
               e.stopPropagation();
               handleSave(e);
@@ -1005,11 +995,8 @@ function FormularioFactura({
 
 // Función para extraer nombre de nave y viaje del formato "NAVE [VIAJE]"
 function extraerNaveYViaje(naveInicial: string | undefined | null, viaje?: string | null): { nave: string; viaje: string } {
-  console.log('🔍 Extrayendo nave y viaje:', { naveInicial, viaje });
-  
   // Validar que naveInicial exista
   if (!naveInicial) {
-    console.log('⚠️ naveInicial está vacío, usando viaje:', viaje);
     return { nave: '', viaje: viaje || '' };
   }
   
@@ -1021,33 +1008,21 @@ function extraerNaveYViaje(naveInicial: string | undefined | null, viaje?: strin
   if (matchNave && matchNave.length >= 3) {
     nave = matchNave[1].trim();
     viajeExtraido = matchNave[2].trim();
-    console.log('✅ Nave y viaje extraídos del formato [VIAJE]:', { nave, viaje: viajeExtraido });
-  } else {
-    console.log('ℹ️ No se encontró formato [VIAJE] en naveInicial');
   }
   
   // Si hay viaje separado pero no se extrajo de naveInicial, usarlo
   if (!viajeExtraido && viaje) {
     viajeExtraido = viaje;
-    console.log('✅ Usando viaje del campo separado:', viajeExtraido);
   }
   
   const resultado = { nave: nave.trim(), viaje: viajeExtraido.trim() };
-  console.log('✅ Resultado final:', resultado);
   return resultado;
 }
 
 // Función para inicializar factura desde registro
 function initializeFacturaFromRegistro(registro: Registro): Factura {
-  console.log('📋 Inicializando factura desde registro:', registro);
-  console.log('📋 Registro naveInicial:', registro.naveInicial);
-  console.log('📋 Registro viaje:', registro.viaje);
-  
   // Extraer nave y viaje del registro
   const { nave, viaje } = extraerNaveYViaje(registro.naveInicial, registro.viaje);
-  
-  console.log('✅ Nave extraída:', nave);
-  console.log('✅ Viaje extraído:', viaje);
   
   return {
     registroId: registro.id || '',

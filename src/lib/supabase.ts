@@ -28,9 +28,9 @@ export interface Database {
           especie: string
           temperatura: number | null
           cbm: number | null
-          ct: string
           co2: number | null
           o2: number | null
+          'tratamiento de frio': string | null
           pol: string
           pod: string
           deposito: string
@@ -76,9 +76,9 @@ export interface Database {
           especie: string
           temperatura?: number | null
           cbm?: number | null
-          ct: string
           co2?: number | null
           o2?: number | null
+          'tratamiento de frio'?: string | null
           pol: string
           pod: string
           deposito: string
@@ -124,9 +124,9 @@ export interface Database {
           especie?: string
           temperatura?: number | null
           cbm?: number | null
-          ct?: string
           co2?: number | null
           o2?: number | null
+          'tratamiento de frio'?: string | null
           pol?: string
           pod?: string
           deposito?: string

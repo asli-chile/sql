@@ -1,10 +1,18 @@
 // Utilidades para cálculo de tiempo de tránsito
+import { parseDateString } from '@/lib/date-utils';
+
 export const calculateTransitTime = (etd: Date | string | null, eta: Date | string | null): number | null => {
   if (!etd || !eta) return null;
   
   try {
-    const etdDate = typeof etd === 'string' ? new Date(etd) : etd;
-    const etaDate = typeof eta === 'string' ? new Date(eta) : eta;
+    const etdDate =
+      typeof etd === 'string'
+        ? parseDateString(etd.split('T')[0] || etd)
+        : etd;
+    const etaDate =
+      typeof eta === 'string'
+        ? parseDateString(eta.split('T')[0] || eta)
+        : eta;
     
     // Verificar que las fechas sean válidas
     if (isNaN(etdDate.getTime()) || isNaN(etaDate.getTime())) {

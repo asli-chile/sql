@@ -17,9 +17,10 @@ export interface Registro {
   especie: string;
   temperatura: number | null;
   cbm: number | null;
-  ct: string;
+  ct?: string | null;
   co2: number | null;
   o2: number | null;
+  tratamientoFrio?: string | null;
   pol: string;
   pod: string;
   deposito: string;
@@ -44,6 +45,7 @@ export interface Registro {
   bookingPdf: string;
   comentario: string;
   observacion: string;
+  temporada?: string;
   
   // Metadatos
   rowOriginal?: number;

@@ -114,11 +114,6 @@ export function InlineEditCell({
   // Determinar si esta celda específica está en edición
   const isEditing = isEditingInContext(record.id || '', field);
   
-  // Debug: verificar que lleguen las opciones
-  if (type === 'select') {
-    console.log(`📋 Campo: ${field} | Type: ${type} | Options:`, options, '| Length:', options?.length || 0);
-  }
-
   // Detectar si es un dispositivo táctil
   useEffect(() => {
     const checkTouchDevice = () => {
@@ -139,12 +134,13 @@ export function InlineEditCell({
   // Mapear nombres de campos del tipo TypeScript a nombres de la base de datos
   const getDatabaseFieldName = (fieldName: keyof Registro): string => {
     const fieldMapping: Record<string, string> = {
-      'naveInicial': 'nave_inicial',
-      'tipoIngreso': 'tipo_ingreso',
-      'roleadaDesde': 'roleada_desde',
-      'ingresoStacking': 'ingreso_stacking',
-      'refAsli': 'ref_asli',
-      'refCliente': 'ref_cliente'
+      naveInicial: 'nave_inicial',
+      tipoIngreso: 'tipo_ingreso',
+      roleadaDesde: 'roleada_desde',
+      ingresoStacking: 'ingreso_stacking',
+      refAsli: 'ref_asli',
+      refCliente: 'ref_cliente',
+      tratamientoFrio: 'tratamiento de frio',
     };
     
     return fieldMapping[fieldName] || fieldName;
@@ -413,6 +409,7 @@ export function InlineEditCell({
             className="px-1 py-0.5 text-[10px] border border-blue-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 dark:text-white dark:border-gray-600"
             autoFocus
           >
+            <option value="">Seleccionar opción</option>
             {options.map(option => (
               <option key={option} value={option}>{option}</option>
             ))}

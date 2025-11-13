@@ -30,7 +30,6 @@ interface DataTableProps {
   polsUnicos: string[];
   destinosUnicos: string[];
   depositosUnicos: string[];
-  yearsUnicos: string[];
   onAdd?: () => void;
   onEdit?: (record: Registro) => void;
   onEditNaveViaje?: (record: Registro) => void;
@@ -68,7 +67,6 @@ export function DataTable({
   polsUnicos,
   destinosUnicos,
   depositosUnicos,
-  yearsUnicos,
   onAdd,
   onEdit,
   onEditNaveViaje,
@@ -194,48 +192,9 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
   // Estado para el menú contextual
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro } | null>(null);
   
-  const initialDateFilters: {
-    semanaIngreso: string;
-    semanaEtd: string;
-    semanaEta: string;
-    mesIngreso: string;
-    mesEtd: string;
-    mesEta: string;
-    year: string;
-  } = {
-    semanaIngreso: '',
-    semanaEtd: '',
-    semanaEta: '',
-    mesIngreso: '',
-    mesEtd: '',
-    mesEta: '',
-    year: '',
-  };
-  
-  // Estado para filtros de fechas
-  const [dateFilters, setDateFilters] = useState<typeof initialDateFilters>(initialDateFilters);
-  const hasDateFilters = useMemo(
-    () => Object.values(dateFilters).some((value) => value !== ''),
-    [dateFilters]
-  );
+  const [executiveFilter, setExecutiveFilter] = useState('');
   const hasGlobalFilter = typeof globalFilter === 'string' && globalFilter.trim().length > 0;
-  const hasActiveFilters = columnFilters.length > 0 || hasGlobalFilter || hasDateFilters;
-  
-  // Meses en español
-  const months = [
-    { value: '01', label: 'Enero' },
-    { value: '02', label: 'Febrero' },
-    { value: '03', label: 'Marzo' },
-    { value: '04', label: 'Abril' },
-    { value: '05', label: 'Mayo' },
-    { value: '06', label: 'Junio' },
-    { value: '07', label: 'Julio' },
-    { value: '08', label: 'Agosto' },
-    { value: '09', label: 'Septiembre' },
-    { value: '10', label: 'Octubre' },
-    { value: '11', label: 'Noviembre' },
-    { value: '12', label: 'Diciembre' },
-  ];
+  const hasActiveFilters = columnFilters.length > 0 || hasGlobalFilter || executiveFilter !== '';
 
   // Refs
   const filterPanelRef = useRef<HTMLDivElement>(null);
@@ -334,85 +293,14 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
     };
   }, [showFilters, contextMenu]);
 
-  // Filtrar datos por fechas antes de pasar a la tabla (solo si hay filtros activos)
+  // Filtrar datos por ejecutivo antes de pasar a la tabla
   const filteredData = useMemo(() => {
-    const hasDateFilters = Object.values(dateFilters).some(v => v !== '');
-    if (!hasDateFilters) return data;
-    
-    return data.filter((row) => {
-      // Filtro por semana y mes de ingresado
-      if (dateFilters.semanaIngreso) {
-        if (!row.semanaIngreso || !String(row.semanaIngreso).includes(dateFilters.semanaIngreso)) {
-          return false;
-        }
-      }
-      if (dateFilters.mesIngreso) {
-        // Calcular el mes directamente desde la fecha de ingreso
-        const mesFiltro = parseInt(dateFilters.mesIngreso);
-        if (!row.ingresado) {
-          return false;
-        }
-        const fechaIngreso = new Date(row.ingresado);
-        const mesIngreso = fechaIngreso.getMonth() + 1; // getMonth() devuelve 0-11, necesitamos 1-12
-        if (mesIngreso !== mesFiltro) {
-          return false;
-        }
-      }
-      
-      // Filtro por semana y mes de ETD
-      if (dateFilters.semanaEtd) {
-        if (!row.semanaZarpe || !String(row.semanaZarpe).includes(dateFilters.semanaEtd)) {
-          return false;
-        }
-      }
-      if (dateFilters.mesEtd) {
-        // Calcular el mes directamente desde la fecha ETD
-        const mesFiltro = parseInt(dateFilters.mesEtd);
-        if (!row.etd) {
-          return false;
-        }
-        const fechaEtd = new Date(row.etd);
-        const mesEtd = fechaEtd.getMonth() + 1; // getMonth() devuelve 0-11, necesitamos 1-12
-        if (mesEtd !== mesFiltro) {
-          return false;
-        }
-      }
-      
-      // Filtro por semana y mes de ETA
-      if (dateFilters.semanaEta) {
-        if (!row.semanaArribo || !String(row.semanaArribo).includes(dateFilters.semanaEta)) {
-          return false;
-        }
-      }
-      if (dateFilters.mesEta) {
-        // Calcular el mes directamente desde la fecha ETA
-        const mesFiltro = parseInt(dateFilters.mesEta);
-        if (!row.eta) {
-          return false;
-        }
-        const fechaEta = new Date(row.eta);
-        const mesEta = fechaEta.getMonth() + 1; // getMonth() devuelve 0-11, necesitamos 1-12
-        if (mesEta !== mesFiltro) {
-          return false;
-        }
-      }
-      
-      // Filtro por año
-      if (dateFilters.year) {
-        const yearFiltro = parseInt(dateFilters.year);
-        const hasYearInFecha = 
-          (row.ingresado && row.ingresado instanceof Date && row.ingresado.getFullYear() === yearFiltro) ||
-          (row.etd && row.etd instanceof Date && row.etd.getFullYear() === yearFiltro) ||
-          (row.eta && row.eta instanceof Date && row.eta.getFullYear() === yearFiltro);
-        
-        if (!hasYearInFecha) {
-          return false;
-        }
-      }
-      
-      return true;
-    });
-  }, [data, dateFilters]);
+    if (!executiveFilter) {
+      return data;
+    }
+
+    return data.filter((row) => row.ejecutivo === executiveFilter);
+  }, [data, executiveFilter]);
 
   const table = useReactTable({
     data: filteredData,
@@ -443,7 +331,7 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
     table.resetColumnOrder();
     setColumnFilters([]);
     setGlobalFilter('');
-    setDateFilters({ ...initialDateFilters });
+    setExecutiveFilter('');
   };
 
   // Virtualización para optimizar el renderizado de muchas filas
@@ -451,7 +339,7 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 44, // Altura estimada de cada fila en píxeles
+    estimateSize: () => 32, // Altura estimada de cada fila en píxeles
     overscan: 10, // Renderizar 10 filas adicionales fuera del viewport para scroll suave
   });
 
@@ -799,11 +687,11 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
               <h3 className="text-sm font-semibold text-slate-100">Filtros por columna</h3>
             </div>
             <div className="flex items-center gap-2">
-              {(columnFilters.length > 0 || Object.values(dateFilters).some((value) => value !== '')) && (
+              {(columnFilters.length > 0 || executiveFilter) && (
                 <button
                   onClick={() => {
                     setColumnFilters([]);
-                    setDateFilters({ ...initialDateFilters });
+                    setExecutiveFilter('');
                   }}
                   className={`${controlButtonActive} px-3 py-1 text-[11px]`}
                 >
@@ -821,6 +709,24 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="space-y-1">
+              <label className={`text-xs font-medium ${getLabelStyles(executiveFilter !== '')}`}>
+                Ejecutivo {executiveFilter && '(✓)'}
+              </label>
+              <select
+                value={executiveFilter}
+                onChange={(e) => setExecutiveFilter(e.target.value)}
+                className={getFilterStyles(executiveFilter !== '')}
+              >
+                <option value="">Todos</option>
+                {ejecutivosUnicos.map((ejecutivo) => (
+                  <option key={ejecutivo} value={ejecutivo}>
+                    {ejecutivo}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Filtros de columnas principales */}
             {table.getAllLeafColumns().map((column) => {
               if (column.id.startsWith('_')) {
@@ -1074,125 +980,6 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
               );
             })}
             
-            {/* Filtros de fechas reorganizados: Año, Meses, Semanas */}
-            
-            {/* Año */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.year)}`}>
-                Año {dateFilters.year && '(✓)'}
-              </label>
-              <select
-                value={dateFilters.year}
-                onChange={(e) => setDateFilters({ ...dateFilters, year: e.target.value })}
-                className={getFilterStyles(!!dateFilters.year)}
-              >
-                <option value="">Todos los años</option>
-                {yearsUnicos.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Mes Ingresado */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.mesIngreso)}`}>
-                Mes Ingresado {dateFilters.mesIngreso && '(✓)'}
-              </label>
-              <select
-                value={dateFilters.mesIngreso}
-                onChange={(e) => setDateFilters({ ...dateFilters, mesIngreso: e.target.value })}
-                className={getFilterStyles(!!dateFilters.mesIngreso)}
-              >
-                <option value="">Todos los meses</option>
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Mes ETD */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.mesEtd)}`}>
-                Mes ETD {dateFilters.mesEtd && '(✓)'}
-              </label>
-              <select
-                value={dateFilters.mesEtd}
-                onChange={(e) => setDateFilters({ ...dateFilters, mesEtd: e.target.value })}
-                className={getFilterStyles(!!dateFilters.mesEtd)}
-              >
-                <option value="">Todos los meses</option>
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Mes ETA */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.mesEta)}`}>
-                Mes ETA {dateFilters.mesEta && '(✓)'}
-              </label>
-              <select
-                value={dateFilters.mesEta}
-                onChange={(e) => setDateFilters({ ...dateFilters, mesEta: e.target.value })}
-                className={getFilterStyles(!!dateFilters.mesEta)}
-              >
-                <option value="">Todos los meses</option>
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {/* Semana Ingresado */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.semanaIngreso)}`}>
-                Semana Ingresado {dateFilters.semanaIngreso && '(✓)'}
-              </label>
-              <input
-                type="text"
-                value={dateFilters.semanaIngreso}
-                onChange={(e) => setDateFilters({ ...dateFilters, semanaIngreso: e.target.value })}
-                placeholder="Ej: 2024-01 (Semana)"
-                className={getFilterStyles(!!dateFilters.semanaIngreso)}
-              />
-            </div>
-            
-            {/* Semana ETD */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.semanaEtd)}`}>
-                Semana ETD {dateFilters.semanaEtd && '(✓)'}
-              </label>
-              <input
-                type="text"
-                value={dateFilters.semanaEtd}
-                onChange={(e) => setDateFilters({ ...dateFilters, semanaEtd: e.target.value })}
-                placeholder="Ej: 2024-01 (Semana)"
-                className={getFilterStyles(!!dateFilters.semanaEtd)}
-              />
-            </div>
-            
-            {/* Semana ETA */}
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(!!dateFilters.semanaEta)}`}>
-                Semana ETA {dateFilters.semanaEta && '(✓)'}
-              </label>
-              <input
-                type="text"
-                value={dateFilters.semanaEta}
-                onChange={(e) => setDateFilters({ ...dateFilters, semanaEta: e.target.value })}
-                placeholder="Ej: 2024-01 (Semana)"
-                className={getFilterStyles(!!dateFilters.semanaEta)}
-              />
-            </div>
           </div>
         </div>
       )}
@@ -1209,7 +996,15 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
              WebkitOverflowScrolling: 'touch'
            }}
          >
-          <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'collapse' }}>
+         <table
+           style={{
+             tableLayout: 'fixed',
+             width: '100%',
+             borderCollapse: 'collapse',
+             fontFamily: 'Arial, sans-serif',
+             fontSize: '10px',
+           }}
+         >
             <thead className="sticky top-0 z-[250] shadow-[0_10px_24px_rgba(8,15,30,0.45)]">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
@@ -1283,7 +1078,7 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
                         style={stickyStyles}
                       >
                         <div
-                          className={`relative flex min-h-[44px] w-full items-center justify-between gap-1.5 px-3 py-2 select-none`}
+                          className={`relative flex min-h-[32px] w-full items-center justify-center gap-1 px-2 py-1 select-none`}
                         >
                           <div
                             {...(canSort
@@ -1294,11 +1089,11 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
                                   onKeyDown: handleKeyDown,
                                 }
                               : {})}
-                            className={`flex items-center gap-2 ${
+                            className={`flex items-center justify-center gap-1 text-center ${
                               canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'
                             }`}
                           >
-                            <span className={`block whitespace-nowrap text-[11px] font-semibold uppercase tracking-[0.1em] ${
+                            <span className={`block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] ${
                               isDark ? 'text-slate-100' : 'text-slate-700'
                             }`}>
                               {flexRender(header.column.columnDef.header, header.getContext())}
@@ -1419,9 +1214,7 @@ const [showSheetsPreview, setShowSheetsPreview] = useState(false);
                           style={stickyStyles}
                         >
                           <div
-                            className={`flex h-full w-full items-center ${
-                              isRefAsliColumnCell ? 'justify-start px-1.5 py-0.5' : 'justify-start px-3 py-2'
-                            } text-[11px] sm:text-xs`}
+                            className={`flex h-full w-full items-center justify-center px-2 py-1 text-[10px] font-semibold text-center`}
                           >
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                           </div>

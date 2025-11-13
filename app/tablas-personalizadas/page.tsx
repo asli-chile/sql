@@ -492,7 +492,6 @@ export default function TablasPersonalizadasPage() {
   ], [navierasUnicas, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos]);
 
   const onGridReady = (params: GridReadyEvent) => {
-    console.log('Grid ready:', params);
     setGridApi(params.api);
   };
 

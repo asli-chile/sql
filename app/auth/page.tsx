@@ -143,7 +143,7 @@ const AuthPage = () => {
           </div>
           <div className="mt-10 space-y-2 text-sm text-slate-200">
             <p className="font-medium text-white">Soporte dedicado</p>
-            <p>Escríbenos a soporte@asli.cl o llámanos al +56 2 1234 5678</p>
+            <p>Escríbenos a rodrigo.caceres@asli.cl</p>
           </div>
         </aside>
 

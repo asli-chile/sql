@@ -20,6 +20,7 @@ interface EditModalProps {
   navierasNavesMapping?: Record<string, string[]>;
   consorciosNavesMapping?: Record<string, string[]>;
   refExternasUnicas?: string[];
+  tratamientosDeFrioOpciones?: string[];
 }
 
 const VIAJE_REQUIRED_MESSAGE = 'El número de viaje es obligatorio cuando hay una nave seleccionada';
@@ -50,9 +51,9 @@ interface EditFormData {
   especie?: string;
   temperatura?: number | null;
   cbm?: number | null;
-  ct?: string;
   co2?: number | null;
   o2?: number | null;
+  tratamientoFrio?: string | null;
   pol?: string;
   pod?: string;
   deposito?: string;
@@ -79,7 +80,20 @@ interface EditFormData {
   ingresoStacking?: string; // String para input type="date"
 }
 
-export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas = [], navesUnicas = [], fletesUnicos = [], temperaturasUnicas = [], navierasNavesMapping = {}, consorciosNavesMapping = {}, refExternasUnicas = [] }: EditModalProps) {
+export function EditModal({
+  record,
+  isOpen,
+  onClose,
+  onSuccess,
+  navierasUnicas = [],
+  navesUnicas = [],
+  fletesUnicos = [],
+  temperaturasUnicas = [],
+  navierasNavesMapping = {},
+  consorciosNavesMapping = {},
+  refExternasUnicas = [],
+  tratamientosDeFrioOpciones = [],
+}: EditModalProps) {
   
   // Función para procesar contenedores múltiples
   const processContainers = (containerValue: string): string => {
@@ -148,9 +162,9 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
         especie: record.especie || '',
         temperatura: record.temperatura || null,
         cbm: record.cbm || null,
-        ct: record.ct || '',
         co2: record.co2 || null,
         o2: record.o2 || null,
+        tratamientoFrio: record.tratamientoFrio || '',
         pol: record.pol || '',
         pod: record.pod || '',
         deposito: record.deposito || '',
@@ -265,17 +279,17 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
       setField('especie', formData.especie);
       setField('temperatura', formData.temperatura === null ? null : formData.temperatura);
       setField('cbm', formData.cbm === null ? null : formData.cbm);
-      setField('ct', formData.ct);
       setField('co2', formData.co2 === null ? null : formData.co2);
       setField('o2', formData.o2 === null ? null : formData.o2);
+      setField('tratamientoFrio', formData.tratamientoFrio ? formData.tratamientoFrio : null);
       setField('pol', formData.pol);
       setField('pod', formData.pod);
       setField('deposito', formData.deposito);
 
-      const etdIso = formData.etd ? parseDateString(formData.etd).toISOString() : null;
-      const etaIso = formData.eta ? parseDateString(formData.eta).toISOString() : null;
-      setField('etd', etdIso);
-      setField('eta', etaIso);
+      const etdFormatted = formData.etd ? formatDateForInput(parseDateString(formData.etd)) : null;
+      const etaFormatted = formData.eta ? formatDateForInput(parseDateString(formData.eta)) : null;
+      setField('etd', etdFormatted);
+      setField('eta', etaFormatted);
       setField('tt', (() => {
         const etdDate = formData.etd ? parseDateString(formData.etd) : null;
         const etaDate = formData.eta ? parseDateString(formData.eta) : null;
@@ -285,7 +299,10 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
       setField('flete', formData.flete);
       setField('estado', formData.estado);
       setField('roleadaDesde', formData.roleadaDesde);
-      setField('ingresoStacking', formData.ingresoStacking ? new Date(formData.ingresoStacking).toISOString() : null);
+      setField(
+        'ingresoStacking',
+        formData.ingresoStacking ? formatDateForInput(parseDateString(formData.ingresoStacking)) : null
+      );
       setField('tipoIngreso', formData.tipoIngreso);
       setField('numeroBl', formData.numeroBl);
       setField('estadoBl', formData.estadoBl);
@@ -746,17 +763,6 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
             </div>
 
             <div>
-              <label className={labelClasses}>Rol / CT</label>
-              <input
-                type="text"
-                name="ct"
-                value={formData.ct || ''}
-                onChange={handleChange}
-                className={inputClasses}
-              />
-            </div>
-
-            <div>
               <label className={labelClasses}>CO₂</label>
               <input
                 type="number"
@@ -790,6 +796,23 @@ export function EditModal({ record, isOpen, onClose, onSuccess, navierasUnicas =
                 }}
                 className={inputClasses}
               />
+            </div>
+
+            <div>
+              <label className={labelClasses}>Tratamiento de frío</label>
+              <select
+                name="tratamientoFrio"
+                value={formData.tratamientoFrio || ''}
+                onChange={handleChange}
+                className={selectClasses}
+              >
+                <option value="">Seleccionar tratamiento</option>
+                {tratamientosDeFrioOpciones.map((opcion) => (
+                  <option key={opcion} value={opcion}>
+                    {opcion}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
