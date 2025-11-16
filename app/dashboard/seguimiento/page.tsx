@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
 import { Search, RefreshCcw, ArrowLeft } from 'lucide-react';
 import { ActiveVesselsMap } from '@/components/ActiveVesselsMap';
+import { VesselDetailsModal } from '@/components/VesselDetailsModal';
 import type { ActiveVessel } from '@/types/vessels';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/AppFooter';
@@ -16,17 +17,6 @@ type ActiveVesselsResponse = {
   vessels: ActiveVessel[];
 };
 
-type VesselDetailRow = {
-  id: string;
-  booking: string | null;
-  contenedor: string | null;
-  origen: string | null;
-  destino: string | null;
-  etd: string | null;
-  eta: string | null;
-  ttEstimadoDias: number | null;
-  ttRealDias: number | null;
-};
 
 const SeguimientoPage = () => {
   const router = useRouter();
@@ -39,8 +29,7 @@ const SeguimientoPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [focusedVesselName, setFocusedVesselName] = useState<string | null>(null);
   const [selectedVessel, setSelectedVessel] = useState<ActiveVessel | null>(null);
-  const [detailsState, setDetailsState] = useState<FetchState>('idle');
-  const [detailRows, setDetailRows] = useState<VesselDetailRow[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -51,7 +40,14 @@ const SeguimientoPage = () => {
           error,
         } = await supabase.auth.getUser();
 
+        // Si hay error de refresh token, limpiar sesión y redirigir
         if (error) {
+          // Si es un error de refresh token inválido, es esperado y no necesita log
+          if (error.message?.includes('Refresh Token') || error.message?.includes('JWT')) {
+            await supabase.auth.signOut();
+            router.push('/auth');
+            return;
+          }
           throw error;
         }
 
@@ -61,8 +57,11 @@ const SeguimientoPage = () => {
         }
 
         setUser(currentUser);
-      } catch (error) {
-        console.error('[Seguimiento] Error comprobando usuario:', error);
+      } catch (error: any) {
+        // Solo loguear errores que no sean de refresh token
+        if (!error?.message?.includes('Refresh Token') && !error?.message?.includes('JWT')) {
+          console.error('[Seguimiento] Error comprobando usuario:', error);
+        }
         router.push('/auth');
       } finally {
         setLoadingUser(false);
@@ -92,7 +91,7 @@ const SeguimientoPage = () => {
 
       setFocusedVesselName(null);
       setSelectedVessel(null);
-      setDetailRows([]);
+      setIsModalOpen(false);
     } catch (error) {
       console.error('[Seguimiento] Error cargando buques activos:', error);
       setErrorMessage(
@@ -168,92 +167,38 @@ const SeguimientoPage = () => {
     )) {
       setSelectedVessel(null);
       setFocusedVesselName(null);
-      setDetailRows([]);
+      setIsModalOpen(false);
     }
   }, [filteredVessels, selectedVessel]);
 
   const handleVesselSelect = (vessel: ActiveVessel | null) => {
-    setSelectedVessel((prev) => {
-      if (!vessel) return null;
-      if (prev && prev.vessel_name === vessel.vessel_name) {
-        setFocusedVesselName(null);
-        setDetailRows([]);
-        return null;
-      }
-      setFocusedVesselName(vessel.vessel_name);
-      return vessel;
-    });
-  };
-
-  const loadVesselDetails = async (vessel: ActiveVessel) => {
-    try {
-      setDetailsState('loading');
-      setDetailRows([]);
-      const supabase = createClient();
-
-      // Buscar registros relacionados al buque y sus bookings
-      const { data, error } = await supabase
-        .from('registros')
-        .select('id, booking, contenedor, pol, pod, etd, eta')
-        .in('booking', vessel.bookings)
-        .is('deleted_at', null);
-
-      if (error) {
-        throw error;
-      }
-
-      const now = new Date();
-
-      const rows: VesselDetailRow[] = (data || []).map((row: any) => {
-        const etd = row.etd as string | null;
-        const eta = row.eta as string | null;
-
-        let ttEstimadoDias: number | null = null;
-        let ttRealDias: number | null = null;
-
-        if (etd && eta) {
-          const etdDate = new Date(etd);
-          const etaDate = new Date(eta);
-          const diffMs = etaDate.getTime() - etdDate.getTime();
-          ttEstimadoDias = Number.isFinite(diffMs) ? Math.round(diffMs / (1000 * 60 * 60 * 24)) : null;
-        }
-
-        if (etd) {
-          const etdDate = new Date(etd);
-          const diffMsReal = now.getTime() - etdDate.getTime();
-          ttRealDias = Number.isFinite(diffMsReal) ? Math.max(0, Math.round(diffMsReal / (1000 * 60 * 60 * 24))) : null;
-        }
-
-        return {
-          id: row.id as string,
-          booking: row.booking ?? null,
-          contenedor: row.contenedor ?? null,
-          origen: row.pol ?? null,
-          destino: row.pod ?? null,
-          etd: etd,
-          eta: eta,
-          ttEstimadoDias,
-          ttRealDias,
-        };
-      });
-
-      setDetailRows(rows);
-      setDetailsState('success');
-    } catch (error) {
-      console.error('[Seguimiento] Error cargando detalles de buque:', error);
-      setDetailsState('error');
-    }
-  };
-
-  // Cargar detalles cuando cambia el buque seleccionado
-  useEffect(() => {
-    if (!selectedVessel) {
-      setDetailsState('idle');
-      setDetailRows([]);
+    if (!vessel) {
+      setSelectedVessel(null);
+      setFocusedVesselName(null);
+      setIsModalOpen(false);
       return;
     }
-    void loadVesselDetails(selectedVessel);
-  }, [selectedVessel]);
+
+    // Si es el mismo buque, cerrar el modal
+    if (selectedVessel && selectedVessel.vessel_name === vessel.vessel_name) {
+      setSelectedVessel(null);
+      setFocusedVesselName(null);
+      setIsModalOpen(false);
+      return;
+    }
+
+    // Seleccionar nuevo buque y abrir modal
+    setSelectedVessel(vessel);
+    setFocusedVesselName(vessel.vessel_name);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedVessel(null);
+    setFocusedVesselName(null);
+  };
+
 
   if (loadingUser) {
     return <LoadingScreen message="Cargando seguimiento de buques..." />;
@@ -267,60 +212,60 @@ const SeguimientoPage = () => {
     <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => router.push('/dashboard')}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200"
                 aria-label="Volver al dashboard"
               >
                 <ArrowLeft className="h-4 w-4" />
               </button>
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.35em] text-slate-500/80">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500/80 sm:text-[11px] sm:tracking-[0.35em]">
                   Seguimiento en tiempo casi real
                 </p>
-                <h1 className="text-xl font-semibold text-white sm:text-2xl">
+                <h1 className="text-lg font-semibold text-white sm:text-xl md:text-2xl">
                   Mapa de buques activos
                 </h1>
-                <p className="text-xs text-slate-400 sm:text-sm">
+                <p className="text-[11px] text-slate-400 sm:text-xs md:text-sm">
                   Visualiza los buques con embarques en curso usando posiciones cacheadas.
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={handleRefreshPositions}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-sky-400/60 hover:text-sky-100"
+                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-sky-400/60 hover:text-sky-100 sm:px-4 sm:py-2 sm:text-xs"
               >
-                <RefreshCcw className="h-4 w-4" />
-                Actualizar posiciones
+                <RefreshCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="whitespace-nowrap">Actualizar posiciones</span>
               </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-6 pb-10 pt-6 space-y-6">
-          <section className="space-y-4 rounded-2xl border border-slate-800/60 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/30">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <main className="flex-1 overflow-y-auto px-3 pb-6 pt-4 space-y-4 sm:px-6 sm:pb-10 sm:pt-6 sm:space-y-6">
+          <section className="space-y-3 rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:space-y-4 sm:rounded-2xl sm:p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
                   Lista de buques
                 </p>
-                <p className="text-sm font-semibold text-slate-100">
+                <p className="text-xs font-semibold text-slate-100 sm:text-sm">
                   {filteredVessels.length} buques activos
                 </p>
               </div>
-              <div className="relative w-full max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <div className="relative w-full sm:max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 sm:h-4 sm:w-4" />
                 <input
                   type="search"
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder="Buscar por barco, booking, contenedor o destino"
-                  className="w-full rounded-full border border-slate-800 bg-slate-950/80 px-9 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  className="w-full rounded-full border border-slate-800 bg-slate-950/80 px-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:px-9 sm:py-2 sm:text-sm"
                 />
               </div>
             </div>
@@ -331,24 +276,24 @@ const SeguimientoPage = () => {
             )}
           </section>
 
-          <section className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
+          <section className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
                   Visualización
                 </p>
-                <p className="text-sm font-semibold text-slate-100">
+                <p className="text-xs font-semibold text-slate-100 sm:text-sm">
                   Mapa mundial de posiciones AIS cacheadas
                 </p>
               </div>
-              <div className="text-right text-[11px] text-slate-500">
-                <p>Para proteger los créditos de la API AIS:</p>
-                <p>· Máx. 1 llamada cada 3 días por buque activo.</p>
-                <p>· El mapa usa siempre la última posición guardada en Supabase.</p>
+              <div className="text-left text-[10px] text-slate-500 sm:text-right sm:text-[11px]">
+                <p className="whitespace-nowrap">Para proteger los créditos de la API AIS:</p>
+                <p className="whitespace-nowrap">· Máx. 1 llamada cada 3 días por buque activo.</p>
+                <p className="whitespace-nowrap">· El mapa usa siempre la última posición guardada en Supabase.</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-800/60 bg-slate-950/70 p-4">
+            <div className="rounded-xl border border-slate-800/60 bg-slate-950/70 p-2 sm:rounded-2xl sm:p-4">
               <ActiveVesselsMap
                 vessels={filteredVessels}
                 focusedVesselName={selectedVessel?.vessel_name ?? null}
@@ -357,92 +302,15 @@ const SeguimientoPage = () => {
             </div>
           </section>
 
-          {selectedVessel && (
-            <section className="space-y-4 rounded-2xl border border-slate-800/60 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/30">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500">
-                    Detalle del buque
-                  </p>
-                  <p className="text-sm font-semibold text-slate-100">
-                    {selectedVessel.vessel_name}
-                  </p>
-                </div>
-              </div>
-
-              {detailsState === 'loading' && (
-                <p className="text-xs text-slate-400">Cargando detalle de embarques…</p>
-              )}
-              {detailsState === 'error' && (
-                <p className="text-xs text-rose-300">
-                  No se pudo cargar el detalle de este buque.
-                </p>
-              )}
-              {detailsState === 'success' && detailRows.length === 0 && (
-                <p className="text-xs text-slate-400">
-                  No se encontraron embarques asociados a este buque.
-                </p>
-              )}
-
-              {detailsState === 'success' && detailRows.length > 0 && (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-xs text-slate-200">
-                    <thead className="border-b border-slate-800 text-[11px] uppercase tracking-[0.2em] text-slate-500">
-                      <tr>
-                        <th className="px-3 py-2">Booking</th>
-                        <th className="px-3 py-2">Contenedor</th>
-                        <th className="px-3 py-2">Origen</th>
-                        <th className="px-3 py-2">Destino</th>
-                        <th className="px-3 py-2">ETD</th>
-                        <th className="px-3 py-2">ETA</th>
-                        <th className="px-3 py-2">TT estimado (días)</th>
-                        <th className="px-3 py-2">TT real (días)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800">
-                      {detailRows.map((row) => (
-                        <tr key={row.id}>
-                          <td className="px-3 py-2 font-medium">{row.booking ?? '—'}</td>
-                          <td className="px-3 py-2">{row.contenedor ?? '—'}</td>
-                          <td className="px-3 py-2">{row.origen ?? '—'}</td>
-                          <td className="px-3 py-2">{row.destino ?? '—'}</td>
-                          <td className="px-3 py-2">
-                            {row.etd
-                              ? new Date(row.etd).toLocaleString('es-CL', {
-                                  timeZone: 'UTC',
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit',
-                                })
-                              : '—'}
-                          </td>
-                          <td className="px-3 py-2">
-                            {row.eta
-                              ? new Date(row.eta).toLocaleString('es-CL', {
-                                  timeZone: 'UTC',
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                  year: '2-digit',
-                                })
-                              : '—'}
-                          </td>
-                          <td className="px-3 py-2">
-                            {row.ttEstimadoDias != null ? row.ttEstimadoDias : '—'}
-                          </td>
-                          <td className="px-3 py-2">
-                            {row.ttRealDias != null ? row.ttRealDias : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          )}
-
           <AppFooter className="mt-4" />
         </main>
+
+        {/* Modal de detalles del buque */}
+        <VesselDetailsModal
+          isOpen={isModalOpen}
+          vessel={selectedVessel}
+          onClose={handleCloseModal}
+        />
       </div>
     </div>
   );

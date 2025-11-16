@@ -21,6 +21,17 @@ export type VesselPosition = {
   last_position_at: string | null;
   last_api_call_at: string | null;
   raw_payload: unknown | null;
+  // Campos adicionales extraídos del raw_payload para consultas más rápidas
+  speed: number | null;
+  course: number | null;
+  destination: string | null;
+  navigational_status: string | null;
+  ship_type: string | null;
+  country: string | null;
+  eta_utc: string | null;
+  atd_utc: string | null;
+  last_port: string | null;
+  unlocode_lastport: string | null;
 };
 
 export type VesselTrackPoint = {

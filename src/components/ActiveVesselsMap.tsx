@@ -76,6 +76,7 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     [focusedVesselName, vessels],
   );
 
+  // Trayectoria del buque seleccionado (click)
   const trackFeatures = useMemo(() => {
     if (!activeVessel || !activeVessel.track || activeVessel.track.length <= 1) {
       // Sin selección o con menos de 2 puntos, no mostramos línea
@@ -91,6 +92,27 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
       },
     ];
   }, [activeVessel]);
+
+  // Trayectoria del buque sobre el que se hace hover
+  const hoverTrackFeatures = useMemo(() => {
+    // Si hay un buque seleccionado, no mostramos la línea de hover
+    if (activeVessel) {
+      return [] as { vessel_name: string; path: [number, number][] }[];
+    }
+
+    if (!hoveredVessel || !hoveredVessel.track || hoveredVessel.track.length <= 1) {
+      return [] as { vessel_name: string; path: [number, number][] }[];
+    }
+
+    return [
+      {
+        vessel_name: hoveredVessel.vessel_name,
+        path: hoveredVessel.track.map(
+          (point) => [point.lon, point.lat] as [number, number],
+        ),
+      },
+    ];
+  }, [hoveredVessel, activeVessel]);
 
   // Centrarse en un buque concreto cuando el usuario lo selecciona desde la lista
   useEffect(() => {
@@ -146,6 +168,7 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     },
   });
 
+  // Capa de trayectoria del buque seleccionado (click)
   const trackLayer = new PathLayer<{
     vessel_name: string;
     path: [number, number][];
@@ -161,8 +184,24 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     jointRounded: true,
   });
 
+  // Capa de trayectoria del buque sobre el que se hace hover
+  const hoverTrackLayer = new PathLayer<{
+    vessel_name: string;
+    path: [number, number][];
+  }>({
+    id: 'hover-vessel-tracks',
+    data: hoverTrackFeatures,
+    getPath: (feature) => feature.path,
+    getWidth: () => 2,
+    widthUnits: 'pixels',
+    getColor: () => [56, 189, 248, 150], // cyan más suave para hover
+    rounded: true,
+    capRounded: true,
+    jointRounded: true,
+  });
+
   return (
-    <div className="relative h-[600px] w-full overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-950/60">
+    <div className="relative h-[60vh] min-h-[320px] w-full overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-950/60 sm:h-[600px]">
       <DeckGL
         initialViewState={INITIAL_VIEW_STATE}
         viewState={viewState}
@@ -176,7 +215,7 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
         onViewStateChange={({ viewState: nextViewState }) => {
           setViewState(nextViewState as ViewState);
         }}
-        layers={[trackLayer, vesselsLayer]}
+        layers={[trackLayer, hoverTrackLayer, vesselsLayer]}
       >
         <MaplibreMap
           mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
