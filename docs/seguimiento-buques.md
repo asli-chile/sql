@@ -30,7 +30,7 @@ Documentación exclusiva de la pantalla **“Mapa de buques activos”** (módul
   - Botón **“Actualizar posiciones”**:
     - Llama a la ruta `/api/vessels/update-positions`.
     - Esa ruta consulta la API AIS externa y actualiza las tablas de Supabase (`vessel_positions` y `vessel_position_history`).
-    - Hay una restricción lógica: **máximo 1 llamada cada 3 días por buque**, para cuidar créditos de la API.
+    - Hay una restricción lógica: **máximo 1 llamada cada 24 horas por buque**, para cuidar créditos de la API.
 
 - **Panel “Lista de buques”**
   - Muestra el número total de **buques activos** detectados.
@@ -193,7 +193,7 @@ La trayectoria se dibuja en el componente `ActiveVesselsMap` usando **DeckGL**.
 
 4. **Actualizar posiciones desde la API AIS**
    - Pulsar el botón **“Actualizar posiciones”** solo cuando sea necesario.
-   - El sistema respeta el límite de una llamada cada 3 días por buque.
+   - El sistema respeta el límite de una llamada cada 24 horas por buque.
    - Después de actualizar, la página vuelve a cargar la lista de buques y el mapa se refresca.
 
 ---

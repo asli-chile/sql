@@ -1,5 +1,5 @@
 -- Crear tabla para cachear posiciones de buques obtenidas desde API AIS externa
--- Esta tabla permite limitar las consultas pagadas a la API a un máximo de 1 vez cada 3 días por buque.
+-- Esta tabla permite limitar las consultas pagadas a la API a un máximo de 1 vez cada 24 horas por buque.
 
 CREATE TABLE IF NOT EXISTS vessel_positions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

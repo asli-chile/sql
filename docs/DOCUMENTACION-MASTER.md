@@ -158,7 +158,7 @@ Funcionalidades principales:
   - Cálculo de `TT estimado (ETA - ETD)` y `TT real (días desde ETD)`.
 - Botón **“Actualizar posiciones”**:
   - Llama a `/api/vessels/update-positions`.
-  - Actualiza tablas de posiciones en Supabase, respetando el límite de frecuencia por buque (máx. 1 vez cada 3 días).
+  - Actualiza tablas de posiciones en Supabase, respetando el límite de frecuencia por buque (máx. 1 vez cada 24 horas).
 
 Archivos clave:
 

@@ -288,7 +288,7 @@ const SeguimientoPage = () => {
               </div>
               <div className="text-left text-[10px] text-slate-500 sm:text-right sm:text-[11px]">
                 <p className="whitespace-nowrap">Para proteger los créditos de la API AIS:</p>
-                <p className="whitespace-nowrap">· Máx. 1 llamada cada 3 días por buque activo.</p>
+                <p className="whitespace-nowrap">· Máx. 1 llamada cada 24 horas por buque activo.</p>
                 <p className="whitespace-nowrap">· El mapa usa siempre la última posición guardada en Supabase.</p>
               </div>
             </div>
