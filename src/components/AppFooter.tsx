@@ -38,6 +38,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
   const quickLinks: QuickLink[] = [
     { label: 'Dashboard', href: '/dashboard', isInternal: true },
     { label: 'Registros', href: '/registros', isInternal: true },
+    { label: 'Seguimiento', href: '/dashboard/seguimiento', isInternal: true },
     { label: 'Documentos', href: '/documentos', isInternal: true },
     { label: 'Contacto', href: '/contacto', isInternal: true },
   ];

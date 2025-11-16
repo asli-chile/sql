@@ -9,6 +9,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { getPortCoordinates } from '@/lib/port-coordinates';
 import { getCountryFromPort, getCountryCoordinates } from '@/lib/country-coordinates';
 import { Registro } from '@/types/registros';
+import type { ActiveVessel } from '@/types/vessels';
 
 interface CountryStats {
   country: string;
@@ -37,6 +38,7 @@ interface CountryStats {
 
 interface ShipmentsMapProps {
   registros: Registro[];
+  activeVessels?: ActiveVessel[];
   className?: string;
 }
 
@@ -91,9 +93,10 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
+export function ShipmentsMap({ registros, activeVessels = [], className = '' }: ShipmentsMapProps) {
   const [hoveredCountry, setHoveredCountry] = useState<CountryStats | null>(null);
   const [hoveredOriginPort, setHoveredOriginPort] = useState<OriginPortStats | null>(null);
+  const [hoveredVessel, setHoveredVessel] = useState<ActiveVessel | null>(null);
   const [vista, setVista] = useState<VistaMapa>('puerto');
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [isMounted, setIsMounted] = useState(false);
@@ -448,6 +451,14 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
     return Array.from(portMap.values());
   }, [registros, vista]);
 
+  const activeVesselPoints = useMemo(
+    () =>
+      (activeVessels ?? []).filter(
+        (vessel) => vessel.last_lat != null && vessel.last_lon != null,
+      ),
+    [activeVessels],
+  );
+
   // Capa de puertos de salida (POL) - en rojo
   const originPortsLayer = new ScatterplotLayer<OriginPortStats>({
     id: 'origin-ports',
@@ -456,7 +467,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
     getRadius: (d) => {
       // Hacer más grande si está hovered
       const isHovered = hoveredOriginPort && hoveredOriginPort.name === d.name;
-      return isHovered ? 15000 : 12000;
+      return isHovered ? 12000 : 9000;
     },
     getFillColor: (d) => {
       // Si está hovered, usar un rojo más brillante
@@ -464,8 +475,8 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
       return isHovered ? [255, 82, 82, 255] : [244, 67, 54, 240]; // Rojo más brillante cuando está hovered
     },
     pickable: true,
-    radiusMinPixels: 6,
-    radiusMaxPixels: 20,
+    radiusMinPixels: 3,
+    radiusMaxPixels: 14,
     onHover: (info) => {
       if (info.object) {
         setHoveredOriginPort(info.object as OriginPortStats);
@@ -514,8 +525,8 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
       return [158, 158, 158, 220]; // Gris
     },
     pickable: true,
-    radiusMinPixels: 8,
-    radiusMaxPixels: 50, // Aumentado para permitir el aumento cuando está hovered
+    radiusMinPixels: 4,
+    radiusMaxPixels: 28, // más contenido para evitar puntos gigantes en zoom alto
     onHover: (info) => {
       if (info.object) {
         setHoveredCountry(info.object as CountryStats);
@@ -527,6 +538,29 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
       getFillColor: [countryStats, hoveredCountry],
       getRadius: [countryStats, hoveredCountry]
     }
+  });
+
+  // Capa de posiciones AIS de buques activos (punto tipo "estrella" amarilla)
+  const activeVesselsLayer = new ScatterplotLayer<ActiveVessel>({
+    id: 'active-vessels-main',
+    data: activeVesselPoints,
+    getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
+    getRadius: () => 9000,
+    getFillColor: () => [250, 204, 21, 255], // amarillo intenso
+    pickable: true,
+    radiusMinPixels: 3,
+    radiusMaxPixels: 14,
+    stroked: true,
+    getLineWidth: () => 2,
+    lineWidthUnits: 'pixels',
+    getLineColor: () => [252, 211, 77, 255],
+    onHover: (info) => {
+      if (info.object) {
+        setHoveredVessel(info.object as ActiveVessel);
+      } else {
+        setHoveredVessel(null);
+      }
+    },
   });
 
   // No renderizar hasta que estemos en el cliente
@@ -615,6 +649,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
                   ]
                 : []),
               countriesLayer,
+              activeVesselsLayer,
             ]}
             onError={(error) => {
               if (error) {
@@ -649,7 +684,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
         )}
 
         {/* Tooltips */}
-        {hoveredOriginPort && (
+        {hoveredOriginPort && !hoveredVessel && (
           <div
             className="absolute top-4 left-4 z-10 max-w-[300px] rounded-lg border border-slate-800/60 bg-slate-950/90 p-4 text-slate-100 shadow-xl"
           >
@@ -684,7 +719,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
           </div>
         )}
 
-        {hoveredCountry && !hoveredOriginPort && (
+        {hoveredCountry && !hoveredOriginPort && !hoveredVessel && (
           <div
             className="absolute top-4 left-4 z-10 max-w-[420px] rounded-lg border border-slate-800/60 bg-slate-950/90 p-4 text-slate-100 shadow-xl"
           >
@@ -760,6 +795,73 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
           </div>
         )}
 
+        {/* Tooltip de buque activo (posición AIS en mapa principal) */}
+        {hoveredVessel && (
+          <div
+            className="absolute top-4 left-4 z-10 max-w-[320px] rounded-lg border border-slate-800/70 bg-slate-950/90 p-4 text-xs text-slate-100 shadow-xl"
+          >
+            <h3 className="mb-1 text-sm font-semibold text-yellow-200">
+              {hoveredVessel.vessel_name}
+            </h3>
+            {hoveredVessel.destination && (
+              <p className="mb-1 text-[11px] text-slate-300">
+                Destino:{' '}
+                <span className="font-medium text-sky-200">
+                  {hoveredVessel.destination}
+                </span>
+              </p>
+            )}
+            {hoveredVessel.etd && (
+              <p className="mb-1 text-[11px] text-slate-300">
+                Zarpe estimado (ETD):{' '}
+                <span className="font-medium text-slate-100">
+                  {new Date(hoveredVessel.etd).toLocaleString('es-CL', {
+                    timeZone: 'UTC',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </p>
+            )}
+            {hoveredVessel.eta && (
+              <p className="mb-1 text-[11px] text-slate-300">
+                Arribo estimado (ETA):{' '}
+                <span className="font-medium text-slate-100">
+                  {new Date(hoveredVessel.eta).toLocaleString('es-CL', {
+                    timeZone: 'UTC',
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </p>
+            )}
+            {hoveredVessel.last_position_at && (
+              <p className="mb-1 text-[11px] text-slate-400">
+                Última posición AIS:{' '}
+                {new Date(hoveredVessel.last_position_at).toLocaleString('es-CL')}
+              </p>
+            )}
+            <p className="mt-1 text-[11px] text-slate-300">
+              Bookings en curso:{' '}
+              <span className="font-semibold text-slate-100">
+                {hoveredVessel.bookings.length}
+              </span>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-300">
+              Contenedores:{' '}
+              <span className="font-semibold text-slate-100">
+                {hoveredVessel.containers.length}
+              </span>
+            </p>
+          </div>
+        )}
+
         {/* Leyenda */}
         <div className="absolute bottom-4 right-4 z-10 max-w-[220px] rounded-lg border border-slate-800/60 bg-slate-950/90 p-4 text-xs text-slate-100 shadow-xl">
           <h4 className="mb-2 text-sm font-semibold text-white">Leyenda</h4>
@@ -776,6 +878,10 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full border-2 border-slate-900 bg-red-600"></span>
                 <span>Puertos de salida (POL)</span>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full border border-yellow-300 bg-yellow-400"></span>
+                <span>Posición actual de buques (AIS)</span>
               </div>
             </div>
             <p className="mt-2 border-t border-slate-800/60 pt-2 text-[11px] text-slate-400">

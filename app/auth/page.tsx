@@ -218,7 +218,7 @@ const AuthPage = () => {
             {!isLogin && (
               <div className="space-y-2">
                 <label htmlFor="fullName" className="text-sm font-medium text-slate-200">
-                  Nombre completo
+                  Nombre / Exportadora
                 </label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />

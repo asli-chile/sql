@@ -8,19 +8,21 @@ import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
 import { UserProfileModal } from '@/components/UserProfileModal';
-import { 
-  Ship, 
-  Truck, 
-  LogOut, 
-  User as UserIcon, 
+import {
+  Ship,
+  Truck,
+  LogOut,
+  User as UserIcon,
   ArrowRight,
   Clock,
   FileText,
   Plus,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Globe,
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
+import type { ActiveVessel } from '@/types/vessels';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/AppFooter';
@@ -55,6 +57,10 @@ type RawRegistroStats = {
   pod?: string | null;
   shipper?: string | null;
   ejecutivo?: string | null;
+  booking?: string | null;
+  nave_inicial?: string | null;
+  etd?: string | null;
+  eta?: string | null;
 };
 
 const EMPTY_STATS: DashboardStats = {
@@ -70,6 +76,25 @@ const normalizeSeasonLabel = (value?: string | null): string => {
     return '';
   }
   return value.toString().replace(/^Temporada\s+/i, '').trim();
+};
+
+const normalizeToUpper = (value?: string | null): string => {
+  if (!value) {
+    return '';
+  }
+  return value.toString().trim().toUpperCase();
+};
+
+const parseVesselNameFromNaveInicial = (value?: string | null): string | null => {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(.+?)\s*\[.+\]$/);
+  if (match) {
+    return match[1].trim();
+  }
+  return trimmed || null;
 };
 
 const computeStatsForRecords = (records: RawRegistroStats[]): DashboardStats => {
@@ -158,6 +183,7 @@ export default function DashboardPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [rawRegistros, setRawRegistros] = useState<RawRegistroStats[]>([]);
   const [registrosParaMapa, setRegistrosParaMapa] = useState<Registro[]>([]);
+  const [activeVessels, setActiveVessels] = useState<ActiveVessel[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
   const [clienteOptions, setClienteOptions] = useState<string[]>([]);
   const [ejecutivoOptions, setEjecutivoOptions] = useState<string[]>([]);
@@ -278,6 +304,120 @@ export default function DashboardPage() {
     [filteredByAll]
   );
 
+  const now = new Date();
+  const CHILE_MAIN_PORT_KEYWORDS = ['VALPARAISO', 'SAN ANTONIO'];
+
+  type PendingChileVesselKpi = {
+    vesselName: string;
+    ports: Set<string>;
+    bookings: Set<string>;
+    etd?: string | null;
+    eta?: string | null;
+  };
+
+  const pendingChileKpi = useMemo(() => {
+    const vessels = new Map<string, PendingChileVesselKpi>();
+
+    filteredByAll.forEach((record) => {
+      const podNorm = normalizeToUpper(record.pod);
+      if (!podNorm) {
+        return;
+      }
+      const isChileMainPort = CHILE_MAIN_PORT_KEYWORDS.some((keyword) =>
+        podNorm.includes(keyword),
+      );
+      if (!isChileMainPort) {
+        return;
+      }
+
+      const estadoNorm = normalizeToUpper(record.estado);
+      if (estadoNorm === 'CANCELADO') {
+        return;
+      }
+
+      const etaDate = record.eta ? new Date(record.eta) : null;
+      if (etaDate && etaDate <= now) {
+        // Ya debería haber llegado, no lo consideramos pendiente de arribo.
+        return;
+      }
+
+      const vesselName = parseVesselNameFromNaveInicial(record.nave_inicial);
+      if (!vesselName) {
+        return;
+      }
+
+      let group = vessels.get(vesselName);
+      if (!group) {
+        const newGroup: PendingChileVesselKpi = {
+          vesselName,
+          ports: new Set<string>(),
+          bookings: new Set<string>(),
+          etd: record.etd ?? null,
+          eta: record.eta ?? null,
+        };
+        vessels.set(vesselName, newGroup);
+        group = newGroup;
+      }
+
+      const portsSet = group.ports;
+      const bookingsSet = group.bookings;
+
+      if (record.pod) {
+        portsSet.add(record.pod.trim());
+      }
+      if (record.booking) {
+        bookingsSet.add(record.booking.trim());
+      }
+
+      // Mantener ETD/ETA más cercana (simplemente la mínima por orden alfabético de string)
+      if (record.etd) {
+        if (!group.etd || record.etd < group.etd) {
+          group.etd = record.etd;
+        }
+      }
+      if (record.eta) {
+        if (!group.eta || record.eta < group.eta) {
+          group.eta = record.eta;
+        }
+      }
+    });
+
+    const vesselsList = Array.from(vessels.values());
+
+    vesselsList.sort((a, b) => a.vesselName.localeCompare(b.vesselName, 'es'));
+
+    const totalVessels = vesselsList.length;
+    const totalBookings = vesselsList.reduce(
+      (acc, vessel) => acc + vessel.bookings.size,
+      0,
+    );
+
+    return { totalVessels, totalBookings, vessels: vesselsList };
+  }, [filteredByAll, now]);
+
+  const inTransitBookingsCount = useMemo(() => {
+    const bookingSet = new Set<string>();
+
+    filteredByAll.forEach((record) => {
+      const estadoNorm = normalizeToUpper(record.estado);
+      if (estadoNorm === 'CANCELADO') {
+        return;
+      }
+
+      const etdDate = record.etd ? new Date(record.etd) : null;
+      const etaDate = record.eta ? new Date(record.eta) : null;
+
+      // Zarpe ya ocurrió y aún no llega al destino (ETA futura o nula)
+      if (etdDate && etdDate <= now && (!etaDate || etaDate > now)) {
+        if (record.booking) {
+          bookingSet.add(record.booking.trim());
+        }
+      }
+    });
+
+    return bookingSet.size;
+  }, [filteredByAll, now]);
+
   const filteredRegistrosParaMapa = useMemo(() => {
     return registrosParaMapa.filter((registro) => {
       if (selectedSeason && normalizeSeasonLabel(registro.temporada ?? '') !== selectedSeason) {
@@ -308,6 +448,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user) {
       loadStats();
+      void loadActiveVessels();
     }
   }, [user]);
 
@@ -362,7 +503,7 @@ export default function DashboardPage() {
 
       const { data: registros, error } = await supabase
         .from('registros')
-        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, ejecutivo, etd, eta, deposito, temporada')
+        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, ejecutivo, booking, nave_inicial, etd, eta, deposito, temporada')
         .is('deleted_at', null)
         .not('ref_asli', 'is', null);
 
@@ -378,6 +519,20 @@ export default function DashboardPage() {
       setRawRegistros(registrosList);
     } catch (error) {
       console.error('Error loading stats:', error);
+    }
+  };
+
+  const loadActiveVessels = async () => {
+    try {
+      const response = await fetch('/api/vessels/active');
+      if (!response.ok) {
+        return;
+      }
+      const payload = (await response.json()) as { vessels?: ActiveVessel[] } | ActiveVessel[];
+      const vessels = Array.isArray(payload) ? payload : payload.vessels ?? [];
+      setActiveVessels(vessels);
+    } catch (error) {
+      console.error('Error loading active vessels for main map:', error);
     }
   };
 
@@ -403,6 +558,16 @@ export default function DashboardPage() {
       hoverColor: 'hover:bg-blue-600',
       available: true,
       stats: displayedStats
+    },
+    {
+      id: 'dashboard/seguimiento',
+      title: 'Seguimiento de Buques',
+      description: 'Mapa AIS y estado de los buques activos',
+      icon: Globe,
+      color: 'bg-sky-500',
+      hoverColor: 'hover:bg-sky-600',
+      available: true,
+      stats: null
     },
     {
       id: 'transportes',
@@ -465,6 +630,7 @@ export default function DashboardPage() {
       title: 'Módulos',
       items: [
         { label: 'Embarques', id: 'registros', isActive: true },
+        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
         { label: 'Transportes', id: 'transportes', isActive: false },
         { label: 'Documentos', id: 'documentos', isActive: false },
       ],
@@ -640,6 +806,43 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+
+          {/* Espacios de trabajo (temporadas) en pantallas pequeñas */}
+          {seasonNavItems.length > 0 && (
+            <div className="lg:hidden border-t border-slate-800/60 bg-slate-950/80 px-4 pb-3 pt-2">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.28em] text-slate-500/80">
+                Espacios de trabajo
+              </p>
+              <div className="flex flex-wrap gap-2 pb-1">
+                {seasonNavItems.map((item) => (
+                  'counter' in item && (
+                    <button
+                      key={item.label}
+                      type="button"
+                      onClick={() => {
+                        if ('onClick' in item && typeof item.onClick === 'function') {
+                          item.onClick();
+                        }
+                      }}
+                      aria-pressed={item.isActive}
+                      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap border ${
+                        item.isActive
+                          ? 'border-sky-400/70 bg-sky-500/15 text-sky-100'
+                          : 'border-slate-700/70 bg-slate-900/70 text-slate-300'
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]}`}
+                      >
+                        {item.counter}
+                      </span>
+                    </button>
+                  )
+                ))}
+              </div>
+            </div>
+          )}
         </header>
 
         <main className="flex-1 overflow-y-auto px-6 pb-10 pt-8 space-y-10">
@@ -678,6 +881,136 @@ export default function DashboardPage() {
                   </button>
                 </div>
               )}
+            </div>
+          </section>
+
+          {/* KPIs de seguimiento de buques */}
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-800/60 bg-slate-950/70 p-5 shadow-lg shadow-slate-900/30">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500/80">
+                    Buques hacia Chile
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-100">
+                    Pendientes de arribo a Valparaíso / San Antonio
+                  </h3>
+                </div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sky-500/20 text-sky-300">
+                  <Ship className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-300">
+                <div className="rounded-xl bg-slate-900/70 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                    Buques
+                  </p>
+                  <p className="mt-1 text-xl font-semibold text-sky-300">
+                    {pendingChileKpi.totalVessels}
+                  </p>
+                </div>
+                <div className="rounded-xl bg-slate-900/70 p-3">
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                    Bookings
+                  </p>
+                  <p className="mt-1 text-xl font-semibold text-slate-100">
+                    {pendingChileKpi.totalBookings}
+                  </p>
+                </div>
+              </div>
+              {pendingChileKpi.vessels.length > 0 ? (
+                <div className="mt-4 space-y-2">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                    Buques en ruta a Chile
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {pendingChileKpi.vessels.map((vessel) => (
+                      <div
+                        key={vessel.vesselName}
+                        className="flex flex-col gap-1 rounded-xl border border-slate-800/70 bg-slate-900/70 px-3 py-2 text-[11px]"
+                      >
+                        <span className="font-semibold text-slate-100">
+                          {vessel.vesselName}
+                        </span>
+                        {vessel.ports.size > 0 && (
+                          <span className="text-slate-400">
+                            Puertos:{' '}
+                            <span className="font-medium text-slate-200">
+                              {Array.from(vessel.ports).join(' / ')}
+                            </span>
+                          </span>
+                        )}
+                        {vessel.etd && (
+                          <span className="text-slate-400">
+                            ETD:{' '}
+                            <span className="font-medium text-slate-200">
+                              {new Date(vessel.etd).toLocaleString('es-CL', {
+                                timeZone: 'UTC',
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                              })}
+                            </span>
+                          </span>
+                        )}
+                        {vessel.eta && (
+                          <span className="text-slate-400">
+                            ETA:{' '}
+                            <span className="font-medium text-slate-200">
+                              {new Date(vessel.eta).toLocaleString('es-CL', {
+                                timeZone: 'UTC',
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: '2-digit',
+                              })}
+                            </span>
+                          </span>
+                        )}
+                        {vessel.bookings.size > 0 && (
+                          <span className="text-slate-400">
+                            Bookings:{' '}
+                            <span className="font-medium text-slate-200">
+                              {Array.from(vessel.bookings).join(', ')}
+                            </span>
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 text-[11px] text-slate-500">
+                  No hay buques pendientes de arribo a Valparaíso o San Antonio con los
+                  filtros actuales.
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-800/60 bg-slate-950/70 p-5 shadow-lg shadow-slate-900/30">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500/80">
+                    Bookings en tránsito
+                  </p>
+                  <h3 className="mt-1 text-sm font-semibold text-slate-100">
+                    Zarpe realizado, sin arribo registrado
+                  </h3>
+                </div>
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-4 rounded-xl bg-slate-900/70 p-4 text-sm">
+                <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
+                  Bookings en ruta
+                </p>
+                <p className="mt-2 text-2xl font-semibold text-emerald-300">
+                  {inTransitBookingsCount}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Considera bookings cuyo ETD ya ocurrió y cuya ETA aún no se cumple.
+                </p>
+              </div>
             </div>
           </section>
 
@@ -751,7 +1084,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
-              <ShipmentsMap registros={filteredRegistrosParaMapa} />
+              <ShipmentsMap registros={filteredRegistrosParaMapa} activeVessels={activeVessels} />
             </div>
           </section>
 
