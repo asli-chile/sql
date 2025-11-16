@@ -167,6 +167,19 @@ export async function POST() {
         year_of_built: row.year_of_built ?? null,
         callsign: row.callsign ?? null,
         type_specific: row.type_specific ?? null,
+        deadweight: row.deadweight ?? null,
+        hull: row.hull ?? null,
+        builder: row.builder ?? null,
+        material: row.material ?? null,
+        place_of_build: row.place_of_build ?? null,
+        ballast_water: row.ballast_water ?? null,
+        crude_oil: row.crude_oil ?? null,
+        fresh_water: row.fresh_water ?? null,
+        gas: row.gas ?? null,
+        grain: row.grain ?? null,
+        bale: row.bale ?? null,
+        time_remaining: row.time_remaining ?? null,
+        teu: row.teu ?? null,
       });
     });
 
