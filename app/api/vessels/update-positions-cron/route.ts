@@ -54,21 +54,17 @@ export async function GET(request: Request) {
   // Verificar que la llamada viene de un cron job autorizado
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
+  const cronHeader = request.headers.get('x-vercel-cron');
 
-  // Si hay un CRON_SECRET configurado, validarlo
+  // Si hay un CRON_SECRET configurado, validarlo (seguridad opcional)
   if (cronSecret) {
     if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
-  }
-
-  // También verificar el header de Vercel Cron
-  const cronHeader = request.headers.get('x-vercel-cron');
-  if (!cronHeader && !cronSecret) {
-    // Si no es un cron de Vercel y no hay secret, permitir solo en desarrollo
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-    }
+  } else {
+    // Si NO hay CRON_SECRET configurado, permitir llamadas
+    // (esto permite usar servicios externos sin configuración adicional)
+    // NOTA: Para mayor seguridad, configura CRON_SECRET en Vercel
   }
 
   try {
