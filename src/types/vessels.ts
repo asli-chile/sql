@@ -32,6 +32,28 @@ export type VesselPosition = {
   atd_utc: string | null;
   last_port: string | null;
   unlocode_lastport: string | null;
+  distance: string | null;
+  predicted_eta: string | null;
+  current_draught: string | null;
+  length: string | null;
+  beam: string | null;
+  gross_tonnage: string | null;
+  year_of_built: string | null;
+  callsign: string | null;
+  type_specific: string | null;
+  deadweight: string | null;
+  hull: string | null;
+  builder: string | null;
+  material: string | null;
+  place_of_build: string | null;
+  ballast_water: string | null;
+  crude_oil: string | null;
+  fresh_water: string | null;
+  gas: string | null;
+  grain: string | null;
+  bale: string | null;
+  time_remaining: string | null;
+  teu: string | null;
 };
 
 export type VesselTrackPoint = {
