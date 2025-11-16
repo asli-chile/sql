@@ -128,6 +128,10 @@ Después de configurar el cron externo:
 
 ## ⚠️ Importante
 
+- **Variables de entorno requeridas**: Antes de configurar el cron externo, asegúrate de tener configuradas en Vercel:
+  - `VESSEL_API_BASE_URL` = `https://datadocked.com/api`
+  - `VESSEL_API_KEY` = tu API key de DataDocked
+  - Ver: `docs/CONFIGURAR-VARIABLES-API-AIS.md` para instrucciones detalladas
 - El endpoint está configurado para aceptar llamadas de servicios externos
 - Si configuraste `CRON_SECRET`, asegúrate de incluirlo en el header
 - El cron job se ejecutará todos los días a las 8:30 UTC
