@@ -148,14 +148,6 @@ export default function TransportesPage() {
     });
   }, [records, searchTerm]);
 
-  const stats = useMemo(() => {
-    const total = records.length;
-    const conConductor = records.filter((r) => r.conductor).length;
-    const conPatentes = records.filter((r) => r.patentes).length;
-    const late = records.filter((r) => r.late).length;
-    return { total, conConductor, conPatentes, late };
-  }, [records]);
-
   if (loadingUser) {
     return <LoadingScreen message="Cargando transportes..." />;
   }
@@ -168,176 +160,145 @@ export default function TransportesPage() {
     <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-          <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => router.push('/dashboard')}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 transition-colors"
-                aria-label="Volver al dashboard"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500/80 sm:text-[11px] sm:tracking-[0.35em]">
-                  Coordinación y seguimiento
-                </p>
-                <h1 className="text-lg font-semibold text-white sm:text-xl md:text-2xl flex items-center gap-2">
-                  <Truck className="h-5 w-5 sm:h-6 sm:w-6" />
-                  Transportes Terrestres
-                </h1>
-                <p className="text-[11px] text-slate-400 sm:text-xs md:text-sm">
-                  Registro y coordinación de transportes de contenedores y mercancías
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={reload}
-                disabled={isLoading}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-sky-400/60 hover:text-sky-100 sm:px-4 sm:py-2 sm:text-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <RefreshCcw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                <span className="whitespace-nowrap">Actualizar</span>
-              </button>
-              {canAdd && (
+          <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-6">
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-full border border-sky-500/60 bg-sky-500/10 px-3 py-1.5 text-[11px] font-semibold text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 sm:px-4 sm:py-2 sm:text-xs transition-colors"
+                  onClick={() => router.push('/dashboard')}
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 transition-colors"
+                  aria-label="Volver al dashboard"
                 >
-                  <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="whitespace-nowrap">Nuevo Transporte</span>
+                  <ArrowLeft className="h-4 w-4" />
                 </button>
-              )}
+                <div className="space-y-0.5">
+                  <p className="text-[9px] uppercase tracking-[0.25em] text-slate-500/80">Módulo Operativo</p>
+                  <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-white flex items-center gap-2">
+                    <Truck className="h-4 w-4 sm:h-5 sm:w-5" />
+                    Transportes Terrestres
+                  </h1>
+                  <p className="hidden text-[11px] text-slate-400 md:block">
+                    Registro y coordinación de transportes de contenedores y mercancías
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={reload}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs text-slate-300 hover:border-sky-400/60 hover:text-sky-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Actualizar</span>
+                </button>
+                {canAdd && (
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-sky-500/60 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-200 hover:border-sky-400/80 hover:bg-sky-500/20 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Nuevo Transporte</span>
+                    <span className="sm:hidden">Nuevo</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-3 pb-6 pt-4 space-y-4 sm:px-6 sm:pb-10 sm:pt-6 sm:space-y-6">
-          {/* Estadísticas */}
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <div className="rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:rounded-2xl sm:p-4">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px]">
-                Total
-              </p>
-              <p className="mt-1 text-lg font-semibold text-slate-100 sm:text-xl">
-                {stats.total}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:rounded-2xl sm:p-4">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px]">
-                Con Conductor
-              </p>
-              <p className="mt-1 text-lg font-semibold text-sky-300 sm:text-xl">
-                {stats.conConductor}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:rounded-2xl sm:p-4">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px]">
-                Con Patentes
-              </p>
-              <p className="mt-1 text-lg font-semibold text-emerald-300 sm:text-xl">
-                {stats.conPatentes}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:rounded-2xl sm:p-4">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px]">
-                Late
-              </p>
-              <p className="mt-1 text-lg font-semibold text-rose-300 sm:text-xl">
-                {stats.late}
-              </p>
-            </div>
-          </section>
-
-          {/* Búsqueda y tabla */}
-          <section className="space-y-3 rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:space-y-4 sm:rounded-2xl sm:p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
-                  Registros de Transporte
-                </p>
-                <p className="text-xs font-semibold text-slate-100 sm:text-sm">
-                  {filteredRecords.length} de {records.length} registros
-                </p>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+          <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
+            {/* Búsqueda */}
+            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20 p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Búsqueda</p>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {filteredRecords.length} de {records.length} registros
+                  </p>
+                </div>
+                <div className="relative w-full sm:max-w-md">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    placeholder="Buscar por booking, contenedor, conductor, patentes..."
+                    className="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-9 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  />
+                </div>
               </div>
-              <div className="relative w-full sm:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 sm:h-4 sm:w-4" />
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Buscar por booking, contenedor, conductor, patentes..."
-                  className="w-full rounded-full border border-slate-800 bg-slate-950/80 px-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:px-9 sm:py-2 sm:text-sm"
-                />
-              </div>
-            </div>
+            </section>
 
-            {/* Tabla con scroll interno */}
-            <div className="max-h-[60vh] overflow-y-auto overflow-x-auto rounded-lg border border-slate-800/60">
-              <table className="min-w-full divide-y divide-slate-800/60">
-                <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm">
-                  <tr>
-                    {transportesColumns.map((column) => (
-                      <th
-                        key={column.header}
-                        scope="col"
-                        className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400 sm:px-4 sm:py-3 sm:text-xs"
-                      >
-                        {column.header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 bg-slate-950/50">
-                  {isLoading ? (
-                    <tr>
-                      <td
-                        colSpan={transportesColumns.length}
-                        className="px-3 py-8 text-center text-sm text-slate-400 sm:px-4"
-                      >
-                        <div className="flex items-center justify-center gap-2">
-                          <RefreshCcw className="h-4 w-4 animate-spin" />
-                          <span>Cargando transportes...</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : filteredRecords.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={transportesColumns.length}
-                        className="px-3 py-8 text-center text-sm text-slate-400 sm:px-4"
-                      >
-                        {searchTerm
-                          ? 'No se encontraron registros que coincidan con la búsqueda.'
-                          : 'No hay registros de transporte disponibles.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRecords.map((item) => (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-slate-900/50 transition-colors"
-                      >
+            {/* Tabla principal */}
+            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
+              <div className="overflow-x-auto">
+                <div className="min-w-full px-2 pb-4 md:min-w-[1400px]">
+                  <table className="min-w-full divide-y divide-slate-800/60">
+                    <thead className="bg-slate-900/50">
+                      <tr>
                         {transportesColumns.map((column) => (
-                          <td
-                            key={`${item.id}-${column.header}`}
-                            className="whitespace-nowrap px-3 py-2 text-xs text-slate-200 sm:px-4 sm:py-3 sm:text-sm"
+                          <th
+                            key={column.header}
+                            scope="col"
+                            className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400"
                           >
-                            {column.render ? column.render(item) : formatValue(item, column.key)}
-                          </td>
+                            {column.header}
+                          </th>
                         ))}
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 bg-slate-950/50">
+                      {isLoading ? (
+                        <tr>
+                          <td
+                            colSpan={transportesColumns.length}
+                            className="px-3 py-8 text-center text-sm text-slate-400"
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              <RefreshCcw className="h-4 w-4 animate-spin" />
+                              <span>Cargando transportes...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : filteredRecords.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={transportesColumns.length}
+                            className="px-3 py-8 text-center text-sm text-slate-400"
+                          >
+                            {searchTerm
+                              ? 'No se encontraron registros que coincidan con la búsqueda.'
+                              : 'No hay registros de transporte disponibles.'}
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRecords.map((item) => (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-slate-900/50 transition-colors"
+                          >
+                            {transportesColumns.map((column) => (
+                              <td
+                                key={`${item.id}-${column.header}`}
+                                className="whitespace-nowrap px-3 py-3 text-sm text-slate-200"
+                              >
+                                {column.render ? column.render(item) : formatValue(item, column.key)}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
 
-          <AppFooter className="mt-4" />
+            <AppFooter className="mt-6" />
+          </div>
         </main>
 
         {/* Modal para agregar transporte */}
