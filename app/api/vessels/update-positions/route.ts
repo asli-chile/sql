@@ -234,8 +234,8 @@ export async function POST() {
         const { error: insertError } = await supabase.from('vessel_positions').insert({
           vessel_name: vessel.vessel_name,
           // Guardar IMO y MMSI de la respuesta de la API (si vienen)
-          imo: aisResult.imo ?? existing?.imo ?? null,
-          mmsi: aisResult.mmsi ?? existing?.mmsi ?? null,
+          imo: aisResult.imo ?? null,
+          mmsi: aisResult.mmsi ?? null,
           last_lat: aisResult.lat,
           last_lon: aisResult.lon,
           last_position_at: aisResult.positionTimestamp,

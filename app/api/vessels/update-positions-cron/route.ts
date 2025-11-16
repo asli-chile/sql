@@ -249,8 +249,8 @@ export async function GET(request: Request) {
       if (!existing) {
         const { error: insertError } = await supabase.from('vessel_positions').insert({
           vessel_name: vessel.vessel_name,
-          imo: aisResult.imo ?? existing?.imo ?? null,
-          mmsi: aisResult.mmsi ?? existing?.mmsi ?? null,
+          imo: aisResult.imo ?? null,
+          mmsi: aisResult.mmsi ?? null,
           last_lat: aisResult.lat,
           last_lon: aisResult.lon,
           last_position_at: aisResult.positionTimestamp,
