@@ -23,6 +23,7 @@ import {
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { AppFooter } from '@/components/AppFooter';
 
 // Importar el mapa dinámicamente para evitar problemas con SSR
 const ShipmentsMap = dynamic(() => import('@/components/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
@@ -570,7 +571,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.4em] text-slate-500/80">Panel General</p>
-                <h1 className="text-2xl font-semibold text-white">Embarques</h1>
+                <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
                 <p className="text-sm text-slate-400">Coordinación integral de embarques y transportes</p>
               </div>
             </div>
@@ -753,6 +754,8 @@ export default function DashboardPage() {
               <ShipmentsMap registros={filteredRegistrosParaMapa} />
             </div>
           </section>
+
+          <AppFooter />
         </main>
       </div>
 

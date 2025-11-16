@@ -43,7 +43,7 @@ interface ShipmentsMapProps {
 const INITIAL_VIEW_STATE = {
   longitude: -70.0,
   latitude: -30.0,
-  zoom: 3,
+  zoom: 1.5,
   pitch: 0, // Vista desde arriba (plano)
   bearing: 0
 };
@@ -118,7 +118,7 @@ export function ShipmentsMap({ registros, className = '' }: ShipmentsMapProps) {
         <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Zoom</span>
         <input
           type="range"
-          min={2}
+          min={1}
           max={8}
           step={0.1}
           value={viewState.zoom}

@@ -27,11 +27,11 @@ import { logHistoryEntry } from '@/lib/history';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2 } from 'lucide-react';
-import { QRGenerator } from '@/components/QRGenerator';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/FacturaViewer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
+import { AppFooter } from '@/components/AppFooter';
 
 const normalizeTemporada = (value?: string | null): string => {
   if (!value) {
@@ -1426,7 +1426,6 @@ const handleRealtimeEvent = useCallback(
       title: 'Principal',
       items: [
         { label: 'Dashboard', id: '/dashboard' },
-        { label: 'Facturas', id: '/facturas' },
       ],
     },
     {
@@ -1522,28 +1521,27 @@ const handleRealtimeEvent = useCallback(
                   <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-white">Registros de Embarques</h1>
                   <p className="hidden text-[11px] text-slate-400 md:block">Gestión de contenedores y embarques</p>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-1">
+                <div className="flex flex-wrap items-center justify-end gap-2">
                   <div className="flex items-center gap-1">
-                    <QRGenerator />
                   </div>
-                  <div className="flex items-center gap-1 rounded-full border border-slate-800/70 px-2 py-1 text-[11px] text-slate-300">
-                    <UserIcon className="h-3 w-3" />
-                    <span className="max-w-[140px] truncate text-xs sm:text-[11px]">
+                  <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs text-slate-300">
+                    <UserIcon className="h-4 w-4" />
+                    <span className="max-w-[160px] truncate text-[11px] sm:text-xs">
                       {currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}
                     </span>
                   </div>
                   <button
                     onClick={() => setIsTrashModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-slate-800/70 px-2 py-1 text-[11px] text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
                   >
-                    <Trash2 className="h-3 w-3" />
+                    <Trash2 className="h-4 w-4" />
                     <span className="hidden 2xl:inline">Papelera</span>
                   </button>
                   <button
                     onClick={handleLogout}
-                    className="inline-flex items-center justify-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
+                    className="inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-3 py-1.5 text-xs text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
                   >
-                    <LogOut className="h-3 w-3" />
+                    <LogOut className="h-4 w-4" />
                     <span className="hidden 2xl:inline">Salir</span>
                   </button>
                 </div>
@@ -1685,6 +1683,7 @@ const handleRealtimeEvent = useCallback(
                 </div>
               </div>
             </section>
+            <AppFooter className="mt-6" />
             </div>
           </main>
         </div>
