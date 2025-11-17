@@ -97,46 +97,12 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
   const [hoveredCountry, setHoveredCountry] = useState<CountryStats | null>(null);
   const [hoveredOriginPort, setHoveredOriginPort] = useState<OriginPortStats | null>(null);
   const [hoveredVessel, setHoveredVessel] = useState<ActiveVessel | null>(null);
-  const [vista, setVista] = useState<VistaMapa>('puerto');
+  const vista: VistaMapa = 'puerto'; // Vista fija por puerto
   const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
   const [isMounted, setIsMounted] = useState(false);
   const [webglSupported, setWebglSupported] = useState(false);
   const [deckGlReady, setDeckGlReady] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
-
-  const controls = (
-    <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-800/60 bg-slate-950/70 px-4 py-3 shadow-lg shadow-slate-950/40">
-      <div className="flex flex-col gap-1 text-xs text-slate-400">
-        <span className="font-semibold uppercase tracking-[0.2em] text-slate-500">Vista</span>
-        <select
-          value={vista}
-          onChange={(e) => setVista(e.target.value as VistaMapa)}
-          className="rounded-lg border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-        >
-          <option value="puerto">Por Puerto</option>
-          <option value="pais">Por País</option>
-        </select>
-      </div>
-      <div className="flex flex-1 min-w-[220px] items-center gap-3">
-        <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Zoom</span>
-        <input
-          type="range"
-          min={1}
-          max={8}
-          step={0.1}
-          value={viewState.zoom}
-          onChange={(event) => {
-            const zoom = Number(event.target.value);
-            setViewState((prev) => ({ ...prev, zoom }));
-          }}
-          className="flex-1 accent-sky-500"
-        />
-        <span className="w-12 text-right text-xs font-semibold text-slate-400">
-          {viewState.zoom.toFixed(1)}x
-        </span>
-      </div>
-    </div>
-  );
 
   // Asegurar que solo se renderice en el cliente y verificar WebGL
   React.useEffect(() => {
@@ -232,7 +198,7 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
     }));
   }, [registros]);
 
-  // Agrupar registros según la vista seleccionada (por puerto o por país)
+  // Agrupar registros por puerto (vista fija por puerto)
   const countryStats = useMemo(() => {
     const portMap = new Map<string, CountryStats>();
 
@@ -242,104 +208,10 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
       // Normalizar nombre del puerto primero
       const portName = registro.pod.toUpperCase().trim();
       
-      // Intentar obtener el país del puerto
+      // Intentar obtener el país del puerto (para fallback de coordenadas)
       const country = getCountryFromPort(registro.pod);
       
-      // Si la vista es por país, necesitamos el país
-      if (vista === 'pais') {
-        if (!country) {
-          if (IS_DEV) {
-            console.warn(`⚠️ País no encontrado para puerto "${registro.pod}" - no se mostrará en vista por país`);
-          }
-          return;
-        }
-      }
-      
-      // Si la vista es por país, agrupar por país
-      if (vista === 'pais') {
-        if (!country) return; // Asegurar que country no sea null
-        const countryCoords = getCountryCoordinates(country);
-        if (!countryCoords) return;
-        
-        const key = country;
-        let stats = portMap.get(key);
-        if (!stats) {
-        stats = {
-          country,
-          coordinates: countryCoords,
-          ports: {},
-          totalConfirmados: 0,
-          totalPendientes: 0,
-          totalCancelados: 0,
-          totalEtdCumplida: 0,
-          totalEtaCumplida: 0,
-          totalEtdPendiente: 0,
-          totalEtaPendiente: 0,
-          totalGeneral: 0,
-        };
-          portMap.set(key, stats);
-        }
-        
-        // Inicializar estadísticas del puerto si no existen
-        if (!stats.ports[portName]) {
-          stats.ports[portName] = {
-            confirmados: 0,
-            pendientes: 0,
-            cancelados: 0,
-            etdCumplida: 0,
-            etaCumplida: 0,
-            etdPendiente: 0,
-            etaPendiente: 0,
-            total: 0,
-          };
-        }
-        
-        const portStats = stats.ports[portName];
-        portStats.total++;
-        
-        // Verificar fechas
-        const ahora = new Date();
-        if (registro.etd) {
-          const etdDate = new Date(registro.etd);
-          if (etdDate < ahora) {
-            portStats.etdCumplida++;
-            stats.totalEtdCumplida++;
-          } else {
-            portStats.etdPendiente++;
-            stats.totalEtdPendiente++;
-          }
-        }
-        
-        if (registro.eta) {
-          const etaDate = new Date(registro.eta);
-          if (etaDate < ahora) {
-            portStats.etaCumplida++;
-            stats.totalEtaCumplida++;
-          } else {
-            portStats.etaPendiente++;
-            stats.totalEtaPendiente++;
-          }
-        }
-        
-        switch (registro.estado) {
-          case 'CONFIRMADO':
-            portStats.confirmados++;
-            stats.totalConfirmados++;
-            stats.totalGeneral++;
-            break;
-          case 'CANCELADO':
-            portStats.cancelados++;
-            stats.totalCancelados++;
-            stats.totalGeneral++;
-            break;
-          case 'PENDIENTE':
-            break;
-        }
-        
-        return;
-      }
-      
-      // Si la vista es por puerto, cada puerto tiene su propia ubicación
+      // Cada puerto tiene su propia ubicación
       const portCoords = getPortCoordinates(registro.pod);
       
       // Si no encontramos coordenadas del puerto, intentar usar coordenadas del país como fallback
@@ -362,16 +234,13 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
         return;
       }
 
-      // Usar el puerto como clave única (permite múltiples puntos por país)
-      // Para la vista por puerto, usamos el nombre del puerto como clave principal
-      const key = vista === 'puerto' ? portName : (country ? `${country}-${portName}` : portName);
+      // Usar el puerto como clave única (vista siempre por puerto)
+      const key = portName;
       
       // Obtener o crear estadísticas del puerto
       let stats = portMap.get(key);
       if (!stats) {
-        const displayName = vista === 'puerto' 
-          ? portName 
-          : (country ? `${country} - ${portName}` : portName);
+        const displayName = portName;
         
         stats = {
           country: displayName,
@@ -567,7 +436,6 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
   if (!isMounted) {
     return (
       <div className={`space-y-4 ${className}`}>
-        {controls}
         <div className="relative h-[600px] w-full rounded-2xl border border-slate-800/60 bg-slate-950/60">
           <div className="flex h-full items-center justify-center rounded-2xl bg-slate-950/60">
             <div className="text-center">
@@ -584,7 +452,6 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
   if (!webglSupported) {
     return (
       <div className={`space-y-4 ${className}`}>
-        {controls}
         <div className="relative h-[600px] w-full rounded-2xl border border-slate-800/60 bg-slate-950/60">
           <div className="flex h-full items-center justify-center rounded-2xl bg-slate-950/60">
             <div className="text-center p-6">
@@ -609,7 +476,6 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
 
   return (
     <div className={`space-y-4 ${className}`}>
-      {controls}
       <div
         ref={containerRef}
         className="relative h-[600px] w-full overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-950/60"
@@ -619,11 +485,14 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             initialViewState={INITIAL_VIEW_STATE}
             viewState={viewState}
             controller={{
-              scrollZoom: false,
+              scrollZoom: true,
               dragPan: true,
               dragRotate: false,
               keyboard: true,
-              doubleClickZoom: false,
+              doubleClickZoom: true,
+              touchZoom: true,
+              touchRotate: false,
+              inertia: true,
             }}
             onViewStateChange={({ viewState: nextViewState }) => {
               setViewState(nextViewState as typeof viewState);
@@ -636,14 +505,14 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
                       id: 'country-highlight',
                       data: [hoveredCountry],
                       getPosition: (d: CountryStats) => d.coordinates,
-                      getRadius: vista === 'pais' ? 200000 : 80000,
+                      getRadius: 80000,
                       getFillColor: [0, 188, 212, 50],
                       pickable: false,
                       radiusMinPixels: 0,
                       radiusMaxPixels: 1000,
                       updateTriggers: {
                         getPosition: [hoveredCountry],
-                        getRadius: [vista],
+                        getRadius: [],
                       },
                     }),
                   ]
@@ -664,9 +533,10 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             }}
           >
             <MaplibreMap
-              mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+              mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
               style={{ width: '100%', height: '100%' }}
               reuseMaps={true}
+              scrollZoom={true}
               onError={(error) => {
                 if (error) {
                   console.error('Error de MapLibre:', error);

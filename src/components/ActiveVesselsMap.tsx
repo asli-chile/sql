@@ -145,8 +145,8 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     getRadius: () => 9000,
     getFillColor: (vessel) =>
       activeVessel && vessel.vessel_name === activeVessel.vessel_name
-        ? [56, 189, 248, 255] // cyan brillante para seleccionado
-        : [56, 189, 248, 180], // cyan más suave para el resto
+        ? [37, 99, 235, 255] // azul más oscuro para seleccionado (mejor contraste en mapa claro)
+        : [59, 130, 246, 220], // azul medio para el resto (mejor visibilidad en mapa claro)
     pickable: true,
     radiusMinPixels: 3,
     radiusMaxPixels: 14,
@@ -178,7 +178,7 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     getPath: (feature) => feature.path,
     getWidth: () => 3,
     widthUnits: 'pixels',
-    getColor: () => [148, 163, 184, 200], // gris azulado
+    getColor: () => [30, 64, 175, 220], // azul oscuro para mejor contraste en mapa claro
     rounded: true,
     capRounded: true,
     jointRounded: true,
@@ -194,7 +194,7 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     getPath: (feature) => feature.path,
     getWidth: () => 2,
     widthUnits: 'pixels',
-    getColor: () => [56, 189, 248, 150], // cyan más suave para hover
+    getColor: () => [59, 130, 246, 200], // azul más visible para hover en mapa claro
     rounded: true,
     capRounded: true,
     jointRounded: true,
@@ -211,6 +211,9 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
           dragRotate: false,
           keyboard: true,
           doubleClickZoom: true,
+          touchZoom: true,
+          touchRotate: false,
+          inertia: true,
         }}
         onViewStateChange={({ viewState: nextViewState }) => {
           setViewState(nextViewState as ViewState);
@@ -218,29 +221,30 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
         layers={[trackLayer, hoverTrackLayer, vesselsLayer]}
       >
         <MaplibreMap
-          mapStyle="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json"
+          mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
           style={{ width: '100%', height: '100%' }}
           reuseMaps
+          scrollZoom={true}
         />
       </DeckGL>
 
       {hoveredVessel && (
-        <div className="absolute top-4 left-4 z-10 max-w-xs rounded-xl border border-slate-800/70 bg-slate-950/90 p-4 text-xs text-slate-100 shadow-xl">
-          <h3 className="mb-1 text-sm font-semibold text-slate-50">
+        <div className="absolute top-4 left-4 z-10 max-w-xs rounded-xl border border-slate-300/70 bg-white/95 backdrop-blur-sm p-4 text-xs text-slate-800 shadow-xl">
+          <h3 className="mb-1 text-sm font-semibold text-slate-900">
             {hoveredVessel.vessel_name}
           </h3>
           {hoveredVessel.destination && (
-            <p className="mb-1 text-[11px] text-slate-300">
+            <p className="mb-1 text-[11px] text-slate-600">
               Destino:{' '}
-              <span className="font-medium text-sky-200">
+              <span className="font-medium text-sky-600">
                 {hoveredVessel.destination}
               </span>
             </p>
           )}
           {hoveredVessel.etd && (
-            <p className="mb-1 text-[11px] text-slate-300">
+            <p className="mb-1 text-[11px] text-slate-600">
               Zarpe estimado (ETD):{' '}
-              <span className="font-medium text-slate-100">
+              <span className="font-medium text-slate-800">
                 {new Date(hoveredVessel.etd).toLocaleString('es-CL', {
                   timeZone: 'UTC',
                   day: '2-digit',
@@ -253,9 +257,9 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
             </p>
           )}
           {hoveredVessel.eta && (
-            <p className="mb-1 text-[11px] text-slate-300">
+            <p className="mb-1 text-[11px] text-slate-600">
               Arribo estimado (ETA):{' '}
-              <span className="font-medium text-slate-100">
+              <span className="font-medium text-slate-800">
                 {new Date(hoveredVessel.eta).toLocaleString('es-CL', {
                   timeZone: 'UTC',
                   day: '2-digit',
@@ -268,31 +272,31 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
             </p>
           )}
           {hoveredVessel.last_position_at && (
-            <p className="mb-1 text-[11px] text-slate-400">
+            <p className="mb-1 text-[11px] text-slate-500">
               Última posición:{' '}
               {new Date(hoveredVessel.last_position_at).toLocaleString('es-CL')}
             </p>
           )}
-          <p className="mt-1 text-[11px] text-slate-300">
+          <p className="mt-1 text-[11px] text-slate-600">
             Bookings:{' '}
-            <span className="font-semibold text-slate-100">
+            <span className="font-semibold text-slate-800">
               {hoveredVessel.bookings.length}
             </span>
           </p>
           {hoveredVessel.bookings.length > 0 && (
-            <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">
+            <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">
               {hoveredVessel.bookings.slice(0, 5).join(', ')}
               {hoveredVessel.bookings.length > 5 && '…'}
             </p>
           )}
-          <p className="mt-1 text-[11px] text-slate-300">
+          <p className="mt-1 text-[11px] text-slate-600">
             Contenedores:{' '}
-            <span className="font-semibold text-slate-100">
+            <span className="font-semibold text-slate-800">
               {hoveredVessel.containers.length}
             </span>
           </p>
           {hoveredVessel.containers.length > 0 && (
-            <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">
+            <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">
               {hoveredVessel.containers.slice(0, 5).join(', ')}
               {hoveredVessel.containers.length > 5 && '…'}
             </p>
