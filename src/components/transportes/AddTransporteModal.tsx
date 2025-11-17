@@ -72,6 +72,8 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
   const [form, setForm] = useState<FormState>(initialState);
   const [isSaving, setIsSaving] = useState(false);
   const [catalogs, setCatalogs] = useState<Record<string, string[]>>({});
+  const [searchValue, setSearchValue] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
   const { success, error } = useToast();
 
   useEffect(() => {
@@ -109,8 +111,94 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
     }));
   };
 
+  const handleSearchRegistro = async () => {
+    if (!searchValue.trim()) {
+      error('Por favor ingresa un REF ASLI, Booking o Contenedor');
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const supabase = createClient();
+      const searchTerm = searchValue.trim().toUpperCase();
+
+      // Buscar por ref_asli, booking o contenedor
+      const { data, error: searchError } = await supabase
+        .from('registros')
+        .select('*')
+        .or(`ref_asli.ilike.%${searchTerm}%,booking.ilike.%${searchTerm}%,contenedor.ilike.%${searchTerm}%`)
+        .is('deleted_at', null)
+        .limit(1);
+
+      if (searchError) {
+        throw searchError;
+      }
+
+      if (!data || data.length === 0) {
+        error('No se encontró ningún registro con ese REF ASLI, Booking o Contenedor');
+        setIsSearching(false);
+        return;
+      }
+
+      const registro = data[0];
+
+      // Mapear los datos del registro al formulario de transporte
+      const contenedorValue = Array.isArray(registro.contenedor) 
+        ? registro.contenedor[0] || registro.contenedor.join(' ')
+        : registro.contenedor || '';
+
+      const formatDate = (date: string | null) => {
+        if (!date) return '';
+        try {
+          const d = new Date(date);
+          return d.toISOString().split('T')[0];
+        } catch {
+          return '';
+        }
+      };
+
+      setForm({
+        booking: registro.booking || '',
+        contenedor: contenedorValue,
+        nave: registro.nave_inicial || '',
+        naviera: registro.naviera || '',
+        especie: registro.especie || '',
+        temperatura: registro.temperatura || null,
+        pol: registro.pol || '',
+        pod: registro.pod || '',
+        deposito: registro.deposito || '',
+        stacking: formatDate(registro.ingreso_stacking),
+        cut_off: formatDate(registro.etd),
+        // Mantener los valores existentes para campos que no se mapean
+        semana: form.semana,
+        exportacion: form.exportacion,
+        planta: form.planta,
+        late: form.late || false,
+        sello: form.sello,
+        tara: form.tara,
+        vent: form.vent,
+        fecha_planta: form.fecha_planta,
+        guia_despacho: form.guia_despacho,
+        transportes: form.transportes,
+        conductor: form.conductor,
+        rut: form.rut,
+        fono: form.fono,
+        patentes: form.patentes,
+      });
+
+      success(`Datos cargados desde registro ${registro.ref_asli || 'encontrado'}`);
+      setSearchValue('');
+    } catch (err: any) {
+      console.error('Error buscando registro:', err);
+      error('Error al buscar el registro');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const resetAndClose = () => {
     setForm(initialState);
+    setSearchValue('');
     onClose();
   };
 
@@ -122,9 +210,10 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
       success('Registro de transporte creado correctamente.');
       resetAndClose();
       onSuccess();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating transporte:', err);
-      error('No se pudo crear el registro de transporte.');
+      const errorMessage = err?.message || err?.error?.message || 'No se pudo crear el registro de transporte.';
+      error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -154,6 +243,40 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
         </div>
 
         <form onSubmit={handleSubmit} className="max-h-[70vh] overflow-y-auto px-6 py-4 space-y-6">
+          {/* Campo de búsqueda */}
+          <div className="rounded-lg border-2 border-sky-500/50 bg-sky-500/10 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-sky-200">Buscar por REF ASLI, Booking o Contenedor</span>
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSearchRegistro();
+                  }
+                }}
+                placeholder="Ej: A0001, MSCU1234567, CONT123456"
+                className="flex-1 rounded-lg border border-sky-400/50 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+                disabled={isSearching}
+              />
+              <button
+                type="button"
+                onClick={handleSearchRegistro}
+                disabled={isSearching || !searchValue.trim()}
+                className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-sky-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSearching ? 'Buscando...' : 'Buscar y Rellenar'}
+              </button>
+            </div>
+            <p className="text-xs text-sky-300/80">
+              Ingresa un REF ASLI, Booking o Contenedor para rellenar automáticamente los campos del formulario
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-medium text-gray-700 dark:text-gray-300">Semana</span>

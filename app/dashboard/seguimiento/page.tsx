@@ -287,9 +287,9 @@ const SeguimientoPage = () => {
                 </p>
               </div>
               <div className="text-left text-[10px] text-slate-500 sm:text-right sm:text-[11px]">
-                <p className="whitespace-nowrap">Para proteger los créditos de la API AIS:</p>
-                <p className="whitespace-nowrap">· Máx. 1 llamada cada 24 horas por buque activo.</p>
-                <p className="whitespace-nowrap">· El mapa usa siempre la última posición guardada en Supabase.</p>
+                <p className="whitespace-nowrap">Datos basados en transmisiones AIS satelitales.</p>
+                <p className="whitespace-nowrap">La ubicacion de las naves se actualiza cada dia a las 7:00 am hora de Chile.</p>
+                <p className="whitespace-nowrap">El mapa usa siempre la última posición guardada en la base de datos.</p>
               </div>
             </div>
 

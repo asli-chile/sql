@@ -50,7 +50,48 @@ export async function fetchTransportes(): Promise<TransporteRecord[]> {
 
 export async function createTransporte(payload: Partial<TransporteRecord>): Promise<void> {
   const supabase = createClient();
-  const { error } = await supabase.from('transportes').insert(payload);
+  
+  // Preparar los datos para insertar, convirtiendo strings vacíos a null y fechas correctamente
+  const insertData: any = { ...payload };
+  
+  // Convertir strings vacíos a null para campos opcionales
+  Object.keys(insertData).forEach((key) => {
+    if (insertData[key] === '' || insertData[key] === undefined) {
+      insertData[key] = null;
+    }
+  });
+  
+  // Convertir fechas de string a formato correcto
+  const dateFields = ['stacking', 'cut_off', 'fecha_planta'];
+  dateFields.forEach((field) => {
+    if (insertData[field] && typeof insertData[field] === 'string') {
+      const dateStr = insertData[field].trim();
+      if (dateStr === '') {
+        insertData[field] = null;
+      } else {
+        // Asegurar que la fecha esté en formato ISO
+        try {
+          const date = new Date(dateStr);
+          if (!Number.isNaN(date.getTime())) {
+            insertData[field] = date.toISOString().split('T')[0];
+          } else {
+            insertData[field] = null;
+          }
+        } catch {
+          insertData[field] = null;
+        }
+      }
+    }
+  });
+  
+  // Remover campos que no existen en la tabla
+  delete insertData.id;
+  delete insertData.created_at;
+  delete insertData.updated_at;
+  delete insertData.created_by;
+  delete insertData.updated_by;
+  
+  const { error } = await supabase.from('transportes').insert(insertData);
   if (error) {
     console.error('Error creating transporte:', error);
     throw error;

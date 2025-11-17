@@ -11,6 +11,8 @@ import { AddTransporteModal } from '@/components/transportes/AddTransporteModal'
 import { useUser } from '@/hooks/useUser';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/AppFooter';
+import { EditingCellProvider } from '@/contexts/EditingCellContext';
+import { InlineEditCell } from '@/components/transportes/InlineEditCell';
 
 const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
@@ -45,12 +47,15 @@ export default function TransportesPage() {
   const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [records, setRecords] = useState<TransporteRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const { canAdd, setCurrentUser } = useUser();
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkUser = async () => {
       try {
         const supabase = createClient();
@@ -58,6 +63,8 @@ export default function TransportesPage() {
           data: { user: currentUser },
           error,
         } = await supabase.auth.getUser();
+
+        if (!isMounted) return;
 
         if (error) {
           if (error.message?.includes('Refresh Token') || error.message?.includes('JWT')) {
@@ -81,38 +88,63 @@ export default function TransportesPage() {
           .eq('auth_user_id', currentUser.id)
           .single();
 
-        if (userInfo) {
+        if (userInfo && isMounted) {
           setCurrentUser(userInfo);
         }
       } catch (error: any) {
+        if (!isMounted) return;
         if (!error?.message?.includes('Refresh Token') && !error?.message?.includes('JWT')) {
           console.error('[Transportes] Error comprobando usuario:', error);
         }
         router.push('/auth');
       } finally {
-        setLoadingUser(false);
+        if (isMounted) {
+          setLoadingUser(false);
+        }
       }
     };
 
     void checkUser();
-  }, [router, setCurrentUser]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]); // Removido setCurrentUser de dependencias
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadTransportes = async () => {
+      if (!user) {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+        return;
+      }
+
       try {
-        setIsLoading(true);
+        if (isMounted) {
+          setIsLoading(true);
+        }
         const data = await fetchTransportes();
-        setRecords(data);
+        if (isMounted) {
+          setRecords(data || []);
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error('[Transportes] Error cargando transportes:', error);
-      } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setRecords([]);
+          setIsLoading(false);
+        }
       }
     };
 
-    if (user) {
-      void loadTransportes();
-    }
+    void loadTransportes();
+
+    return () => {
+      isMounted = false;
+    };
   }, [user]);
 
   const reload = async () => {
@@ -124,6 +156,32 @@ export default function TransportesPage() {
       console.error('[Transportes] Error recargando transportes:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleUpdateRecord = (updatedRecord: TransporteRecord) => {
+    setRecords((prev) =>
+      prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r))
+    );
+  };
+
+  const handleToggleRowSelection = (recordId: string) => {
+    setSelectedRows((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(recordId)) {
+        newSet.delete(recordId);
+      } else {
+        newSet.add(recordId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedRows.size === filteredRecords.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(filteredRecords.map((r) => r.id)));
     }
   };
 
@@ -157,8 +215,9 @@ export default function TransportesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <div className="flex flex-1 flex-col">
+    <EditingCellProvider>
+      <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100 overflow-x-hidden">
+      <div className="flex flex-1 flex-col w-full min-w-0">
         <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
           <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-6">
             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
@@ -208,7 +267,7 @@ export default function TransportesPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
           <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
             {/* Búsqueda */}
             <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20 p-4">
@@ -233,67 +292,97 @@ export default function TransportesPage() {
             </section>
 
             {/* Tabla principal */}
-            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
-              <div className="overflow-x-auto">
-                <div className="min-w-full px-2 pb-4 md:min-w-[1400px]">
-                  <table className="min-w-full divide-y divide-slate-800/60">
-                    <thead className="bg-slate-900/50">
+            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20 overflow-hidden w-full">
+              <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-800/60">
+                  <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm">
+                    <tr>
+                      <th scope="col" className="px-3 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.size === filteredRecords.length && filteredRecords.length > 0}
+                          onChange={handleSelectAll}
+                          className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-2 focus:ring-sky-500/50"
+                        />
+                      </th>
+                      {transportesColumns.map((column) => (
+                        <th
+                          key={column.header}
+                          scope="col"
+                          className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap"
+                        >
+                          {column.header}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 bg-slate-950/50">
+                    {isLoading ? (
                       <tr>
-                        {transportesColumns.map((column) => (
-                          <th
-                            key={column.header}
-                            scope="col"
-                            className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400"
-                          >
-                            {column.header}
-                          </th>
-                        ))}
+                        <td
+                          colSpan={transportesColumns.length + 1}
+                          className="px-3 py-8 text-center text-sm text-slate-400"
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <RefreshCcw className="h-4 w-4 animate-spin" />
+                            <span>Cargando transportes...</span>
+                          </div>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60 bg-slate-950/50">
-                      {isLoading ? (
-                        <tr>
-                          <td
-                            colSpan={transportesColumns.length}
-                            className="px-3 py-8 text-center text-sm text-slate-400"
-                          >
-                            <div className="flex items-center justify-center gap-2">
-                              <RefreshCcw className="h-4 w-4 animate-spin" />
-                              <span>Cargando transportes...</span>
-                            </div>
+                    ) : filteredRecords.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={transportesColumns.length + 1}
+                          className="px-3 py-8 text-center text-sm text-slate-400"
+                        >
+                          {searchTerm
+                            ? 'No se encontraron registros que coincidan con la búsqueda.'
+                            : 'No hay registros de transporte disponibles.'}
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRecords.map((item) => (
+                        <tr
+                          key={item.id}
+                          className={`hover:bg-slate-900/50 transition-colors ${selectedRows.has(item.id) ? 'bg-slate-800/30' : ''}`}
+                        >
+                          <td className="px-3 py-3">
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.has(item.id)}
+                              onChange={() => handleToggleRowSelection(item.id)}
+                              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-2 focus:ring-sky-500/50"
+                            />
                           </td>
+                          {transportesColumns.map((column) => (
+                            <td
+                              key={`${item.id}-${column.header}`}
+                              className="px-3 py-3 text-sm text-slate-200 whitespace-nowrap"
+                            >
+                              {column.render ? (
+                                column.render(item)
+                              ) : (
+                                <InlineEditCell
+                                  value={item[column.key]}
+                                  field={column.key}
+                                  record={item}
+                                  onSave={handleUpdateRecord}
+                                  type={
+                                    dateKeys.has(column.key)
+                                      ? 'date'
+                                      : typeof item[column.key] === 'number'
+                                      ? 'number'
+                                      : 'text'
+                                  }
+                                />
+                              )}
+                            </td>
+                          ))}
                         </tr>
-                      ) : filteredRecords.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={transportesColumns.length}
-                            className="px-3 py-8 text-center text-sm text-slate-400"
-                          >
-                            {searchTerm
-                              ? 'No se encontraron registros que coincidan con la búsqueda.'
-                              : 'No hay registros de transporte disponibles.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredRecords.map((item) => (
-                          <tr
-                            key={item.id}
-                            className="hover:bg-slate-900/50 transition-colors"
-                          >
-                            {transportesColumns.map((column) => (
-                              <td
-                                key={`${item.id}-${column.header}`}
-                                className="whitespace-nowrap px-3 py-3 text-sm text-slate-200"
-                              >
-                                {column.render ? column.render(item) : formatValue(item, column.key)}
-                              </td>
-                            ))}
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </section>
 
@@ -309,5 +398,6 @@ export default function TransportesPage() {
         />
       </div>
     </div>
+    </EditingCellProvider>
   );
 }
