@@ -46,9 +46,23 @@ export function InlineEditCell({
 
   useEffect(() => {
     if (isDateField && value) {
-      const date = new Date(value);
-      if (!Number.isNaN(date.getTime())) {
-        setEditValue(date.toISOString().split('T')[0]);
+      // Manejar fechas sin conversión de zona horaria
+      if (typeof value === 'string') {
+        // Si ya es un string en formato YYYY-MM-DD, usarlo directamente
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          setEditValue(value);
+        } else {
+          // Si es una fecha ISO, extraer solo la parte de fecha
+          const date = new Date(value + 'T00:00:00');
+          if (!Number.isNaN(date.getTime())) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            setEditValue(`${year}-${month}-${day}`);
+          } else {
+            setEditValue('');
+          }
+        }
       } else {
         setEditValue('');
       }
@@ -71,7 +85,20 @@ export function InlineEditCell({
       if (type === 'number') {
         processedValue = editValue === '' ? null : Number(editValue);
       } else if (isDateField && editValue) {
-        processedValue = new Date(editValue).toISOString();
+        // Para fechas, usar el string directamente (ya está en formato YYYY-MM-DD)
+        // No convertir a Date para evitar problemas de zona horaria
+        const dateStr = editValue.trim();
+        if (dateStr === '') {
+          processedValue = null;
+        } else {
+          // Validar que sea un formato de fecha válido YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            // Usar el string directamente sin conversión de zona horaria
+            processedValue = dateStr;
+          } else {
+            processedValue = null;
+          }
+        }
       } else if (type === 'text') {
         processedValue = editValue === '' ? null : String(editValue).trim();
       }

@@ -1,11 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { AlertCircle, Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react';
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type AuthMode = 'login' | 'register';
 
@@ -14,6 +14,7 @@ const inputClasses =
 
 const AuthPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [authMode, setAuthMode] = useState<AuthMode>('login');
@@ -24,6 +25,29 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Limpiar parámetros de URL si contienen credenciales (seguridad)
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    const passwordParam = searchParams.get('password');
+    
+    if (emailParam || passwordParam) {
+      // Si hay credenciales en la URL, limpiarlas inmediatamente
+      const newUrl = new URL(window.location.href);
+      newUrl.searchParams.delete('email');
+      newUrl.searchParams.delete('password');
+      // Reemplazar la URL sin recargar la página
+      window.history.replaceState({}, '', newUrl.pathname);
+      
+      // Si hay email, prellenarlo (pero NUNCA la contraseña)
+      if (emailParam) {
+        setEmail(emailParam);
+      }
+      
+      // Mostrar advertencia de seguridad
+      setError('⚠️ Por seguridad, las credenciales no deben estar en la URL. Por favor, ingresa tu contraseña manualmente.');
+    }
+  }, [searchParams]);
 
   const isLogin = authMode === 'login';
   const passwordAutoComplete = isLogin ? 'current-password' : 'new-password';

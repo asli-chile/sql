@@ -74,8 +74,12 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Si está en una ruta protegida y no tiene sesión, redirigir a auth
+  // IMPORTANTE: Limpiar cualquier parámetro de credenciales de la URL por seguridad
   if (protectedRoutes.some(route => pathname.startsWith(route)) && !session) {
-    return NextResponse.redirect(new URL('/auth', req.url));
+    const authUrl = new URL('/auth', req.url);
+    // Asegurar que no haya parámetros de credenciales en la URL
+    authUrl.search = '';
+    return NextResponse.redirect(authUrl);
   }
 
   // Si está en auth y ya tiene sesión, redirigir a dashboard
@@ -84,11 +88,15 @@ export async function middleware(req: NextRequest) {
   }
 
   // Si está en la raíz, redirigir a dashboard si tiene sesión, sino a auth
+  // IMPORTANTE: Limpiar cualquier parámetro de credenciales de la URL por seguridad
   if (pathname === '/') {
     if (session) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     } else {
-      return NextResponse.redirect(new URL('/auth', req.url));
+      const authUrl = new URL('/auth', req.url);
+      // Asegurar que no haya parámetros de credenciales en la URL
+      authUrl.search = '';
+      return NextResponse.redirect(authUrl);
     }
   }
 
