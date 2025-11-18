@@ -218,6 +218,12 @@ export async function GET(request: Request) {
         time_remaining: row.time_remaining ?? null,
         teu: row.teu ?? null,
         vessel_image: row.vessel_image ?? null,
+        country_iso: row.country_iso ?? null,
+        unlocode_destination: row.unlocode_destination ?? null,
+        update_time: row.update_time ?? null,
+        data_source: row.data_source ?? null,
+        eni: row.eni ?? null,
+        name: row.name ?? null,
       });
     });
 
