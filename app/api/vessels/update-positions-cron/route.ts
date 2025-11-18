@@ -98,11 +98,15 @@ export async function GET(request: Request) {
       );
     }
 
+    console.log(`[UpdatePositionsCron] Registros encontrados: ${(registros || []).length}`);
+    console.log(`[UpdatePositionsCron] nowIso: ${nowIso}`);
+
     const vesselMap = new Map<string, ActiveVesselFromRegistros>();
 
     (registros || []).forEach((row: any) => {
       const vesselName = parseVesselName(row.nave_inicial);
       if (!vesselName) {
+        console.log(`[UpdatePositionsCron] Saltando registro con nave_inicial: ${row.nave_inicial} (parseVesselName devolvió null)`);
         return;
       }
 
@@ -114,6 +118,7 @@ export async function GET(request: Request) {
           vessel_name: vesselName,
           any_eta: eta ?? null,
         });
+        console.log(`[UpdatePositionsCron] Agregado buque activo: ${vesselName}`);
         return;
       }
 
@@ -126,12 +131,25 @@ export async function GET(request: Request) {
 
     const activeVessels = Array.from(vesselMap.values());
 
+    console.log(`[UpdatePositionsCron] Total de buques activos únicos: ${activeVessels.length}`);
+    if (activeVessels.length > 0) {
+      console.log(`[UpdatePositionsCron] Buques activos: ${activeVessels.map(v => v.vessel_name).join(', ')}`);
+    }
+
     if (activeVessels.length === 0) {
       return NextResponse.json(
         {
           message: 'No se encontraron buques activos según los criterios actuales',
           updated: [],
           skipped: [],
+          debug: {
+            registrosEncontrados: (registros || []).length,
+            nowIso,
+            registrosSample: (registros || []).slice(0, 3).map((r: any) => ({
+              nave_inicial: r.nave_inicial,
+              eta: r.eta,
+            })),
+          },
         },
         { status: 200 },
       );
@@ -199,6 +217,7 @@ export async function GET(request: Request) {
         bale: row.bale ?? null,
         time_remaining: row.time_remaining ?? null,
         teu: row.teu ?? null,
+        vessel_image: row.vessel_image ?? null,
       });
     });
 
@@ -210,18 +229,68 @@ export async function GET(request: Request) {
     for (const vessel of activeVessels) {
       const existing = positionsByName.get(vessel.vessel_name);
 
+      // Si la nave no existe en vessel_positions, crear entrada vacía primero
+      if (!existing) {
+        console.log(`[UpdatePositionsCron] Creando entrada vacía para nueva nave: ${vessel.vessel_name}`);
+        const { error: createError } = await supabase.from('vessel_positions').insert({
+          vessel_name: vessel.vessel_name,
+          last_lat: null,
+          last_lon: null,
+          last_position_at: null,
+          last_api_call_at: null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        if (createError) {
+          console.error(
+            `[UpdatePositionsCron] Error creando entrada para ${vessel.vessel_name}:`,
+            createError,
+          );
+          // Continuar de todas formas, intentará actualizar después
+        } else {
+          console.log(`[UpdatePositionsCron] ✅ Entrada creada para ${vessel.vessel_name}`);
+        }
+      }
+
+      // Re-leer la posición después de crear (si era nueva)
+      const { data: updatedExisting, error: reReadError } = await supabase
+        .from('vessel_positions')
+        .select('*')
+        .eq('vessel_name', vessel.vessel_name)
+        .single();
+
+      if (reReadError && reReadError.code !== 'PGRST116') {
+        console.error(
+          `[UpdatePositionsCron] Error re-leyendo posición para ${vessel.vessel_name}:`,
+          reReadError,
+        );
+        failed.push({
+          vessel_name: vessel.vessel_name,
+          reason: 'Error leyendo posición después de crear',
+        });
+        continue;
+      }
+
+      const currentPosition = updatedExisting || existing;
+
       // En el cron job, forzamos la actualización si han pasado 24 horas
       // (ignoramos el check de shouldCallApi para asegurar actualización diaria)
-      if (existing && !shouldCallApi(existing.last_api_call_at)) {
+      if (currentPosition && !shouldCallApi(currentPosition.last_api_call_at)) {
         skipped.push(vessel.vessel_name);
         continue;
       }
 
-      const imoToUse = existing?.imo ?? null;
-      const mmsiToUse = existing?.mmsi ?? null;
+      const imoToUse = currentPosition?.imo ?? null;
+      const mmsiToUse = currentPosition?.mmsi ?? null;
 
       if (!imoToUse && !mmsiToUse) {
         missingIdentifiers.push(vessel.vessel_name);
+        failed.push({
+          vessel_name: vessel.vessel_name,
+          reason:
+            'No tiene IMO/MMSI configurado. Usa el endpoint /api/vessels/set-imo o el script scripts/set-vessel-imo-mmsi.js para configurarlo.',
+        });
         continue;
       }
 
@@ -235,14 +304,47 @@ export async function GET(request: Request) {
         failed.push({
           vessel_name: vessel.vessel_name,
           reason:
-            'La API AIS no devolvió datos válidos, no está configurada o no hay IMO/MMSI para este buque.',
+            `La API AIS no devolvió datos válidos. IMO: ${imoToUse || 'N/A'}, MMSI: ${mmsiToUse || 'N/A'}. Verifica que los identificadores sean correctos o que la API esté configurada.`,
         });
         continue;
       }
 
+      // Log para debugging: verificar que tenemos todos los datos, especialmente coordenadas e imagen
+      console.log(
+        `[UpdatePositionsCron] Datos recibidos para ${vessel.vessel_name}:`,
+        {
+          coordenadas: {
+            lat: aisResult.lat,
+            lon: aisResult.lon,
+            positionTimestamp: aisResult.positionTimestamp,
+          },
+          coordenadasAnteriores: existing ? {
+            lat: existing.last_lat,
+            lon: existing.last_lon,
+            position_at: existing.last_position_at,
+          } : 'N/A',
+          tieneImagen: !!aisResult.vesselImage,
+          imagen: aisResult.vesselImage ? aisResult.vesselImage.substring(0, 80) + '...' : 'N/A',
+          tieneRawPayload: !!aisResult.rawPayload,
+          // Verificar si la imagen está en raw_payload
+          imagenEnRawPayload: (aisResult.rawPayload as any)?.detail?.image || (aisResult.rawPayload as any)?.image || 'N/A',
+          camposExtraidos: {
+            imo: !!aisResult.imo,
+            mmsi: !!aisResult.mmsi,
+            speed: aisResult.speed !== null && aisResult.speed !== undefined,
+            country: !!aisResult.country,
+            countryIso: !!aisResult.countryIso,
+            hasEngine: !!aisResult.engine,
+            hasPorts: !!aisResult.ports,
+            hasManagement: !!aisResult.management,
+          },
+        },
+      );
+
       const now = new Date().toISOString();
 
-      if (!existing) {
+      // Usar currentPosition en lugar de existing (puede haber sido creado arriba)
+      if (!currentPosition) {
         const { error: insertError } = await supabase.from('vessel_positions').insert({
           vessel_name: vessel.vessel_name,
           imo: aisResult.imo ?? null,
@@ -258,11 +360,17 @@ export async function GET(request: Request) {
           navigational_status: aisResult.navigationalStatus ?? null,
           ship_type: aisResult.shipType ?? null,
           country: aisResult.country ?? null,
+          country_iso: aisResult.countryIso ?? null,
           eta_utc: aisResult.etaUtc ?? null,
           atd_utc: aisResult.atdUtc ?? null,
           last_port: aisResult.lastPort ?? null,
           unlocode_lastport: aisResult.unlocodeLastport ?? null,
+          unlocode_destination: aisResult.unlocodeDestination ?? null,
           distance: aisResult.distance ?? null,
+          update_time: aisResult.updateTime ?? null,
+          data_source: aisResult.dataSource ?? null,
+          eni: aisResult.eni ?? null,
+          name: aisResult.name ?? null,
           predicted_eta: aisResult.predictedEta ?? null,
           current_draught: aisResult.currentDraught ?? null,
           length: aisResult.length ?? null,
@@ -287,9 +395,11 @@ export async function GET(request: Request) {
           engine: aisResult.engine ? JSON.stringify(aisResult.engine) : null,
           ports: aisResult.ports ? JSON.stringify(aisResult.ports) : null,
           management: aisResult.management ? JSON.stringify(aisResult.management) : null,
+          vessel_image: aisResult.vesselImage ?? null,
         });
 
         if (insertError) {
+          console.error('[UpdatePositionsCron] Error al insertar:', insertError);
           console.error(
             '[UpdatePositionsCron] Error insertando nueva posición de buque:',
             vessel.vessel_name,
@@ -301,12 +411,30 @@ export async function GET(request: Request) {
           });
           continue;
         }
+        updated.push(vessel.vessel_name);
       } else {
+        // Log antes de actualizar para verificar qué se va a guardar
+        console.log(
+          `[UpdatePositionsCron] Actualizando posición para ${vessel.vessel_name}:`,
+          {
+            coordenadasNuevas: {
+              lat: aisResult.lat,
+              lon: aisResult.lon,
+            },
+            coordenadasAntiguas: currentPosition ? {
+              lat: currentPosition.last_lat,
+              lon: currentPosition.last_lon,
+            } : null,
+            timestampNuevo: aisResult.positionTimestamp,
+            timestampAntiguo: currentPosition?.last_position_at ?? null,
+          },
+        );
+
         const { error: updateError } = await supabase
           .from('vessel_positions')
           .update({
-            imo: aisResult.imo ?? existing.imo ?? null,
-            mmsi: aisResult.mmsi ?? existing.mmsi ?? null,
+            imo: aisResult.imo ?? currentPosition?.imo ?? null,
+            mmsi: aisResult.mmsi ?? currentPosition?.mmsi ?? null,
             last_lat: aisResult.lat,
             last_lon: aisResult.lon,
             last_position_at: aisResult.positionTimestamp,
@@ -318,11 +446,17 @@ export async function GET(request: Request) {
             navigational_status: aisResult.navigationalStatus ?? null,
             ship_type: aisResult.shipType ?? null,
             country: aisResult.country ?? null,
+            country_iso: aisResult.countryIso ?? null,
             eta_utc: aisResult.etaUtc ?? null,
             atd_utc: aisResult.atdUtc ?? null,
             last_port: aisResult.lastPort ?? null,
             unlocode_lastport: aisResult.unlocodeLastport ?? null,
+            unlocode_destination: aisResult.unlocodeDestination ?? null,
             distance: aisResult.distance ?? null,
+            update_time: aisResult.updateTime ?? null,
+            data_source: aisResult.dataSource ?? null,
+            eni: aisResult.eni ?? null,
+            name: aisResult.name ?? null,
             predicted_eta: aisResult.predictedEta ?? null,
             current_draught: aisResult.currentDraught ?? null,
             length: aisResult.length ?? null,
@@ -347,10 +481,12 @@ export async function GET(request: Request) {
             engine: aisResult.engine ? JSON.stringify(aisResult.engine) : null,
             ports: aisResult.ports ? JSON.stringify(aisResult.ports) : null,
             management: aisResult.management ? JSON.stringify(aisResult.management) : null,
+            vessel_image: aisResult.vesselImage ?? null,
           })
-          .eq('id', existing.id);
+          .eq('id', currentPosition!.id);
 
         if (updateError) {
+          console.error('[UpdatePositionsCron] Error al actualizar:', updateError);
           console.error(
             '[UpdatePositionsCron] Error actualizando posición de buque:',
             vessel.vessel_name,
@@ -362,15 +498,61 @@ export async function GET(request: Request) {
           });
           continue;
         }
+        updated.push(vessel.vessel_name);
       }
 
-      // Guardar la posición en el historial
+      // Guardar la posición en el historial con TODOS los datos
       const { error: historyError } = await supabase.from('vessel_position_history').insert({
         vessel_name: vessel.vessel_name,
+        imo: aisResult.imo ?? null,
+        mmsi: aisResult.mmsi ?? null,
+        name: aisResult.name ?? null,
         lat: aisResult.lat,
         lon: aisResult.lon,
         position_at: aisResult.positionTimestamp,
         source: 'AIS',
+        speed: aisResult.speed ?? null,
+        course: aisResult.course ?? null,
+        destination: aisResult.destination ?? null,
+        navigational_status: aisResult.navigationalStatus ?? null,
+        ship_type: aisResult.shipType ?? null,
+        country: aisResult.country ?? null,
+        country_iso: aisResult.countryIso ?? null,
+        eta_utc: aisResult.etaUtc ?? null,
+        atd_utc: aisResult.atdUtc ?? null,
+        last_port: aisResult.lastPort ?? null,
+        unlocode_lastport: aisResult.unlocodeLastport ?? null,
+        unlocode_destination: aisResult.unlocodeDestination ?? null,
+        distance: aisResult.distance ?? null,
+        predicted_eta: aisResult.predictedEta ?? null,
+        current_draught: aisResult.currentDraught ?? null,
+        length: aisResult.length ?? null,
+        beam: aisResult.beam ?? null,
+        gross_tonnage: aisResult.grossTonnage ?? null,
+        year_of_built: aisResult.yearOfBuilt ?? null,
+        callsign: aisResult.callsign ?? null,
+        type_specific: aisResult.typeSpecific ?? null,
+        deadweight: aisResult.deadweight ?? null,
+        hull: aisResult.hull ?? null,
+        builder: aisResult.builder ?? null,
+        material: aisResult.material ?? null,
+        place_of_build: aisResult.placeOfBuild ?? null,
+        ballast_water: aisResult.ballastWater ?? null,
+        crude_oil: aisResult.crudeOil ?? null,
+        fresh_water: aisResult.freshWater ?? null,
+        gas: aisResult.gas ?? null,
+        grain: aisResult.grain ?? null,
+        bale: aisResult.bale ?? null,
+        time_remaining: aisResult.timeRemaining ?? null,
+        teu: aisResult.teu ?? null,
+        engine: aisResult.engine ? JSON.stringify(aisResult.engine) : null,
+        ports: aisResult.ports ? JSON.stringify(aisResult.ports) : null,
+        management: aisResult.management ? JSON.stringify(aisResult.management) : null,
+        vessel_image: aisResult.vesselImage ?? null,
+        update_time: aisResult.updateTime ?? null,
+        data_source: aisResult.dataSource ?? null,
+        eni: aisResult.eni ?? null,
+        raw_payload: aisResult.rawPayload,
       });
 
       if (historyError) {

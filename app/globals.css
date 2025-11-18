@@ -13,11 +13,23 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Colores ASLI */
+  --asli-navy: #0A203F;
+  --asli-blue: #00AEEF;
+  --asli-blue-light: #4FC3F7;
+  --asli-gray: #E5E7EB;
+  --asli-bg: #F9FAFB;
 }
 
 .dark {
   --background: #0a0a0a;
   --foreground: #ededed;
+  
+  /* Colores ASLI modo oscuro */
+  --asli-bg-dark: #0A1524;
+  --asli-card-dark: #0F1C33;
+  --asli-border-dark: #1F2A3C;
 }
 
 /* Aplicar Fira Sans Italic Bold globalmente */

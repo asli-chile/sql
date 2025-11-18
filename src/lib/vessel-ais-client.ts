@@ -19,10 +19,16 @@ export type FetchVesselPositionResult = {
   navigationalStatus?: string | null;
   shipType?: string | null;
   country?: string | null;
+  countryIso?: string | null;
   etaUtc?: string | null;
   atdUtc?: string | null;
   lastPort?: string | null;
   unlocodeLastport?: string | null;
+  unlocodeDestination?: string | null;
+  updateTime?: string | null;
+  dataSource?: string | null;
+  eni?: string | null;
+  name?: string | null;
   distance?: string | null;
   predictedEta?: string | null;
   currentDraught?: string | null;
@@ -50,6 +56,8 @@ export type FetchVesselPositionResult = {
   engine?: unknown;
   ports?: unknown;
   management?: unknown;
+  // Imagen del buque
+  vesselImage?: string | null;
 };
 
 const VESSEL_API_BASE_URL = process.env.VESSEL_API_BASE_URL;
@@ -112,30 +120,96 @@ export const fetchVesselPositionFromAisApi = async (
     /**
      * DataDocked devuelve un objeto con una propiedad `detail`:
      * 
-     * NOTA: La API puede devolver campos en inglés o español según la configuración.
-     * Campos en inglés: latitude, longitude, speed, course, destination, positionReceived, updateTime, etaUtc, atdUtc
-     * Campos en español: Latitud, Longitud, Velocidad, Rumbo, Destino, Posición recibida, etc.
-     *
+     * Formato de respuesta:
      * {
      *   "detail": {
-     *     "latitude": "38.21558" o "Latitud": "-35.65407",
-     *     "longitude": "15.24491" o "Longitud": "-92.66505",
-     *     "speed": "0.0" o "Velocidad": "4.2",
-     *     "course": "307.0" o "Rumbo": "228.2",
-     *     "destination": "ITMLZ" o "Destino": "CNHKG",
-     *     "positionReceived": "Oct 02, 2025 08:27 UTC" o "Posición recibida": "16 de noviembre de 2025, 20:04 UTC",
+     *     "name": "LAURANA",
+     *     "mmsi": "247342000",
+     *     "imo": "9011014",
+     *     "country": "Italy",
+     *     "shipType": "Miscellaneous",
+     *     "callsign": "ICEL",
+     *     "image": "https://static.vesselfinder.net/ship-photo/9011014-247342000-672d4d9a1223ae7b65c7d90997ca8641/1?v1",
+     *     "latitude": "38.21558",
+     *     "longitude": "15.24491",
+     *     "speed": "0.0",
+     *     "course": "307.0",
+     *     "destination": "ITMLZ",
+     *     "positionReceived": "Oct 02, 2025 08:27 UTC",
      *     "updateTime": "Oct 02, 2025 08:30 UTC",
-     *     "etaUtc": "Oct 01, 2025 10:15 UTC" o "etaUtc": "6 de diciembre de 2025, 15:30 UTC",
-     *     "atdUtc": "Sep 30, 2025 18:25 UTC" o "atdUtc": "14 de noviembre de 2025, 10:00 UTC",
-     *     ...
+     *     "etaUtc": "Oct 01, 2025 10:15 UTC",
+     *     "atdUtc": "Sep 30, 2025 18:25 UTC",
+     *     "lastPort": "Napoli, Italy",
+     *     "unlocode_lastport": "ITNAP",
+     *     "distance": "88.49 kn",
+     *     "predictedEta": "Oct 7, 16:28",
+     *     "length": "122 m",
+     *     "beam": "20 m",
+     *     "currentDraught": "4.8 m",
+     *     "deadweight": "2328",
+     *     "grossTonnage": "11193",
+     *     "yearOfBuilt": "1992",
+     *     "hull": "SINGLE HULL",
+     *     "builder": "FINCANTIERI PALERMO",
+     *     "material": "STEEL/ORDINARY",
+     *     "placeOfBuild": "PALERMO, Italy",
+     *     "ballastWater": "0",
+     *     "crudeOil": "0",
+     *     "freshWater": "0",
+     *     "gas": "0 m³",
+     *     "grain": "0 m³",
+     *     "bale": "0 m³",
+     *     "typeSpecific": "Passenger/Ro-Ro Cargo Ship",
+     *     "navigationalStatus": "Moored",
+     *     "teu": "",
+     *     "time": "3 hours 59 minutes",
+     *     "engine": { ... },
+     *     "ports": [ ... ],
+     *     "management": { ... },
+     *     "dataSource": "Satellite"
      *   }
      * }
+     * 
+     * Ver documentación completa: docs/FORMATO-RESPUESTA-DATADOCKED.md
      */
     const candidate = (rawPayload as any)?.detail ?? rawPayload;
 
     // Manejar campos en inglés o español
-    const lat = Number(candidate?.latitude ?? candidate?.Latitud);
-    const lon = Number(candidate?.longitude ?? candidate?.Longitud);
+    // IMPORTANTE: DataDocked puede devolver las coordenadas como strings o números
+    let lat: number | null = null;
+    let lon: number | null = null;
+    
+    // Intentar múltiples ubicaciones posibles para latitude/longitude
+    const latCandidate = candidate?.latitude ?? candidate?.Latitud ?? candidate?.lat ?? candidate?.Lat;
+    const lonCandidate = candidate?.longitude ?? candidate?.Longitud ?? candidate?.lon ?? candidate?.Lon;
+    
+    if (latCandidate !== null && latCandidate !== undefined && latCandidate !== '') {
+      const latNum = Number(latCandidate);
+      if (Number.isFinite(latNum)) {
+        lat = latNum;
+      }
+    }
+    
+    if (lonCandidate !== null && lonCandidate !== undefined && lonCandidate !== '') {
+      const lonNum = Number(lonCandidate);
+      if (Number.isFinite(lonNum)) {
+        lon = lonNum;
+      }
+    }
+
+    // Log detallado para debugging de coordenadas
+    console.log('[AIS] Extracción de coordenadas para', params.vesselName, ':', {
+      tieneDetail: !!candidate,
+      latCandidate,
+      lonCandidate,
+      latExtraida: lat,
+      lonExtraida: lon,
+      keysEnCandidate: candidate ? Object.keys(candidate).filter(k => 
+        k.toLowerCase().includes('lat') || k.toLowerCase().includes('lon') || 
+        k.toLowerCase().includes('position') || k.toLowerCase().includes('coord')
+      ) : [],
+      rawPayloadKeys: rawPayload && typeof rawPayload === 'object' ? Object.keys(rawPayload) : [],
+    });
 
     // Usamos primero `positionReceived`/`Posición recibida`, luego `updateTime` como timestamp.
     const positionTimestampRaw: string | undefined =
@@ -150,10 +224,20 @@ export const fetchVesselPositionFromAisApi = async (
         : parsed.toISOString();
     }
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    if (lat === null || lon === null || !Number.isFinite(lat) || !Number.isFinite(lon)) {
       console.warn(
         '[AIS] La respuesta de la API AIS no contiene coordenadas válidas para el buque:',
         params.vesselName,
+        {
+          lat,
+          lon,
+          latCandidate,
+          lonCandidate,
+          tieneRawPayload: !!rawPayload,
+          rawPayloadSample: rawPayload && typeof rawPayload === 'object' 
+            ? JSON.stringify(rawPayload).substring(0, 200) 
+            : 'N/A',
+        },
       );
       return null;
     }
@@ -164,6 +248,7 @@ export const fetchVesselPositionFromAisApi = async (
 
     // Extraer campos adicionales (manejar inglés y español)
     // Función helper para normalizar valores (convertir strings vacíos a null)
+    // IMPORTANTE: Para URLs (como vessel_image), solo hacemos trim, NO modificamos la URL
     const normalizeValue = (value: any): string | null => {
       if (value === null || value === undefined || value === '') {
         return null;
@@ -186,11 +271,17 @@ export const fetchVesselPositionFromAisApi = async (
     const navigationalStatus = normalizeValue(candidate?.navigationalStatus);
     const shipType = normalizeValue(candidate?.shipType);
     const country = normalizeValue(candidate?.country);
+    const countryIso = normalizeValue(candidate?.countryIso);
     const etaUtc = normalizeValue(candidate?.etaUtc);
     const atdUtc = normalizeValue(candidate?.atdUtc);
     const lastPort = normalizeValue(candidate?.lastPort);
     const unlocodeLastport = normalizeValue(candidate?.unlocode_lastport);
+    const unlocodeDestination = normalizeValue(candidate?.unlocode_destination);
     const distance = normalizeValue(candidate?.distance);
+    const updateTime = normalizeValue(candidate?.updateTime);
+    const dataSource = normalizeValue(candidate?.dataSource);
+    const eni = normalizeValue(candidate?.eni);
+    const name = normalizeValue(candidate?.name);
     const predictedEta = normalizeValue(candidate?.predictedEta);
     const currentDraught = normalizeValue(candidate?.currentDraught ?? candidate?.draught);
     const length = normalizeValue(candidate?.length);
@@ -219,8 +310,59 @@ export const fetchVesselPositionFromAisApi = async (
     const engine = candidate?.engine ?? null;
     const ports = candidate?.ports ?? null;
     const management = candidate?.management ?? candidate?.gestión ?? null;
+    
+    // Extraer imagen del buque
+    // DataDocked devuelve la imagen en: detail.image
+    // Formato: "https://static.vesselfinder.net/ship-photo/{imo}-{mmsi}-{hash}/1?v1"
+    // IMPORTANTE: candidate ya es rawPayload?.detail ?? rawPayload, así que candidate?.image debería funcionar
+    // Pero intentamos múltiples variaciones por si la API cambia el formato
+    const rawPayloadObj = rawPayload as any;
+    
+    // Intentar extraer la imagen desde múltiples ubicaciones posibles
+    let imageValue = null;
+    
+    // Primero intentar desde candidate (que ya es detail si existe)
+    if (candidate?.image) {
+      imageValue = candidate.image;
+    } else if (candidate?.Image) {
+      imageValue = candidate.Image;
+    } else if (rawPayloadObj?.detail?.image) {
+      // Si candidate no tiene image, intentar directamente desde rawPayload.detail.image
+      imageValue = rawPayloadObj.detail.image;
+    } else if (rawPayloadObj?.detail?.Image) {
+      imageValue = rawPayloadObj.detail.Image;
+    } else if (rawPayloadObj?.image) {
+      // Intentar desde el root del rawPayload
+      imageValue = rawPayloadObj.image;
+    } else if (rawPayloadObj?.Image) {
+      imageValue = rawPayloadObj.Image;
+    }
+    
+    // Normalizar la URL de la imagen (solo trim, mantener URL completa)
+    const vesselImage = normalizeValue(imageValue);
+    
+    // Log específico para debugging de imagen (SIEMPRE mostrar, no solo en dev)
+    if (vesselImage) {
+      console.log('[AIS] ✅ Imagen encontrada para', params.vesselName, ':', {
+        url: vesselImage,
+        esUrlValida: vesselImage.startsWith('http'),
+        longitud: vesselImage.length,
+        origen: imageValue === candidate?.image ? 'candidate.image' :
+                imageValue === rawPayloadObj?.detail?.image ? 'rawPayload.detail.image' :
+                imageValue === rawPayloadObj?.image ? 'rawPayload.image' : 'otro',
+      });
+    } else {
+      console.log('[AIS] ⚠️ No se encontró imagen para', params.vesselName, '. Buscando en:', {
+        'candidate?.image': candidate?.image || 'null',
+        'rawPayloadObj?.detail?.image': rawPayloadObj?.detail?.image || 'null',
+        'rawPayloadObj?.image': rawPayloadObj?.image || 'null',
+        'keys en candidate': candidate ? Object.keys(candidate).filter(k => k.toLowerCase().includes('image') || k.toLowerCase().includes('photo')) : [],
+        'tieneDetail': !!rawPayloadObj?.detail,
+        'tieneRawPayload': !!rawPayloadObj,
+      });
+    }
 
-    // Log para debugging (solo en desarrollo)
+    // Log para debugging (mostrar campos críticos que podrían faltar)
     if (process.env.NODE_ENV === 'development') {
       console.log('[AIS] Datos extraídos para', params.vesselName, {
         speed,
@@ -231,10 +373,23 @@ export const fetchVesselPositionFromAisApi = async (
         navigationalStatus,
         shipType,
         country,
+        countryIso,
         deadweight,
         builder,
         placeOfBuild,
+        vesselImage: vesselImage ? '✅ Imagen presente' : '❌ Sin imagen',
+        hasEngine: !!engine,
+        hasPorts: !!ports,
+        hasManagement: !!management,
+        updateTime,
+        dataSource,
+        eni,
+        name,
       });
+      
+      // Log completo del JSON recibido para debugging (solo mostrar estructura, no todo el contenido)
+      console.log('[AIS] Campos disponibles en candidate:', Object.keys(candidate || {}));
+      console.log('[AIS] raw_payload completo guardado:', !!rawPayload);
     }
 
     return {
@@ -251,11 +406,17 @@ export const fetchVesselPositionFromAisApi = async (
       navigationalStatus,
       shipType,
       country,
+      countryIso,
       etaUtc,
       atdUtc,
       lastPort,
       unlocodeLastport,
+      unlocodeDestination,
       distance,
+      updateTime,
+      dataSource,
+      eni,
+      name,
       predictedEta,
       currentDraught,
       length,
@@ -280,6 +441,7 @@ export const fetchVesselPositionFromAisApi = async (
       engine,
       ports,
       management,
+      vesselImage,
     };
   } catch (error) {
     console.error('[AIS] Error llamando a la API AIS externa:', error);

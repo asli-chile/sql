@@ -170,7 +170,7 @@ export async function GET() {
     // 2) Leer posiciones cacheadas desde vessel_positions
     const { data: positions, error: positionsError } = await supabase
       .from('vessel_positions')
-      .select('vessel_name, last_lat, last_lon, last_position_at')
+      .select('vessel_name, last_lat, last_lon, last_position_at, last_api_call_at')
       .in('vessel_name', vesselNames);
 
     if (positionsError) {
@@ -183,7 +183,7 @@ export async function GET() {
 
     const positionByName = new Map<
       string,
-      { last_lat: number | null; last_lon: number | null; last_position_at: string | null }
+      { last_lat: number | null; last_lon: number | null; last_position_at: string | null; last_api_call_at: string | null }
     >();
 
     (positions || []).forEach((row: any) => {
@@ -191,16 +191,19 @@ export async function GET() {
         last_lat: row.last_lat ?? null,
         last_lon: row.last_lon ?? null,
         last_position_at: row.last_position_at ?? null,
+        last_api_call_at: row.last_api_call_at ?? null,
       });
     });
 
     // 3) Leer historial de posiciones para poder dibujar la ruta.
     //    Traemos todos los puntos para estos buques ordenados por fecha.
+    //    Agregamos un timestamp para evitar cache en la consulta
     const { data: tracks, error: tracksError } = await supabase
       .from('vessel_position_history')
       .select('vessel_name, lat, lon, position_at')
       .in('vessel_name', vesselNames)
-      .order('position_at', { ascending: true });
+      .order('position_at', { ascending: true })
+      .limit(1000); // Limitar a 1000 puntos para evitar sobrecarga
 
     if (tracksError) {
       console.error('[ActiveVessels] Error leyendo vessel_position_history:', tracksError);
@@ -275,6 +278,7 @@ export async function GET() {
         last_lat: position?.last_lat ?? null,
         last_lon: position?.last_lon ?? null,
         last_position_at: position?.last_position_at ?? null,
+        last_api_call_at: position?.last_api_call_at ?? null,
         etd,
         eta,
         destination,

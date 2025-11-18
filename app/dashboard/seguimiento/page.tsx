@@ -76,7 +76,11 @@ const SeguimientoPage = () => {
       setFetchState('loading');
       setErrorMessage(null);
 
-      const response = await fetch('/api/vessels/active');
+      // Agregar timestamp para evitar cache y asegurar datos frescos
+      const response = await fetch(`/api/vessels/active?t=${Date.now()}`, {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      });
       if (!response.ok) {
         const payload = (await response.json().catch(() => null)) as
           | { error?: string }
@@ -129,7 +133,18 @@ const SeguimientoPage = () => {
     if (!user) {
       return;
     }
+    
+    // Cargar buques inicialmente
     void loadVessels();
+    
+    // Refrescar datos de buques automáticamente cada 60 segundos (1 minuto)
+    const intervalId = setInterval(() => {
+      void loadVessels();
+    }, 60000); // 60000 ms = 60 segundos
+    
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [user]);
 
   const filteredVessels = useMemo(() => {
@@ -283,7 +298,7 @@ const SeguimientoPage = () => {
                   Visualización
                 </p>
                 <p className="text-xs font-semibold text-slate-100 sm:text-sm">
-                  Mapa mundial de posiciones AIS cacheadas
+                  Mapa mundial de posiciones AIS actualizado cada 24 horas
                 </p>
               </div>
               <div className="text-left text-[10px] text-slate-500 sm:text-right sm:text-[11px]">

@@ -62,6 +62,9 @@ type VesselPositionData = {
   engine?: any;
   ports?: any;
   management?: any;
+  vesselImage?: string | null;
+  lastPositionAt?: string | null;
+  lastApiCallAt?: string | null;
 };
 
 export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsModalProps) {
@@ -152,11 +155,12 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
     const loadPositionData = async () => {
       try {
         const supabase = createClient();
+        // Agregar .maybeSingle() para evitar errores si no existe el registro
         const { data, error } = await supabase
           .from('vessel_positions')
-          .select('speed, course, destination, navigational_status, ship_type, country, eta_utc, atd_utc, last_port, unlocode_lastport, imo, mmsi, distance, predicted_eta, current_draught, length, beam, gross_tonnage, year_of_built, callsign, type_specific, deadweight, hull, builder, material, place_of_build, ballast_water, crude_oil, fresh_water, gas, grain, bale, time_remaining, teu, engine, ports, management')
+          .select('speed, course, destination, navigational_status, ship_type, country, eta_utc, atd_utc, last_port, unlocode_lastport, imo, mmsi, distance, predicted_eta, current_draught, length, beam, gross_tonnage, year_of_built, callsign, type_specific, deadweight, hull, builder, material, place_of_build, ballast_water, crude_oil, fresh_water, gas, grain, bale, time_remaining, teu, engine, ports, management, vessel_image, last_position_at, last_api_call_at')
           .eq('vessel_name', vessel.vessel_name)
-          .single();
+          .maybeSingle();
 
         if (error || !data) {
           return;
@@ -235,6 +239,9 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           engine,
           ports,
           management,
+          vesselImage: data.vessel_image ?? null,
+          lastPositionAt: data.last_position_at ?? null,
+          lastApiCallAt: data.last_api_call_at ?? null,
         };
 
         setPositionData(positionInfo);
@@ -245,6 +252,17 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
 
     void loadVesselDetails();
     void loadPositionData();
+    
+    // Refrescar datos automáticamente cada 30 segundos mientras el modal esté abierto
+    if (isOpen && vessel) {
+      const intervalId = setInterval(() => {
+        void loadPositionData();
+      }, 30000); // 30000 ms = 30 segundos
+      
+      return () => {
+        clearInterval(intervalId);
+      };
+    }
   }, [isOpen, vessel]);
 
   useEffect(() => {
@@ -306,6 +324,23 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 space-y-6">
+          {/* Imagen del buque - SIEMPRE VISIBLE SI EXISTE */}
+          {positionData?.vesselImage && (
+            <div className="w-full">
+              <div className="relative w-full h-64 sm:h-80 rounded-xl overflow-hidden border border-slate-800/60 bg-slate-900/50">
+                <img
+                  src={positionData.vesselImage}
+                  alt={`${vessel.vessel_name}`}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    // Si la imagen falla al cargar, ocultar el contenedor
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Información principal de posición y navegación - SIEMPRE VISIBLE */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Posición - SIEMPRE VISIBLE */}
@@ -323,22 +358,23 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               </p>
             </div>
 
-            {/* Última posición - SIEMPRE VISIBLE */}
+            {/* Última actualización - SIEMPRE VISIBLE */}
             <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Clock className="h-4 w-4 text-sky-400" />
                 <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Última posición
+                  Última actualización
                 </p>
               </div>
               <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {vessel.last_position_at
-                  ? new Date(vessel.last_position_at).toLocaleString('es-CL', {
+                {(positionData?.lastApiCallAt || positionData?.lastPositionAt || vessel.last_api_call_at || vessel.last_position_at)
+                  ? new Date(positionData?.lastApiCallAt || positionData?.lastPositionAt || vessel.last_api_call_at || vessel.last_position_at!).toLocaleString('es-CL', {
                       day: '2-digit',
                       month: '2-digit',
                       year: '2-digit',
                       hour: '2-digit',
                       minute: '2-digit',
+                      second: '2-digit',
                     })
                   : 'No disponible'}
               </p>

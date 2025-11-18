@@ -283,6 +283,62 @@ BEGIN
   ) THEN
     ALTER TABLE vessel_positions ADD COLUMN management JSONB;
   END IF;
+
+  -- Código ISO del país
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'country_iso'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN country_iso TEXT;
+  END IF;
+
+  -- Código UN/LOCODE del destino
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'unlocode_destination'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN unlocode_destination TEXT;
+  END IF;
+
+  -- Hora de actualización de la API
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'update_time'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN update_time TEXT;
+  END IF;
+
+  -- Fuente de datos (Satellite, AIS, etc.)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'data_source'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN data_source TEXT;
+  END IF;
+
+  -- Número ENI (European Number of Identification)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'eni'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN eni TEXT;
+  END IF;
+
+  -- Nombre del buque según la API (puede diferir de vessel_name)
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'name'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN name TEXT;
+  END IF;
+
+  -- Imagen del buque
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'vessel_positions' AND column_name = 'vessel_image'
+  ) THEN
+    ALTER TABLE vessel_positions ADD COLUMN vessel_image TEXT;
+  END IF;
 END $$;
 
 -- Crear índices para búsquedas comunes

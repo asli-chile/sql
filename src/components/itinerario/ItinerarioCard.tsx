@@ -1,0 +1,111 @@
+'use client';
+
+import { Eye } from 'lucide-react';
+import type { ItinerarioWithEscalas } from '@/types/itinerarios';
+
+interface ItinerarioCardProps {
+  itinerario: ItinerarioWithEscalas;
+  onViewDetail: (itinerario: ItinerarioWithEscalas) => void;
+}
+
+function formatDate(dateString: string | null): string {
+  if (!dateString) return '—';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).replace(/\./g, '');
+  } catch {
+    return '—';
+  }
+}
+
+export function ItinerarioCard({ itinerario, onViewDetail }: ItinerarioCardProps) {
+  const escalasOrdenadas = [...(itinerario.escalas || [])].sort((a, b) => a.orden - b.orden);
+
+  return (
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+      {/* Header con servicio */}
+      <div className="mb-3">
+        <div className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7] mb-2">
+          {itinerario.servicio}
+        </div>
+        {itinerario.consorcio && (
+          <p className="text-xs text-slate-500 dark:text-slate-400">{itinerario.consorcio}</p>
+        )}
+      </div>
+
+      {/* Información principal */}
+      <div className="space-y-2 mb-4">
+        <div>
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {itinerario.nave}
+          </p>
+          <p className="text-xs text-slate-600 dark:text-slate-400">{itinerario.viaje}</p>
+        </div>
+
+        <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400">
+          {itinerario.semana && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700">
+              Semana {itinerario.semana}
+            </span>
+          )}
+          <span>{itinerario.pol}</span>
+        </div>
+
+        {itinerario.etd && (
+          <p className="text-xs text-slate-600 dark:text-slate-400">
+            ETD: <span className="font-medium">{formatDate(itinerario.etd)}</span>
+          </p>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="border-t border-slate-200 dark:border-slate-700 my-4" />
+
+      {/* Lista de escalas */}
+      {escalasOrdenadas.length > 0 ? (
+        <div className="space-y-2 mb-4">
+          {escalasOrdenadas.map((escala) => (
+            <div
+              key={escala.id}
+              className="flex items-center justify-between text-sm"
+            >
+              <span className="text-slate-900 dark:text-slate-100 font-medium">
+                {escala.puerto_nombre || escala.puerto}
+              </span>
+              <div className="flex items-center gap-2">
+                {escala.eta && (
+                  <span className="text-xs text-slate-600 dark:text-slate-400">
+                    {formatDate(escala.eta)}
+                  </span>
+                )}
+                {escala.dias_transito && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7]">
+                    ({escala.dias_transito}d)
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">
+          No hay escalas registradas
+        </p>
+      )}
+
+      {/* Botón ver detalle */}
+      <button
+        onClick={() => onViewDetail(itinerario)}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-[#00AEEF] hover:text-[#4FC3F7] hover:bg-[#00AEEF]/10 dark:hover:bg-[#4FC3F7]/20 rounded-lg transition-all duration-150"
+      >
+        <Eye className="h-4 w-4" />
+        Ver detalle
+      </button>
+    </div>
+  );
+}
+

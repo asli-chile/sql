@@ -449,6 +449,15 @@ export default function DashboardPage() {
     if (user) {
       loadStats();
       void loadActiveVessels();
+      
+      // Refrescar datos de buques automáticamente cada 60 segundos (1 minuto)
+      const intervalId = setInterval(() => {
+        void loadActiveVessels();
+      }, 60000); // 60000 ms = 60 segundos
+      
+      return () => {
+        clearInterval(intervalId);
+      };
     }
   }, [user]);
 
@@ -524,7 +533,11 @@ export default function DashboardPage() {
 
   const loadActiveVessels = async () => {
     try {
-      const response = await fetch('/api/vessels/active');
+      // Agregar timestamp para evitar cache
+      const response = await fetch(`/api/vessels/active?t=${Date.now()}`, {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      });
       if (!response.ok) {
         return;
       }

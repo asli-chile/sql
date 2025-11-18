@@ -64,7 +64,19 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
   const [hoveredVessel, setHoveredVessel] = useState<ActiveVessel | null>(null);
 
   const vesselsWithCoords = useMemo(
-    () => vessels.filter((vessel) => vessel.last_lat != null && vessel.last_lon != null),
+    () => {
+      const filtered = vessels.filter((vessel) => vessel.last_lat != null && vessel.last_lon != null);
+      // Log para debugging - solo en desarrollo
+      if (process.env.NODE_ENV === 'development' && filtered.length > 0) {
+        console.log('[ActiveVesselsMap] Buques con coordenadas:', filtered.map(v => ({
+          name: v.vessel_name,
+          lat: v.last_lat,
+          lon: v.last_lon,
+          trackPoints: v.track?.length || 0,
+        })));
+      }
+      return filtered;
+    },
     [vessels],
   );
 
@@ -136,69 +148,91 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
     }));
   }, [focusedVesselName, vesselsWithCoords]);
 
-  const vesselsLayer = new ScatterplotLayer<ActiveVessel>({
-    id: 'active-vessels',
-    data: vesselsWithCoords,
-    getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
-    // Usamos un radio en metros moderado y limitamos el tamaño en píxeles para que,
-    // al hacer zoom, los puntos no se vean excesivamente grandes.
-    getRadius: () => 9000,
-    getFillColor: (vessel) =>
-      activeVessel && vessel.vessel_name === activeVessel.vessel_name
-        ? [37, 99, 235, 255] // azul más oscuro para seleccionado (mejor contraste en mapa claro)
-        : [59, 130, 246, 220], // azul medio para el resto (mejor visibilidad en mapa claro)
-    pickable: true,
-    radiusMinPixels: 3,
-    radiusMaxPixels: 14,
-    onClick: (info) => {
-      const vessel = info.object as ActiveVessel | null;
-      if (!vessel) {
-        return;
-      }
-      if (onVesselSelect) {
-        onVesselSelect(vessel);
-      }
-    },
-    onHover: (info) => {
-      if (info.object) {
-        setHoveredVessel(info.object as ActiveVessel);
-      } else {
-        setHoveredVessel(null);
-      }
-    },
-  });
+  const vesselsLayer = useMemo(
+    () =>
+      new ScatterplotLayer<ActiveVessel>({
+        id: 'active-vessels',
+        data: vesselsWithCoords,
+        getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
+        // Usamos un radio en metros moderado y limitamos el tamaño en píxeles para que,
+        // al hacer zoom, los puntos no se vean excesivamente grandes.
+        getRadius: () => 9000,
+        getFillColor: (vessel) =>
+          activeVessel && vessel.vessel_name === activeVessel.vessel_name
+            ? [37, 99, 235, 255] // azul más oscuro para seleccionado (mejor contraste en mapa claro)
+            : [59, 130, 246, 220], // azul medio para el resto (mejor visibilidad en mapa claro)
+        pickable: true,
+        radiusMinPixels: 3,
+        radiusMaxPixels: 14,
+        updateTriggers: {
+          getPosition: [vesselsWithCoords],
+          getFillColor: [activeVessel, vesselsWithCoords],
+        },
+        onClick: (info) => {
+          const vessel = info.object as ActiveVessel | null;
+          if (!vessel) {
+            return;
+          }
+          if (onVesselSelect) {
+            onVesselSelect(vessel);
+          }
+        },
+        onHover: (info) => {
+          if (info.object) {
+            setHoveredVessel(info.object as ActiveVessel);
+          } else {
+            setHoveredVessel(null);
+          }
+        },
+      }),
+    [vesselsWithCoords, activeVessel, onVesselSelect],
+  );
 
   // Capa de trayectoria del buque seleccionado (click)
-  const trackLayer = new PathLayer<{
-    vessel_name: string;
-    path: [number, number][];
-  }>({
-    id: 'vessel-tracks',
-    data: trackFeatures,
-    getPath: (feature) => feature.path,
-    getWidth: () => 3,
-    widthUnits: 'pixels',
-    getColor: () => [30, 64, 175, 220], // azul oscuro para mejor contraste en mapa claro
-    rounded: true,
-    capRounded: true,
-    jointRounded: true,
-  });
+  const trackLayer = useMemo(
+    () =>
+      new PathLayer<{
+        vessel_name: string;
+        path: [number, number][];
+      }>({
+        id: 'vessel-tracks',
+        data: trackFeatures,
+        getPath: (feature) => feature.path,
+        getWidth: () => 3,
+        widthUnits: 'pixels',
+        getColor: () => [30, 64, 175, 220], // azul oscuro para mejor contraste en mapa claro
+        rounded: true,
+        capRounded: true,
+        jointRounded: true,
+        updateTriggers: {
+          getPath: [trackFeatures],
+        },
+      }),
+    [trackFeatures],
+  );
 
   // Capa de trayectoria del buque sobre el que se hace hover
-  const hoverTrackLayer = new PathLayer<{
-    vessel_name: string;
-    path: [number, number][];
-  }>({
-    id: 'hover-vessel-tracks',
-    data: hoverTrackFeatures,
-    getPath: (feature) => feature.path,
-    getWidth: () => 2,
-    widthUnits: 'pixels',
-    getColor: () => [59, 130, 246, 200], // azul más visible para hover en mapa claro
-    rounded: true,
-    capRounded: true,
-    jointRounded: true,
-  });
+  const hoverTrackLayer = useMemo(
+    () =>
+      new PathLayer<{
+        vessel_name: string;
+        path: [number, number][];
+      }>({
+        id: 'hover-vessel-tracks',
+        data: hoverTrackFeatures,
+        getPath: (feature) => feature.path,
+        getWidth: () => 2,
+        widthUnits: 'pixels',
+        getColor: () => [59, 130, 246, 200], // azul más visible para hover en mapa claro
+        rounded: true,
+        capRounded: true,
+        jointRounded: true,
+        updateTriggers: {
+          getPath: [hoverTrackFeatures],
+        },
+      }),
+    [hoverTrackFeatures],
+  );
 
   return (
     <div className="relative h-[60vh] min-h-[320px] w-full overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-950/60 sm:h-[600px]">

@@ -410,27 +410,34 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
   });
 
   // Capa de posiciones AIS de buques activos (punto tipo "estrella" amarilla)
-  const activeVesselsLayer = new ScatterplotLayer<ActiveVessel>({
-    id: 'active-vessels-main',
-    data: activeVesselPoints,
-    getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
-    getRadius: () => 9000,
-    getFillColor: () => [250, 204, 21, 255], // amarillo intenso
-    pickable: true,
-    radiusMinPixels: 3,
-    radiusMaxPixels: 14,
-    stroked: true,
-    getLineWidth: () => 2,
-    lineWidthUnits: 'pixels',
-    getLineColor: () => [252, 211, 77, 255],
-    onHover: (info) => {
-      if (info.object) {
-        setHoveredVessel(info.object as ActiveVessel);
-      } else {
-        setHoveredVessel(null);
-      }
-    },
-  });
+  const activeVesselsLayer = useMemo(
+    () =>
+      new ScatterplotLayer<ActiveVessel>({
+        id: 'active-vessels-main',
+        data: activeVesselPoints,
+        getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
+        getRadius: () => 9000,
+        getFillColor: () => [250, 204, 21, 255], // amarillo intenso
+        pickable: true,
+        radiusMinPixels: 3,
+        radiusMaxPixels: 14,
+        stroked: true,
+        getLineWidth: () => 2,
+        lineWidthUnits: 'pixels',
+        getLineColor: () => [252, 211, 77, 255],
+        updateTriggers: {
+          getPosition: [activeVesselPoints],
+        },
+        onHover: (info) => {
+          if (info.object) {
+            setHoveredVessel(info.object as ActiveVessel);
+          } else {
+            setHoveredVessel(null);
+          }
+        },
+      }),
+    [activeVesselPoints],
+  );
 
   // No renderizar hasta que estemos en el cliente
   if (!isMounted) {

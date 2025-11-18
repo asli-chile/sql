@@ -3,6 +3,7 @@ export type ActiveVessel = {
   last_lat: number | null;
   last_lon: number | null;
   last_position_at: string | null;
+  last_api_call_at?: string | null;
   etd?: string | null;
   eta: string | null;
   destination?: string | null;
@@ -54,6 +55,7 @@ export type VesselPosition = {
   bale: string | null;
   time_remaining: string | null;
   teu: string | null;
+  vessel_image: string | null;
 };
 
 export type VesselTrackPoint = {
