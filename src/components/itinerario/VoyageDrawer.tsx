@@ -323,7 +323,7 @@ export function VoyageDrawer({
 
                 {escalas.length === 0 && (
                   <p className="text-sm text-slate-400 dark:text-slate-500 text-center py-8">
-                    No hay escalas registradas. Haz clic en "Agregar escala" para comenzar.
+                    No hay escalas registradas. Haz clic en &quot;Agregar escala&quot; para comenzar.
                   </p>
                 )}
               </div>
