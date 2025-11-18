@@ -122,7 +122,7 @@ export async function POST() {
 
     const { data: existingPositions, error: positionsError } = await supabase
       .from('vessel_positions')
-      .select('*')
+      .select('id, vessel_name, imo, mmsi, last_lat, last_lon, last_position_at, last_api_call_at, raw_payload, speed, course, destination, navigational_status, ship_type, country, country_iso, eta_utc, atd_utc, last_port, unlocode_lastport, unlocode_destination, distance, predicted_eta, current_draught, length, beam, gross_tonnage, year_of_built, callsign, type_specific, deadweight, hull, builder, material, place_of_build, ballast_water, crude_oil, fresh_water, gas, grain, bale, time_remaining, teu, vessel_image, update_time, data_source, eni, name')
       .in('vessel_name', vesselNames);
 
     if (positionsError) {
@@ -154,10 +154,12 @@ export async function POST() {
         navigational_status: row.navigational_status ?? null,
         ship_type: row.ship_type ?? null,
         country: row.country ?? null,
+        country_iso: row.country_iso ?? null,
         eta_utc: row.eta_utc ?? null,
         atd_utc: row.atd_utc ?? null,
         last_port: row.last_port ?? null,
         unlocode_lastport: row.unlocode_lastport ?? null,
+        unlocode_destination: row.unlocode_destination ?? null,
         distance: row.distance ?? null,
         predicted_eta: row.predicted_eta ?? null,
         current_draught: row.current_draught ?? null,
@@ -180,6 +182,11 @@ export async function POST() {
         bale: row.bale ?? null,
         time_remaining: row.time_remaining ?? null,
         teu: row.teu ?? null,
+        vessel_image: row.vessel_image ?? null,
+        update_time: row.update_time ?? null,
+        data_source: row.data_source ?? null,
+        eni: row.eni ?? null,
+        name: row.name ?? null,
       });
     });
 
