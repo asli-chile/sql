@@ -56,6 +56,12 @@ export type VesselPosition = {
   time_remaining: string | null;
   teu: string | null;
   vessel_image: string | null;
+  country_iso: string | null;
+  unlocode_destination: string | null;
+  update_time: string | null;
+  data_source: string | null;
+  eni: string | null;
+  name: string | null;
 };
 
 export type VesselTrackPoint = {
