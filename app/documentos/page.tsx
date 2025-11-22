@@ -491,7 +491,7 @@ export default function DocumentosPage() {
     success('Factura creada exitosamente');
   };
 
-  const handleUpload = async (typeId: string, files: FileList | null, bookingOverride?: string, instructivoIndexOverride?: number | null) => {
+  const handleUpload = async (typeId: string, files: FileList | null, bookingOverride?: string) => {
     const bookingToUse = bookingOverride || selectedBooking;
     const normalizedBooking = normalizeBooking(bookingToUse);
     if (!normalizedBooking) {
@@ -541,8 +541,9 @@ export default function DocumentosPage() {
         : [];
       const numContenedores = contenedores.length || 1;
       
-      // Determinar el índice inicial de instructivo a usar
-      let currentInstructivoIndex: number | null = instructivoIndexOverride ?? null;
+      // Para instructivos, mantener el índice para identificarlos, pero no crear filas separadas
+      // Para otros documentos, no necesitamos asociarlos a instructivos específicos
+      let currentInstructivoIndex: number | null = null;
       
       if (typeId === 'instructivo-embarque') {
         // Si es un instructivo, contar cuántos ya existen para asignar el siguiente índice
@@ -554,48 +555,21 @@ export default function DocumentosPage() {
           return Math.max(max, idx);
         }, -1);
         currentInstructivoIndex = maxIndex + 1;
-      } else {
-        // Si no es un instructivo, usar el instructivoIndexOverride si se proporciona
-        // Si no se proporciona, asociarlo al instructivo más reciente del booking
-        if (instructivoIndexOverride !== undefined && instructivoIndexOverride !== null) {
-          currentInstructivoIndex = instructivoIndexOverride;
-        } else {
-          const existingInstructivos = filteredDocumentsByType['instructivo-embarque']?.filter(
-            (doc) => doc.booking && normalizeBooking(doc.booking) === normalizedBooking
-          ) || [];
-          if (existingInstructivos.length > 0) {
-            const maxIndex = existingInstructivos.reduce((max, doc) => {
-              const idx = doc.instructivoIndex ?? 0;
-              return Math.max(max, idx);
-            }, -1);
-            currentInstructivoIndex = maxIndex;
-          }
-          // Si no hay instructivos, instructivoIndex queda null (se asociará al primer instructivo cuando se cree)
-        }
       }
+      // Para otros documentos, no asociarlos a instructivos específicos (instructivoIndex = null)
 
-      // Subir cada archivo con su propio índice
+      // Subir cada archivo
       for (let i = 0; i < fileArray.length; i++) {
         const file = fileArray[i];
         const safeName = sanitizeFileName(file.name);
         let filePath: string;
-        let fileInstructivoIndex = currentInstructivoIndex;
         
         // Si es instructivo y hay múltiples archivos, incrementar el índice para cada uno
-        // Esto crea un nuevo instructivo por cada archivo
         if (typeId === 'instructivo-embarque' && currentInstructivoIndex !== null) {
-          fileInstructivoIndex = currentInstructivoIndex + i;
-        }
-        // Si no es instructivo, todos los archivos se asocian al mismo instructivo
-        // (el especificado en instructivoIndexOverride o el más reciente)
-        // No distribuir entre múltiples instructivos - todos van al mismo
-        
-        if (fileInstructivoIndex !== null) {
-          // Incluir el índice de instructivo en el nombre del archivo
-          // Usar timestamp único para cada archivo para evitar colisiones
+          const fileInstructivoIndex = currentInstructivoIndex + i;
           filePath = `${typeId}/${bookingSegment}__instructivo-${fileInstructivoIndex}__${Date.now()}-${i}-${safeName}`;
         } else {
-          // Formato original sin instructivo (se asociará al primer instructivo cuando se cree)
+          // Para otros documentos, no incluir instructivoIndex en el nombre
           filePath = `${typeId}/${bookingSegment}__${Date.now()}-${i}-${safeName}`;
         }
         
@@ -830,76 +804,25 @@ export default function DocumentosPage() {
     
     bookingMap.forEach((registro, bookingKey) => {
       const docsForBooking = documentsByBookingMap.get(bookingKey) || {};
-      const instructivos = docsForBooking['instructivo-embarque'] || [];
       
-      // Si no hay instructivos, crear una fila sin instructivo
-      if (instructivos.length === 0) {
-        const missing = DOCUMENT_TYPES.filter((type) => !(docsForBooking[type.id]?.length));
-        rows.push({
-          booking: registro.booking || bookingKey,
-          bookingKey,
-          cliente: registro.shipper || '-',
-          registro,
-          docsByType: docsForBooking,
-          hasPending: missing.length > 0,
-          instructivoIndex: null,
-        });
-      } else {
-        // Crear una fila por cada instructivo
-        instructivos.forEach((instructivo, index) => {
-          const instructivoIdx = instructivo.instructivoIndex ?? index;
-          const docsForInstructivo: Record<string, StoredDocument[]> = {};
-          const isFirstRow = index === 0;
-          
-          // Para cada tipo de documento, filtrar los que pertenecen a este instructivo
-          DOCUMENT_TYPES.forEach((type) => {
-            const allDocs = docsForBooking[type.id] || [];
-            if (type.id === 'instructivo-embarque') {
-              // Solo el instructivo correspondiente
-              docsForInstructivo[type.id] = [instructivo];
-            } else if (type.id === 'booking') {
-              // Booking PDF solo se muestra en la primera fila
-              docsForInstructivo[type.id] = isFirstRow ? allDocs : [];
-            } else {
-              // Documentos asociados a este instructivo (mismo instructivoIndex o null si no hay instructivos previos)
-              docsForInstructivo[type.id] = allDocs.filter((doc) => {
-                if (doc.instructivoIndex === null) {
-                  // Si el documento no tiene instructivoIndex, solo asociarlo al primer instructivo
-                  return instructivoIdx === 0;
-                }
-                return doc.instructivoIndex === instructivoIdx;
-              });
-            }
-          });
-          
-          const missing = DOCUMENT_TYPES.filter((type) => {
-            // Para instructivo, siempre está presente en esta fila
-            if (type.id === 'instructivo-embarque') return false;
-            // Para booking PDF, solo verificar en la primera fila
-            if (type.id === 'booking') return isFirstRow && !(docsForInstructivo[type.id]?.length);
-            return !(docsForInstructivo[type.id]?.length);
-          });
-          
-          rows.push({
-            booking: registro.booking || bookingKey,
-            bookingKey,
-            cliente: registro.shipper || '-',
-            registro,
-            docsByType: docsForInstructivo,
-            hasPending: missing.length > 0,
-            instructivoIndex: instructivoIdx,
-          });
-        });
-      }
+      // Crear UNA SOLA fila por booking, mostrando TODOS los documentos
+      // No crear filas separadas por instructivo
+      const missing = DOCUMENT_TYPES.filter((type) => !(docsForBooking[type.id]?.length));
+      
+      rows.push({
+        booking: registro.booking || bookingKey,
+        bookingKey,
+        cliente: registro.shipper || '-',
+        registro,
+        docsByType: docsForBooking, // Todos los documentos del booking, sin filtrar por instructivo
+        hasPending: missing.length > 0,
+        instructivoIndex: null, // Ya no usamos instructivoIndex para separar filas
+      });
     });
     
     return rows.sort((a, b) => {
-      // Ordenar por booking primero, luego por instructivoIndex
-      const bookingCompare = a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
-      if (bookingCompare !== 0) return bookingCompare;
-      const aIdx = a.instructivoIndex ?? -1;
-      const bIdx = b.instructivoIndex ?? -1;
-      return aIdx - bIdx;
+      // Ordenar solo por booking
+      return a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
     });
   }, [bookingMap, documentsByBookingMap]);
 
@@ -1123,9 +1046,8 @@ export default function DocumentosPage() {
                 <tbody className="divide-y divide-slate-800/60">
                   {bookingsWithDocs.map((row) => {
                     const isUploadingForThisBooking = uploadingBooking && row.bookingKey === normalizeBooking(uploadingBooking);
-                    const rowKey = `${row.bookingKey}-${row.instructivoIndex ?? 'none'}`;
                     return (
-                      <tr key={rowKey} className="hover:bg-slate-900/40">
+                      <tr key={row.bookingKey} className="hover:bg-slate-900/40">
                         <td className="px-4 py-3 font-semibold text-white sticky left-0 bg-slate-950 z-10">
                           {row.booking}
                         </td>
@@ -1142,7 +1064,7 @@ export default function DocumentosPage() {
                             const docsForType = row.docsByType[type.id] ?? [];
                             const hasDoc = docsForType.length > 0;
                             const isUploading = isUploadingForThisBooking && uploadingType === type.id;
-                            const uploadKey = `upload-${row.bookingKey}-${type.id}-${row.instructivoIndex ?? 'none'}`;
+                            const uploadKey = `upload-${row.bookingKey}-${type.id}`;
                             
                             // Obtener número de contenedores del registro
                             const contenedores = Array.isArray(row.registro.contenedor) 
@@ -1150,22 +1072,11 @@ export default function DocumentosPage() {
                               : row.registro.contenedor ? [row.registro.contenedor] : [];
                             const numContenedores = contenedores.length || 1;
                             
-                            // Para Booking PDF, solo mostrar en la primera fila de cada booking
-                            const isBookingPDF = type.id === 'booking';
-                            const isFirstRowOfBooking = row.instructivoIndex === 0 || row.instructivoIndex === null;
-                            const shouldShowBookingPDF = !isBookingPDF || isFirstRowOfBooking;
-                            
                             // Determinar si el usuario puede subir documentos (solo admin y ejecutivos)
                             const canUpload = isAdminOrEjecutivo;
 
                             return (
                               <td key={type.id} className="px-3 py-3">
-                                {!shouldShowBookingPDF ? (
-                                  // Para Booking PDF en filas que no son la primera, mostrar vacío
-                                  <div className="flex flex-col items-center gap-1.5 min-w-[140px]">
-                                    <span className="text-[9px] text-slate-500 italic">-</span>
-                                  </div>
-                                ) : (
                                 <div className="flex flex-col items-center gap-1.5 min-w-[140px]">
                                   {hasDoc ? (
                                     <>
@@ -1213,7 +1124,7 @@ export default function DocumentosPage() {
                                             accept=".pdf,.xls,.xlsx"
                                             multiple
                                             onChange={(event) => {
-                                              void handleUpload(type.id, event.target.files, row.booking, row.instructivoIndex);
+                                              void handleUpload(type.id, event.target.files, row.booking);
                                               event.target.value = '';
                                             }}
                                           />
@@ -1244,7 +1155,7 @@ export default function DocumentosPage() {
                                           accept=".pdf,.xls,.xlsx"
                                           multiple
                                           onChange={(event) => {
-                                            void handleUpload(type.id, event.target.files, row.booking, row.instructivoIndex);
+                                            void handleUpload(type.id, event.target.files, row.booking);
                                             event.target.value = '';
                                           }}
                                         />
@@ -1258,7 +1169,6 @@ export default function DocumentosPage() {
                                     )
                                   )}
                                 </div>
-                                )}
                               </td>
                             );
                           });
