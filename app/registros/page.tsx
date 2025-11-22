@@ -177,7 +177,16 @@ useEffect(() => {
       const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
       
-      if (error) throw error;
+      // Si hay error de refresh token, limpiar sesión y redirigir
+      if (error) {
+        // Si es un error de refresh token inválido, es esperado y no necesita log
+        if (error.message?.includes('Refresh Token') || error.message?.includes('JWT')) {
+          await supabase.auth.signOut();
+          router.push('/auth');
+          return;
+        }
+        throw error;
+      }
       
       if (!user) {
         router.push('/auth');
@@ -237,8 +246,11 @@ useEffect(() => {
       // Cargar registros (depende de clientes asignados si es ejecutivo)
       await loadRegistros();
       await loadFacturas();
-    } catch (error) {
-      console.error('Error checking user:', error);
+    } catch (error: any) {
+      // Solo loguear errores que no sean de refresh token
+      if (!error?.message?.includes('Refresh Token') && !error?.message?.includes('JWT')) {
+        console.error('Error checking user:', error);
+      }
       router.push('/auth');
     } finally {
       setLoading(false);

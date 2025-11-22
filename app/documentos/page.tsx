@@ -46,6 +46,7 @@ type StoredDocument = {
   path: string;
   booking: string | null;
   updatedAt: string | null;
+  instructivoIndex: number | null;
 };
 
 const STORAGE_BUCKET = 'documentos';
@@ -73,7 +74,7 @@ const DOCUMENT_TYPES: DocumentType[] = [
     id: 'instructivo-embarque',
     name: 'Instructivo de Embarque',
     description: 'Indicaciones para navieras y transporte.',
-    formats: ['PDF'],
+    formats: ['PDF', 'XLSX'],
     icon: ClipboardList,
     accent: 'text-emerald-300',
     gradient: 'from-emerald-500/15 to-slate-900/60',
@@ -163,16 +164,30 @@ const normalizeTemporada = (value?: string | null): string => {
 const parseStoredDocumentName = (fileName: string) => {
   const separatorIndex = fileName.indexOf('__');
   if (separatorIndex === -1) {
-    return { booking: null as string | null, originalName: fileName };
+    return { booking: null as string | null, originalName: fileName, instructivoIndex: null };
   }
 
   const bookingSegment = fileName.slice(0, separatorIndex);
-  const originalName = fileName.slice(separatorIndex + 2);
+  const rest = fileName.slice(separatorIndex + 2);
+  
+  // Buscar si hay un identificador de instructivo: instructivo-0, instructivo-1, etc.
+  const instructivoMatch = rest.match(/^instructivo-(\d+)__/);
+  let instructivoIndex: number | null = null;
+  let originalName = rest;
+  
+  if (instructivoMatch) {
+    instructivoIndex = parseInt(instructivoMatch[1], 10);
+    originalName = rest.slice(instructivoMatch[0].length);
+  }
 
   try {
-    return { booking: decodeURIComponent(bookingSegment), originalName };
+    return { 
+      booking: decodeURIComponent(bookingSegment), 
+      originalName,
+      instructivoIndex 
+    };
   } catch {
-    return { booking: bookingSegment, originalName };
+    return { booking: bookingSegment, originalName, instructivoIndex };
   }
 };
 
@@ -199,6 +214,8 @@ export default function DocumentosPage() {
   const [searchBookingInput, setSearchBookingInput] = useState('');
   const [inspectedBooking, setInspectedBooking] = useState('');
   const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
+  const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
+  const [isEjecutivo, setIsEjecutivo] = useState(false);
   
   const temporadaParam = searchParams?.get('temporada');
   const isAdminOrEjecutivo = (currentUser?.rol === 'admin') || Boolean(currentUser?.email?.endsWith('@asli.cl'));
@@ -211,8 +228,8 @@ export default function DocumentosPage() {
         setSelectedTemporada(normalized);
       }
     } else {
-      // Establecer "25-26" por defecto si no hay temporada en la URL
-      const defaultTemporada = '25-26';
+      // Establecer "2025-2026" por defecto si no hay temporada en la URL
+      const defaultTemporada = '2025-2026';
       setSelectedTemporada(defaultTemporada);
       // Actualizar URL sin recargar
       const params = new URLSearchParams(window.location.search);
@@ -259,19 +276,80 @@ export default function DocumentosPage() {
           rol: userData.rol,
         activo: userData.activo,
       });
+      
+      // Verificar si es ejecutivo y cargar clientes asignados
+      const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
+      setIsEjecutivo(emailEsEjecutivo);
+      await loadClientesAsignados(userData.id, userData.nombre);
     } catch (err) {
       console.error('Error checking user:', err);
       router.push('/auth');
     }
   };
 
+  // Función para cargar clientes asignados (similar a registros)
+  const loadClientesAsignados = async (userId: string, nombreUsuario?: string) => {
+    try {
+      const clientesAsignadosSet = new Set<string>();
+      
+      // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
+      const { data, error } = await supabase
+        .from('ejecutivo_clientes')
+        .select('cliente_nombre')
+        .eq('ejecutivo_id', userId)
+        .eq('activo', true);
+
+      if (!error && data) {
+        data.forEach(item => clientesAsignadosSet.add(item.cliente_nombre));
+      }
+
+      // 2. Si el nombre de usuario coincide con un cliente, agregarlo también
+      if (nombreUsuario) {
+        const { data: catalogoClientes, error: catalogoError } = await supabase
+          .from('catalogos')
+          .select('valores')
+          .eq('categoria', 'clientes')
+          .single();
+
+        if (!catalogoError && catalogoClientes?.valores) {
+          const valores = Array.isArray(catalogoClientes.valores) 
+            ? catalogoClientes.valores 
+            : typeof catalogoClientes.valores === 'string'
+              ? JSON.parse(catalogoClientes.valores)
+              : [];
+          
+          const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
+          const clienteCoincidente = valores.find((cliente: string) => 
+            cliente.toUpperCase().trim() === nombreUsuarioUpper
+          );
+          
+          if (clienteCoincidente) {
+            clientesAsignadosSet.add(clienteCoincidente);
+          }
+        }
+      }
+
+      setClientesAsignados(Array.from(clientesAsignadosSet));
+    } catch (error) {
+      console.error('Error loading clientes asignados:', error);
+      setClientesAsignados([]);
+    }
+  };
+
   const loadRegistros = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('registros')
         .select('*')
-        .is('deleted_at', null)
-        .order('ingresado', { ascending: false });
+        .is('deleted_at', null);
+
+      // Filtrar por clientes asignados si hay alguno (aplica para ejecutivos y usuarios cuyo nombre coincide con un cliente)
+      const esAdmin = currentUser?.rol === 'admin';
+      if (!esAdmin && clientesAsignados.length > 0) {
+        query = query.in('shipper', clientesAsignados);
+      }
+
+      const { data, error } = await query.order('ingresado', { ascending: false });
 
       if (error) throw error;
 
@@ -303,7 +381,7 @@ export default function DocumentosPage() {
       console.error('Error cargando registros:', err);
       showError('Error al cargar registros');
     }
-  }, [showError, supabase]);
+  }, [showError, supabase, currentUser, clientesAsignados]);
 
   const loadFacturas = useCallback(async () => {
     try {
@@ -368,10 +446,11 @@ export default function DocumentosPage() {
             data?.map((file) => ({
               typeId: type.id,
               ...(() => {
-                const { booking, originalName } = parseStoredDocumentName(file.name);
+                const { booking, originalName, instructivoIndex } = parseStoredDocumentName(file.name);
                 return {
                   booking,
                   name: formatFileDisplayName(originalName),
+                  instructivoIndex,
                 };
               })(),
               path: `${type.id}/${file.name}`,
@@ -393,7 +472,7 @@ export default function DocumentosPage() {
       void loadFacturas();
       void fetchDocuments();
     }
-  }, [currentUser, loadRegistros, loadFacturas, fetchDocuments]);
+  }, [currentUser, clientesAsignados, loadRegistros, loadFacturas, fetchDocuments]);
 
   const handleCrearFactura = (registro: Registro) => {
     setRegistroSeleccionado(registro);
@@ -412,12 +491,25 @@ export default function DocumentosPage() {
     success('Factura creada exitosamente');
   };
 
-  const handleUpload = async (typeId: string, files: FileList | null, bookingOverride?: string) => {
+  const handleUpload = async (typeId: string, files: FileList | null, bookingOverride?: string, instructivoIndexOverride?: number | null) => {
     const bookingToUse = bookingOverride || selectedBooking;
     const normalizedBooking = normalizeBooking(bookingToUse);
     if (!normalizedBooking) {
       showError('Ingresa un booking válido antes de subir un documento.');
       return;
+    }
+
+    // Validar que el booking pertenezca a los registros permitidos (filtrados por clientes asignados)
+    const esAdmin = currentUser?.rol === 'admin';
+    if (!esAdmin && clientesAsignados.length > 0) {
+      const bookingExiste = registros.some(
+        (r) => normalizeBooking(r.booking) === normalizedBooking && 
+               (clientesAsignados.includes(r.shipper) || clientesAsignados.length === 0)
+      );
+      if (!bookingExiste) {
+        showError('No tienes permisos para subir documentos de este booking.');
+        return;
+      }
     }
 
     if (!files || files.length === 0) {
@@ -441,10 +533,72 @@ export default function DocumentosPage() {
       setUploadProgress(10);
 
       const bookingSegment = encodeURIComponent(normalizedBooking);
+      
+      // Obtener el registro para saber cuántos contenedores tiene
+      const registro = registros.find(r => normalizeBooking(r.booking) === normalizedBooking);
+      const contenedores = registro?.contenedor 
+        ? (Array.isArray(registro.contenedor) ? registro.contenedor : [registro.contenedor])
+        : [];
+      const numContenedores = contenedores.length || 1;
+      
+      // Determinar el índice inicial de instructivo a usar
+      let currentInstructivoIndex: number | null = instructivoIndexOverride ?? null;
+      
+      if (typeId === 'instructivo-embarque') {
+        // Si es un instructivo, contar cuántos ya existen para asignar el siguiente índice
+        const existingInstructivos = filteredDocumentsByType['instructivo-embarque']?.filter(
+          (doc) => doc.booking && normalizeBooking(doc.booking) === normalizedBooking
+        ) || [];
+        const maxIndex = existingInstructivos.reduce((max, doc) => {
+          const idx = doc.instructivoIndex ?? 0;
+          return Math.max(max, idx);
+        }, -1);
+        currentInstructivoIndex = maxIndex + 1;
+      } else {
+        // Si no es un instructivo, usar el instructivoIndexOverride si se proporciona
+        // Si no se proporciona, asociarlo al instructivo más reciente del booking
+        if (instructivoIndexOverride !== undefined && instructivoIndexOverride !== null) {
+          currentInstructivoIndex = instructivoIndexOverride;
+        } else {
+          const existingInstructivos = filteredDocumentsByType['instructivo-embarque']?.filter(
+            (doc) => doc.booking && normalizeBooking(doc.booking) === normalizedBooking
+          ) || [];
+          if (existingInstructivos.length > 0) {
+            const maxIndex = existingInstructivos.reduce((max, doc) => {
+              const idx = doc.instructivoIndex ?? 0;
+              return Math.max(max, idx);
+            }, -1);
+            currentInstructivoIndex = maxIndex;
+          }
+          // Si no hay instructivos, instructivoIndex queda null (se asociará al primer instructivo cuando se cree)
+        }
+      }
 
-      for (const file of fileArray) {
+      // Subir cada archivo con su propio índice
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
         const safeName = sanitizeFileName(file.name);
-        const filePath = `${typeId}/${bookingSegment}__${Date.now()}-${safeName}`;
+        let filePath: string;
+        let fileInstructivoIndex = currentInstructivoIndex;
+        
+        // Si es instructivo y hay múltiples archivos, incrementar el índice para cada uno
+        // Esto crea un nuevo instructivo por cada archivo
+        if (typeId === 'instructivo-embarque' && currentInstructivoIndex !== null) {
+          fileInstructivoIndex = currentInstructivoIndex + i;
+        }
+        // Si no es instructivo, todos los archivos se asocian al mismo instructivo
+        // (el especificado en instructivoIndexOverride o el más reciente)
+        // No distribuir entre múltiples instructivos - todos van al mismo
+        
+        if (fileInstructivoIndex !== null) {
+          // Incluir el índice de instructivo en el nombre del archivo
+          // Usar timestamp único para cada archivo para evitar colisiones
+          filePath = `${typeId}/${bookingSegment}__instructivo-${fileInstructivoIndex}__${Date.now()}-${i}-${safeName}`;
+        } else {
+          // Formato original sin instructivo (se asociará al primer instructivo cuando se cree)
+          filePath = `${typeId}/${bookingSegment}__${Date.now()}-${i}-${safeName}`;
+        }
+        
         const { error } = await supabase.storage
           .from(STORAGE_BUCKET)
           .upload(filePath, file, {
@@ -519,7 +673,10 @@ export default function DocumentosPage() {
     }
 
     // Filtrar por permisos de usuario si no es admin/ejecutivo
-    if (!isAdminOrEjecutivo && currentUser?.id) {
+    // Si tiene clientes asignados, ya está filtrado por clientes en loadRegistros
+    // Si no tiene clientes asignados, filtrar solo por registros que creó
+    const esAdmin = currentUser?.rol === 'admin';
+    if (!esAdmin && !isAdminOrEjecutivo && currentUser?.id && clientesAsignados.length === 0) {
       const allowedRefAsli = new Set(
         registros
           .filter((r) => r.createdBy === currentUser.id || r.usuario === currentUser.nombre)
@@ -529,7 +686,7 @@ export default function DocumentosPage() {
     }
 
     return filtered;
-  }, [registros, selectedTemporada, isAdminOrEjecutivo, currentUser]);
+  }, [registros, selectedTemporada, isAdminOrEjecutivo, currentUser, clientesAsignados]);
 
   const facturasFiltradas = useMemo(() => {
     if (!selectedTemporada && isAdminOrEjecutivo) {
@@ -607,20 +764,38 @@ export default function DocumentosPage() {
 
   const filteredDocumentsByType = useMemo(() => {
     const next = createEmptyDocumentsMap();
+    const esAdmin = currentUser?.rol === 'admin';
+    
     Object.entries(documentsByType).forEach(([typeId, docs]) => {
       next[typeId] = docs.filter((doc) => {
         const bookingKey = doc.booking ? normalizeBooking(doc.booking) : '';
+        
+        // Si hay temporada seleccionada, filtrar por bookings de esa temporada
         if (selectedTemporada) {
           return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
         }
+        
+        // Si es admin, mostrar todos los documentos
+        if (esAdmin) {
+          return true;
+        }
+        
+        // Para ejecutivos y usuarios con clientes asignados, filtrar por bookings permitidos
+        if (clientesAsignados.length > 0) {
+          return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
+        }
+        
+        // Para usuarios normales sin clientes asignados, filtrar por bookings de sus registros
         if (!isAdminOrEjecutivo) {
           return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
         }
+        
+        // Para ejecutivos sin clientes asignados, mostrar todos
         return true;
       });
     });
     return next;
-  }, [documentsByType, allowedBookingsSet, isAdminOrEjecutivo, selectedTemporada]);
+  }, [documentsByType, allowedBookingsSet, isAdminOrEjecutivo, selectedTemporada, clientesAsignados, currentUser]);
 
   const documentsByBookingMap = useMemo(() => {
     const map = new Map<string, Record<string, StoredDocument[]>>();
@@ -650,22 +825,81 @@ export default function DocumentosPage() {
       registro: Registro;
       docsByType: Record<string, StoredDocument[]>;
       hasPending: boolean;
+      instructivoIndex: number | null;
     }[] = [];
+    
     bookingMap.forEach((registro, bookingKey) => {
       const docsForBooking = documentsByBookingMap.get(bookingKey) || {};
-      const missing = DOCUMENT_TYPES.filter((type) => !(docsForBooking[type.id]?.length));
-      rows.push({
-        booking: registro.booking || bookingKey,
-        bookingKey,
-        cliente: registro.shipper || '-',
-        registro,
-        docsByType: docsForBooking,
-        hasPending: missing.length > 0,
-      });
+      const instructivos = docsForBooking['instructivo-embarque'] || [];
+      
+      // Si no hay instructivos, crear una fila sin instructivo
+      if (instructivos.length === 0) {
+        const missing = DOCUMENT_TYPES.filter((type) => !(docsForBooking[type.id]?.length));
+        rows.push({
+          booking: registro.booking || bookingKey,
+          bookingKey,
+          cliente: registro.shipper || '-',
+          registro,
+          docsByType: docsForBooking,
+          hasPending: missing.length > 0,
+          instructivoIndex: null,
+        });
+      } else {
+        // Crear una fila por cada instructivo
+        instructivos.forEach((instructivo, index) => {
+          const instructivoIdx = instructivo.instructivoIndex ?? index;
+          const docsForInstructivo: Record<string, StoredDocument[]> = {};
+          const isFirstRow = index === 0;
+          
+          // Para cada tipo de documento, filtrar los que pertenecen a este instructivo
+          DOCUMENT_TYPES.forEach((type) => {
+            const allDocs = docsForBooking[type.id] || [];
+            if (type.id === 'instructivo-embarque') {
+              // Solo el instructivo correspondiente
+              docsForInstructivo[type.id] = [instructivo];
+            } else if (type.id === 'booking') {
+              // Booking PDF solo se muestra en la primera fila
+              docsForInstructivo[type.id] = isFirstRow ? allDocs : [];
+            } else {
+              // Documentos asociados a este instructivo (mismo instructivoIndex o null si no hay instructivos previos)
+              docsForInstructivo[type.id] = allDocs.filter((doc) => {
+                if (doc.instructivoIndex === null) {
+                  // Si el documento no tiene instructivoIndex, solo asociarlo al primer instructivo
+                  return instructivoIdx === 0;
+                }
+                return doc.instructivoIndex === instructivoIdx;
+              });
+            }
+          });
+          
+          const missing = DOCUMENT_TYPES.filter((type) => {
+            // Para instructivo, siempre está presente en esta fila
+            if (type.id === 'instructivo-embarque') return false;
+            // Para booking PDF, solo verificar en la primera fila
+            if (type.id === 'booking') return isFirstRow && !(docsForInstructivo[type.id]?.length);
+            return !(docsForInstructivo[type.id]?.length);
+          });
+          
+          rows.push({
+            booking: registro.booking || bookingKey,
+            bookingKey,
+            cliente: registro.shipper || '-',
+            registro,
+            docsByType: docsForInstructivo,
+            hasPending: missing.length > 0,
+            instructivoIndex: instructivoIdx,
+          });
+        });
+      }
     });
+    
     return rows.sort((a, b) => {
-      // Ordenar por booking primero (alfabético/numerico)
-      return a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
+      // Ordenar por booking primero, luego por instructivoIndex
+      const bookingCompare = a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
+      if (bookingCompare !== 0) return bookingCompare;
+      const aIdx = a.instructivoIndex ?? -1;
+      const bIdx = b.instructivoIndex ?? -1;
+      return aIdx - bIdx;
     });
   }, [bookingMap, documentsByBookingMap]);
 
@@ -866,83 +1100,169 @@ export default function DocumentosPage() {
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold sticky left-0 bg-slate-950 z-10">Booking</th>
                     <th className="px-4 py-3 text-left font-semibold">Cliente</th>
-                    {DOCUMENT_TYPES.map((type) => {
-                      const IconComponent = type.icon;
-                      return (
-                        <th key={type.id} className="px-3 py-3 text-center font-semibold min-w-[140px]">
-                          <div className="flex flex-col items-center gap-1">
-                            <IconComponent className="h-4 w-4" aria-hidden="true" />
-                            <span className="text-[10px] leading-tight">{type.name}</span>
-                          </div>
-                        </th>
-                      );
-                    })}
+                    {(() => {
+                      // Reordenar: Instructivo primero, luego los demás
+                      const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
+                      const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque');
+                      const orderedTypes = instructivoType ? [instructivoType, ...otherTypes] : DOCUMENT_TYPES;
+                      
+                      return orderedTypes.map((type) => {
+                        const IconComponent = type.icon;
+                        return (
+                          <th key={type.id} className="px-3 py-3 text-center font-semibold min-w-[140px]">
+                            <div className="flex flex-col items-center gap-1">
+                              <IconComponent className="h-4 w-4" aria-hidden="true" />
+                              <span className="text-[10px] leading-tight">{type.name}</span>
+                            </div>
+                          </th>
+                        );
+                      });
+                    })()}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60">
                   {bookingsWithDocs.map((row) => {
                     const isUploadingForThisBooking = uploadingBooking && row.bookingKey === normalizeBooking(uploadingBooking);
+                    const rowKey = `${row.bookingKey}-${row.instructivoIndex ?? 'none'}`;
                     return (
-                      <tr key={row.booking} className="hover:bg-slate-900/40">
+                      <tr key={rowKey} className="hover:bg-slate-900/40">
                         <td className="px-4 py-3 font-semibold text-white sticky left-0 bg-slate-950 z-10">
                           {row.booking}
                         </td>
                         <td className="px-4 py-3 text-slate-300">
                           {row.cliente}
                         </td>
-                        {DOCUMENT_TYPES.map((type) => {
-                          const docsForType = row.docsByType[type.id] ?? [];
-                          const hasDoc = docsForType.length > 0;
-                          const doc = docsForType[0];
-                          const isUploading = isUploadingForThisBooking && uploadingType === type.id;
-                          const uploadKey = `upload-${row.bookingKey}-${type.id}`;
+                        {(() => {
+                          // Reordenar: Instructivo primero, luego los demás
+                          const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
+                          const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque');
+                          const orderedTypes = instructivoType ? [instructivoType, ...otherTypes] : DOCUMENT_TYPES;
+                          
+                          return orderedTypes.map((type) => {
+                            const docsForType = row.docsByType[type.id] ?? [];
+                            const hasDoc = docsForType.length > 0;
+                            const isUploading = isUploadingForThisBooking && uploadingType === type.id;
+                            const uploadKey = `upload-${row.bookingKey}-${type.id}-${row.instructivoIndex ?? 'none'}`;
+                            
+                            // Obtener número de contenedores del registro
+                            const contenedores = Array.isArray(row.registro.contenedor) 
+                              ? row.registro.contenedor 
+                              : row.registro.contenedor ? [row.registro.contenedor] : [];
+                            const numContenedores = contenedores.length || 1;
+                            
+                            // Para Booking PDF, solo mostrar en la primera fila de cada booking
+                            const isBookingPDF = type.id === 'booking';
+                            const isFirstRowOfBooking = row.instructivoIndex === 0 || row.instructivoIndex === null;
+                            const shouldShowBookingPDF = !isBookingPDF || isFirstRowOfBooking;
+                            
+                            // Determinar si el usuario puede subir documentos (solo admin y ejecutivos)
+                            const canUpload = isAdminOrEjecutivo;
 
-                          return (
-                            <td key={type.id} className="px-3 py-3 text-center">
-                              {hasDoc ? (
-                                <div className="flex flex-col items-center gap-1">
-                                  <CheckCircle className="h-5 w-5 text-emerald-400" aria-hidden="true" />
-                                  <button
-                                    type="button"
-                                    onClick={() => doc && handleDownload(doc)}
-                                    disabled={downloadUrlLoading === doc.path}
-                                    className="text-[10px] text-slate-400 hover:text-sky-300 transition disabled:opacity-60"
-                                    title={doc.name}
-                                  >
-                                    {downloadUrlLoading === doc.path ? 'Generando…' : 'Ver'}
-                                  </button>
-                                </div>
-                              ) : (
-                                <label
-                                  htmlFor={uploadKey}
-                                  className="flex flex-col items-center gap-1 cursor-pointer group"
-                                >
-                                  <div className="relative">
-                                    <AlertCircle className="h-5 w-5 text-amber-400 group-hover:text-amber-300 transition" aria-hidden="true" />
-                                    {isUploading && (
-                                      <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="h-3 w-3 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                                      </div>
-                                    )}
+                            return (
+                              <td key={type.id} className="px-3 py-3">
+                                {!shouldShowBookingPDF ? (
+                                  // Para Booking PDF en filas que no son la primera, mostrar vacío
+                                  <div className="flex flex-col items-center gap-1.5 min-w-[140px]">
+                                    <span className="text-[9px] text-slate-500 italic">-</span>
                                   </div>
-                                  <span className="text-[10px] text-slate-400 group-hover:text-sky-300 transition">
-                                    Subir
-                                  </span>
-                                  <input
-                                    id={uploadKey}
-                                    type="file"
-                                    className="sr-only"
-                                    accept=".pdf,.xls,.xlsx"
-                                    onChange={(event) => {
-                                      void handleUpload(type.id, event.target.files, row.booking);
-                                      event.target.value = '';
-                                    }}
-                                  />
-                                </label>
-                              )}
-                            </td>
-                          );
-                        })}
+                                ) : (
+                                <div className="flex flex-col items-center gap-1.5 min-w-[140px]">
+                                  {hasDoc ? (
+                                    <>
+                                      <div className="flex items-center gap-1">
+                                        <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />
+                                        <span className="text-[9px] text-emerald-400 font-semibold">
+                                          {docsForType.length} {docsForType.length === 1 ? 'doc' : 'docs'}
+                                        </span>
+                                      </div>
+                                      <div className="flex flex-col gap-1 w-full max-h-[120px] overflow-y-auto">
+                                        {docsForType.map((doc, idx) => (
+                                          <button
+                                            key={doc.path}
+                                            type="button"
+                                            onClick={() => handleDownload(doc)}
+                                            disabled={downloadUrlLoading === doc.path}
+                                            className="text-[9px] text-slate-300 hover:text-sky-300 transition disabled:opacity-60 px-2 py-1 rounded bg-slate-800/50 hover:bg-slate-700/50 truncate w-full text-left"
+                                            title={doc.name}
+                                          >
+                                            {downloadUrlLoading === doc.path ? 'Generando…' : doc.name.length > 25 ? `${doc.name.substring(0, 22)}...` : doc.name}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      {/* Solo mostrar botón para agregar más documentos si el usuario tiene permisos */}
+                                      {canUpload && (
+                                        <label
+                                          htmlFor={`${uploadKey}-add`}
+                                          className="flex items-center gap-1 cursor-pointer group mt-1"
+                                        >
+                                          <div className="relative">
+                                            <AlertCircle className="h-3 w-3 text-amber-400 group-hover:text-amber-300 transition" aria-hidden="true" />
+                                            {isUploading && (
+                                              <div className="absolute inset-0 flex items-center justify-center">
+                                                <div className="h-2 w-2 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                                              </div>
+                                            )}
+                                          </div>
+                                          <span className="text-[9px] text-slate-400 group-hover:text-sky-300 transition">
+                                            Agregar {numContenedores > docsForType.length ? `(${numContenedores - docsForType.length} más)` : 'más'}
+                                          </span>
+                                          <input
+                                            id={`${uploadKey}-add`}
+                                            type="file"
+                                            className="sr-only"
+                                            accept=".pdf,.xls,.xlsx"
+                                            multiple
+                                            onChange={(event) => {
+                                              void handleUpload(type.id, event.target.files, row.booking, row.instructivoIndex);
+                                              event.target.value = '';
+                                            }}
+                                          />
+                                        </label>
+                                      )}
+                                    </>
+                                  ) : (
+                                    canUpload ? (
+                                      <label
+                                        htmlFor={uploadKey}
+                                        className="flex flex-col items-center gap-1 cursor-pointer group w-full"
+                                      >
+                                        <div className="relative">
+                                          <AlertCircle className="h-5 w-5 text-amber-400 group-hover:text-amber-300 transition" aria-hidden="true" />
+                                          {isUploading && (
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                              <div className="h-3 w-3 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
+                                            </div>
+                                          )}
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 group-hover:text-sky-300 transition">
+                                          Subir {numContenedores > 1 ? `(${numContenedores})` : ''}
+                                        </span>
+                                        <input
+                                          id={uploadKey}
+                                          type="file"
+                                          className="sr-only"
+                                          accept=".pdf,.xls,.xlsx"
+                                          multiple
+                                          onChange={(event) => {
+                                            void handleUpload(type.id, event.target.files, row.booking, row.instructivoIndex);
+                                            event.target.value = '';
+                                          }}
+                                        />
+                                      </label>
+                                    ) : (
+                                      // Usuario cliente sin permisos de subida - mostrar mensaje
+                                      <div className="flex flex-col items-center gap-1">
+                                        <AlertCircle className="h-5 w-5 text-slate-600" aria-hidden="true" />
+                                        <span className="text-[9px] text-slate-500 italic">Solo lectura</span>
+                                      </div>
+                                    )
+                                  )}
+                                </div>
+                                )}
+                              </td>
+                            );
+                          });
+                        })()}
                       </tr>
                     );
                   })}

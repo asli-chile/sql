@@ -572,16 +572,16 @@ export default function DashboardPage() {
       available: true,
       stats: displayedStats
     },
-    {
-      id: 'dashboard/seguimiento',
-      title: 'Seguimiento de Buques',
-      description: 'Mapa AIS y estado de los buques activos',
-      icon: Globe,
-      color: 'bg-sky-500',
-      hoverColor: 'hover:bg-sky-600',
-      available: true,
-      stats: null
-    },
+    // {
+    //   id: 'dashboard/seguimiento',
+    //   title: 'Seguimiento de Buques',
+    //   description: 'Mapa AIS y estado de los buques activos',
+    //   icon: Globe,
+    //   color: 'bg-sky-500',
+    //   hoverColor: 'hover:bg-sky-600',
+    //   available: true,
+    //   stats: null
+    // },
     {
       id: 'transportes',
       title: 'Registros de Transporte',
@@ -643,7 +643,7 @@ export default function DashboardPage() {
       title: 'Módulos',
       items: [
         { label: 'Embarques', id: 'registros', isActive: true },
-        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
+        // { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
         { label: 'Transportes', id: 'transportes', isActive: false },
         { label: 'Documentos', id: 'documentos', isActive: false },
       ],
