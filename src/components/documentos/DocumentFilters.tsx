@@ -38,6 +38,15 @@ export function DocumentFilters({
 
     return (
         <>
+            <header className="space-y-6">
+                <button
+                    onClick={() => router.push('/dashboard')}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-4 py-2 text-sm text-slate-300 transition hover:border-sky-500/60 hover:text-white"
+                >
+                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                    Volver al panel
+                </button>
+            </header>
             <section className="space-y-4 rounded-3xl border border-slate-800/70 bg-slate-950/70 p-5 shadow-xl shadow-slate-950/30">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -86,21 +95,33 @@ export function DocumentFilters({
                                     <div className="rounded-2xl border border-slate-800/60 bg-slate-900/50 p-4">
                                         <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Documentos faltantes</p>
                                         <ul className="mt-2 space-y-2 text-xs text-slate-300">
-                                            {DOCUMENT_TYPES.map((type) => {
-                                                const docsForType = inspectedDocsByType[type.id] ?? [];
-                                                const hasDoc = docsForType.length > 0;
-                                                return (
-                                                    <li key={type.id} className="flex items-center gap-2">
-                                                        {hasDoc ? (
-                                                            <CheckCircle className="h-4 w-4 text-emerald-400" aria-hidden="true" />
-                                                        ) : (
-                                                            <AlertCircle className="h-4 w-4 text-amber-400" aria-hidden="true" />
-                                                        )}
-                                                        <span className="text-sm text-slate-200">{type.name}</span>
-                                                        <span className="text-xs text-slate-500">{hasDoc ? 'Completado' : 'Pendiente'}</span>
-                                                    </li>
-                                                );
-                                            })}
+                                            {(() => {
+                                                // Reordenar: Instructivo primero, DUS al final
+                                                const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
+                                                const dusType = DOCUMENT_TYPES.find(t => t.id === 'documentos-aga');
+                                                const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'documentos-aga');
+                                                const orderedTypes = [
+                                                    ...(instructivoType ? [instructivoType] : []),
+                                                    ...otherTypes,
+                                                    ...(dusType ? [dusType] : [])
+                                                ];
+                                                
+                                                return orderedTypes.map((type) => {
+                                                    const docsForType = inspectedDocsByType[type.id] ?? [];
+                                                    const hasDoc = docsForType.length > 0;
+                                                    return (
+                                                        <li key={type.id} className="flex items-center gap-2">
+                                                            {hasDoc ? (
+                                                                <CheckCircle className="h-4 w-4 text-emerald-400" aria-hidden="true" />
+                                                            ) : (
+                                                                <AlertCircle className="h-4 w-4 text-amber-400" aria-hidden="true" />
+                                                            )}
+                                                            <span className="text-sm text-slate-200">{type.name}</span>
+                                                            <span className="text-xs text-slate-500">{hasDoc ? 'Completado' : 'Pendiente'}</span>
+                                                        </li>
+                                                    );
+                                                });
+                                            })()}
                                         </ul>
                                     </div>
                                 </div>
@@ -115,15 +136,7 @@ export function DocumentFilters({
                 )}
             </section>
 
-            <header className="space-y-6">
-                <button
-                    onClick={() => router.push('/dashboard')}
-                    className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-4 py-2 text-sm text-slate-300 transition hover:border-sky-500/60 hover:text-white"
-                >
-                    <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                    Volver al panel
-                </button>
-                <div className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-6 shadow-xl shadow-slate-900/40">
+            <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-6 shadow-xl shadow-slate-900/40">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                         <div>
                             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Centro documental</p>

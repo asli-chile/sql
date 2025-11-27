@@ -11,10 +11,10 @@ import 'ag-grid-community/styles/ag-theme-quartz.css';
 
 // Registrar todos los módulos de AG Grid Community
 ModuleRegistry.registerModules([AllCommunityModule]);
-import { UserProfileModal } from '@/components/UserProfileModal';
-import { 
-  LogOut, 
-  User as UserIcon, 
+import { UserProfileModal } from '@/components/users/UserProfileModal';
+import {
+  LogOut,
+  User as UserIcon,
   ArrowLeft,
   Download,
   Settings,
@@ -41,7 +41,7 @@ export default function TablasPersonalizadasPage() {
   const [rowData, setRowData] = useState<Registro[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<'quartz' | 'quartz-dark'>('quartz');
-  
+
   // Valores únicos para filtros
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
   const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
@@ -147,7 +147,7 @@ export default function TablasPersonalizadasPage() {
 
       const registrosConvertidos = (data || []).map(convertSupabaseToApp);
       setRowData(registrosConvertidos);
-      
+
       // Extraer valores únicos para filtros
       const navieras = [...new Set(registrosConvertidos.map(r => r.naviera).filter(Boolean))].sort();
       const ejecutivos = [...new Set(registrosConvertidos.map(r => r.ejecutivo).filter(Boolean))].sort();
@@ -159,7 +159,7 @@ export default function TablasPersonalizadasPage() {
       const fletes = [...new Set(registrosConvertidos.map(r => r.flete).filter(Boolean))].sort();
       const estados = [...new Set(registrosConvertidos.map(r => r.estado).filter(Boolean))].sort();
       const tipoIngreso = [...new Set(registrosConvertidos.map(r => r.tipoIngreso).filter(Boolean))].sort();
-      
+
       setNavierasUnicas(navieras);
       setEjecutivosUnicos(ejecutivos);
       setEspeciesUnicas(especies);
@@ -170,7 +170,7 @@ export default function TablasPersonalizadasPage() {
       setFletesUnicos(fletes);
       setEstadosUnicos(estados);
       setTipoIngresoUnicos(tipoIngreso);
-      
+
       // Extraer naves únicas
       const naves = [...new Set(registrosConvertidos.map(r => {
         let nave = r.naveInicial || '';
@@ -178,7 +178,7 @@ export default function TablasPersonalizadasPage() {
         return match ? match[1].trim() : nave.trim();
       }).filter(Boolean))].sort();
       setNavesUnicas(naves);
-      
+
       success(`${registrosConvertidos.length} registros cargados`);
     } catch (error: any) {
       console.error('Error loading registros:', error);
@@ -193,7 +193,7 @@ export default function TablasPersonalizadasPage() {
       try {
         const supabase = createClient();
         const { data: { user: currentUser } } = await supabase.auth.getUser();
-        
+
         if (!currentUser) {
           router.push('/auth');
           return;
@@ -261,7 +261,7 @@ export default function TablasPersonalizadasPage() {
         const registro = params.data as Registro;
         const tipoIngreso = registro.tipoIngreso;
         let textColor = '#22c55e'; // green-600
-        
+
         if (tipoIngreso === 'EARLY') {
           textColor = '#0891b2'; // cyan-600
         } else if (tipoIngreso === 'LATE') {
@@ -269,7 +269,7 @@ export default function TablasPersonalizadasPage() {
         } else if (tipoIngreso === 'EXTRA LATE') {
           textColor = '#ef4444'; // red-600
         }
-        
+
         return (
           <span style={{ color: textColor, fontWeight: 'bold' }}>
             {params.value}
@@ -456,7 +456,7 @@ export default function TablasPersonalizadasPage() {
       cellRenderer: (params: ICellRendererParams) => {
         const tipoIngreso = params.value;
         let textColor = '#22c55e'; // green-600
-        
+
         if (tipoIngreso === 'EARLY') {
           textColor = '#0891b2'; // cyan-600
         } else if (tipoIngreso === 'LATE') {
@@ -464,7 +464,7 @@ export default function TablasPersonalizadasPage() {
         } else if (tipoIngreso === 'EXTRA LATE') {
           textColor = '#ef4444'; // red-600
         }
-        
+
         return (
           <span style={{ color: textColor, fontWeight: 'bold' }}>
             {tipoIngreso}
@@ -513,7 +513,7 @@ export default function TablasPersonalizadasPage() {
   const getRowStyle = useCallback((params: any) => {
     const estado = params.data?.estado;
     if (!estado) return undefined;
-    
+
     if (theme === 'dark') {
       if (estado === 'CANCELADO') {
         return { backgroundColor: 'rgba(220, 38, 38, 0.3)', color: '#fca5a5' };
@@ -537,11 +537,11 @@ export default function TablasPersonalizadasPage() {
       // Headers
       columnDefs.map(col => col.headerName || col.field).join(','),
       // Rows
-      ...rowData.map(row => 
+      ...rowData.map(row =>
         columnDefs.map(col => {
           const field = col.field as keyof Registro;
           let value = row[field];
-          
+
           // Formatear valores especiales
           if (value instanceof Date) {
             value = value.toLocaleDateString('es-CL');
@@ -550,7 +550,7 @@ export default function TablasPersonalizadasPage() {
           } else if (value === null || value === undefined) {
             value = '';
           }
-          
+
           // Escape commas and quotes in CSV
           const stringValue = String(value);
           return `"${stringValue.replace(/"/g, '""')}"`;
@@ -592,7 +592,7 @@ export default function TablasPersonalizadasPage() {
     try {
       const supabase = createClient();
       const recordIds = records.map(r => r.id).filter((id): id is string => Boolean(id));
-      
+
       if (recordIds.length === 0) return;
 
       const { error } = await supabase
@@ -632,9 +632,8 @@ export default function TablasPersonalizadasPage() {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
-                }`}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
@@ -648,17 +647,15 @@ export default function TablasPersonalizadasPage() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
-                }`}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
               >
                 <UserIcon className="w-5 h-5" />
               </button>
               <button
                 onClick={handleLogout}
-                className={`p-2 rounded-lg transition-colors ${
-                  theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
-                }`}
+                className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
+                  }`}
               >
                 <LogOut className="w-5 h-5" />
               </button>
@@ -676,13 +673,12 @@ export default function TablasPersonalizadasPage() {
               <button
                 onClick={handleRefreshData}
                 disabled={loadingData}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                  loadingData
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${loadingData
                     ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                     : theme === 'dark'
-                    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-200'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
               >
                 <RefreshCw className={`w-4 h-4 ${loadingData ? 'animate-spin' : ''}`} />
                 <span>{loadingData ? 'Cargando...' : 'Recargar Datos'}</span>
@@ -701,23 +697,20 @@ export default function TablasPersonalizadasPage() {
               </span>
             </div>
           </div>
-          
+
           {/* Barra de acciones para filas seleccionadas */}
           {selectedRows.size > 0 && (
-            <div className={`mt-4 p-3 rounded-lg flex items-center justify-between ${
-              theme === 'dark' ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200'
-            }`}>
+            <div className={`mt-4 p-3 rounded-lg flex items-center justify-between ${theme === 'dark' ? 'bg-blue-900/30 border border-blue-700' : 'bg-blue-50 border border-blue-200'
+              }`}>
               <div className="flex items-center space-x-4">
-                <span className={`text-sm font-medium ${
-                  theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
-                }`}>
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
+                  }`}>
                   {selectedRows.size} registro{selectedRows.size > 1 ? 's' : ''} seleccionado{selectedRows.size > 1 ? 's' : ''}
                 </span>
                 <button
                   onClick={handleClearSelection}
-                  className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${
-                    theme === 'dark' ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
-                  }`}
+                  className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${theme === 'dark' ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
+                    }`}
                 >
                   <X className="w-3 h-3" />
                   <span>Limpiar</span>
@@ -745,10 +738,10 @@ export default function TablasPersonalizadasPage() {
             </div>
           </div>
         ) : (
-          <div 
-            className={`${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`} 
-            style={{ 
-              height: '600px', 
+          <div
+            className={`${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`}
+            style={{
+              height: '600px',
               width: '100%',
               backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff'
             }}
@@ -849,7 +842,7 @@ export default function TablasPersonalizadasPage() {
           navesUnicas={navesUnicas}
           navierasNavesMapping={navierasNavesMapping}
           consorciosNavesMapping={consorciosNavesMapping}
-          onSave={async () => {}}
+          onSave={async () => { }}
           onBulkSave={handleBulkSaveNaveViaje}
         />
       )}

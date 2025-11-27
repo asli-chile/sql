@@ -56,15 +56,6 @@ export const DOCUMENT_TYPES: DocumentType[] = [
         gradient: 'from-indigo-500/15 to-slate-900/60',
     },
     {
-        id: 'documentos-aga',
-        name: 'Documentos AGA',
-        description: 'Libera mercancía ante Aduanas y SAG.',
-        formats: ['PDF'],
-        icon: FileArchive,
-        accent: 'text-fuchsia-300',
-        gradient: 'from-fuchsia-500/15 to-slate-900/60',
-    },
-    {
         id: 'bl',
         name: 'BL / MBL / HBL',
         description: 'Conocimientos de embarque firmados.',
@@ -90,5 +81,14 @@ export const DOCUMENT_TYPES: DocumentType[] = [
         icon: FileText,
         accent: 'text-teal-300',
         gradient: 'from-teal-500/15 to-slate-900/60',
+    },
+    {
+        id: 'documentos-aga',
+        name: 'DUS',
+        description: 'Libera mercancía ante Aduanas y SAG.',
+        formats: ['PDF'],
+        icon: FileArchive,
+        accent: 'text-fuchsia-300',
+        gradient: 'from-fuchsia-500/15 to-slate-900/60',
     },
 ];

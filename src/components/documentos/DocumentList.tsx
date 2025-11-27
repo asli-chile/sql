@@ -66,10 +66,15 @@ export function DocumentList({
                                 <th className="px-4 py-3 text-left font-semibold sticky left-0 bg-slate-950 z-10">Booking</th>
                                 <th className="px-4 py-3 text-left font-semibold">Nave</th>
                                 {(() => {
-                                    // Reordenar: Instructivo primero, luego los demás
+                                    // Reordenar: Instructivo primero, DUS al final
                                     const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
-                                    const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque');
-                                    const orderedTypes = instructivoType ? [instructivoType, ...otherTypes] : DOCUMENT_TYPES;
+                                    const dusType = DOCUMENT_TYPES.find(t => t.id === 'documentos-aga');
+                                    const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'documentos-aga');
+                                    const orderedTypes = [
+                                        ...(instructivoType ? [instructivoType] : []),
+                                        ...otherTypes,
+                                        ...(dusType ? [dusType] : [])
+                                    ];
 
                                     return orderedTypes.map((type) => {
                                         const IconComponent = type.icon;
@@ -97,10 +102,15 @@ export function DocumentList({
                                             {row.registro.naveInicial || '-'}
                                         </td>
                                         {(() => {
-                                            // Reordenar: Instructivo primero, luego los demás
+                                            // Reordenar: Instructivo primero, DUS al final
                                             const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
-                                            const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque');
-                                            const orderedTypes = instructivoType ? [instructivoType, ...otherTypes] : DOCUMENT_TYPES;
+                                            const dusType = DOCUMENT_TYPES.find(t => t.id === 'documentos-aga');
+                                            const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'documentos-aga');
+                                            const orderedTypes = [
+                                                ...(instructivoType ? [instructivoType] : []),
+                                                ...otherTypes,
+                                                ...(dusType ? [dusType] : [])
+                                            ];
 
                                             return orderedTypes.map((type) => {
                                                 const docsForType = row.docsByType[type.id] ?? [];

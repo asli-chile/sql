@@ -10,8 +10,8 @@ import { useUser } from '@/hooks/useUser';
 import { Registro } from '@/types/registros';
 import { Factura } from '@/types/factura';
 import { FileText, Plus, Download, Eye, Edit, Trash2, ArrowLeft } from 'lucide-react';
-import { FacturaCreator } from '@/components/FacturaCreator';
-import { FacturaViewer } from '@/components/FacturaViewer';
+import { FacturaCreator } from '@/components/facturas/FacturaCreator';
+import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import { useToast } from '@/hooks/useToast';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
@@ -20,7 +20,7 @@ export default function FacturasPage() {
   const { theme } = useTheme();
   const { currentUser } = useUser();
   const { success, error: showError } = useToast();
-  
+
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +28,7 @@ export default function FacturasPage() {
   const [isViewerOpen, setIsViewerOpen] = useState(false);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
   const [registroSeleccionado, setRegistroSeleccionado] = useState<Registro | null>(null);
-  
+
   const supabase = createClient();
 
   // Cargar registros (solo los que el usuario puede ver según RLS)
@@ -51,14 +51,14 @@ export default function FacturasPage() {
         // Extraer nave y viaje si vienen en formato "NAVE [VIAJE]"
         let naveInicial = r.nave_inicial || '';
         let viaje = r.viaje || null;
-        
+
         // Si nave_inicial tiene formato "NAVE [VIAJE]", extraerlo
         const matchNave = naveInicial.match(/^(.+?)\s*\[(.+?)\]$/);
         if (matchNave && matchNave.length >= 3) {
           naveInicial = matchNave[1].trim();
           viaje = matchNave[2].trim();
         }
-        
+
         return {
           ...r,
           refAsli: r.ref_asli || '',
@@ -158,11 +158,10 @@ export default function FacturasPage() {
           <div className="flex items-center space-x-4">
             <button
               onClick={() => router.push('/registros')}
-              className={`p-2 rounded-lg transition-colors ${
-                theme === 'dark'
-                  ? 'text-gray-300 hover:bg-gray-800'
-                  : 'text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`p-2 rounded-lg transition-colors ${theme === 'dark'
+                ? 'text-gray-300 hover:bg-gray-800'
+                : 'text-gray-600 hover:bg-gray-200'
+                }`}
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -180,9 +179,8 @@ export default function FacturasPage() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div
-            className={`p-4 rounded-lg ${
-              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            } shadow`}
+            className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              } shadow`}
           >
             <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Total Facturas
@@ -192,9 +190,8 @@ export default function FacturasPage() {
             </div>
           </div>
           <div
-            className={`p-4 rounded-lg ${
-              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            } shadow`}
+            className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              } shadow`}
           >
             <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Registros sin Factura
@@ -204,9 +201,8 @@ export default function FacturasPage() {
             </div>
           </div>
           <div
-            className={`p-4 rounded-lg ${
-              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            } shadow`}
+            className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              } shadow`}
           >
             <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
               Total Registros
@@ -219,14 +215,12 @@ export default function FacturasPage() {
 
         {/* Lista de facturas */}
         <div
-          className={`rounded-lg shadow overflow-hidden ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}
+          className={`rounded-lg shadow overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            }`}
         >
           <div
-            className={`px-6 py-4 border-b ${
-              theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-            } flex items-center justify-between`}
+            className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+              } flex items-center justify-between`}
           >
             <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Facturas Generadas
@@ -236,39 +230,32 @@ export default function FacturasPage() {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead
-                className={`${
-                  theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
-                }`}
+                className={`${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+                  }`}
               >
                 <tr>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                    }`}>
                     REF ASLI
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                    }`}>
                     Cliente
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                    }`}>
                     Plantilla
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                    }`}>
                     Valor Total
                   </th>
-                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                    }`}>
                     Fecha
                   </th>
-                  <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                  }`}>
+                  <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                    }`}>
                     Acciones
                   </th>
                 </tr>
@@ -276,9 +263,8 @@ export default function FacturasPage() {
               <tbody className={`divide-y ${theme === 'dark' ? 'divide-gray-700' : 'divide-gray-200'}`}>
                 {facturas.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className={`px-6 py-8 text-center ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                    }`}>
+                    <td colSpan={6} className={`px-6 py-8 text-center ${theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
                       No hay facturas generadas. Crea una nueva factura desde un registro.
                     </td>
                   </tr>
@@ -288,29 +274,24 @@ export default function FacturasPage() {
                       key={factura.id}
                       className={`hover:${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}
                     >
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        }`}>
                         {factura.refAsli}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {factura.exportador.nombre}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {factura.clientePlantilla}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      } font-semibold`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        } font-semibold`}>
                         US${factura.totales.valorTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {factura.created_at
                           ? new Date(factura.created_at).toLocaleDateString('es-CL')
                           : '-'}
@@ -319,11 +300,10 @@ export default function FacturasPage() {
                         <div className="flex items-center justify-end space-x-2">
                           <button
                             onClick={() => handleVerFactura(factura)}
-                            className={`p-2 rounded transition-colors ${
-                              theme === 'dark'
-                                ? 'text-blue-400 hover:bg-gray-700'
-                                : 'text-blue-600 hover:bg-blue-50'
-                            }`}
+                            className={`p-2 rounded transition-colors ${theme === 'dark'
+                              ? 'text-blue-400 hover:bg-gray-700'
+                              : 'text-blue-600 hover:bg-blue-50'
+                              }`}
                             title="Ver factura"
                           >
                             <Eye className="w-4 h-4" />
@@ -341,14 +321,12 @@ export default function FacturasPage() {
         {/* Lista de registros sin factura */}
         {registrosSinFactura.length > 0 && (
           <div
-            className={`mt-6 rounded-lg shadow overflow-hidden ${
-              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            }`}
+            className={`mt-6 rounded-lg shadow overflow-hidden ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              }`}
           >
             <div
-              className={`px-6 py-4 border-b ${
-                theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-              }`}
+              className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                }`}
             >
               <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Registros sin Factura ({registrosSinFactura.length})
@@ -358,34 +336,28 @@ export default function FacturasPage() {
             <div className="overflow-x-auto max-h-96">
               <table className="w-full">
                 <thead
-                  className={`sticky top-0 ${
-                    theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
-                  }`}
+                  className={`sticky top-0 ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+                    }`}
                 >
                   <tr>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                    }`}>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
                       REF ASLI
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                    }`}>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
                       Cliente
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                    }`}>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
                       Especie
                     </th>
-                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                    }`}>
+                    <th className={`px-6 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
                       ETD
                     </th>
-                    <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
-                    }`}>
+                    <th className={`px-6 py-3 text-right text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                      }`}>
                       Acción
                     </th>
                   </tr>
@@ -396,24 +368,20 @@ export default function FacturasPage() {
                       key={registro.id}
                       className={`hover:${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'}`}
                     >
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      } font-semibold`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        } font-semibold`}>
                         {registro.refAsli || '-'}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {registro.shipper}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {registro.especie}
                       </td>
-                      <td className={`px-6 py-4 whitespace-nowrap ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <td className={`px-6 py-4 whitespace-nowrap ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {registro.etd
                           ? new Date(registro.etd).toLocaleDateString('es-CL')
                           : '-'}
@@ -422,11 +390,10 @@ export default function FacturasPage() {
                         {(currentUser?.rol === 'admin' || currentUser?.email?.endsWith('@asli.cl')) && (
                           <button
                             onClick={() => handleCrearFactura(registro)}
-                            className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ml-auto ${
-                              theme === 'dark'
-                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
-                            }`}
+                            className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 ml-auto ${theme === 'dark'
+                              ? 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-blue-600 text-white hover:bg-blue-700'
+                              }`}
                           >
                             <FileText className="w-4 h-4" />
                             <span>Crear Factura</span>

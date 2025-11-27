@@ -9,17 +9,17 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { LogOut, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Importar todos los componentes existentes
-import { DataTable } from '@/components/DataTable';
+import { DataTable } from '@/components/ui/table/DataTable';
 import { createRegistrosColumns } from '@/components/columns/registros-columns';
-import { EditModal } from '@/components/EditModal';
-import { AddModal } from '@/components/AddModal';
-import { TrashModal } from '@/components/TrashModal';
-import { HistorialModal } from '@/components/HistorialModal';
+import { EditModal } from '@/components/modals/EditModal';
+import { AddModal } from '@/components/modals/AddModal';
+import { TrashModal } from '@/components/modals/TrashModal';
+import { HistorialModal } from '@/components/modals/HistorialModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/hooks/useToast';
-import { ToastContainer } from '@/components/Toast';
+import { ToastContainer } from '@/components/layout/Toast';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
@@ -28,10 +28,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2 } from 'lucide-react';
 import { Factura } from '@/types/factura';
-import { FacturaViewer } from '@/components/FacturaViewer';
+import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
-import { AppFooter } from '@/components/AppFooter';
+import { AppFooter } from '@/components/layout/AppFooter';
 
 const normalizeTemporada = (value?: string | null): string => {
   if (!value) {
@@ -80,7 +80,7 @@ export default function RegistrosPage() {
   const [o2sUnicos, setO2sUnicos] = useState<string[]>([]);
   const [tratamientosFrioUnicos, setTratamientosFrioUnicos] = useState<string[]>([]);
   const [facturacionesUnicas, setFacturacionesUnicas] = useState<string[]>([]);
-  
+
   const [navierasFiltro, setNavierasFiltro] = useState<string[]>([]);
   const [ejecutivosFiltro, setEjecutivosFiltro] = useState<string[]>([]);
   const [especiesFiltro, setEspeciesFiltro] = useState<string[]>([]);
@@ -89,7 +89,7 @@ export default function RegistrosPage() {
   const [destinosFiltro, setDestinosFiltro] = useState<string[]>([]);
   const [depositosFiltro, setDepositosFiltro] = useState<string[]>([]);
   const [navesFiltro, setNavesFiltro] = useState<string[]>([]);
-  
+
   const [selectedRecord, setSelectedRecord] = useState<Registro | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -99,27 +99,27 @@ export default function RegistrosPage() {
   const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
   const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
   const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
-  
+
   // Estados para facturas
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
   const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
-  
+
   // Estado para selección múltiple
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const lastSelectedRowIndex = useRef<number | null>(null);
-  
+
   // Estado para clientes asignados al ejecutivo
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
-const [isEjecutivo, setIsEjecutivo] = useState(false);
+  const [isEjecutivo, setIsEjecutivo] = useState(false);
 
-type DeleteConfirmState = {
-  registros: Registro[];
-  mode: 'single' | 'bulk';
-};
-const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
-const [deleteProcessing, setDeleteProcessing] = useState(false);
+  type DeleteConfirmState = {
+    registros: Registro[];
+    mode: 'single' | 'bulk';
+  };
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
+  const [deleteProcessing, setDeleteProcessing] = useState(false);
 
   const temporadaParam = searchParams.get('temporada');
 
@@ -154,29 +154,29 @@ const [deleteProcessing, setDeleteProcessing] = useState(false);
     checkUser();
   }, []);
 
-useEffect(() => {
-  if (!deleteConfirm) {
-    return;
-  }
-
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape' && !deleteProcessing) {
-      event.preventDefault();
-      setDeleteConfirm(null);
+  useEffect(() => {
+    if (!deleteConfirm) {
+      return;
     }
-  };
 
-  window.addEventListener('keydown', handleKeyDown);
-  return () => {
-    window.removeEventListener('keydown', handleKeyDown);
-  };
-}, [deleteConfirm, deleteProcessing]);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !deleteProcessing) {
+        event.preventDefault();
+        setDeleteConfirm(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [deleteConfirm, deleteProcessing]);
 
   const checkUser = async () => {
     try {
       const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
-      
+
       // Si hay error de refresh token, limpiar sesión y redirigir
       if (error) {
         // Si es un error de refresh token inválido, es esperado y no necesita log
@@ -187,19 +187,19 @@ useEffect(() => {
         }
         throw error;
       }
-      
+
       if (!user) {
         router.push('/auth');
         return;
       }
 
       setUser(user);
-      
+
       // SIEMPRE cargar datos frescos desde Supabase (fuente de verdad)
       // Limpiar localStorage para evitar datos obsoletos
       localStorage.removeItem('currentUser');
       localStorage.removeItem('currentUserTimestamp');
-      
+
       // Cargar datos del usuario desde la tabla usuarios
       const { data: userData, error: userError } = await supabase
         .from('usuarios')
@@ -230,19 +230,19 @@ useEffect(() => {
           activo: userData.activo
         };
         setCurrentUser(usuarioActualizado);
-        
+
         // Verificar si es ejecutivo (@asli.cl) y cargar sus clientes asignados
         const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
         setIsEjecutivo(emailEsEjecutivo);
-        
+
         // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
         await loadClientesAsignados(userData.id, userData.nombre);
-        
+
       }
-      
+
       // Cargar catálogos (después de establecer isEjecutivo y clientesAsignados)
       await loadCatalogos();
-      
+
       // Cargar registros (depende de clientes asignados si es ejecutivo)
       await loadRegistros();
       await loadFacturas();
@@ -274,7 +274,7 @@ useEffect(() => {
     try {
       const supabase = createClient();
       const clientesAsignadosSet = new Set<string>();
-      
+
       // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
       const { data, error } = await supabase
         .from('ejecutivo_clientes')
@@ -296,18 +296,18 @@ useEffect(() => {
           .single();
 
         if (!catalogoError && catalogoClientes?.valores) {
-          const valores = Array.isArray(catalogoClientes.valores) 
-            ? catalogoClientes.valores 
+          const valores = Array.isArray(catalogoClientes.valores)
+            ? catalogoClientes.valores
             : typeof catalogoClientes.valores === 'string'
               ? JSON.parse(catalogoClientes.valores)
               : [];
-          
+
           // Verificar si el nombre de usuario coincide con algún cliente (comparación case-insensitive)
           const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
-          const clienteCoincidente = valores.find((cliente: string) => 
+          const clienteCoincidente = valores.find((cliente: string) =>
             cliente.toUpperCase().trim() === nombreUsuarioUpper
           );
-          
+
           if (clienteCoincidente) {
             clientesAsignadosSet.add(clienteCoincidente); // Usar el nombre exacto del catálogo
           }
@@ -402,10 +402,10 @@ useEffect(() => {
   const loadCatalogos = async () => {
     try {
       const supabase = createClient();
-      
+
       // Cargar catálogo de estados primero
       await loadEstadosFromCatalog();
-      
+
       const { data: catalogos, error } = await supabase
         .from('catalogos')
         .select('*');
@@ -450,14 +450,14 @@ useEffect(() => {
             const currentClientesAsignados = clientesAsignados;
             const currentIsEjecutivo = isEjecutivo;
             if (currentIsEjecutivo && currentClientesAsignados.length > 0) {
-              const clientesFiltrados = valores.filter((cliente: string) => 
+              const clientesFiltrados = valores.filter((cliente: string) =>
                 currentClientesAsignados.includes(cliente)
               );
               setClientesUnicos(clientesFiltrados);
               setClientesFiltro(clientesFiltrados);
             } else {
-            setClientesUnicos(valores);
-            setClientesFiltro(valores);
+              setClientesUnicos(valores);
+              setClientesFiltro(valores);
             }
             break;
           case 'refcliente':
@@ -505,7 +505,7 @@ useEffect(() => {
           case 'facturacion':
             setFacturacionesUnicas(valores);
             break;
-          
+
           // CARGAR MAPPINGS DESDE EL CATÁLOGO (SOLO para AddModal - sin números de viaje)
           case 'navierasnavesmapping':
             if (mapping && typeof mapping === 'object') {
@@ -523,7 +523,7 @@ useEffect(() => {
               setNavierasNavesMappingCatalog(cleanMapping);
             }
             break;
-            
+
           case 'consorciosnavesmapping':
             if (mapping && typeof mapping === 'object') {
               // Limpiar números de viaje si los hubiera en el catálogo
@@ -576,125 +576,125 @@ useEffect(() => {
     // Por ahora no hace nada específico ya que las estadísticas se calculan en tiempo real
   };
 
-const performSoftDelete = useCallback(
-  async (targets: Registro[], mode: 'single' | 'bulk') => {
-    if (targets.length === 0) {
-      setDeleteConfirm(null);
-      return;
-    }
-
-    setDeleteProcessing(true);
-
-    try {
-      const supabase = createClient();
-      const ids = targets.map((registro) => registro.id).filter((id): id is string => Boolean(id));
-
-      if (ids.length === 0) {
-        error('No se encontraron registros válidos para eliminar.');
+  const performSoftDelete = useCallback(
+    async (targets: Registro[], mode: 'single' | 'bulk') => {
+      if (targets.length === 0) {
+        setDeleteConfirm(null);
         return;
       }
 
-      const { error: updateError } = await supabase
-        .from('registros')
-        .update({
-          deleted_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .in('id', ids);
+      setDeleteProcessing(true);
 
-      if (updateError) {
-        console.error('Error al eliminar registros:', updateError);
-        error('Error al enviar los registros a la papelera.');
-        return;
-      }
+      try {
+        const supabase = createClient();
+        const ids = targets.map((registro) => registro.id).filter((id): id is string => Boolean(id));
 
-      setRegistros((prevRegistros) =>
-        prevRegistros.filter((registro) => !ids.includes(registro.id ?? '')),
-      );
-
-      if (mode === 'bulk') {
-        setSelectedRows(new Set());
-        setSelectionMode(false);
-      }
-
-      await loadStats();
-
-      if (mode === 'single') {
-        const ref = targets[0]?.refAsli ?? 'registro';
-        success(`Registro ${ref} enviado a la papelera`);
-      } else {
-        success(`${ids.length} registro(s) enviados a la papelera`);
-      }
-
-      setDeleteConfirm(null);
-    } catch (err: any) {
-      console.error('Error inesperado al eliminar registros:', err);
-      error(err?.message ?? 'Error inesperado al eliminar los registros.');
-    } finally {
-      setDeleteProcessing(false);
-    }
-  },
-  [error, success, loadStats, setSelectedRows, setSelectionMode],
-);
-
-const handleConfirmDelete = useCallback(() => {
-  if (!deleteConfirm) return;
-  void performSoftDelete(deleteConfirm.registros, deleteConfirm.mode);
-}, [deleteConfirm, performSoftDelete]);
-
-const handleCancelDelete = useCallback(() => {
-  if (deleteProcessing) return;
-  setDeleteConfirm(null);
-}, [deleteProcessing]);
-
-const handleRealtimeEvent = useCallback(
-  ({ event, registro }: { event: 'INSERT' | 'UPDATE' | 'DELETE'; registro: Registro }) => {
-    setRegistros((prevRegistros) => {
-      const isSoftDeleted = registro.deletedAt !== undefined && registro.deletedAt !== null;
-
-      if (event === 'DELETE') {
-        return prevRegistros.filter((item) => item.id !== registro.id);
-      }
-
-      if (event === 'UPDATE' && isSoftDeleted) {
-        return prevRegistros.filter((item) => item.id !== registro.id);
-      }
-
-      if (event === 'INSERT') {
-        const existe = prevRegistros.some((item) => item.id === registro.id);
-        if (existe) {
-          return prevRegistros;
+        if (ids.length === 0) {
+          error('No se encontraron registros válidos para eliminar.');
+          return;
         }
-        return [registro, ...prevRegistros];
-      }
 
-      if (event === 'UPDATE') {
-        const existe = prevRegistros.some((item) => item.id === registro.id);
-        if (!existe) {
+        const { error: updateError } = await supabase
+          .from('registros')
+          .update({
+            deleted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .in('id', ids);
+
+        if (updateError) {
+          console.error('Error al eliminar registros:', updateError);
+          error('Error al enviar los registros a la papelera.');
+          return;
+        }
+
+        setRegistros((prevRegistros) =>
+          prevRegistros.filter((registro) => !ids.includes(registro.id ?? '')),
+        );
+
+        if (mode === 'bulk') {
+          setSelectedRows(new Set());
+          setSelectionMode(false);
+        }
+
+        await loadStats();
+
+        if (mode === 'single') {
+          const ref = targets[0]?.refAsli ?? 'registro';
+          success(`Registro ${ref} enviado a la papelera`);
+        } else {
+          success(`${ids.length} registro(s) enviados a la papelera`);
+        }
+
+        setDeleteConfirm(null);
+      } catch (err: any) {
+        console.error('Error inesperado al eliminar registros:', err);
+        error(err?.message ?? 'Error inesperado al eliminar los registros.');
+      } finally {
+        setDeleteProcessing(false);
+      }
+    },
+    [error, success, loadStats, setSelectedRows, setSelectionMode],
+  );
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!deleteConfirm) return;
+    void performSoftDelete(deleteConfirm.registros, deleteConfirm.mode);
+  }, [deleteConfirm, performSoftDelete]);
+
+  const handleCancelDelete = useCallback(() => {
+    if (deleteProcessing) return;
+    setDeleteConfirm(null);
+  }, [deleteProcessing]);
+
+  const handleRealtimeEvent = useCallback(
+    ({ event, registro }: { event: 'INSERT' | 'UPDATE' | 'DELETE'; registro: Registro }) => {
+      setRegistros((prevRegistros) => {
+        const isSoftDeleted = registro.deletedAt !== undefined && registro.deletedAt !== null;
+
+        if (event === 'DELETE') {
+          return prevRegistros.filter((item) => item.id !== registro.id);
+        }
+
+        if (event === 'UPDATE' && isSoftDeleted) {
+          return prevRegistros.filter((item) => item.id !== registro.id);
+        }
+
+        if (event === 'INSERT') {
+          const existe = prevRegistros.some((item) => item.id === registro.id);
+          if (existe) {
+            return prevRegistros;
+          }
           return [registro, ...prevRegistros];
         }
-        return prevRegistros.map((item) => (item.id === registro.id ? registro : item));
+
+        if (event === 'UPDATE') {
+          const existe = prevRegistros.some((item) => item.id === registro.id);
+          if (!existe) {
+            return [registro, ...prevRegistros];
+          }
+          return prevRegistros.map((item) => (item.id === registro.id ? registro : item));
+        }
+
+        return prevRegistros;
+      });
+
+      const ref = registro.refAsli ?? 'registro';
+      if (event === 'INSERT') {
+        success(`Nuevo registro ${ref} disponible`);
+      } else if (event === 'UPDATE') {
+        success(`Registro ${ref} actualizado`);
+      } else if (event === 'DELETE') {
+        warning(`Registro ${ref} fue eliminado`);
       }
 
-      return prevRegistros;
-    });
-
-    const ref = registro.refAsli ?? 'registro';
-    if (event === 'INSERT') {
-      success(`Nuevo registro ${ref} disponible`);
-    } else if (event === 'UPDATE') {
-      success(`Registro ${ref} actualizado`);
-    } else if (event === 'DELETE') {
-      warning(`Registro ${ref} fue eliminado`);
-    }
-
-    setTimeout(() => {
-      loadCatalogos();
-      loadStats();
-    }, 200);
-  },
-  [loadCatalogos, loadStats, success, warning],
-);
+      setTimeout(() => {
+        loadCatalogos();
+        loadStats();
+      }, 200);
+    },
+    [loadCatalogos, loadStats, success, warning],
+  );
 
   useRealtimeRegistros({
     onChange: handleRealtimeEvent,
@@ -749,28 +749,28 @@ const handleRealtimeEvent = useCallback(
     if (isEjecutivo && clientesAsignados.length > 0) {
       if (!clientesAsignados.includes(registro.shipper || '')) {
         error('No tienes permiso para editar este registro');
-      return;
-    }
+        return;
+      }
     }
 
     // Extraer nave y viaje si viene en formato "NAVE [VIAJE]"
     let naveActual = registro.naveInicial || '';
     let viajeActual = registro.viaje || '';
-    
+
     // Si la nave contiene [ ], extraer el viaje
     const match = naveActual.match(/^(.+?)\s*\[(.+?)\]$/);
     if (match) {
       naveActual = match[1].trim();
       viajeActual = match[2].trim();
     }
-    
+
     // Crear un registro temporal con nave y viaje separados para el modal
     const registroParaModal = {
       ...registro,
       naveInicial: naveActual,
       viaje: viajeActual
     };
-    
+
     setSelectedRegistroForNaveViaje(registroParaModal);
     setIsEditNaveViajeModalOpen(true);
   };
@@ -794,10 +794,10 @@ const handleRealtimeEvent = useCallback(
 
     try {
       const supabase = createClient();
-      
+
       // Construir el nombre completo de la nave con viaje (igual que en AddModal)
-      const naveCompleta = nave && viaje.trim() 
-        ? `${nave} [${viaje.trim()}]` 
+      const naveCompleta = nave && viaje.trim()
+        ? `${nave} [${viaje.trim()}]`
         : nave || '';
 
       const { error } = await supabase
@@ -821,15 +821,15 @@ const handleRealtimeEvent = useCallback(
   const handleBulkEditNaveViaje = (records: Registro[]) => {
     // Validar que todos los registros sean de clientes asignados al ejecutivo
     if (isEjecutivo && clientesAsignados.length > 0) {
-      const registrosValidos = records.filter(r => 
+      const registrosValidos = records.filter(r =>
         clientesAsignados.includes(r.shipper || '')
       );
-      
+
       if (registrosValidos.length !== records.length) {
         error('No tienes permiso para editar algunos de los registros seleccionados');
         return;
       }
-      
+
       setSelectedRegistroForNaveViaje(null);
       setSelectedRecordsForNaveViaje(registrosValidos);
     } else {
@@ -843,10 +843,10 @@ const handleRealtimeEvent = useCallback(
     // Validar que todos los registros sean de clientes asignados al ejecutivo
     let registrosParaActualizar = records;
     if (isEjecutivo && clientesAsignados.length > 0) {
-      registrosParaActualizar = records.filter(r => 
+      registrosParaActualizar = records.filter(r =>
         clientesAsignados.includes(r.shipper || '')
       );
-      
+
       if (registrosParaActualizar.length !== records.length) {
         error('No tienes permiso para actualizar algunos de los registros seleccionados');
         return;
@@ -855,14 +855,14 @@ const handleRealtimeEvent = useCallback(
 
     try {
       const supabase = createClient();
-      
+
       // Construir el nombre completo de la nave con viaje
-      const naveCompleta = nave && viaje.trim() 
-        ? `${nave} [${viaje.trim()}]` 
+      const naveCompleta = nave && viaje.trim()
+        ? `${nave} [${viaje.trim()}]`
         : nave || '';
 
       const recordIds = registrosParaActualizar.map(r => r.id).filter((id): id is string => Boolean(id));
-      
+
       if (recordIds.length === 0) return;
 
       const { error } = await supabase
@@ -895,23 +895,23 @@ const handleRealtimeEvent = useCallback(
     const visibleRegistros = registrosVisibles;
     const isShiftPressed = event?.shiftKey || false;
     const currentIndex = rowIndex ?? visibleRegistros.findIndex(r => r.id === recordId);
-    
+
     // Early return si no se encuentra la fila
     if (currentIndex === -1) return;
-    
+
     const newSelectedRows = new Set(selectedRows);
-    
+
     // Si se presiona Shift y hay una última fila seleccionada, seleccionar rango
     if (isShiftPressed && lastSelectedRowIndex.current !== null) {
       const startIndex = Math.min(lastSelectedRowIndex.current, currentIndex);
       const endIndex = Math.max(lastSelectedRowIndex.current, currentIndex);
-      
+
       // Determinar si debemos seleccionar o deseleccionar el rango
       // Si la última fila seleccionada está seleccionada, seleccionamos todo el rango
       // Si no, deseleccionamos todo el rango
       const lastSelectedId = visibleRegistros[lastSelectedRowIndex.current]?.id;
       const shouldSelect = lastSelectedId ? selectedRows.has(lastSelectedId) : true;
-      
+
       // Optimizar: evitar verificaciones innecesarias en el bucle
       if (shouldSelect) {
         // Agregar todas las filas del rango
@@ -926,30 +926,30 @@ const handleRealtimeEvent = useCallback(
           if (rowId) newSelectedRows.delete(rowId);
         }
       }
-      
+
       // Actualizar la referencia
       lastSelectedRowIndex.current = currentIndex;
     } else {
       // Comportamiento normal: toggle de la fila individual
-    if (newSelectedRows.has(recordId)) {
-      newSelectedRows.delete(recordId);
+      if (newSelectedRows.has(recordId)) {
+        newSelectedRows.delete(recordId);
         lastSelectedRowIndex.current = null;
-    } else {
-      newSelectedRows.add(recordId);
+      } else {
+        newSelectedRows.add(recordId);
         lastSelectedRowIndex.current = currentIndex;
+      }
     }
-    }
-    
+
     setSelectedRows(newSelectedRows);
   }, [selectedRows, registrosVisibles]);
 
   const handleSelectAll = (filteredRecords: Registro[]) => {
     // Obtener IDs de los registros filtrados/visibles
     const filteredIds = new Set(filteredRecords.map(r => r.id).filter((id): id is string => Boolean(id)));
-    
+
     // Verificar si todos los registros visibles ya están seleccionados
     const allVisibleSelected = filteredIds.size > 0 && Array.from(filteredIds).every(id => selectedRows.has(id));
-    
+
     if (allVisibleSelected) {
       // Deseleccionar solo los registros visibles
       const newSelectedRows = new Set(selectedRows);
@@ -1001,8 +1001,8 @@ const handleRealtimeEvent = useCallback(
   };
 
   const handleUpdateRecord = useCallback((updatedRecord: Registro) => {
-    setRegistros(prevRegistros => 
-      prevRegistros.map(record => 
+    setRegistros(prevRegistros =>
+      prevRegistros.map(record =>
         record.id === updatedRecord.id ? updatedRecord : record
       )
     );
@@ -1014,10 +1014,10 @@ const handleRealtimeEvent = useCallback(
     // Si es ejecutivo, validar que todos los registros sean de sus clientes
     let registrosParaActualizar = selectedRecords;
     if (isEjecutivo && clientesAsignados.length > 0) {
-      registrosParaActualizar = selectedRecords.filter(r => 
+      registrosParaActualizar = selectedRecords.filter(r =>
         clientesAsignados.includes(r.shipper || '')
       );
-      
+
       if (registrosParaActualizar.length !== selectedRecords.length) {
         error('No tienes permiso para actualizar algunos de los registros seleccionados');
         return;
@@ -1026,7 +1026,7 @@ const handleRealtimeEvent = useCallback(
 
     try {
       const supabase = createClient();
-      
+
       // Mapear nombres de campos del tipo TypeScript a nombres de la base de datos
       const getDatabaseFieldName = (fieldName: keyof Registro): string => {
         const fieldMapping: Record<string, string> = {
@@ -1038,10 +1038,10 @@ const handleRealtimeEvent = useCallback(
           'numeroBl': 'numero_bl',
           'estadoBl': 'estado_bl'
         };
-        
+
         return fieldMapping[fieldName] || fieldName;
       };
-      
+
       // Preparar datos para actualizar
       const dbFieldName = getDatabaseFieldName(field);
       const updateData: any = {
@@ -1051,7 +1051,7 @@ const handleRealtimeEvent = useCallback(
 
       // Obtener IDs de los registros seleccionados (solo los permitidos)
       const recordIds = registrosParaActualizar.map(record => record.id).filter((id): id is string => Boolean(id));
-      
+
       if (recordIds.length === 0) {
         return;
       }
@@ -1080,7 +1080,7 @@ const handleRealtimeEvent = useCallback(
       }
 
       // Actualizar el estado local
-      setRegistros(prevRegistros => 
+      setRegistros(prevRegistros =>
         prevRegistros.map(record => {
           if (registrosParaActualizar.some(selected => selected.id === record.id)) {
             return {
@@ -1092,7 +1092,7 @@ const handleRealtimeEvent = useCallback(
           return record;
         })
       );
-      
+
       // Mostrar confirmación visual mejorada
       const fieldNames: Record<string, string> = {
         'especie': 'Especie',
@@ -1111,7 +1111,7 @@ const handleRealtimeEvent = useCallback(
         'o2': 'O2',
         'comentario': 'Comentario'
       };
-      
+
       const fieldDisplayName = fieldNames[field] || field;
       success(`✅ Se actualizaron ${registrosParaActualizar.length} registros en el campo "${fieldDisplayName}"`);
 
@@ -1124,7 +1124,7 @@ const handleRealtimeEvent = useCallback(
   // Estado para los mapeos de naves desde el CATÁLOGO (SOLO para AddModal - sin números de viaje)
   const [navierasNavesMappingCatalog, setNavierasNavesMappingCatalog] = useState<Record<string, string[]>>({});
   const [consorciosNavesMappingCatalog, setConsorciosNavesMappingCatalog] = useState<Record<string, string[]>>({});
-  
+
   // Estado para los mapeos de naves desde REGISTROS (para filtros - puede incluir números de viaje)
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
   const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
@@ -1132,10 +1132,10 @@ const handleRealtimeEvent = useCallback(
   // Crear mapeos de navieras a naves (considerando naves compartidas) - memoizado
   const createNavierasNavesMapping = useCallback((registrosData: Registro[]) => {
     const mapping: Record<string, string[]> = {};
-    
+
     // Primero, crear un mapeo de nave → navieras que la usan
     const naveToNavieras: Record<string, string[]> = {};
-    
+
     registrosData.forEach(registro => {
       if (registro.naviera && registro.naveInicial) {
         if (!naveToNavieras[registro.naveInicial]) {
@@ -1146,7 +1146,7 @@ const handleRealtimeEvent = useCallback(
         }
       }
     });
-    
+
     // Ahora crear el mapeo naviera → naves (incluyendo naves compartidas)
     Object.keys(naveToNavieras).forEach(nave => {
       const navierasDeLaNave = naveToNavieras[nave];
@@ -1159,21 +1159,21 @@ const handleRealtimeEvent = useCallback(
         }
       });
     });
-    
+
     return mapping;
   }, []);
 
   // Crear mapeos de consorcios a naves - memoizado
   const createConsorciosNavesMapping = useCallback((registrosData: Registro[]) => {
     const mapping: Record<string, string[]> = {};
-    
-    
+
+
     // Obtener todas las navieras únicas de los datos
     const navierasUnicas = [...new Set(registrosData.map(r => r.naviera).filter(Boolean))];
-    
+
     // Crear mapeos de consorcios basados en patrones encontrados en los datos
     const consorciosEncontrados: Record<string, string[]> = {};
-    
+
     // Buscar patrones de consorcios en los nombres de navieras
     navierasUnicas.forEach(naviera => {
       // Patrón 1: HAPAG-LLOYD / ONE / MSC
@@ -1190,7 +1190,7 @@ const handleRealtimeEvent = useCallback(
             }
           });
       }
-      
+
       // Patrón 2: PIL / YANG MING / WAN HAI
       if (naviera.includes('PIL') || naviera.includes('YANG MING') || naviera.includes('WAN HAI')) {
         if (!consorciosEncontrados['PIL / YANG MING / WAN HAI']) {
@@ -1204,7 +1204,7 @@ const handleRealtimeEvent = useCallback(
             }
           });
       }
-      
+
       // Patrón 3: CMA CGM / COSCO / OOCL
       if (naviera.includes('CMA CGM') || naviera.includes('COSCO') || naviera.includes('OOCL')) {
         if (!consorciosEncontrados['CMA CGM / COSCO / OOCL']) {
@@ -1219,7 +1219,7 @@ const handleRealtimeEvent = useCallback(
           });
       }
     });
-    
+
     // Agregar también los consorcios que aparecen directamente en los datos
     navierasUnicas.forEach(naviera => {
       if (naviera.includes('/') && naviera.length > 10) {
@@ -1236,7 +1236,7 @@ const handleRealtimeEvent = useCallback(
           });
       }
     });
-    
+
     return consorciosEncontrados;
   }, [navierasUnicas]);
 
@@ -1250,7 +1250,7 @@ const handleRealtimeEvent = useCallback(
     const ejecutivosFiltro = [...new Set(registrosData.map(r => r.ejecutivo).filter(Boolean))].sort();
     const navesFiltro = [...new Set(registrosData.map(r => r.naveInicial).filter(Boolean))].sort();
     const depositosFiltro = [...new Set(registrosData.map(r => r.deposito).filter(Boolean))].sort();
-    
+
     return {
       navierasFiltro,
       especiesFiltro,
@@ -1268,17 +1268,17 @@ const handleRealtimeEvent = useCallback(
     if (!contenedor || contenedor === '-' || contenedor === null || contenedor === '') {
       return false;
     }
-    
+
     const contenedorStr = contenedor.toString().trim();
-    
+
     // Excluir explícitamente los guiones
     if (contenedorStr === '-') {
       return false;
     }
-    
+
     // Debe tener al menos una letra o número (puede tener símbolos)
     const hasLetterOrNumber = /[a-zA-Z0-9]/.test(contenedorStr);
-    
+
     return hasLetterOrNumber;
   };
 
@@ -1288,10 +1288,10 @@ const handleRealtimeEvent = useCallback(
     if (registrosLength > 0) {
       const navierasMapping = createNavierasNavesMapping(registrosVisibles);
       const consorciosMapping = createConsorciosNavesMapping(registrosVisibles);
-      
+
       setNavierasNavesMapping(navierasMapping);
       setConsorciosNavesMapping(consorciosMapping);
-      
+
       // Generar arrays de filtro basados en datos reales
       const filterArrays = generateFilterArrays(registrosVisibles);
       setNavierasFiltro(filterArrays.navierasFiltro);
@@ -1456,9 +1456,8 @@ const handleRealtimeEvent = useCallback(
     <EditingCellProvider>
       <div className="flex min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
         <aside
-          className={`fixed left-0 top-0 hidden h-screen flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 lg:flex ${
-            isSidebarCollapsed ? 'w-20' : 'w-64'
-          }`}
+          className={`fixed left-0 top-0 hidden h-screen flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-20' : 'w-64'
+            }`}
         >
           <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-800/60">
             <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-900/70 flex items-center justify-center">
@@ -1491,7 +1490,7 @@ const handleRealtimeEvent = useCallback(
                 {!isSidebarCollapsed && (
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500/60">{section.title}</p>
                 )}
-                  <div className="space-y-1.5 overflow-y-visible">
+                <div className="space-y-1.5 overflow-y-visible">
                   {section.items.map((item) => (
                     <button
                       key={item.label}
@@ -1500,11 +1499,10 @@ const handleRealtimeEvent = useCallback(
                           router.push(item.id);
                         }
                       }}
-                      className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
-                        item.isActive
-                          ? 'bg-slate-800/80 text-white'
-                          : 'hover:bg-slate-800/40 text-slate-300'
-                      }`}
+                      className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${item.isActive
+                        ? 'bg-slate-800/80 text-white'
+                        : 'hover:bg-slate-800/40 text-slate-300'
+                        }`}
                     >
                       <span className={`text-sm font-medium ${isSidebarCollapsed ? 'truncate' : ''}`}>{item.label}</span>
                       {!isSidebarCollapsed && item.counter !== undefined && item.tone && (
@@ -1521,9 +1519,8 @@ const handleRealtimeEvent = useCallback(
         </aside>
 
         <div
-          className={`flex flex-1 flex-col min-w-0 transition-all ${
-            isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
-          }`}
+          className={`flex flex-1 flex-col min-w-0 transition-all ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
+            }`}
         >
           <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
             <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-6">
@@ -1563,139 +1560,139 @@ const handleRealtimeEvent = useCallback(
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
             <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
-            <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                    <CardTitle className="text-sm font-medium text-slate-300">Total Registros</CardTitle>
-                    <Package className="h-4 w-4 text-slate-500" />
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xl font-semibold text-white sm:text-2xl">{totalRegistros}</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                    <CardTitle className="text-sm font-medium text-slate-300">Total Bookings</CardTitle>
-                    <FileText className="h-4 w-4 text-slate-500" />
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xl font-semibold text-blue-400 sm:text-2xl">{totalBookings}</div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                    <CardTitle className="text-sm font-medium text-slate-300">Total Contenedores</CardTitle>
-                    <Container className="h-4 w-4 text-slate-500" />
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="text-xl font-semibold text-purple-400 sm:text-2xl">{totalContenedores}</div>
-                    <p className="mt-1 text-[11px] text-slate-400 sm:text-xs">Total contenedores (divididos por espacios)</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div>
-                <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                    <CardTitle className="text-sm font-medium text-slate-300">Estados</CardTitle>
-                    <CheckCircle className="h-4 w-4 text-slate-500" />
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="space-y-2 text-[11px] font-medium sm:text-xs">
-                      <div className="flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2 text-emerald-200">
-                        <span>Confirmados</span>
-                        <span className="text-base font-semibold sm:text-lg">{totalConfirmados}</span>
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg bg-amber-500/15 px-3 py-2 text-amber-200">
-                        <span>Pendientes</span>
-                        <span className="text-base font-semibold sm:text-lg">{totalPendientes}</span>
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg bg-rose-500/15 px-3 py-2 text-rose-200">
-                        <span>Cancelados</span>
-                        <span className="text-base font-semibold sm:text-lg">{totalCancelados}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </section>
-
-            <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
-              <div className="overflow-x-auto">
-                <div className="min-w-full px-2 pb-4 md:min-w-[1100px]">
-              {selectedTemporada && (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sky-100">
-                  <span className="text-sm font-medium">
-                    Filtrando por <span className="font-semibold">Temporada {selectedTemporada}</span>
-                  </span>
-                  <button
-                    onClick={() => router.push('/registros')}
-                    className="rounded-full border border-sky-500/50 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:border-sky-300 hover:text-sky-50"
-                  >
-                    Quitar filtro
-                  </button>
+              <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                      <CardTitle className="text-sm font-medium text-slate-300">Total Registros</CardTitle>
+                      <Package className="h-4 w-4 text-slate-500" />
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl font-semibold text-white sm:text-2xl">{totalRegistros}</div>
+                    </CardContent>
+                  </Card>
                 </div>
-              )}
-              {temporadasDisponibles.length > 0 && (
-                <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
-                  <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Selector</p>
-                    <h3 className="text-sm font-semibold text-slate-100">Temporada</h3>
+
+                <div>
+                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                      <CardTitle className="text-sm font-medium text-slate-300">Total Bookings</CardTitle>
+                      <FileText className="h-4 w-4 text-slate-500" />
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl font-semibold text-blue-400 sm:text-2xl">{totalBookings}</div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div>
+                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                      <CardTitle className="text-sm font-medium text-slate-300">Total Contenedores</CardTitle>
+                      <Container className="h-4 w-4 text-slate-500" />
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="text-xl font-semibold text-purple-400 sm:text-2xl">{totalContenedores}</div>
+                      <p className="mt-1 text-[11px] text-slate-400 sm:text-xs">Total contenedores (divididos por espacios)</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div>
+                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                      <CardTitle className="text-sm font-medium text-slate-300">Estados</CardTitle>
+                      <CheckCircle className="h-4 w-4 text-slate-500" />
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <div className="space-y-2 text-[11px] font-medium sm:text-xs">
+                        <div className="flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2 text-emerald-200">
+                          <span>Confirmados</span>
+                          <span className="text-base font-semibold sm:text-lg">{totalConfirmados}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg bg-amber-500/15 px-3 py-2 text-amber-200">
+                          <span>Pendientes</span>
+                          <span className="text-base font-semibold sm:text-lg">{totalPendientes}</span>
+                        </div>
+                        <div className="flex items-center justify-between rounded-lg bg-rose-500/15 px-3 py-2 text-rose-200">
+                          <span>Cancelados</span>
+                          <span className="text-base font-semibold sm:text-lg">{totalCancelados}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </section>
+
+              <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
+                <div className="overflow-x-auto">
+                  <div className="min-w-full px-2 pb-4">
+                    {selectedTemporada && (
+                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sky-100">
+                        <span className="text-sm font-medium">
+                          Filtrando por <span className="font-semibold">Temporada {selectedTemporada}</span>
+                        </span>
+                        <button
+                          onClick={() => router.push('/registros')}
+                          className="rounded-full border border-sky-500/50 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:border-sky-300 hover:text-sky-50"
+                        >
+                          Quitar filtro
+                        </button>
+                      </div>
+                    )}
+                    {temporadasDisponibles.length > 0 && (
+                      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Selector</p>
+                          <h3 className="text-sm font-semibold text-slate-100">Temporada</h3>
+                        </div>
+                        <select
+                          value={selectedTemporada ?? ''}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            if (!value) {
+                              router.push('/registros');
+                            } else {
+                              router.push(`/registros?temporada=${encodeURIComponent(value)}`);
+                            }
+                          }}
+                          className="rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                        >
+                          <option value="">Todas las temporadas</option>
+                          {temporadasDisponibles.map((temporada) => (
+                            <option key={temporada} value={temporada}>
+                              Temporada {temporada}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <DataTable
+                      data={registrosVisibles}
+                      columns={columns}
+                      navierasUnicas={navierasFiltro}
+                      ejecutivosUnicos={ejecutivosFiltro}
+                      especiesUnicas={especiesFiltro}
+                      clientesUnicos={clientesFiltro}
+                      polsUnicos={polsFiltro}
+                      destinosUnicos={destinosFiltro}
+                      depositosUnicos={depositosFiltro}
+                      onAdd={handleAdd}
+                      onEdit={handleEdit}
+                      onEditNaveViaje={handleEditNaveViaje}
+                      onBulkEditNaveViaje={handleBulkEditNaveViaje}
+                      onDelete={handleDelete}
+                      selectedRows={selectedRows}
+                      onToggleRowSelection={handleToggleRowSelection}
+                      onSelectAll={handleSelectAll}
+                      onClearSelection={handleClearSelection}
+                      onBulkDelete={handleBulkDelete}
+                      preserveFilters={true}
+                    />
                   </div>
-                  <select
-                    value={selectedTemporada ?? ''}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (!value) {
-                        router.push('/registros');
-                      } else {
-                        router.push(`/registros?temporada=${encodeURIComponent(value)}`);
-                      }
-                    }}
-                    className="rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                  >
-                    <option value="">Todas las temporadas</option>
-                    {temporadasDisponibles.map((temporada) => (
-                      <option key={temporada} value={temporada}>
-                        Temporada {temporada}
-                      </option>
-                    ))}
-                  </select>
                 </div>
-              )}
-                  <DataTable
-                    data={registrosVisibles}
-                    columns={columns}
-                    navierasUnicas={navierasFiltro}
-                    ejecutivosUnicos={ejecutivosFiltro}
-                    especiesUnicas={especiesFiltro}
-                    clientesUnicos={clientesFiltro}
-                    polsUnicos={polsFiltro}
-                    destinosUnicos={destinosFiltro}
-                    depositosUnicos={depositosFiltro}
-                    onAdd={handleAdd}
-                    onEdit={handleEdit}
-                    onEditNaveViaje={handleEditNaveViaje}
-                    onBulkEditNaveViaje={handleBulkEditNaveViaje}
-                    onDelete={handleDelete}
-                    selectedRows={selectedRows}
-                    onToggleRowSelection={handleToggleRowSelection}
-                    onSelectAll={handleSelectAll}
-                    onClearSelection={handleClearSelection}
-                    onBulkDelete={handleBulkDelete}
-                    preserveFilters={true}
-                  />
-                </div>
-              </div>
-            </section>
-            <AppFooter className="mt-6" />
+              </section>
+              <AppFooter className="mt-6" />
             </div>
           </main>
         </div>

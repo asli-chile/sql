@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
-import { UserProfileModal } from '@/components/UserProfileModal';
+import { UserProfileModal } from '@/components/users/UserProfileModal';
 import {
   Ship,
   Truck,
@@ -25,10 +25,10 @@ import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/AppFooter';
+import { AppFooter } from '@/components/layout/AppFooter';
 
 // Importar el mapa dinámicamente para evitar problemas con SSR
-const ShipmentsMap = dynamic(() => import('@/components/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
+const ShipmentsMap = dynamic(() => import('@/components/tracking/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-[600px] bg-gray-100 dark:bg-gray-900 rounded-lg">
@@ -439,6 +439,56 @@ export default function DashboardPage() {
     });
   }, [registrosParaMapa, selectedSeason, selectedCliente, selectedEjecutivo]);
 
+
+  // TEMPORARY: Mostrar todas las naves para debugging
+  const filteredActiveVessels = useMemo(() => {
+    console.log('[Dashboard] Total active vessels:', activeVessels.length);
+    activeVessels.forEach(v => {
+      console.log('[Dashboard] Active vessel:', v.vessel_name, 'lat:', v.last_lat, 'lon:', v.last_lon);
+    });
+
+    // Por ahora, mostrar TODAS las naves activas sin filtrar
+    return activeVessels;
+
+    /* FILTRO ORIGINAL - COMENTADO TEMPORALMENTE
+    const validVesselNames = new Set<string>();
+    const now = new Date();
+
+    filteredRegistrosParaMapa.forEach((registro) => {
+      // Si tiene ETA y ya pasó, no mostrar el barco
+      if (registro.eta) {
+        const etaDate = new Date(registro.eta);
+        if (etaDate <= now) {
+          return;
+        }
+      }
+
+      // Obtener nombre del barco
+      const vesselName = parseVesselNameFromNaveInicial(registro.naveInicial);
+      if (vesselName) {
+        const normalizedName = vesselName.toUpperCase().trim();
+        validVesselNames.add(normalizedName);
+        console.log('[Dashboard] Vessel from registro:', normalizedName, 'from:', registro.naveInicial);
+      }
+    });
+
+    console.log('[Dashboard] Valid vessel names from registros:', Array.from(validVesselNames));
+    console.log('[Dashboard] Active vessels from API:', activeVessels.map(v => v.vessel_name));
+
+    const filtered = activeVessels.filter((vessel) => {
+      if (!vessel.vessel_name) return false;
+      const normalizedVesselName = vessel.vessel_name.toUpperCase().trim();
+      const matches = validVesselNames.has(normalizedVesselName);
+      console.log('[Dashboard] Checking vessel:', normalizedVesselName, 'matches:', matches);
+      return matches;
+    });
+
+    console.log('[Dashboard] Filtered vessels count:', filtered.length);
+    return filtered;
+    */
+  }, [activeVessels, filteredRegistrosParaMapa]);
+
+
   const displayedSeasonLabel = selectedSeason ? `Temporada ${selectedSeason}` : null;
 
   useEffect(() => {
@@ -449,12 +499,12 @@ export default function DashboardPage() {
     if (user) {
       loadStats();
       void loadActiveVessels();
-      
+
       // Refrescar datos de buques automáticamente cada 60 segundos (1 minuto)
       const intervalId = setInterval(() => {
         void loadActiveVessels();
       }, 60000); // 60000 ms = 60 segundos
-      
+
       return () => {
         clearInterval(intervalId);
       };
@@ -465,9 +515,9 @@ export default function DashboardPage() {
     try {
       const supabase = createClient();
       const { data: { user }, error } = await supabase.auth.getUser();
-      
+
       if (error) throw error;
-      
+
       if (!user) {
         router.push('/auth');
         return;
@@ -572,16 +622,16 @@ export default function DashboardPage() {
       available: true,
       stats: displayedStats
     },
-    // {
-    //   id: 'dashboard/seguimiento',
-    //   title: 'Seguimiento de Buques',
-    //   description: 'Mapa AIS y estado de los buques activos',
-    //   icon: Globe,
-    //   color: 'bg-sky-500',
-    //   hoverColor: 'hover:bg-sky-600',
-    //   available: true,
-    //   stats: null
-    // },
+    {
+      id: 'dashboard/seguimiento',
+      title: 'Seguimiento de Buques',
+      description: 'Mapa AIS y estado de los buques activos',
+      icon: Globe,
+      color: 'bg-sky-500',
+      hoverColor: 'hover:bg-sky-600',
+      available: true,
+      stats: null
+    },
     {
       id: 'transportes',
       title: 'Registros de Transporte',
@@ -643,7 +693,7 @@ export default function DashboardPage() {
       title: 'Módulos',
       items: [
         { label: 'Embarques', id: 'registros', isActive: true },
-        // { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
+        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
         { label: 'Transportes', id: 'transportes', isActive: false },
         { label: 'Documentos', id: 'documentos', isActive: false },
       ],
@@ -658,9 +708,8 @@ export default function DashboardPage() {
     <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       {/* Sidebar */}
       <aside
-        className={`hidden lg:flex relative flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 ${
-          isSidebarCollapsed ? 'w-20' : 'w-64'
-        } sticky top-0 h-screen`}
+        className={`hidden lg:flex relative flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'
+          } sticky top-0 h-screen`}
       >
         <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-800/60">
           <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-900/70 flex items-center justify-center">
@@ -688,7 +737,7 @@ export default function DashboardPage() {
         >
           {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
         </button>
- 
+
         {!isSidebarCollapsed && (
           <>
             <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
@@ -707,18 +756,16 @@ export default function DashboardPage() {
                           }
                         }}
                         aria-pressed={'counter' in item ? item.isActive : undefined}
-                        className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${
-                          ('id' in item && item.isActive) || ('counter' in item && item.isActive)
-                            ? 'bg-slate-800/80 text-white'
-                            : 'hover:bg-slate-800/40 text-slate-300'
-                        }`}
+                        className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${('id' in item && item.isActive) || ('counter' in item && item.isActive)
+                          ? 'bg-slate-800/80 text-white'
+                          : 'hover:bg-slate-800/40 text-slate-300'
+                          }`}
                       >
                         <span className="text-sm font-medium">{item.label}</span>
                         {'counter' in item && (
                           <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]} ${
-                              item.isActive ? 'ring-1 ring-sky-400/60' : ''
-                            }`}
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]} ${item.isActive ? 'ring-1 ring-sky-400/60' : ''
+                              }`}
                           >
                             {item.counter}
                           </span>
@@ -838,11 +885,10 @@ export default function DashboardPage() {
                         }
                       }}
                       aria-pressed={item.isActive}
-                      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap border ${
-                        item.isActive
-                          ? 'border-sky-400/70 bg-sky-500/15 text-sky-100'
-                          : 'border-slate-700/70 bg-slate-900/70 text-slate-300'
-                      }`}
+                      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap border ${item.isActive
+                        ? 'border-sky-400/70 bg-sky-500/15 text-sky-100'
+                        : 'border-slate-700/70 bg-slate-900/70 text-slate-300'
+                        }`}
                     >
                       <span>{item.label}</span>
                       <span
@@ -1043,11 +1089,10 @@ export default function DashboardPage() {
                       }
                     }}
                     disabled={isDisabled}
-                    className={`group relative overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/60 p-5 text-left transition-all ${
-                      isDisabled
-                        ? 'opacity-60 cursor-not-allowed'
-                        : 'hover:border-sky-500/60 hover:shadow-lg hover:shadow-sky-900/20 active:scale-[0.98]'
-                    }`}
+                    className={`group relative overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/60 p-5 text-left transition-all ${isDisabled
+                      ? 'opacity-60 cursor-not-allowed'
+                      : 'hover:border-sky-500/60 hover:shadow-lg hover:shadow-sky-900/20 active:scale-[0.98]'
+                      }`}
                   >
                     <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-sky-600 opacity-40 group-hover:opacity-100 transition-opacity" />
                     <div className="flex items-center justify-between">
@@ -1097,7 +1142,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
-              <ShipmentsMap registros={filteredRegistrosParaMapa} activeVessels={activeVessels} />
+              <ShipmentsMap registros={filteredRegistrosParaMapa} activeVessels={filteredActiveVessels} />
             </div>
           </section>
 

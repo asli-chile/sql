@@ -1,5 +1,5 @@
 -- Crear tabla de registros
-CREATE TABLE registros (
+CREATE TABLE IF NOT EXISTS registros (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   ingresado TIMESTAMPTZ,
   ref_asli TEXT NOT NULL,
@@ -50,7 +50,7 @@ CREATE TABLE registros (
 );
 
 -- Crear tabla de catálogos
-CREATE TABLE catalogos (
+CREATE TABLE IF NOT EXISTS catalogos (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   categoria TEXT NOT NULL UNIQUE,
   valores TEXT[] NOT NULL DEFAULT '{}',
@@ -60,7 +60,7 @@ CREATE TABLE catalogos (
 );
 
 -- Crear tabla de control operacional
-CREATE TABLE control_operacional (
+CREATE TABLE IF NOT EXISTS control_operacional (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   ejecutivo TEXT NOT NULL,
   cliente TEXT NOT NULL,
@@ -111,27 +111,27 @@ CREATE TABLE control_operacional (
 );
 
 -- Crear índices para mejorar el rendimiento
-CREATE INDEX idx_registros_ref_asli ON registros(ref_asli);
-CREATE INDEX idx_registros_estado ON registros(estado);
-CREATE INDEX idx_registros_naviera ON registros(naviera);
-CREATE INDEX idx_registros_ejecutivo ON registros(ejecutivo);
-CREATE INDEX idx_registros_especie ON registros(especie);
-CREATE INDEX idx_registros_pol ON registros(pol);
-CREATE INDEX idx_registros_pod ON registros(pod);
-CREATE INDEX idx_registros_deposito ON registros(deposito);
-CREATE INDEX idx_registros_ingresado ON registros(ingresado);
-CREATE INDEX idx_registros_etd ON registros(etd);
-CREATE INDEX idx_registros_eta ON registros(eta);
-CREATE INDEX idx_registros_deleted_at ON registros(deleted_at);
+CREATE INDEX IF NOT EXISTS idx_registros_ref_asli ON registros(ref_asli);
+CREATE INDEX IF NOT EXISTS idx_registros_estado ON registros(estado);
+CREATE INDEX IF NOT EXISTS idx_registros_naviera ON registros(naviera);
+CREATE INDEX IF NOT EXISTS idx_registros_ejecutivo ON registros(ejecutivo);
+CREATE INDEX IF NOT EXISTS idx_registros_especie ON registros(especie);
+CREATE INDEX IF NOT EXISTS idx_registros_pol ON registros(pol);
+CREATE INDEX IF NOT EXISTS idx_registros_pod ON registros(pod);
+CREATE INDEX IF NOT EXISTS idx_registros_deposito ON registros(deposito);
+CREATE INDEX IF NOT EXISTS idx_registros_ingresado ON registros(ingresado);
+CREATE INDEX IF NOT EXISTS idx_registros_etd ON registros(etd);
+CREATE INDEX IF NOT EXISTS idx_registros_eta ON registros(eta);
+CREATE INDEX IF NOT EXISTS idx_registros_deleted_at ON registros(deleted_at);
 
 -- Crear índices para control operacional
-CREATE INDEX idx_control_operacional_ref_asli ON control_operacional(ref_asli);
-CREATE INDEX idx_control_operacional_ejecutivo ON control_operacional(ejecutivo);
-CREATE INDEX idx_control_operacional_cliente ON control_operacional(cliente);
-CREATE INDEX idx_control_operacional_naviera ON control_operacional(naviera);
-CREATE INDEX idx_control_operacional_especie ON control_operacional(especie);
-CREATE INDEX idx_control_operacional_etd ON control_operacional(etd);
-CREATE INDEX idx_control_operacional_eta ON control_operacional(eta);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_ref_asli ON control_operacional(ref_asli);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_ejecutivo ON control_operacional(ejecutivo);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_cliente ON control_operacional(cliente);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_naviera ON control_operacional(naviera);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_especie ON control_operacional(especie);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_etd ON control_operacional(etd);
+CREATE INDEX IF NOT EXISTS idx_control_operacional_eta ON control_operacional(eta);
 
 -- Crear función para actualizar updated_at automáticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -143,14 +143,17 @@ END;
 $$ language 'plpgsql';
 
 -- Crear triggers para actualizar updated_at
+DROP TRIGGER IF EXISTS update_registros_updated_at ON registros;
 CREATE TRIGGER update_registros_updated_at 
   BEFORE UPDATE ON registros 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_catalogos_updated_at ON catalogos;
 CREATE TRIGGER update_catalogos_updated_at 
   BEFORE UPDATE ON catalogos 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_control_operacional_updated_at ON control_operacional;
 CREATE TRIGGER update_control_operacional_updated_at 
   BEFORE UPDATE ON control_operacional 
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -161,7 +164,13 @@ ALTER TABLE catalogos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE control_operacional ENABLE ROW LEVEL SECURITY;
 
 -- Crear políticas de seguridad (ajustar según tus necesidades)
--- Por ahora, permitir todas las operaciones para usuarios autenticados
+-- Permitir todas las operaciones solo para usuarios autenticados
+
+-- Eliminar políticas anteriores para evitar conflictos
+DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON registros;
+DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON catalogos;
+DROP POLICY IF EXISTS "Enable all operations for authenticated users" ON control_operacional;
+
 CREATE POLICY "Enable all operations for authenticated users" ON registros
   FOR ALL USING (auth.role() = 'authenticated');
 
@@ -171,12 +180,5 @@ CREATE POLICY "Enable all operations for authenticated users" ON catalogos
 CREATE POLICY "Enable all operations for authenticated users" ON control_operacional
   FOR ALL USING (auth.role() = 'authenticated');
 
--- También permitir operaciones para usuarios anónimos (ajustar según seguridad)
-CREATE POLICY "Enable all operations for anonymous users" ON registros
-  FOR ALL USING (true);
-
-CREATE POLICY "Enable all operations for anonymous users" ON catalogos
-  FOR ALL USING (true);
-
-CREATE POLICY "Enable all operations for anonymous users" ON control_operacional
-  FOR ALL USING (true);
+-- Eliminar políticas públicas inseguras
+-- Las políticas anteriores "Enable all operations for anonymous users" han sido eliminadas por seguridad

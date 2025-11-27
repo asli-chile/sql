@@ -1,22 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, ArrowLeft } from 'lucide-react';
-import { ActiveVesselsMap } from '@/components/ActiveVesselsMap';
-import { VesselDetailsModal } from '@/components/VesselDetailsModal';
+import { User } from '@supabase/supabase-js';
+import dynamic from 'next/dynamic';
+import { ArrowLeft, RefreshCcw, Search } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/AppFooter';
+import { AppFooter } from '@/components/layout/AppFooter';
+import { VesselDetailsModal } from '@/components/tracking/VesselDetailsModal';
+
+const ActiveVesselsMap = dynamic(
+  () => import('@/components/tracking/ActiveVesselsMap').then((mod) => mod.ActiveVesselsMap),
+  { ssr: false }
+);
 
 type FetchState = 'idle' | 'loading' | 'error' | 'success';
 
 type ActiveVesselsResponse = {
   vessels: ActiveVessel[];
 };
-
 
 const SeguimientoPage = () => {
   const router = useRouter();
@@ -133,15 +137,15 @@ const SeguimientoPage = () => {
     if (!user) {
       return;
     }
-    
+
     // Cargar buques inicialmente
     void loadVessels();
-    
+
     // Refrescar datos de buques automáticamente cada 60 segundos (1 minuto)
     const intervalId = setInterval(() => {
       void loadVessels();
     }, 60000); // 60000 ms = 60 segundos
-    
+
     return () => {
       clearInterval(intervalId);
     };
@@ -278,22 +282,14 @@ const SeguimientoPage = () => {
                 <input
                   type="search"
                   value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="Buscar por barco, booking, contenedor o destino"
-                  className="w-full rounded-full border border-slate-800 bg-slate-950/80 px-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:px-9 sm:py-2 sm:text-sm"
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Buscar por nombre, destino, booking o contenedor..."
+                  className="w-full rounded-full border border-slate-800 bg-slate-900/80 py-1.5 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:py-2 sm:pl-10 sm:pr-4 sm:text-sm"
                 />
               </div>
             </div>
-            {errorMessage && (
-              <p className="rounded-xl border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-xs text-rose-100">
-                {errorMessage}
-              </p>
-            )}
-          </section>
-
-          <section className="space-y-3 sm:space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-              <div className="min-w-0 flex-1">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div>
                 <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
                   Visualización
                 </p>
@@ -332,5 +328,3 @@ const SeguimientoPage = () => {
 };
 
 export default SeguimientoPage;
-
-

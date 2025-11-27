@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { DeckGL } from '@deck.gl/react';
-import { ScatterplotLayer } from '@deck.gl/layers';
+import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { Map as MaplibreMap } from 'react-map-gl/maplibre';
 import { CanvasContext } from '@luma.gl/core';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -10,6 +10,7 @@ import { getPortCoordinates } from '@/lib/port-coordinates';
 import { getCountryFromPort, getCountryCoordinates } from '@/lib/country-coordinates';
 import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
+import { VesselDetailsModal } from './VesselDetailsModal';
 
 interface CountryStats {
   country: string;
@@ -129,7 +130,7 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             // Reintentar después de un frame
             requestAnimationFrame(waitForContainer);
           };
-          
+
           // Esperar un poco antes de verificar el contenedor
           setTimeout(() => {
             waitForContainer();
@@ -165,14 +166,14 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
       totalEmbarques: number;
       depositos: Set<string>;
     }>();
-    
+
     registros.forEach(registro => {
       if (!registro.pol) return;
-      
+
       const portName = registro.pol.toUpperCase().trim();
       const coords = getPortCoordinates(registro.pol);
       if (!coords) return;
-      
+
       if (!portMap.has(portName)) {
         portMap.set(portName, {
           name: portName,
@@ -181,15 +182,15 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
           depositos: new Set<string>()
         });
       }
-      
+
       const portStats = portMap.get(portName)!;
       portStats.totalEmbarques++;
-      
+
       if (registro.deposito) {
         portStats.depositos.add(registro.deposito.trim());
       }
     });
-    
+
     return Array.from(portMap.values()).map(port => ({
       name: port.name,
       coordinates: port.coordinates,
@@ -207,25 +208,25 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
 
       // Normalizar nombre del puerto primero
       const portName = registro.pod.toUpperCase().trim();
-      
+
       // Intentar obtener el país del puerto (para fallback de coordenadas)
       const country = getCountryFromPort(registro.pod);
-      
+
       // Cada puerto tiene su propia ubicación
       const portCoords = getPortCoordinates(registro.pod);
-      
+
       // Si no encontramos coordenadas del puerto, intentar usar coordenadas del país como fallback
       let finalCoords: [number, number] | null = portCoords;
-        if (!finalCoords && country) {
+      if (!finalCoords && country) {
         const countryCoords = getCountryCoordinates(country);
         if (countryCoords) {
           finalCoords = countryCoords;
-            if (IS_DEV) {
-              console.warn(`⚠️ Coordenadas del puerto "${registro.pod}" no encontradas, usando coordenadas del país "${country}" como fallback`);
-            }
+          if (IS_DEV) {
+            console.warn(`⚠️ Coordenadas del puerto "${registro.pod}" no encontradas, usando coordenadas del país "${country}" como fallback`);
+          }
         }
       }
-      
+
       if (!finalCoords) {
         // Si no tenemos coordenadas ni del puerto ni del país, no mostrarlo
         if (IS_DEV) {
@@ -236,12 +237,12 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
 
       // Usar el puerto como clave única (vista siempre por puerto)
       const key = portName;
-      
+
       // Obtener o crear estadísticas del puerto
       let stats = portMap.get(key);
       if (!stats) {
         const displayName = portName;
-        
+
         stats = {
           country: displayName,
           coordinates: finalCoords, // Coordenadas reales del puerto o del país como fallbackimage.png
@@ -288,7 +289,7 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
           stats.totalEtdPendiente++;
         }
       }
-      
+
       if (registro.eta) {
         const etaDate = new Date(registro.eta);
         if (etaDate < ahora) {
@@ -379,17 +380,17 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
       if (isHovered) {
         return [0, 188, 212, 255]; // Cyan brillante cuando está hovered
       }
-      
+
       // Si tiene ETA cumplida, verde
       if (d.totalEtaCumplida > 0) {
         return [76, 175, 80, 220]; // Verde (ETA cumplida)
       }
-      
+
       // Si tiene ETD cumplida, amarillo
       if (d.totalEtdCumplida > 0) {
         return [255, 193, 7, 220]; // Amarillo (ETD cumplida)
       }
-      
+
       // Por defecto, gris (si no tiene fechas cumplidas)
       return [158, 158, 158, 220]; // Gris
     },
@@ -434,6 +435,33 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
           } else {
             setHoveredVessel(null);
           }
+        },
+      }),
+    [activeVesselPoints],
+  );
+
+  // Capa de nombres de buques
+  const vesselNamesLayer = useMemo(
+    () =>
+      new TextLayer<ActiveVessel>({
+        id: 'vessel-names',
+        data: activeVesselPoints,
+        getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
+        getText: (vessel) => vessel.vessel_name,
+        getSize: 12,
+        getColor: [255, 255, 255, 255],
+        getAngle: 0,
+        getTextAnchor: 'middle',
+        getAlignmentBaseline: 'top',
+        getPixelOffset: [0, 10], // Debajo del punto
+        background: true,
+        getBackgroundColor: [0, 0, 0, 160], // Fondo semitransparente para legibilidad
+        backgroundPadding: [4, 2],
+        characterSet: 'auto',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontWeight: 600,
+        updateTriggers: {
+          getPosition: [activeVesselPoints],
         },
       }),
     [activeVesselPoints],
@@ -508,24 +536,25 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
               originPortsLayer,
               ...(hoveredCountry
                 ? [
-                    new ScatterplotLayer<CountryStats>({
-                      id: 'country-highlight',
-                      data: [hoveredCountry],
-                      getPosition: (d: CountryStats) => d.coordinates,
-                      getRadius: 80000,
-                      getFillColor: [0, 188, 212, 50],
-                      pickable: false,
-                      radiusMinPixels: 0,
-                      radiusMaxPixels: 1000,
-                      updateTriggers: {
-                        getPosition: [hoveredCountry],
-                        getRadius: [],
-                      },
-                    }),
-                  ]
+                  new ScatterplotLayer<CountryStats>({
+                    id: 'country-highlight',
+                    data: [hoveredCountry],
+                    getPosition: (d: CountryStats) => d.coordinates,
+                    getRadius: 80000,
+                    getFillColor: [0, 188, 212, 50],
+                    pickable: false,
+                    radiusMinPixels: 0,
+                    radiusMaxPixels: 1000,
+                    updateTriggers: {
+                      getPosition: [hoveredCountry],
+                      getRadius: [],
+                    },
+                  }),
+                ]
                 : []),
               countriesLayer,
               activeVesselsLayer,
+              vesselNamesLayer,
             ]}
             onError={(error) => {
               if (error) {

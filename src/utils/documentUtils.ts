@@ -7,7 +7,16 @@ export const sanitizeFileName = (name: string) => {
     return `${safeBase}.${ext || 'pdf'}`;
 };
 
-export const formatFileDisplayName = (name: string) => name.replace(/^\d+-/, '').replace(/[_-]+/g, ' ');
+export const formatFileDisplayName = (name: string) => {
+    // Quitar cualquier número al inicio seguido de guiones o espacios
+    // Esto elimina patrones como "0-", "123-", "0 ", etc.
+    let cleaned = name.replace(/^\d+[\s_-]+/, '').trim();
+    // También quitar timestamps y índices en el formato "timestamp-indice-"
+    cleaned = cleaned.replace(/^\d+-\d+-/, '');
+    // Reemplazar múltiples guiones bajos o guiones por espacios
+    cleaned = cleaned.replace(/[_-]+/g, ' ');
+    return cleaned.trim();
+};
 
 export const normalizeBooking = (value?: string | null) => (value ?? '').trim().toUpperCase();
 
@@ -36,6 +45,10 @@ export const parseStoredDocumentName = (fileName: string) => {
         instructivoIndex = parseInt(instructivoMatch[1], 10);
         originalName = rest.slice(instructivoMatch[0].length);
     }
+
+    // Quitar timestamp e índice del formato "timestamp-indice-nombre" que se agrega al subir
+    // Ejemplo: "1234567890-0-nombre-archivo.pdf" -> "nombre-archivo.pdf"
+    originalName = originalName.replace(/^\d+-\d+-/, '');
 
     try {
         return {
