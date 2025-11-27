@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
     "exceljs": "^4.4.0",
+    "firebase": "^10.7.1",
     "jspdf": "^3.0.3",
     "lucide-react": "^0.548.0",
     "maplibre-gl": "^5.11.0",
