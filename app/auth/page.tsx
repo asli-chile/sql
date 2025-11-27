@@ -30,7 +30,7 @@ const AuthPage = () => {
   useEffect(() => {
     const emailParam = searchParams.get('email');
     const passwordParam = searchParams.get('password');
-    
+
     if (emailParam || passwordParam) {
       // Si hay credenciales en la URL, limpiarlas inmediatamente
       const newUrl = new URL(window.location.href);
@@ -38,12 +38,12 @@ const AuthPage = () => {
       newUrl.searchParams.delete('password');
       // Reemplazar la URL sin recargar la página
       window.history.replaceState({}, '', newUrl.pathname);
-      
+
       // Si hay email, prellenarlo (pero NUNCA la contraseña)
       if (emailParam) {
         setEmail(emailParam);
       }
-      
+
       // Mostrar advertencia de seguridad
       setError('⚠️ Por seguridad, las credenciales no deben estar en la URL. Por favor, ingresa tu contraseña manualmente.');
     }
@@ -78,15 +78,58 @@ const AuthPage = () => {
 
     try {
       if (isLogin) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
+        // Normalizar email a minúsculas para evitar problemas
+        const normalizedEmail = email.toLowerCase().trim();
+        
+        console.log('[Login] Iniciando login con email:', normalizedEmail);
+
+        // 1. Primero, verificar si el email es secundario y obtener el email principal
+        const checkEmailResponse = await fetch(`/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+        
+        if (!checkEmailResponse.ok) {
+          console.error('[Login] Error al verificar email:', checkEmailResponse.statusText);
+          // Continuar con login normal si falla la verificación
+        }
+        
+        const checkEmailData = await checkEmailResponse.json();
+        console.log('[Login] Respuesta de check-email:', checkEmailData);
+
+        let emailToUse = normalizedEmail;
+
+        if (checkEmailResponse.ok && checkEmailData.primary_email) {
+          // Si es un email secundario, usar el email principal para autenticar
+          emailToUse = checkEmailData.primary_email.toLowerCase().trim();
+          console.log('[Login] Email es secundario, usando email principal:', emailToUse);
+        } else {
+          console.log('[Login] Email es principal o no existe como secundario, usando:', emailToUse);
+        }
+
+        // 2. Hacer login con Supabase usando el email correcto (principal o el mismo si no es secundario)
+        console.log('[Login] Intentando autenticar con Supabase...');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: emailToUse,
           password,
         });
 
         if (signInError) {
-          throw signInError;
+          console.error('[Login] Error de Supabase:', signInError);
+          
+          // Mejorar mensaje de error para el usuario
+          if (signInError.message === 'Invalid login credentials' || signInError.message.includes('credentials')) {
+            setError('Credenciales inválidas. Verifica tu email y contraseña.');
+          } else {
+            setError(signInError.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.');
+          }
+          
+          return;
         }
 
+        if (!signInData.session) {
+          setError('No se pudo crear la sesión. Por favor, intenta nuevamente.');
+          return;
+        }
+
+        console.log('[Login] Login exitoso, redirigiendo...');
         router.push('/dashboard');
         return;
       }
@@ -101,18 +144,29 @@ const AuthPage = () => {
         return;
       }
 
+      // Normalizar email a minúsculas
+      const normalizedEmail = email.toLowerCase().trim();
+
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: fullName.trim(),
           },
         },
       });
 
       if (signUpError) {
-        throw signUpError;
+        // Mejorar mensaje de error para el usuario
+        if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
+          setError('Este email ya está registrado. Por favor, inicia sesión en su lugar.');
+        } else if (signUpError.message.includes('invalid')) {
+          setError('Email inválido. Por favor, verifica el formato.');
+        } else {
+          setError(signUpError.message || 'Error al crear la cuenta. Por favor, intenta nuevamente.');
+        }
+        return;
       }
 
       if (data.user && !data.user.email_confirmed_at) {
@@ -122,7 +176,12 @@ const AuthPage = () => {
 
       router.push('/dashboard');
     } catch (authError: any) {
-      setError(authError?.message ?? 'Error en la autenticación');
+      console.error('[Auth] Error inesperado:', authError);
+      // El error ya debería estar establecido en setError() dentro de los bloques try
+      // Este catch solo maneja errores inesperados
+      if (!error) {
+        setError(authError?.message ?? 'Error inesperado en la autenticación. Por favor, intenta nuevamente.');
+      }
     } finally {
       setLoading(false);
     }

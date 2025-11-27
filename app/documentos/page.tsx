@@ -8,132 +8,26 @@ import { createClient } from '@/lib/supabase-browser';
 import { useUser } from '@/hooks/useUser';
 import { Registro } from '@/types/registros';
 import { Factura } from '@/types/factura';
-import {
-  FileText,
-  Download,
-  Eye,
-  ArrowLeft,
-  CloudUpload,
-  FileSpreadsheet,
-  ClipboardList,
-  FileSignature,
-  FileArchive,
-  FileBox,
-  NotebookPen,
-  Search,
-  AlertCircle,
-  CheckCircle,
-} from 'lucide-react';
-import { FacturaCreator } from '@/components/FacturaCreator';
-import { FacturaViewer } from '@/components/FacturaViewer';
+import { Trash2, Download } from 'lucide-react';
+import { FacturaCreator } from '@/components/facturas/FacturaCreator';
+import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import { useToast } from '@/hooks/useToast';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/AppFooter';
-
-type DocumentType = {
-  id: string;
-  name: string;
-  description: string;
-  formats: string[];
-  icon: typeof FileText;
-  accent: string;
-  gradient: string;
-};
-
-type StoredDocument = {
-  typeId: string;
-  name: string;
-  path: string;
-  booking: string | null;
-  updatedAt: string | null;
-  instructivoIndex: number | null;
-};
+import { AppFooter } from '@/components/layout/AppFooter';
+import { DocumentFilters } from '@/components/documentos/DocumentFilters';
+import { DocumentList } from '@/components/documentos/DocumentList';
+import { DOCUMENT_TYPES } from '@/components/documentos/constants';
+import { StoredDocument } from '@/types/documents';
+import {
+  allowedExtensions,
+  sanitizeFileName,
+  formatFileDisplayName,
+  normalizeBooking,
+  normalizeTemporada,
+  parseStoredDocumentName,
+} from '@/utils/documentUtils';
 
 const STORAGE_BUCKET = 'documentos';
-
-const DOCUMENT_TYPES: DocumentType[] = [
-  {
-    id: 'booking',
-    name: 'Booking PDF',
-    description: 'Reservas confirmadas con la naviera.',
-    formats: ['PDF'],
-    icon: FileSpreadsheet,
-    accent: 'text-cyan-300',
-    gradient: 'from-cyan-500/15 to-slate-900/60',
-  },
-  {
-    id: 'factura-proforma',
-    name: 'Factura Proforma',
-    description: 'Cotizaciones previas a la factura comercial.',
-    formats: ['PDF', 'XLSX'],
-    icon: FileSignature,
-    accent: 'text-sky-300',
-    gradient: 'from-sky-500/15 to-slate-900/60',
-  },
-  {
-    id: 'instructivo-embarque',
-    name: 'Instructivo de Embarque',
-    description: 'Indicaciones para navieras y transporte.',
-    formats: ['PDF', 'XLSX'],
-    icon: ClipboardList,
-    accent: 'text-emerald-300',
-    gradient: 'from-emerald-500/15 to-slate-900/60',
-  },
-  {
-    id: 'packing-list',
-    name: 'Packing List',
-    description: 'Contenido detallado del embarque.',
-    formats: ['PDF', 'XLSX'],
-    icon: FileBox,
-    accent: 'text-amber-300',
-    gradient: 'from-amber-500/15 to-slate-900/60',
-  },
-  {
-    id: 'guia-despacho',
-    name: 'Guía de Despacho',
-    description: 'Documentos de traslado nacional.',
-    formats: ['PDF'],
-    icon: NotebookPen,
-    accent: 'text-indigo-300',
-    gradient: 'from-indigo-500/15 to-slate-900/60',
-  },
-  {
-    id: 'documentos-aga',
-    name: 'Documentos AGA',
-    description: 'Libera mercancía ante Aduanas y SAG.',
-    formats: ['PDF'],
-    icon: FileArchive,
-    accent: 'text-fuchsia-300',
-    gradient: 'from-fuchsia-500/15 to-slate-900/60',
-  },
-  {
-    id: 'bl',
-    name: 'BL / MBL / HBL',
-    description: 'Conocimientos de embarque firmados.',
-    formats: ['PDF'],
-    icon: FileText,
-    accent: 'text-rose-300',
-    gradient: 'from-rose-500/15 to-slate-900/60',
-  },
-  {
-    id: 'cert-origen',
-    name: 'Cert. Origen',
-    description: 'Certificado de origen de la mercancía.',
-    formats: ['PDF'],
-    icon: FileText,
-    accent: 'text-violet-300',
-    gradient: 'from-violet-500/15 to-slate-900/60',
-  },
-  {
-    id: 'cert-fito',
-    name: 'Cert Fito',
-    description: 'Certificado fitosanitario.',
-    formats: ['PDF'],
-    icon: FileText,
-    accent: 'text-teal-300',
-    gradient: 'from-teal-500/15 to-slate-900/60',
-  },
-];
 
 const createEmptyDocumentsMap = () =>
   DOCUMENT_TYPES.reduce<Record<string, StoredDocument[]>>((acc, type) => {
@@ -141,63 +35,13 @@ const createEmptyDocumentsMap = () =>
     return acc;
   }, {});
 
-const allowedExtensions = ['pdf', 'xls', 'xlsx'];
-
-const sanitizeFileName = (name: string) => {
-  const cleanName = name.toLowerCase().replace(/[^a-z0-9.\-]/g, '-');
-  const [base, ext] = cleanName.split(/\.(?=[^.\s]+$)/);
-  const safeBase = base?.replace(/-+/g, '-').replace(/^-|-$/g, '') || `archivo-${Date.now()}`;
-  return `${safeBase}.${ext || 'pdf'}`;
-};
-
-const formatFileDisplayName = (name: string) => name.replace(/^\d+-/, '').replace(/[_-]+/g, ' ');
-
-const normalizeBooking = (value?: string | null) => (value ?? '').trim().toUpperCase();
-
-const normalizeTemporada = (value?: string | null): string => {
-  if (!value) {
-    return '';
-  }
-  return value.toString().replace(/^Temporada\s+/i, '').trim();
-};
-
-const parseStoredDocumentName = (fileName: string) => {
-  const separatorIndex = fileName.indexOf('__');
-  if (separatorIndex === -1) {
-    return { booking: null as string | null, originalName: fileName, instructivoIndex: null };
-  }
-
-  const bookingSegment = fileName.slice(0, separatorIndex);
-  const rest = fileName.slice(separatorIndex + 2);
-  
-  // Buscar si hay un identificador de instructivo: instructivo-0, instructivo-1, etc.
-  const instructivoMatch = rest.match(/^instructivo-(\d+)__/);
-  let instructivoIndex: number | null = null;
-  let originalName = rest;
-  
-  if (instructivoMatch) {
-    instructivoIndex = parseInt(instructivoMatch[1], 10);
-    originalName = rest.slice(instructivoMatch[0].length);
-  }
-
-  try {
-    return { 
-      booking: decodeURIComponent(bookingSegment), 
-      originalName,
-      instructivoIndex 
-    };
-  } catch {
-    return { booking: bookingSegment, originalName, instructivoIndex };
-  }
-};
-
 export default function DocumentosPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { currentUser, setCurrentUser } = useUser();
   const { success, error: showError } = useToast();
-  const supabase = createClient();
-  
+  const supabase = useMemo(() => createClient(), []);
+
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
@@ -216,9 +60,13 @@ export default function DocumentosPage() {
   const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
   const [isEjecutivo, setIsEjecutivo] = useState(false);
-  
+  const [contextMenu, setContextMenu] = useState<{ doc: StoredDocument; x: number; y: number } | null>(null);
+  const [deletedDocuments, setDeletedDocuments] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
   const temporadaParam = searchParams?.get('temporada');
   const isAdminOrEjecutivo = (currentUser?.rol === 'admin') || Boolean(currentUser?.email?.endsWith('@asli.cl'));
+  const isAdmin = currentUser?.rol === 'admin';
 
   // Inicializar temporada desde URL params o establecer "25-26" por defecto
   useEffect(() => {
@@ -270,13 +118,13 @@ export default function DocumentosPage() {
       }
 
       setCurrentUser({
-          id: userData.id,
-          nombre: userData.nombre,
-          email: userData.email,
-          rol: userData.rol,
+        id: userData.id,
+        nombre: userData.nombre,
+        email: userData.email,
+        rol: userData.rol,
         activo: userData.activo,
       });
-      
+
       // Verificar si es ejecutivo y cargar clientes asignados
       const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
       setIsEjecutivo(emailEsEjecutivo);
@@ -291,7 +139,7 @@ export default function DocumentosPage() {
   const loadClientesAsignados = async (userId: string, nombreUsuario?: string) => {
     try {
       const clientesAsignadosSet = new Set<string>();
-      
+
       // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
       const { data, error } = await supabase
         .from('ejecutivo_clientes')
@@ -312,17 +160,17 @@ export default function DocumentosPage() {
           .single();
 
         if (!catalogoError && catalogoClientes?.valores) {
-          const valores = Array.isArray(catalogoClientes.valores) 
-            ? catalogoClientes.valores 
+          const valores = Array.isArray(catalogoClientes.valores)
+            ? catalogoClientes.valores
             : typeof catalogoClientes.valores === 'string'
               ? JSON.parse(catalogoClientes.valores)
               : [];
-          
+
           const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
-          const clienteCoincidente = valores.find((cliente: string) => 
+          const clienteCoincidente = valores.find((cliente: string) =>
             cliente.toUpperCase().trim() === nombreUsuarioUpper
           );
-          
+
           if (clienteCoincidente) {
             clientesAsignadosSet.add(clienteCoincidente);
           }
@@ -361,7 +209,7 @@ export default function DocumentosPage() {
           naveInicial = matchNave[1].trim();
           viaje = matchNave[2].trim();
         }
-        
+
         return {
           ...r,
           refAsli: r.ref_asli || '',
@@ -422,6 +270,30 @@ export default function DocumentosPage() {
     }
   }, [currentUser, showError, supabase]);
 
+  const loadDeletedDocuments = useCallback(async () => {
+    if (!isAdmin) {
+      setDeletedDocuments(new Set());
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('documentos_eliminados')
+        .select('file_path')
+        .gt('expires_at', new Date().toISOString()); // Solo documentos que no han expirado
+
+      if (error) {
+        console.warn('Error cargando documentos eliminados:', error);
+        return;
+      }
+
+      const deletedPaths = new Set(data?.map((d) => d.file_path) || []);
+      setDeletedDocuments(deletedPaths);
+    } catch (err) {
+      console.error('Error cargando documentos eliminados:', err);
+    }
+  }, [isAdmin, supabase]);
+
   const fetchDocuments = useCallback(async () => {
     try {
       const results = createEmptyDocumentsMap();
@@ -470,9 +342,23 @@ export default function DocumentosPage() {
     if (currentUser !== undefined) {
       void loadRegistros();
       void loadFacturas();
-      void fetchDocuments();
+      // Cargar documentos eliminados primero, luego los documentos
+      void loadDeletedDocuments().then(() => {
+        void fetchDocuments();
+      });
     }
-  }, [currentUser, clientesAsignados, loadRegistros, loadFacturas, fetchDocuments]);
+  }, [currentUser, clientesAsignados, loadRegistros, loadFacturas, fetchDocuments, loadDeletedDocuments]);
+
+  // Cerrar menú contextual al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = () => {
+      setContextMenu(null);
+    };
+    if (contextMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [contextMenu]);
 
   const handleCrearFactura = (registro: Registro) => {
     setRegistroSeleccionado(registro);
@@ -503,8 +389,8 @@ export default function DocumentosPage() {
     const esAdmin = currentUser?.rol === 'admin';
     if (!esAdmin && clientesAsignados.length > 0) {
       const bookingExiste = registros.some(
-        (r) => normalizeBooking(r.booking) === normalizedBooking && 
-               (clientesAsignados.includes(r.shipper) || clientesAsignados.length === 0)
+        (r) => normalizeBooking(r.booking) === normalizedBooking &&
+          (clientesAsignados.includes(r.shipper) || clientesAsignados.length === 0)
       );
       if (!bookingExiste) {
         showError('No tienes permisos para subir documentos de este booking.');
@@ -533,18 +419,18 @@ export default function DocumentosPage() {
       setUploadProgress(10);
 
       const bookingSegment = encodeURIComponent(normalizedBooking);
-      
+
       // Obtener el registro para saber cuántos contenedores tiene
       const registro = registros.find(r => normalizeBooking(r.booking) === normalizedBooking);
-      const contenedores = registro?.contenedor 
+      const contenedores = registro?.contenedor
         ? (Array.isArray(registro.contenedor) ? registro.contenedor : [registro.contenedor])
         : [];
       const numContenedores = contenedores.length || 1;
-      
+
       // Para instructivos, mantener el índice para identificarlos, pero no crear filas separadas
       // Para otros documentos, no necesitamos asociarlos a instructivos específicos
       let currentInstructivoIndex: number | null = null;
-      
+
       if (typeId === 'instructivo-embarque') {
         // Si es un instructivo, contar cuántos ya existen para asignar el siguiente índice
         const existingInstructivos = filteredDocumentsByType['instructivo-embarque']?.filter(
@@ -563,7 +449,7 @@ export default function DocumentosPage() {
         const file = fileArray[i];
         const safeName = sanitizeFileName(file.name);
         let filePath: string;
-        
+
         // Si es instructivo y hay múltiples archivos, incrementar el índice para cada uno
         if (typeId === 'instructivo-embarque' && currentInstructivoIndex !== null) {
           const fileInstructivoIndex = currentInstructivoIndex + i;
@@ -572,7 +458,7 @@ export default function DocumentosPage() {
           // Para otros documentos, no incluir instructivoIndex en el nombre
           filePath = `${typeId}/${bookingSegment}__${Date.now()}-${i}-${safeName}`;
         }
-        
+
         const { error } = await supabase.storage
           .from(STORAGE_BUCKET)
           .upload(filePath, file, {
@@ -622,9 +508,84 @@ export default function DocumentosPage() {
     }
   };
 
-  const handleFileInputChange = (typeId: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
-    void handleUpload(typeId, event.target.files);
-    event.target.value = '';
+  const handleDeleteDocument = async (doc: StoredDocument) => {
+    if (!isAdmin) {
+      showError('Solo los administradores pueden eliminar documentos.');
+      return;
+    }
+
+    if (!confirm(`¿Estás seguro de que deseas eliminar "${doc.name}"?\n\nEl documento se moverá a la papelera y se eliminará permanentemente después de 7 días.`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(doc.path);
+
+      // Mover archivo a carpeta "papelera" en storage
+      const papeleraPath = `papelera/${doc.path}`;
+
+      // Copiar archivo a papelera
+      const { data: fileData, error: readError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .download(doc.path);
+
+      if (readError || !fileData) {
+        throw readError || new Error('No se pudo leer el archivo');
+      }
+
+      // Subir a papelera
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(papeleraPath, fileData, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Registrar eliminación en la tabla
+      const { error: insertError } = await supabase
+        .from('documentos_eliminados')
+        .insert({
+          file_path: doc.path,
+          type_id: doc.typeId,
+          booking: doc.booking,
+          original_name: doc.name,
+          deleted_by: currentUser?.id || null,
+        });
+
+      if (insertError) {
+        console.error('Error registrando eliminación:', insertError);
+        // Continuar aunque falle el registro, el archivo ya está en papelera
+      }
+
+      // Eliminar archivo original
+      const { error: deleteError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove([doc.path]);
+
+      if (deleteError) {
+        console.warn('Error eliminando archivo original:', deleteError);
+        // Continuar aunque falle, el archivo ya está en papelera
+      }
+
+      // Actualizar estado local
+      setDeletedDocuments((prev) => new Set([...prev, doc.path]));
+
+      // Recargar documentos
+      await fetchDocuments();
+      await loadDeletedDocuments();
+
+      success('Documento movido a la papelera. Se eliminará permanentemente después de 7 días.');
+    } catch (err) {
+      console.error('Error eliminando documento:', err);
+      showError('No pudimos eliminar el documento. Intenta nuevamente.');
+    } finally {
+      setIsDeleting(null);
+      setContextMenu(null);
+    }
   };
 
   const handleInspectBooking = () => {
@@ -739,37 +700,41 @@ export default function DocumentosPage() {
   const filteredDocumentsByType = useMemo(() => {
     const next = createEmptyDocumentsMap();
     const esAdmin = currentUser?.rol === 'admin';
-    
+
     Object.entries(documentsByType).forEach(([typeId, docs]) => {
       next[typeId] = docs.filter((doc) => {
+        if (deletedDocuments.has(doc.path)) {
+          return false;
+        }
+
         const bookingKey = doc.booking ? normalizeBooking(doc.booking) : '';
-        
+
         // Si hay temporada seleccionada, filtrar por bookings de esa temporada
         if (selectedTemporada) {
           return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
         }
-        
+
         // Si es admin, mostrar todos los documentos
         if (esAdmin) {
           return true;
         }
-        
+
         // Para ejecutivos y usuarios con clientes asignados, filtrar por bookings permitidos
         if (clientesAsignados.length > 0) {
           return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
         }
-        
+
         // Para usuarios normales sin clientes asignados, filtrar por bookings de sus registros
         if (!isAdminOrEjecutivo) {
           return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
         }
-        
+
         // Para ejecutivos sin clientes asignados, mostrar todos
         return true;
       });
     });
     return next;
-  }, [documentsByType, allowedBookingsSet, isAdminOrEjecutivo, selectedTemporada, clientesAsignados, currentUser]);
+  }, [documentsByType, allowedBookingsSet, isAdminOrEjecutivo, selectedTemporada, clientesAsignados, currentUser, deletedDocuments]);
 
   const documentsByBookingMap = useMemo(() => {
     const map = new Map<string, Record<string, StoredDocument[]>>();
@@ -801,14 +766,14 @@ export default function DocumentosPage() {
       hasPending: boolean;
       instructivoIndex: number | null;
     }[] = [];
-    
+
     bookingMap.forEach((registro, bookingKey) => {
       const docsForBooking = documentsByBookingMap.get(bookingKey) || {};
-      
+
       // Crear UNA SOLA fila por booking, mostrando TODOS los documentos
       // No crear filas separadas por instructivo
       const missing = DOCUMENT_TYPES.filter((type) => !(docsForBooking[type.id]?.length));
-      
+
       rows.push({
         booking: registro.booking || bookingKey,
         bookingKey,
@@ -819,7 +784,7 @@ export default function DocumentosPage() {
         instructivoIndex: null, // Ya no usamos instructivoIndex para separar filas
       });
     });
-    
+
     return rows.sort((a, b) => {
       // Ordenar solo por booking
       return a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
@@ -860,327 +825,36 @@ export default function DocumentosPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 sm:px-6 lg:px-0">
-        <section className="space-y-4 rounded-3xl border border-slate-800/70 bg-slate-950/70 p-5 shadow-xl shadow-slate-950/30">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Estado por booking</p>
-              <h2 className="text-lg font-semibold text-white">Busca un booking y revisa sus documentos</h2>
-            </div>
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              <input
-                value={searchBookingInput}
-                onChange={(event) => setSearchBookingInput(event.target.value.toUpperCase())}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    handleInspectBooking();
-                  }
-                }}
-                placeholder="Ej. BK123456"
-                className="flex-1 rounded-2xl border border-slate-800/70 bg-slate-950 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-              />
-              <button
-                type="button"
-                onClick={handleInspectBooking}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-600/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-900/40 transition hover:bg-sky-500"
-              >
-                <Search className="h-4 w-4" aria-hidden="true" />
-                Ver estado
-              </button>
-          </div>
-        </div>
 
-          {inspectedBooking && (
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
-              {inspectedRegistro ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/50 p-4">
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Detalles del booking</p>
-                      <div className="mt-2 space-y-1 text-sm text-slate-300">
-                        <p><span className="text-slate-500">Booking:</span> {inspectedRegistro.booking || '-'}</p>
-                        <p><span className="text-slate-500">REF ASLI:</span> {inspectedRegistro.refAsli || '-'}</p>
-                        <p><span className="text-slate-500">Cliente:</span> {inspectedRegistro.shipper || '-'}</p>
-                        <p><span className="text-slate-500">Naviera:</span> {inspectedRegistro.naviera || '-'}</p>
-                        <p><span className="text-slate-500">Temporada:</span> {inspectedRegistro.temporada || '-'}</p>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/50 p-4">
-                      <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Documentos faltantes</p>
-                      <ul className="mt-2 space-y-2 text-xs text-slate-300">
-                        {DOCUMENT_TYPES.map((type) => {
-                          const docsForType = inspectedDocsByType[type.id] ?? [];
-                          const hasDoc = docsForType.length > 0;
-                          return (
-                            <li key={type.id} className="flex items-center gap-2">
-                              {hasDoc ? (
-                                <CheckCircle className="h-4 w-4 text-emerald-400" aria-hidden="true" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-amber-400" aria-hidden="true" />
-                              )}
-                              <span className="text-sm text-slate-200">{type.name}</span>
-                              <span className="text-xs text-slate-500">{hasDoc ? 'Completado' : 'Pendiente'}</span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                  No encontramos el booking “{inspectedBooking}” en los registros visibles.
-            </div>
-              )}
-            </div>
-          )}
-        </section>
-        <header className="space-y-6">
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-4 py-2 text-sm text-slate-300 transition hover:border-sky-500/60 hover:text-white"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Volver al panel
-          </button>
-          <div className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-6 shadow-xl shadow-slate-900/40">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Centro documental</p>
-                <h1 className="mt-2 text-3xl font-semibold text-white">Documentos de embarque</h1>
-                <p className="mt-2 text-sm text-slate-400">
-                  Sube archivos PDF o Excel para cada etapa: proforma, instructivo, packing, booking o BL. Nosotros los
-                  guardamos con su etiqueta correspondiente.
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 sm:min-w-[200px]">
-                <label htmlFor="temporada-select" className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                  Temporada
-                </label>
-                <select
-                  id="temporada-select"
-                  value={selectedTemporada || ''}
-                  onChange={(event) => {
-                    const value = event.target.value || null;
-                    setSelectedTemporada(value);
-                    // Actualizar URL sin recargar
-                    const params = new URLSearchParams(window.location.search);
-                    if (value) {
-                      params.set('temporada', value);
-                    } else {
-                      params.delete('temporada');
-                    }
-                    router.push(`/documentos?${params.toString()}`, { scroll: false });
-                  }}
-                  className="rounded-2xl border border-slate-800/70 bg-slate-950 px-4 py-2 text-sm text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                >
-                  <option value="">Todas las temporadas</option>
-                  {temporadasDisponibles.map((temporada) => (
-                    <option key={temporada} value={temporada}>
-                      Temporada {temporada}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="mt-6 grid gap-3 text-xs text-slate-400 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Documentos cargados</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{totalUploadedDocs}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Facturas generadas</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{facturasFiltradas.length}</p>
-              </div>
-              <div className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Registros sin factura</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{registrosSinFactura.length}</p>
-              </div>
-            </div>
-          </div>
-        </header>
+        <DocumentFilters
+          searchBookingInput={searchBookingInput}
+          setSearchBookingInput={setSearchBookingInput}
+          handleInspectBooking={handleInspectBooking}
+          inspectedBooking={inspectedBooking}
+          inspectedRegistro={inspectedRegistro}
+          inspectedDocsByType={inspectedDocsByType}
+          selectedTemporada={selectedTemporada}
+          setSelectedTemporada={setSelectedTemporada}
+          temporadasDisponibles={temporadasDisponibles}
+          totalUploadedDocs={totalUploadedDocs}
+          facturasCount={facturasFiltradas.length}
+          registrosSinFacturaCount={registrosSinFactura.length}
+        />
 
-
-        <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-5 shadow-xl shadow-slate-950/30">
-          <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Seguimiento</p>
-              <h2 className="text-lg font-semibold text-white">Bookings con documentos pendientes</h2>
-            </div>
-            <span className="text-sm text-slate-400">
-              {pendingBookings.length} booking{pendingBookings.length === 1 ? '' : 's'} por completar
-            </span>
-          </div>
-          {bookingsWithDocs.length === 0 ? (
-            <div className="mt-4 rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-6 text-center text-sm text-slate-400">
-              No encontramos bookings disponibles en esta temporada o con tus permisos.
-            </div>
-          ) : (
-            <div className="mt-4 max-h-[560px] overflow-x-auto overflow-y-auto rounded-2xl border border-slate-800/60">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold sticky left-0 bg-slate-950 z-10">Booking</th>
-                    <th className="px-4 py-3 text-left font-semibold">Cliente</th>
-                    {(() => {
-                      // Reordenar: Instructivo primero, luego los demás
-                      const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
-                      const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque');
-                      const orderedTypes = instructivoType ? [instructivoType, ...otherTypes] : DOCUMENT_TYPES;
-                      
-                      return orderedTypes.map((type) => {
-                        const IconComponent = type.icon;
-                        return (
-                          <th key={type.id} className="px-3 py-3 text-center font-semibold min-w-[140px]">
-                            <div className="flex flex-col items-center gap-1">
-                              <IconComponent className="h-4 w-4" aria-hidden="true" />
-                              <span className="text-[10px] leading-tight">{type.name}</span>
-                            </div>
-                          </th>
-                        );
-                      });
-                    })()}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {bookingsWithDocs.map((row) => {
-                    const isUploadingForThisBooking = uploadingBooking && row.bookingKey === normalizeBooking(uploadingBooking);
-                    return (
-                      <tr key={row.bookingKey} className="hover:bg-slate-900/40">
-                        <td className="px-4 py-3 font-semibold text-white sticky left-0 bg-slate-950 z-10">
-                          {row.booking}
-                        </td>
-                        <td className="px-4 py-3 text-slate-300">
-                          {row.cliente}
-                        </td>
-                        {(() => {
-                          // Reordenar: Instructivo primero, luego los demás
-                          const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
-                          const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque');
-                          const orderedTypes = instructivoType ? [instructivoType, ...otherTypes] : DOCUMENT_TYPES;
-                          
-                          return orderedTypes.map((type) => {
-                            const docsForType = row.docsByType[type.id] ?? [];
-                            const hasDoc = docsForType.length > 0;
-                            const isUploading = isUploadingForThisBooking && uploadingType === type.id;
-                            const uploadKey = `upload-${row.bookingKey}-${type.id}`;
-                            
-                            // Obtener número de contenedores del registro
-                            const contenedores = Array.isArray(row.registro.contenedor) 
-                              ? row.registro.contenedor 
-                              : row.registro.contenedor ? [row.registro.contenedor] : [];
-                            const numContenedores = contenedores.length || 1;
-                            
-                            // Determinar si el usuario puede subir documentos (solo admin y ejecutivos)
-                            const canUpload = isAdminOrEjecutivo;
-
-                            return (
-                              <td key={type.id} className="px-3 py-3">
-                                <div className="flex flex-col items-center gap-1.5 min-w-[140px]">
-                                  {hasDoc ? (
-                                    <>
-                                      <div className="flex items-center gap-1">
-                                        <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" aria-hidden="true" />
-                                        <span className="text-[9px] text-emerald-400 font-semibold">
-                                          {docsForType.length} {docsForType.length === 1 ? 'doc' : 'docs'}
-                                        </span>
-                                      </div>
-                                      <div className="flex flex-col gap-1 w-full max-h-[120px] overflow-y-auto">
-                                        {docsForType.map((doc, idx) => (
-                                          <button
-                                            key={doc.path}
-                                            type="button"
-                                            onClick={() => handleDownload(doc)}
-                                            disabled={downloadUrlLoading === doc.path}
-                                            className="text-[9px] text-slate-300 hover:text-sky-300 transition disabled:opacity-60 px-2 py-1 rounded bg-slate-800/50 hover:bg-slate-700/50 truncate w-full text-left"
-                                            title={doc.name}
-                                          >
-                                            {downloadUrlLoading === doc.path ? 'Generando…' : doc.name.length > 25 ? `${doc.name.substring(0, 22)}...` : doc.name}
-                                          </button>
-                                        ))}
-                                      </div>
-                                      {/* Solo mostrar botón para agregar más documentos si el usuario tiene permisos */}
-                                      {canUpload && (
-                                        <label
-                                          htmlFor={`${uploadKey}-add`}
-                                          className="flex items-center gap-1 cursor-pointer group mt-1"
-                                        >
-                                          <div className="relative">
-                                            <AlertCircle className="h-3 w-3 text-amber-400 group-hover:text-amber-300 transition" aria-hidden="true" />
-                                            {isUploading && (
-                                              <div className="absolute inset-0 flex items-center justify-center">
-                                                <div className="h-2 w-2 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                                              </div>
-                                            )}
-                                          </div>
-                                          <span className="text-[9px] text-slate-400 group-hover:text-sky-300 transition">
-                                            Agregar {numContenedores > docsForType.length ? `(${numContenedores - docsForType.length} más)` : 'más'}
-                                          </span>
-                                          <input
-                                            id={`${uploadKey}-add`}
-                                            type="file"
-                                            className="sr-only"
-                                            accept=".pdf,.xls,.xlsx"
-                                            multiple
-                                            onChange={(event) => {
-                                              void handleUpload(type.id, event.target.files, row.booking);
-                                              event.target.value = '';
-                                            }}
-                                          />
-                                        </label>
-                                      )}
-                                    </>
-                                  ) : (
-                                    canUpload ? (
-                                      <label
-                                        htmlFor={uploadKey}
-                                        className="flex flex-col items-center gap-1 cursor-pointer group w-full"
-                                      >
-                                        <div className="relative">
-                                          <AlertCircle className="h-5 w-5 text-amber-400 group-hover:text-amber-300 transition" aria-hidden="true" />
-                                          {isUploading && (
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                              <div className="h-3 w-3 border-2 border-sky-500 border-t-transparent rounded-full animate-spin" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <span className="text-[10px] text-slate-400 group-hover:text-sky-300 transition">
-                                          Subir {numContenedores > 1 ? `(${numContenedores})` : ''}
-                                        </span>
-                                        <input
-                                          id={uploadKey}
-                                          type="file"
-                                          className="sr-only"
-                                          accept=".pdf,.xls,.xlsx"
-                                          multiple
-                                          onChange={(event) => {
-                                            void handleUpload(type.id, event.target.files, row.booking);
-                                            event.target.value = '';
-                                          }}
-                                        />
-                                      </label>
-                                    ) : (
-                                      // Usuario cliente sin permisos de subida - mostrar mensaje
-                                      <div className="flex flex-col items-center gap-1">
-                                        <AlertCircle className="h-5 w-5 text-slate-600" aria-hidden="true" />
-                                        <span className="text-[9px] text-slate-500 italic">Solo lectura</span>
-                                      </div>
-                                    )
-                                  )}
-                                </div>
-                              </td>
-                            );
-                          });
-                        })()}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
+        <DocumentList
+          bookingsWithDocs={bookingsWithDocs}
+          pendingBookingsCount={pendingBookings.length}
+          uploadingBooking={uploadingBooking}
+          uploadingType={uploadingType}
+          downloadUrlLoading={downloadUrlLoading}
+          isDeleting={isDeleting}
+          isAdmin={isAdmin}
+          isAdminOrEjecutivo={isAdminOrEjecutivo}
+          handleDownload={handleDownload}
+          handleDeleteDocument={handleDeleteDocument}
+          handleUpload={handleUpload}
+          setContextMenu={setContextMenu}
+        />
 
       </div>
 
@@ -1211,7 +885,54 @@ export default function DocumentosPage() {
           }}
         />
       )}
+
+      {/* Menú contextual para administrar documentos */}
+      {contextMenu && isAdmin && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setContextMenu(null)}
+          />
+          <div
+            className="fixed z-50 min-w-[200px] rounded-lg border border-slate-700 bg-slate-900 shadow-xl"
+            style={{
+              left: `${contextMenu.x}px`,
+              top: `${contextMenu.y}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-1">
+              <div className="mb-1 border-b border-slate-700 px-2 py-1.5">
+                <p className="text-xs font-semibold text-slate-300">{contextMenu.doc.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  handleDownload(contextMenu.doc);
+                  setContextMenu(null);
+                }}
+                disabled={downloadUrlLoading === contextMenu.doc.path}
+                className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-sky-400 hover:bg-slate-800 disabled:opacity-50"
+              >
+                <Download className="h-4 w-4" />
+                <span>{downloadUrlLoading === contextMenu.doc.path ? 'Descargando…' : 'Descargar'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void handleDeleteDocument(contextMenu.doc);
+                  setContextMenu(null);
+                }}
+                disabled={isDeleting === contextMenu.doc.path}
+                className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-400 hover:bg-slate-800 disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>{isDeleting === contextMenu.doc.path ? 'Eliminando…' : 'Eliminar'}</span>
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
-
