@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
 async function handleCleanup(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Verificar si es una llamada desde cron job (con secret) o desde usuario autenticado
     const authHeader = request.headers.get('authorization');
