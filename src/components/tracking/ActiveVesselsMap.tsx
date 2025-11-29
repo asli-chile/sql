@@ -277,14 +277,16 @@ export const ActiveVesselsMap: React.FC<ActiveVesselsMapProps> = ({
           touchRotate: false,
           inertia: true,
         }}
-        onViewStateChange={({ viewState: nextViewState }) => {
+        onViewStateChange={(info) => {
           // Limitar el zoom entre minZoom y maxZoom
+          const nextViewState = info.viewState as ViewState;
+          const currentZoom = nextViewState?.zoom ?? INITIAL_VIEW_STATE.zoom;
           const limitedZoom = Math.max(
             INITIAL_VIEW_STATE.minZoom,
-            Math.min(INITIAL_VIEW_STATE.maxZoom, nextViewState.zoom),
+            Math.min(INITIAL_VIEW_STATE.maxZoom, currentZoom),
           );
           setViewState({
-            ...(nextViewState as ViewState),
+            ...nextViewState,
             zoom: limitedZoom,
           });
         }}
