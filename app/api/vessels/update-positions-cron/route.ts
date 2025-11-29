@@ -173,7 +173,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const positionsByName = new Map<string, VesselPosition>();
+    const positionsByName = new Map<string, VesselPosition & { engine?: any; ports?: any; management?: any }>();
     (existingPositions || []).forEach((row: any) => {
       positionsByName.set(row.vessel_name, {
         id: row.id,
@@ -224,6 +224,9 @@ export async function GET(request: Request) {
         data_source: row.data_source ?? null,
         eni: row.eni ?? null,
         name: row.name ?? null,
+        engine: row.engine ?? null,
+        ports: row.ports ?? null,
+        management: row.management ?? null,
       });
     });
 
@@ -300,6 +303,10 @@ export async function GET(request: Request) {
         continue;
       }
 
+      console.log(
+        `[UpdatePositionsCron] Llamando API AIS para ${vessel.vessel_name} con IMO: ${imoToUse || 'N/A'}, MMSI: ${mmsiToUse || 'N/A'}`,
+      );
+
       const aisResult = await fetchVesselPositionFromAisApi({
         vesselName: vessel.vessel_name,
         imo: imoToUse,
@@ -307,10 +314,34 @@ export async function GET(request: Request) {
       });
 
       if (!aisResult) {
+        // Verificar si la API está configurada (leer dentro de la función)
+        const VESSEL_API_BASE_URL = process.env.VESSEL_API_BASE_URL;
+        const VESSEL_API_KEY = process.env.VESSEL_API_KEY;
+        const apiConfigured = VESSEL_API_BASE_URL && VESSEL_API_KEY;
+        
+        let reason = `La API AIS no devolvió datos válidos. IMO usado: ${imoToUse || 'N/A'}, MMSI usado: ${mmsiToUse || 'N/A'}.`;
+        if (!apiConfigured) {
+          reason = 'La API AIS no está configurada (faltan variables de entorno VESSEL_API_BASE_URL o VESSEL_API_KEY).';
+        } else {
+          reason = `La API AIS no devolvió datos válidos para este buque. IMO usado: ${imoToUse || 'N/A'}, MMSI usado: ${mmsiToUse || 'N/A'}. Verifica que los identificadores sean correctos o que el buque esté disponible en la API.`;
+        }
+
+        console.error(
+          `[UpdatePositionsCron] Error para ${vessel.vessel_name}:`,
+          reason,
+          {
+            imo: imoToUse,
+            mmsi: mmsiToUse,
+            apiConfigured,
+            hasBaseUrl: !!VESSEL_API_BASE_URL,
+            hasApiKey: !!VESSEL_API_KEY,
+            baseUrl: VESSEL_API_BASE_URL || 'NO DEFINIDA',
+          },
+        );
+
         failed.push({
           vessel_name: vessel.vessel_name,
-          reason:
-            `La API AIS no devolvió datos válidos. IMO: ${imoToUse || 'N/A'}, MMSI: ${mmsiToUse || 'N/A'}. Verifica que los identificadores sean correctos o que la API esté configurada.`,
+          reason,
         });
         continue;
       }
@@ -348,6 +379,79 @@ export async function GET(request: Request) {
       );
 
       const now = new Date().toISOString();
+
+      // ANTES DE ACTUALIZAR: Mover datos actuales al historial si existen y tienen coordenadas válidas
+      if (currentPosition && currentPosition.last_lat != null && currentPosition.last_lon != null) {
+        console.log(
+          `[UpdatePositionsCron] Moviendo datos actuales al historial para ${vessel.vessel_name}`,
+        );
+        
+        const { error: historyMoveError } = await supabase
+          .from('vessel_position_history')
+          .insert({
+            vessel_name: currentPosition.vessel_name,
+            imo: currentPosition.imo ?? null,
+            mmsi: currentPosition.mmsi ?? null,
+            name: currentPosition.name ?? null,
+            lat: currentPosition.last_lat,
+            lon: currentPosition.last_lon,
+            position_at: currentPosition.last_position_at || currentPosition.last_api_call_at || now,
+            source: 'AIS',
+            speed: currentPosition.speed ?? null,
+            course: currentPosition.course ?? null,
+            destination: currentPosition.destination ?? null,
+            navigational_status: currentPosition.navigational_status ?? null,
+            ship_type: currentPosition.ship_type ?? null,
+            country: currentPosition.country ?? null,
+            country_iso: currentPosition.country_iso ?? null,
+            callsign: currentPosition.callsign ?? null,
+            type_specific: currentPosition.type_specific ?? null,
+            length: currentPosition.length ?? null,
+            beam: currentPosition.beam ?? null,
+            current_draught: currentPosition.current_draught ?? null,
+            deadweight: currentPosition.deadweight ?? null,
+            gross_tonnage: currentPosition.gross_tonnage ?? null,
+            teu: currentPosition.teu ?? null,
+            eta_utc: currentPosition.eta_utc ?? null,
+            atd_utc: currentPosition.atd_utc ?? null,
+            predicted_eta: currentPosition.predicted_eta ?? null,
+            time_remaining: currentPosition.time_remaining ?? null,
+            update_time: currentPosition.update_time ?? null,
+            last_port: currentPosition.last_port ?? null,
+            unlocode_lastport: currentPosition.unlocode_lastport ?? null,
+            unlocode_destination: currentPosition.unlocode_destination ?? null,
+            year_of_built: currentPosition.year_of_built ?? null,
+            hull: currentPosition.hull ?? null,
+            builder: currentPosition.builder ?? null,
+            material: currentPosition.material ?? null,
+            place_of_build: currentPosition.place_of_build ?? null,
+            ballast_water: currentPosition.ballast_water ?? null,
+            crude_oil: currentPosition.crude_oil ?? null,
+            fresh_water: currentPosition.fresh_water ?? null,
+            gas: currentPosition.gas ?? null,
+            grain: currentPosition.grain ?? null,
+            bale: currentPosition.bale ?? null,
+            engine: currentPosition.engine ? (typeof currentPosition.engine === 'string' ? JSON.parse(currentPosition.engine) : currentPosition.engine) : null,
+            ports: currentPosition.ports ? (typeof currentPosition.ports === 'string' ? JSON.parse(currentPosition.ports) : currentPosition.ports) : null,
+            management: currentPosition.management ? (typeof currentPosition.management === 'string' ? JSON.parse(currentPosition.management) : currentPosition.management) : null,
+            vessel_image: currentPosition.vessel_image ?? null,
+            data_source: currentPosition.data_source ?? null,
+            eni: currentPosition.eni ?? null,
+            raw_payload: currentPosition.raw_payload,
+          });
+
+        if (historyMoveError) {
+          console.error(
+            `[UpdatePositionsCron] Error moviendo datos actuales al historial para ${vessel.vessel_name}:`,
+            historyMoveError,
+          );
+          // Continuar con la actualización aunque falle el movimiento al historial
+        } else {
+          console.log(
+            `[UpdatePositionsCron] ✅ Datos actuales movidos al historial para ${vessel.vessel_name}`,
+          );
+        }
+      }
 
       // Usar currentPosition en lugar de existing (puede haber sido creado arriba)
       if (!currentPosition) {

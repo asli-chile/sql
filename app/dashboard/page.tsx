@@ -688,6 +688,9 @@ export default function DashboardPage() {
     isActive: selectedSeason === seasonKey,
   }));
 
+  const isAdmin = userInfo?.rol === 'admin';
+  const isEjecutivo = userInfo?.email?.endsWith('@asli.cl') || user?.email?.endsWith('@asli.cl');
+
   const sidebarNav: SidebarSection[] = [
     {
       title: 'Módulos',
@@ -696,6 +699,9 @@ export default function DashboardPage() {
         { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
         { label: 'Transportes', id: 'transportes', isActive: false },
         { label: 'Documentos', id: 'documentos', isActive: false },
+        ...(isAdmin || isEjecutivo
+          ? [{ label: 'Servicios', id: 'dashboard/servicios', isActive: false }]
+          : []),
       ],
     },
     {

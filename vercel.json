@@ -4,10 +4,6 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/vessels/update-positions-cron",
-      "schedule": "0 7 * * *"
-    },
-    {
       "path": "/api/documentos/limpiar-papelera",
       "schedule": "0 2 * * *"
     }

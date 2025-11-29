@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, RefreshCcw, Search } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Search, X, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/layout/AppFooter';
@@ -34,6 +34,7 @@ const SeguimientoPage = () => {
   const [focusedVesselName, setFocusedVesselName] = useState<string | null>(null);
   const [selectedVessel, setSelectedVessel] = useState<ActiveVessel | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -81,19 +82,43 @@ const SeguimientoPage = () => {
       setErrorMessage(null);
 
       // Agregar timestamp para evitar cache y asegurar datos frescos
-      const response = await fetch(`/api/vessels/active?t=${Date.now()}`, {
-        cache: 'no-store',
-        next: { revalidate: 0 },
-      });
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        const message = payload?.error ?? 'Error al obtener buques activos';
-        throw new Error(message);
+      const url = `/api/vessels/active?t=${Date.now()}`;
+      console.log('[Seguimiento] Cargando buques desde:', url);
+
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          cache: 'no-store',
+          next: { revalidate: 0 },
+        });
+      } catch (fetchError) {
+        console.error('[Seguimiento] Error en fetch:', fetchError);
+        throw new Error(
+          `Error de conexión: ${fetchError instanceof Error ? fetchError.message : 'Error desconocido'}. Verifica que el servidor esté corriendo.`,
+        );
       }
 
-      const data = (await response.json()) as ActiveVesselsResponse;
+      if (!response.ok) {
+        let errorMessage = `Error HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const payload = (await response.json()) as { error?: string } | null;
+          if (payload?.error) {
+            errorMessage = payload.error;
+          }
+        } catch {
+          // Si no se puede parsear el JSON, usar el mensaje por defecto
+        }
+        throw new Error(errorMessage);
+      }
+
+      let data: ActiveVesselsResponse;
+      try {
+        data = (await response.json()) as ActiveVesselsResponse;
+      } catch (parseError) {
+        console.error('[Seguimiento] Error parseando respuesta:', parseError);
+        throw new Error('Error parseando respuesta del servidor');
+      }
+
       setVessels(data.vessels || []);
       setFetchState('success');
 
@@ -141,14 +166,8 @@ const SeguimientoPage = () => {
     // Cargar buques inicialmente
     void loadVessels();
 
-    // Refrescar datos de buques automáticamente cada 60 segundos (1 minuto)
-    const intervalId = setInterval(() => {
-      void loadVessels();
-    }, 60000); // 60000 ms = 60 segundos
-
-    return () => {
-      clearInterval(intervalId);
-    };
+    // El auto-refresh está desactivado para no interrumpir la experiencia del usuario
+    // Usa el botón "Actualizar posiciones" cuando necesites datos frescos
   }, [user]);
 
   const filteredVessels = useMemo(() => {
@@ -228,101 +247,178 @@ const SeguimientoPage = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-          <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:px-6 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => router.push('/dashboard')}
-                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-700/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200"
-                aria-label="Volver al dashboard"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-slate-500/80 sm:text-[11px] sm:tracking-[0.35em]">
-                  Seguimiento en tiempo casi real
-                </p>
-                <h1 className="text-lg font-semibold text-white sm:text-xl md:text-2xl">
-                  Mapa de buques activos
-                </h1>
-                <p className="text-[11px] text-slate-400 sm:text-xs md:text-sm">
-                  Visualiza los buques con embarques en curso usando posiciones cacheadas.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                onClick={handleRefreshPositions}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-700/80 px-3 py-1.5 text-[11px] font-semibold text-slate-200 hover:border-sky-400/60 hover:text-sky-100 sm:px-4 sm:py-2 sm:text-xs"
-              >
-                <RefreshCcw className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="whitespace-nowrap">Actualizar posiciones</span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 overflow-y-auto px-3 pb-6 pt-4 space-y-4 sm:px-6 sm:pb-10 sm:pt-6 sm:space-y-6">
-          <section className="space-y-3 rounded-xl border border-slate-800/60 bg-slate-950/70 p-3 shadow-xl shadow-slate-950/30 sm:space-y-4 sm:rounded-2xl sm:p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
-                  Lista de buques
-                </p>
-                <p className="text-xs font-semibold text-slate-100 sm:text-sm">
-                  {filteredVessels.length} buques activos
-                </p>
-              </div>
-              <div className="relative w-full sm:max-w-sm">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500 sm:h-4 sm:w-4" />
-                <input
-                  type="search"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Buscar por nombre, destino, booking o contenedor..."
-                  className="w-full rounded-full border border-slate-800 bg-slate-900/80 py-1.5 pl-8 pr-3 text-xs text-slate-200 placeholder-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 sm:py-2 sm:pl-10 sm:pr-4 sm:text-sm"
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div>
-                <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
-                  Visualización
-                </p>
-                <p className="text-xs font-semibold text-slate-100 sm:text-sm">
-                  Mapa mundial de posiciones AIS actualizado cada 24 horas
-                </p>
-              </div>
-              <div className="text-left text-[10px] text-slate-500 sm:text-right sm:text-[11px]">
-                <p className="whitespace-nowrap">Datos basados en transmisiones AIS satelitales.</p>
-                <p className="whitespace-nowrap">La ubicacion de las naves se actualiza cada dia a las 7:00 am hora de Chile.</p>
-                <p className="whitespace-nowrap">El mapa usa siempre la última posición guardada en la base de datos.</p>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-slate-800/60 bg-slate-950/70 p-2 sm:rounded-2xl sm:p-4">
-              <ActiveVesselsMap
-                vessels={filteredVessels}
-                focusedVesselName={selectedVessel?.vessel_name ?? null}
-                onVesselSelect={handleVesselSelect}
-              />
-            </div>
-          </section>
-
-          <AppFooter className="mt-4" />
-        </main>
-
-        {/* Modal de detalles del buque */}
-        <VesselDetailsModal
-          isOpen={isModalOpen}
-          vessel={selectedVessel}
-          onClose={handleCloseModal}
+    <div className="relative h-screen w-screen overflow-hidden bg-slate-950">
+      {/* Mapa a pantalla completa */}
+      <div className="absolute inset-0">
+        <ActiveVesselsMap
+          vessels={filteredVessels}
+          focusedVesselName={selectedVessel?.vessel_name ?? null}
+          onVesselSelect={handleVesselSelect}
         />
       </div>
+
+      {/* Header flotante compacto */}
+      <header className="absolute top-0 left-0 right-0 z-50 border-b border-slate-800/40 bg-slate-950/90 backdrop-blur-xl shadow-lg">
+        <div className="flex items-center justify-between gap-3 px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard')}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/80 text-slate-300 transition-colors hover:border-sky-500/60 hover:bg-slate-800/80 hover:text-sky-200"
+              aria-label="Volver al dashboard"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-sm font-semibold text-white sm:text-base">
+                Mapa de buques activos
+              </h1>
+              <p className="hidden text-[10px] text-slate-400 sm:block sm:text-xs">
+                {filteredVessels.length} buques activos
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefreshPositions}
+              className="inline-flex items-center gap-1.5 rounded-full border border-slate-700/80 bg-slate-900/80 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 transition-colors hover:border-sky-400/60 hover:bg-slate-800/80 hover:text-sky-100 sm:gap-2 sm:px-3 sm:py-2 sm:text-xs"
+            >
+              <RefreshCcw className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              <span className="hidden whitespace-nowrap sm:inline">Actualizar</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Panel lateral flotante */}
+      <div
+        className={`absolute top-14 left-0 z-40 h-[calc(100vh-3.5rem)] w-full max-w-sm transform transition-transform duration-300 ease-in-out sm:top-16 sm:max-w-md ${
+          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="h-full overflow-y-auto rounded-r-2xl border-r border-slate-800/60 bg-slate-950/95 backdrop-blur-xl shadow-2xl">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-800/60 bg-slate-950/95 p-3 backdrop-blur-sm">
+            <div>
+              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500 sm:text-[11px] sm:tracking-[0.3em]">
+                Lista de buques
+              </p>
+              <p className="text-xs font-semibold text-slate-100 sm:text-sm">
+                {filteredVessels.length} buques activos
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(false)}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-slate-700/80 bg-slate-900/80 text-slate-400 transition-colors hover:border-slate-600 hover:bg-slate-800 hover:text-slate-200"
+              aria-label="Cerrar panel"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="p-3 space-y-3">
+            {/* Búsqueda */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                type="search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar buque, destino, booking..."
+                className="w-full rounded-lg border border-slate-800 bg-slate-900/80 py-2 pl-9 pr-3 text-xs text-slate-200 placeholder-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              />
+            </div>
+
+            {/* Información */}
+            <div className="rounded-lg border border-slate-800/60 bg-slate-900/50 p-3">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.25em] text-slate-500">
+                Información
+              </p>
+              <div className="space-y-1.5 text-[10px] text-slate-400">
+                <p>Datos basados en transmisiones AIS satelitales.</p>
+                <p>Actualización diaria a las 7:00 AM (Chile).</p>
+                <p>Última posición guardada en base de datos.</p>
+              </div>
+            </div>
+
+            {/* Lista de buques */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
+                Buques ({filteredVessels.length})
+              </p>
+              <div className="max-h-[calc(100vh-20rem)] space-y-1.5 overflow-y-auto">
+                {filteredVessels.length === 0 ? (
+                  <p className="py-4 text-center text-xs text-slate-500">
+                    No hay buques activos
+                  </p>
+                ) : (
+                  filteredVessels.map((vessel) => (
+                    <button
+                      key={vessel.vessel_name}
+                      type="button"
+                      onClick={() => handleVesselSelect(vessel)}
+                      className={`w-full rounded-lg border p-2.5 text-left transition-colors ${
+                        selectedVessel?.vessel_name === vessel.vessel_name
+                          ? 'border-sky-500/60 bg-sky-500/10'
+                          : 'border-slate-800/60 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <p className="text-xs font-semibold text-slate-100">
+                        {vessel.vessel_name}
+                      </p>
+                      {vessel.destination && (
+                        <p className="mt-0.5 text-[10px] text-slate-400">
+                          Destino: <span className="text-sky-400">{vessel.destination}</span>
+                        </p>
+                      )}
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        <span className="rounded-full bg-slate-800/60 px-1.5 py-0.5 text-[9px] text-slate-400">
+                          {vessel.bookings.length} bookings
+                        </span>
+                        <span className="rounded-full bg-slate-800/60 px-1.5 py-0.5 text-[9px] text-slate-400">
+                          {vessel.containers.length} contenedores
+                        </span>
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Botón para abrir panel lateral cuando está cerrado */}
+      {!isSidebarOpen && (
+        <>
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="absolute top-20 left-0 z-40 hidden h-10 w-10 items-center justify-center rounded-r-lg border-r border-slate-800/60 bg-slate-950/90 text-slate-300 shadow-lg backdrop-blur-sm transition-colors hover:bg-slate-900/90 hover:text-sky-200 sm:inline-flex"
+            aria-label="Abrir panel"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+          {/* Botón flotante para móviles */}
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="fixed bottom-4 left-4 z-40 inline-flex items-center gap-2 rounded-full border border-slate-700/80 bg-slate-950/90 px-4 py-2.5 text-xs font-semibold text-slate-200 shadow-xl backdrop-blur-sm transition-colors hover:border-sky-500/60 hover:bg-slate-900/90 hover:text-sky-200 sm:hidden"
+            aria-label="Abrir panel de buques"
+          >
+            <Search className="h-4 w-4" />
+            <span>Buscar buques</span>
+          </button>
+        </>
+      )}
+
+      {/* Modal de detalles del buque */}
+      <VesselDetailsModal
+        isOpen={isModalOpen}
+        vessel={selectedVessel}
+        onClose={handleCloseModal}
+      />
     </div>
   );
 };

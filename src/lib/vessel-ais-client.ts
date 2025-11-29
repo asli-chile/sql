@@ -60,9 +60,6 @@ export type FetchVesselPositionResult = {
   vesselImage?: string | null;
 };
 
-const VESSEL_API_BASE_URL = process.env.VESSEL_API_BASE_URL;
-const VESSEL_API_KEY = process.env.VESSEL_API_KEY;
-
 /**
  * Punto único para integrar la API AIS real (DataDocked, MarineTraffic, JSONCargo, etc.).
  *
@@ -73,10 +70,30 @@ const VESSEL_API_KEY = process.env.VESSEL_API_KEY;
 export const fetchVesselPositionFromAisApi = async (
   params: FetchVesselPositionInput,
 ): Promise<FetchVesselPositionResult | null> => {
+  // Leer variables de entorno dentro de la función para asegurar que estén disponibles
+  const VESSEL_API_BASE_URL = process.env.VESSEL_API_BASE_URL;
+  const VESSEL_API_KEY = process.env.VESSEL_API_KEY;
+
+  // Log detallado para debugging (siempre, no solo en desarrollo)
+  console.log('[AIS] Verificando variables de entorno para', params.vesselName, ':', {
+    hasBaseUrl: !!VESSEL_API_BASE_URL,
+    hasApiKey: !!VESSEL_API_KEY,
+    baseUrl: VESSEL_API_BASE_URL || 'NO DEFINIDA',
+    baseUrlLength: VESSEL_API_BASE_URL?.length || 0,
+    apiKeyLength: VESSEL_API_KEY?.length || 0,
+    nodeEnv: process.env.NODE_ENV,
+    todasLasEnvKeys: Object.keys(process.env).filter(k => k.includes('VESSEL') || k.includes('API')).join(', '),
+  });
+
   if (!VESSEL_API_BASE_URL || !VESSEL_API_KEY) {
-    console.warn(
-      '[AIS] Variables de entorno VESSEL_API_BASE_URL y/o VESSEL_API_KEY no están definidas. ' +
+    console.error(
+      '[AIS] ❌ Variables de entorno VESSEL_API_BASE_URL y/o VESSEL_API_KEY no están definidas. ' +
         'No se hará llamada externa a la API AIS.',
+      {
+        VESSEL_API_BASE_URL: VESSEL_API_BASE_URL ? `Definida (${VESSEL_API_BASE_URL.length} chars)` : 'NO DEFINIDA',
+        VESSEL_API_KEY: VESSEL_API_KEY ? `Definida (${VESSEL_API_KEY.length} chars)` : 'NO DEFINIDA',
+        todasLasEnvKeys: Object.keys(process.env).filter(k => k.includes('VESSEL') || k.includes('API')),
+      },
     );
     return null;
   }
@@ -99,6 +116,14 @@ export const fetchVesselPositionFromAisApi = async (
     identifier,
   )}`;
 
+  console.log('[AIS] ✅ Haciendo llamada a API AIS:', {
+    vesselName: params.vesselName,
+    identifier,
+    url: url.substring(0, 80) + '...',
+    hasApiKey: !!VESSEL_API_KEY,
+    apiKeyLength: VESSEL_API_KEY?.length || 0,
+  });
+
   try {
     const response = await fetch(url, {
       method: 'GET',
@@ -108,6 +133,13 @@ export const fetchVesselPositionFromAisApi = async (
         api_key: VESSEL_API_KEY,
       },
       // Los endpoints de Next API se ejecutan en Node, por lo que no es necesario modo `next: { revalidate }` aquí.
+    });
+
+    console.log('[AIS] Respuesta recibida:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries()),
     });
 
     if (!response.ok) {
@@ -444,7 +476,13 @@ export const fetchVesselPositionFromAisApi = async (
       vesselImage,
     };
   } catch (error) {
-    console.error('[AIS] Error llamando a la API AIS externa:', error);
+    console.error('[AIS] ❌ Error llamando a la API AIS externa:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      vesselName: params.vesselName,
+      identifier,
+      url: url.substring(0, 100),
+    });
     return null;
   }
 };

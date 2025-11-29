@@ -45,6 +45,15 @@ export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
+    // Log inicial para diagnóstico
+    console.log('[UpdatePositions] Iniciando actualización de posiciones');
+    console.log('[UpdatePositions] Variables de entorno:', {
+      hasBaseUrl: !!process.env.VESSEL_API_BASE_URL,
+      hasApiKey: !!process.env.VESSEL_API_KEY,
+      baseUrl: process.env.VESSEL_API_BASE_URL || 'NO DEFINIDA',
+      nodeEnv: process.env.NODE_ENV,
+    });
+
     const supabase = await createClient();
 
     const {
@@ -136,7 +145,7 @@ export async function POST() {
       );
     }
 
-    const positionsByName = new Map<string, VesselPosition>();
+    const positionsByName = new Map<string, VesselPosition & { engine?: any; ports?: any; management?: any }>();
     (existingPositions || []).forEach((row: any) => {
       positionsByName.set(row.vessel_name, {
         id: row.id,
@@ -187,6 +196,9 @@ export async function POST() {
         data_source: row.data_source ?? null,
         eni: row.eni ?? null,
         name: row.name ?? null,
+        engine: row.engine ?? null,
+        ports: row.ports ?? null,
+        management: row.management ?? null,
       });
     });
 
@@ -195,10 +207,21 @@ export async function POST() {
     const failed: { vessel_name: string; reason: string }[] = [];
     const missingIdentifiers: string[] = [];
 
+    console.log(`[UpdatePositions] Procesando ${activeVessels.length} buques activos`);
+
     for (const vessel of activeVessels) {
       const existing = positionsByName.get(vessel.vessel_name);
 
+      console.log(`[UpdatePositions] Procesando buque: ${vessel.vessel_name}`, {
+        existeEnPosiciones: !!existing,
+        tieneImo: !!existing?.imo,
+        tieneMmsi: !!existing?.mmsi,
+        lastApiCallAt: existing?.last_api_call_at || 'N/A',
+        shouldCall: existing ? shouldCallApi(existing.last_api_call_at) : true,
+      });
+
       if (existing && !shouldCallApi(existing.last_api_call_at)) {
+        console.log(`[UpdatePositions] ⏸️ Saltando ${vessel.vessel_name} - actualizado hace menos de 24 horas`);
         skipped.push(vessel.vessel_name);
         continue;
       }
@@ -215,9 +238,14 @@ export async function POST() {
       // Si no tenemos IMO/MMSI configurado, no llamamos a la API
       // para evitar gastar créditos en búsquedas por nombre poco fiables.
       if (!imoToUse && !mmsiToUse) {
+        console.log(`[UpdatePositions] ⚠️ Saltando ${vessel.vessel_name} - sin IMO/MMSI configurado`);
         missingIdentifiers.push(vessel.vessel_name);
         continue;
       }
+
+      console.log(
+        `[UpdatePositions] Llamando API AIS para ${vessel.vessel_name} con IMO: ${imoToUse || 'N/A'}, MMSI: ${mmsiToUse || 'N/A'}`,
+      );
 
       const aisResult = await fetchVesselPositionFromAisApi({
         vesselName: vessel.vessel_name,
@@ -226,10 +254,34 @@ export async function POST() {
       });
 
       if (!aisResult) {
+        // Verificar si la API está configurada (leer dentro de la función)
+        const VESSEL_API_BASE_URL = process.env.VESSEL_API_BASE_URL;
+        const VESSEL_API_KEY = process.env.VESSEL_API_KEY;
+        const apiConfigured = VESSEL_API_BASE_URL && VESSEL_API_KEY;
+        
+        let reason = 'La API AIS no devolvió datos válidos.';
+        if (!apiConfigured) {
+          reason = 'La API AIS no está configurada (faltan variables de entorno VESSEL_API_BASE_URL o VESSEL_API_KEY).';
+        } else {
+          reason = `La API AIS no devolvió datos válidos para este buque. IMO usado: ${imoToUse || 'N/A'}, MMSI usado: ${mmsiToUse || 'N/A'}. Verifica que los identificadores sean correctos o que el buque esté disponible en la API.`;
+        }
+
+        console.error(
+          `[UpdatePositions] Error para ${vessel.vessel_name}:`,
+          reason,
+          {
+            imo: imoToUse,
+            mmsi: mmsiToUse,
+            apiConfigured,
+            hasBaseUrl: !!VESSEL_API_BASE_URL,
+            hasApiKey: !!VESSEL_API_KEY,
+            baseUrl: VESSEL_API_BASE_URL || 'NO DEFINIDA',
+          },
+        );
+
         failed.push({
           vessel_name: vessel.vessel_name,
-          reason:
-            'La API AIS no devolvió datos válidos, no está configurada o no hay IMO/MMSI para este buque.',
+          reason,
         });
         continue;
       }
@@ -249,6 +301,79 @@ export async function POST() {
       }
 
       const now = new Date().toISOString();
+
+      // ANTES DE ACTUALIZAR: Mover datos actuales al historial si existen y tienen coordenadas válidas
+      if (existing && existing.last_lat != null && existing.last_lon != null) {
+        console.log(
+          `[UpdatePositions] Moviendo datos actuales al historial para ${vessel.vessel_name}`,
+        );
+        
+        const { error: historyMoveError } = await supabase
+          .from('vessel_position_history')
+          .insert({
+            vessel_name: existing.vessel_name,
+            imo: existing.imo ?? null,
+            mmsi: existing.mmsi ?? null,
+            name: existing.name ?? null,
+            lat: existing.last_lat,
+            lon: existing.last_lon,
+            position_at: existing.last_position_at || existing.last_api_call_at || now,
+            source: 'AIS',
+            speed: existing.speed ?? null,
+            course: existing.course ?? null,
+            destination: existing.destination ?? null,
+            navigational_status: existing.navigational_status ?? null,
+            ship_type: existing.ship_type ?? null,
+            country: existing.country ?? null,
+            country_iso: existing.country_iso ?? null,
+            callsign: existing.callsign ?? null,
+            type_specific: existing.type_specific ?? null,
+            length: existing.length ?? null,
+            beam: existing.beam ?? null,
+            current_draught: existing.current_draught ?? null,
+            deadweight: existing.deadweight ?? null,
+            gross_tonnage: existing.gross_tonnage ?? null,
+            teu: existing.teu ?? null,
+            eta_utc: existing.eta_utc ?? null,
+            atd_utc: existing.atd_utc ?? null,
+            predicted_eta: existing.predicted_eta ?? null,
+            time_remaining: existing.time_remaining ?? null,
+            update_time: existing.update_time ?? null,
+            last_port: existing.last_port ?? null,
+            unlocode_lastport: existing.unlocode_lastport ?? null,
+            unlocode_destination: existing.unlocode_destination ?? null,
+            year_of_built: existing.year_of_built ?? null,
+            hull: existing.hull ?? null,
+            builder: existing.builder ?? null,
+            material: existing.material ?? null,
+            place_of_build: existing.place_of_build ?? null,
+            ballast_water: existing.ballast_water ?? null,
+            crude_oil: existing.crude_oil ?? null,
+            fresh_water: existing.fresh_water ?? null,
+            gas: existing.gas ?? null,
+            grain: existing.grain ?? null,
+            bale: existing.bale ?? null,
+            engine: existing.engine ? (typeof existing.engine === 'string' ? JSON.parse(existing.engine) : existing.engine) : null,
+            ports: existing.ports ? (typeof existing.ports === 'string' ? JSON.parse(existing.ports) : existing.ports) : null,
+            management: existing.management ? (typeof existing.management === 'string' ? JSON.parse(existing.management) : existing.management) : null,
+            vessel_image: existing.vessel_image ?? null,
+            data_source: existing.data_source ?? null,
+            eni: existing.eni ?? null,
+            raw_payload: existing.raw_payload,
+          });
+
+        if (historyMoveError) {
+          console.error(
+            `[UpdatePositions] Error moviendo datos actuales al historial para ${vessel.vessel_name}:`,
+            historyMoveError,
+          );
+          // Continuar con la actualización aunque falle el movimiento al historial
+        } else {
+          console.log(
+            `[UpdatePositions] ✅ Datos actuales movidos al historial para ${vessel.vessel_name}`,
+          );
+        }
+      }
 
       if (!existing) {
         const { error: insertError } = await supabase.from('vessel_positions').insert({
