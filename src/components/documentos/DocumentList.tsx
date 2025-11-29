@@ -27,6 +27,8 @@ interface DocumentListProps {
     handleDeleteDocument: (doc: StoredDocument) => void;
     handleUpload: (typeId: string, files: FileList | null, bookingOverride?: string) => Promise<void>;
     setContextMenu: (menu: { doc: StoredDocument; x: number; y: number } | null) => void;
+    sortOrder: 'asc' | 'desc';
+    setSortOrder: (order: 'asc' | 'desc') => void;
 }
 
 export function DocumentList({
@@ -43,6 +45,8 @@ export function DocumentList({
     handleDeleteDocument,
     handleUpload,
     setContextMenu,
+    sortOrder,
+    setSortOrder,
 }: DocumentListProps) {
     const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
     return (
@@ -52,9 +56,25 @@ export function DocumentList({
                     <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Seguimiento</p>
                     <h2 className="text-lg font-semibold text-white">Bookings con documentos pendientes</h2>
                 </div>
-                <span className="text-sm text-slate-400">
-                    {pendingBookingsCount} booking{pendingBookingsCount === 1 ? '' : 's'} por completar
-                </span>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="sort-order" className="text-xs text-slate-400">
+                            Ordenar por ingreso:
+                        </label>
+                        <select
+                            id="sort-order"
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                        >
+                            <option value="asc">Más antiguo primero</option>
+                            <option value="desc">Más reciente primero</option>
+                        </select>
+                    </div>
+                    <span className="text-sm text-slate-400">
+                        {pendingBookingsCount} booking{pendingBookingsCount === 1 ? '' : 's'} por completar
+                    </span>
+                </div>
             </div>
             {bookingsWithDocs.length === 0 ? (
                 <div className="mt-4 rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-6 text-center text-sm text-slate-400">
@@ -65,16 +85,19 @@ export function DocumentList({
                     <table className="w-full text-sm">
                         <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
                             <tr>
-                                <th className="px-4 py-3 text-left font-semibold sticky left-0 bg-slate-950 z-10">Booking</th>
-                                <th className="px-4 py-3 text-left font-semibold">Nave</th>
+                                <th className="px-4 py-3 text-center font-semibold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Booking</th>
+                                <th className="px-4 py-3 text-center font-semibold sticky left-[140px] bg-slate-950 z-10 min-w-[150px]">Nave</th>
+                                <th className="px-4 py-3 text-center font-semibold min-w-[180px]">Contenedor</th>
                                 {(() => {
-                                    // Reordenar: Instructivo primero, DUS al final
+                                    // Reordenar: Instructivo primero, Factura Comercial y DUS al final
                                     const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
+                                    const facturaComercialType = DOCUMENT_TYPES.find(t => t.id === 'factura-comercial');
                                     const dusType = DOCUMENT_TYPES.find(t => t.id === 'documentos-aga');
-                                    const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'documentos-aga');
+                                    const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'factura-comercial' && t.id !== 'documentos-aga');
                                     const orderedTypes = [
                                         ...(instructivoType ? [instructivoType] : []),
                                         ...otherTypes,
+                                        ...(facturaComercialType ? [facturaComercialType] : []),
                                         ...(dusType ? [dusType] : [])
                                     ];
 
@@ -97,11 +120,16 @@ export function DocumentList({
                                 const isUploadingForThisBooking = uploadingBooking && row.bookingKey === normalizeBooking(uploadingBooking);
                                 return (
                                     <tr key={row.bookingKey} className="hover:bg-slate-900/40">
-                                        <td className="px-4 py-3 font-semibold text-white sticky left-0 bg-slate-950 z-10">
+                                        <td className="px-4 py-3 font-semibold text-white text-center sticky left-0 bg-slate-950 z-10 min-w-[140px]">
                                             {row.booking}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-300">
+                                        <td className="px-4 py-3 text-slate-300 text-center sticky left-[140px] bg-slate-950 z-10 min-w-[150px]">
                                             {row.registro.naveInicial || '-'}
+                                        </td>
+                                        <td className="px-4 py-3 text-slate-300 text-center min-w-[180px]">
+                                            {Array.isArray(row.registro.contenedor) 
+                                                ? row.registro.contenedor.join(', ') 
+                                                : (row.registro.contenedor || '-')}
                                         </td>
                                         {(() => {
                                             // Reordenar: Instructivo primero, DUS al final

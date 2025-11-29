@@ -55,8 +55,10 @@ export default function DocumentosPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [downloadUrlLoading, setDownloadUrlLoading] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState('');
-  const [searchBookingInput, setSearchBookingInput] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [inspectedBooking, setInspectedBooking] = useState('');
+  const [inspectedContenedor, setInspectedContenedor] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // 'asc' = más antiguo primero, 'desc' = más reciente primero
   const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
   const [isEjecutivo, setIsEjecutivo] = useState(false);
@@ -613,15 +615,48 @@ export default function DocumentosPage() {
     }
   };
 
-  const handleInspectBooking = () => {
-    const normalized = normalizeBooking(searchBookingInput);
-    if (!normalized) {
-      showError('Ingresa un booking válido para buscar.');
+  // Función helper para detectar si el input es un booking o contenedor
+  const detectSearchType = (input: string): 'booking' | 'contenedor' => {
+    const trimmed = input.trim().toUpperCase();
+    // Si empieza con "BK", "BOOKING", o tiene formato típico de booking, es booking
+    if (trimmed.startsWith('BK') || trimmed.startsWith('BOOKING') || trimmed.match(/^[A-Z]{2,4}\d{4,}/)) {
+      return 'booking';
+    }
+    // Si tiene formato típico de contenedor (4 letras + 7 números, o similar)
+    if (trimmed.match(/^[A-Z]{4}\d{7}/) || trimmed.length >= 11) {
+      return 'contenedor';
+    }
+    // Por defecto, intentar primero como booking
+    return 'booking';
+  };
+
+  const handleInspect = () => {
+    const trimmed = searchInput.trim();
+    if (!trimmed) {
+      showError('Ingresa un booking o contenedor válido para buscar.');
       return;
     }
-    setSearchBookingInput(normalized);
-    setSelectedBooking(normalized);
-    setInspectedBooking(normalized);
+
+    const searchType = detectSearchType(trimmed);
+    
+    if (searchType === 'booking') {
+      const normalized = normalizeBooking(trimmed);
+      if (!normalized) {
+        showError('Ingresa un booking válido para buscar.');
+        return;
+      }
+      setSearchInput(normalized);
+      setSelectedBooking(normalized);
+      setInspectedBooking(normalized);
+      setInspectedContenedor(''); // Limpiar contenedor inspeccionado
+    } else {
+      // Búsqueda por contenedor
+      const normalized = trimmed.toUpperCase();
+      setSearchInput(normalized);
+      setInspectedContenedor(normalized);
+      setSelectedBooking(''); // Limpiar booking seleccionado
+      setInspectedBooking(''); // Limpiar booking inspeccionado
+    }
   };
 
   const registrosFiltrados = useMemo(() => {
@@ -690,17 +725,18 @@ export default function DocumentosPage() {
   useEffect(() => {
     if (bookingOptions.length === 0) {
       setSelectedBooking('');
-      setSearchBookingInput('');
+      setSearchInput('');
       setInspectedBooking('');
+      setInspectedContenedor('');
       return;
     }
-    if (!selectedBooking && !searchBookingInput) {
+    if (!selectedBooking && !searchInput && !inspectedBooking && !inspectedContenedor) {
       const first = normalizeBooking(bookingOptions[0]);
       setSelectedBooking(first);
-      setSearchBookingInput(first);
+      setSearchInput(first);
       setInspectedBooking(first);
     }
-  }, [bookingOptions, selectedBooking, searchBookingInput]);
+  }, [bookingOptions, selectedBooking, searchInput, inspectedBooking, inspectedContenedor]);
 
   const bookingMap = useMemo(() => {
     const map = new Map<string, Registro>();
@@ -811,10 +847,47 @@ export default function DocumentosPage() {
     });
 
     return rows.sort((a, b) => {
-      // Ordenar solo por booking
-      return a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
+      // Ordenar por fecha de ingreso (campo 'ingresado' de la tabla registros)
+      // Si no hay ingresado, usar createdAt como fallback
+      const getFecha = (registro: Registro): number | null => {
+        if (registro.ingresado) {
+          const fecha = registro.ingresado instanceof Date 
+            ? registro.ingresado 
+            : new Date(registro.ingresado);
+          if (!isNaN(fecha.getTime())) {
+            return fecha.getTime();
+          }
+        }
+        // Fallback a createdAt si ingresado no está disponible
+        if (registro.createdAt) {
+          const fecha = registro.createdAt instanceof Date 
+            ? registro.createdAt 
+            : new Date(registro.createdAt);
+          if (!isNaN(fecha.getTime())) {
+            return fecha.getTime();
+          }
+        }
+        return null;
+      };
+
+      const timeA = getFecha(a.registro);
+      const timeB = getFecha(b.registro);
+      
+      // Si ambas fechas existen, ordenar por fecha según sortOrder
+      if (timeA !== null && timeB !== null) {
+        const diff = timeA - timeB;
+        return sortOrder === 'asc' ? diff : -diff;
+      }
+      
+      // Si solo una tiene fecha, la que tiene fecha va primero
+      if (timeA !== null && timeB === null) return sortOrder === 'asc' ? -1 : 1;
+      if (timeA === null && timeB !== null) return sortOrder === 'asc' ? 1 : -1;
+      
+      // Si ninguna tiene fecha, ordenar por booking como fallback
+      const bookingCompare = a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
+      return sortOrder === 'asc' ? bookingCompare : -bookingCompare;
     });
-  }, [bookingMap, documentsByBookingMap]);
+  }, [bookingMap, documentsByBookingMap, sortOrder]);
 
   const pendingBookings = useMemo(() => {
     return bookingsWithDocs.filter((row) => {
@@ -828,20 +901,40 @@ export default function DocumentosPage() {
     [filteredDocumentsByType],
   );
 
+  // Función helper para buscar registro por contenedor
+  const findRegistroByContenedor = useCallback((contenedorSearch: string) => {
+    if (!contenedorSearch) return null;
+    const searchUpper = contenedorSearch.toUpperCase().trim();
+    return registrosFiltrados.find((registro) => {
+      const contenedores = Array.isArray(registro.contenedor)
+        ? registro.contenedor
+        : registro.contenedor
+          ? [registro.contenedor]
+          : [];
+      return contenedores.some((cont) => {
+        const contStr = typeof cont === 'string' ? cont.toUpperCase().trim() : String(cont).toUpperCase().trim();
+        return contStr === searchUpper || contStr.includes(searchUpper) || searchUpper.includes(contStr);
+      });
+    }) || null;
+  }, [registrosFiltrados]);
+
   const inspectedBookingKey = normalizeBooking(inspectedBooking);
-  const inspectedRegistro = inspectedBookingKey ? bookingMap.get(inspectedBookingKey) : null;
+  const inspectedRegistroByBooking = inspectedBookingKey ? bookingMap.get(inspectedBookingKey) : null;
+  const inspectedRegistroByContenedor = inspectedContenedor ? findRegistroByContenedor(inspectedContenedor) : null;
+  const inspectedRegistro = inspectedRegistroByBooking || inspectedRegistroByContenedor;
   const inspectedDocsByType = useMemo(() => {
-    if (!inspectedBookingKey) {
+    if (!inspectedRegistro) {
       return {};
     }
     const result: Record<string, StoredDocument[]> = {};
+    const bookingKey = normalizeBooking(inspectedRegistro.booking);
     DOCUMENT_TYPES.forEach((type) => {
       result[type.id] = filteredDocumentsByType[type.id]?.filter(
-        (doc) => doc.booking && normalizeBooking(doc.booking) === inspectedBookingKey,
+        (doc) => doc.booking && normalizeBooking(doc.booking) === bookingKey,
       );
     });
     return result;
-  }, [filteredDocumentsByType, inspectedBookingKey]);
+  }, [filteredDocumentsByType, inspectedRegistro]);
 
   if (loading) {
     return <LoadingScreen message="Cargando documentos..." />;
@@ -852,10 +945,11 @@ export default function DocumentosPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 sm:px-6 lg:px-0">
 
         <DocumentFilters
-          searchBookingInput={searchBookingInput}
-          setSearchBookingInput={setSearchBookingInput}
-          handleInspectBooking={handleInspectBooking}
+          searchInput={searchInput}
+          setSearchInput={setSearchInput}
+          handleInspect={handleInspect}
           inspectedBooking={inspectedBooking}
+          inspectedContenedor={inspectedContenedor}
           inspectedRegistro={inspectedRegistro}
           inspectedDocsByType={inspectedDocsByType}
           selectedTemporada={selectedTemporada}
@@ -880,6 +974,8 @@ export default function DocumentosPage() {
           handleDeleteDocument={handleDeleteDocument}
           handleUpload={handleUpload}
           setContextMenu={setContextMenu}
+          sortOrder={sortOrder}
+          setSortOrder={setSortOrder}
         />
 
       </div>

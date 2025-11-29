@@ -6,10 +6,11 @@ import { StoredDocument } from '@/types/documents';
 import { DOCUMENT_TYPES } from './constants';
 
 interface DocumentFiltersProps {
-    searchBookingInput: string;
-    setSearchBookingInput: (value: string) => void;
-    handleInspectBooking: () => void;
+    searchInput: string;
+    setSearchInput: (value: string) => void;
+    handleInspect: () => void;
     inspectedBooking: string;
+    inspectedContenedor: string;
     inspectedRegistro: Registro | null | undefined;
     inspectedDocsByType: Record<string, StoredDocument[]>;
     selectedTemporada: string | null;
@@ -21,10 +22,11 @@ interface DocumentFiltersProps {
 }
 
 export function DocumentFilters({
-    searchBookingInput,
-    setSearchBookingInput,
-    handleInspectBooking,
+    searchInput,
+    setSearchInput,
+    handleInspect,
     inspectedBooking,
+    inspectedContenedor,
     inspectedRegistro,
     inspectedDocsByType,
     selectedTemporada,
@@ -50,26 +52,27 @@ export function DocumentFilters({
             <section className="space-y-4 rounded-3xl border border-slate-800/70 bg-slate-950/70 p-5 shadow-xl shadow-slate-950/30">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Estado por booking</p>
-                        <h2 className="text-lg font-semibold text-white">Busca un booking y revisa sus documentos</h2>
+                        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Estado por booking o contenedor</p>
+                        <h2 className="text-lg font-semibold text-white">Busca un booking o contenedor y revisa sus documentos</h2>
                     </div>
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                         <input
-                            value={searchBookingInput}
-                            onChange={(event) => setSearchBookingInput(event.target.value.toUpperCase())}
+                            value={searchInput}
+                            onChange={(event) => setSearchInput(event.target.value.toUpperCase())}
                             onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
                                     event.preventDefault();
-                                    handleInspectBooking();
+                                    handleInspect();
                                 }
                             }}
-                            placeholder="Ej. BK123456"
+                            placeholder="Ej. BK123456 o CONT1234567"
                             className="flex-1 rounded-2xl border border-slate-800/70 bg-slate-950 px-4 py-2 text-sm text-white placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                         />
                         <button
                             type="button"
-                            onClick={handleInspectBooking}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-600/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-900/40 transition hover:bg-sky-500"
+                            onClick={handleInspect}
+                            disabled={!searchInput.trim()}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-600/90 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-900/40 transition hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Search className="h-4 w-4" aria-hidden="true" />
                             Ver estado
@@ -77,15 +80,16 @@ export function DocumentFilters({
                     </div>
                 </div>
 
-                {inspectedBooking && (
+                {(inspectedBooking || inspectedContenedor) && (
                     <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
                         {inspectedRegistro ? (
                             <div className="space-y-4">
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="rounded-2xl border border-slate-800/60 bg-slate-900/50 p-4">
-                                        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Detalles del booking</p>
+                                        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Detalles del {inspectedBooking ? 'booking' : 'contenedor'}</p>
                                         <div className="mt-2 space-y-1 text-sm text-slate-300">
                                             <p><span className="text-slate-500">Booking:</span> {inspectedRegistro.booking || '-'}</p>
+                                            <p><span className="text-slate-500">Contenedor:</span> {Array.isArray(inspectedRegistro.contenedor) ? inspectedRegistro.contenedor.join(', ') : (inspectedRegistro.contenedor || '-')}</p>
                                             <p><span className="text-slate-500">REF ASLI:</span> {inspectedRegistro.refAsli || '-'}</p>
                                             <p><span className="text-slate-500">Cliente:</span> {inspectedRegistro.shipper || '-'}</p>
                                             <p><span className="text-slate-500">Naviera:</span> {inspectedRegistro.naviera || '-'}</p>
@@ -96,13 +100,15 @@ export function DocumentFilters({
                                         <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Documentos faltantes</p>
                                         <ul className="mt-2 space-y-2 text-xs text-slate-300">
                                             {(() => {
-                                                // Reordenar: Instructivo primero, DUS al final
+                                                // Reordenar: Instructivo primero, Factura Comercial y DUS al final
                                                 const instructivoType = DOCUMENT_TYPES.find(t => t.id === 'instructivo-embarque');
+                                                const facturaComercialType = DOCUMENT_TYPES.find(t => t.id === 'factura-comercial');
                                                 const dusType = DOCUMENT_TYPES.find(t => t.id === 'documentos-aga');
-                                                const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'documentos-aga');
+                                                const otherTypes = DOCUMENT_TYPES.filter(t => t.id !== 'instructivo-embarque' && t.id !== 'factura-comercial' && t.id !== 'documentos-aga');
                                                 const orderedTypes = [
                                                     ...(instructivoType ? [instructivoType] : []),
                                                     ...otherTypes,
+                                                    ...(facturaComercialType ? [facturaComercialType] : []),
                                                     ...(dusType ? [dusType] : [])
                                                 ];
                                                 
@@ -129,7 +135,7 @@ export function DocumentFilters({
                         ) : (
                             <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                                 <AlertCircle className="h-4 w-4" aria-hidden="true" />
-                                No encontramos el booking “{inspectedBooking}” en los registros visibles.
+                                No encontramos {inspectedBooking ? `el booking "${inspectedBooking}"` : `el contenedor "${inspectedContenedor}"`} en los registros visibles.
                             </div>
                         )}
                     </div>

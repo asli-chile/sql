@@ -83,6 +83,15 @@ export const DOCUMENT_TYPES: DocumentType[] = [
         gradient: 'from-teal-500/15 to-slate-900/60',
     },
     {
+        id: 'factura-comercial',
+        name: 'Factura Comercial',
+        description: 'Factura comercial definitiva.',
+        formats: ['PDF', 'XLSX'],
+        icon: FileSignature,
+        accent: 'text-orange-300',
+        gradient: 'from-orange-500/15 to-slate-900/60',
+    },
+    {
         id: 'documentos-aga',
         name: 'DUS',
         description: 'Libera mercancía ante Aduanas y SAG.',
