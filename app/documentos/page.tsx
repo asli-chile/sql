@@ -65,7 +65,12 @@ export default function DocumentosPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const temporadaParam = searchParams?.get('temporada');
+  // Verificar permisos de subida: debe ser admin/ejecutivo Y tener puede_subir = true
+  // Si puede_subir es explícitamente false, no puede subir (incluso si es admin/ejecutivo)
   const isAdminOrEjecutivo = (currentUser?.rol === 'admin') || Boolean(currentUser?.email?.endsWith('@asli.cl'));
+  // Si puede_subir es false, no puede subir. Si es null/undefined, por defecto true solo para admin/ejecutivo
+  const puedeSubir = currentUser?.puede_subir !== undefined ? currentUser.puede_subir : (isAdminOrEjecutivo ? true : false);
+  const canUpload = isAdminOrEjecutivo && puedeSubir === true;
   const isAdmin = currentUser?.rol === 'admin';
 
   // Inicializar temporada desde URL params o establecer "25-26" por defecto
@@ -106,23 +111,37 @@ export default function DocumentosPage() {
         .single();
 
       if (userError || !userData) {
+        // Usuario no existe en la tabla usuarios - por defecto no puede subir
+        const emailEsEjecutivo = user.email?.endsWith('@asli.cl') || false;
         const basicUser = {
           id: user.id,
           nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
           email: user.email || '',
           rol: 'usuario',
           activo: true,
+          puede_subir: false, // Por defecto false - solo admins/ejecutivos pueden tener true
         };
         setCurrentUser(basicUser);
         return;
       }
 
+      // Si puede_subir es null, usar false por defecto (más seguro)
+      const puedeSubirValue = userData.puede_subir ?? false;
+      console.log('Usuario cargado:', {
+        email: userData.email,
+        rol: userData.rol,
+        puede_subir: userData.puede_subir,
+        puedeSubirValue,
+        isAdminOrEjecutivo: (userData.rol === 'admin') || Boolean(userData.email?.endsWith('@asli.cl'))
+      });
+      
       setCurrentUser({
         id: userData.id,
         nombre: userData.nombre,
         email: userData.email,
         rol: userData.rol,
         activo: userData.activo,
+        puede_subir: puedeSubirValue,
       });
 
       // Verificar si es ejecutivo y cargar clientes asignados
@@ -378,6 +397,12 @@ export default function DocumentosPage() {
   };
 
   const handleUpload = async (typeId: string, files: FileList | null, bookingOverride?: string) => {
+    // Validar permisos de subida
+    if (!canUpload) {
+      showError('No tienes permisos para subir archivos. Solo puedes descargar.');
+      return;
+    }
+
     const bookingToUse = bookingOverride || selectedBooking;
     const normalizedBooking = normalizeBooking(bookingToUse);
     if (!normalizedBooking) {
@@ -850,6 +875,7 @@ export default function DocumentosPage() {
           isDeleting={isDeleting}
           isAdmin={isAdmin}
           isAdminOrEjecutivo={isAdminOrEjecutivo}
+          canUpload={canUpload}
           handleDownload={handleDownload}
           handleDeleteDocument={handleDeleteDocument}
           handleUpload={handleUpload}

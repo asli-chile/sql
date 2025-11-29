@@ -25,6 +25,7 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendingEmail, setResendingEmail] = useState(false);
 
   // Limpiar parámetros de URL si contienen credenciales (seguridad)
   useEffect(() => {
@@ -64,6 +65,46 @@ const AuthPage = () => {
 
   const handleTogglePasswordVisibility = () => {
     setShowPassword((prevState) => !prevState);
+  };
+
+  const handleResendConfirmationEmail = async () => {
+    if (!email || resendingEmail) {
+      return;
+    }
+
+    setResendingEmail(true);
+    setError('');
+
+    try {
+      const normalizedEmail = email.toLowerCase().trim();
+      
+      // Verificar si el email es secundario y obtener el email principal
+      const checkEmailResponse = await fetch(`/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+      let emailToUse = normalizedEmail;
+
+      if (checkEmailResponse.ok) {
+        const checkEmailData = await checkEmailResponse.json();
+        if (checkEmailData.primary_email) {
+          emailToUse = checkEmailData.primary_email.toLowerCase().trim();
+        }
+      }
+
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: emailToUse,
+      });
+
+      if (resendError) {
+        setError('Error al reenviar el email. Verifica que el email sea correcto.');
+      } else {
+        setError('✅ Email de confirmación reenviado. Revisa tu bandeja de entrada.');
+      }
+    } catch (err) {
+      console.error('[Resend] Error:', err);
+      setError('Error al reenviar el email. Por favor, intenta nuevamente.');
+    } finally {
+      setResendingEmail(false);
+    }
   };
 
   const handleAuth = async (event: FormEvent<HTMLFormElement>) => {
@@ -117,6 +158,8 @@ const AuthPage = () => {
           // Mejorar mensaje de error para el usuario
           if (signInError.message === 'Invalid login credentials' || signInError.message.includes('credentials')) {
             setError('Credenciales inválidas. Verifica tu email y contraseña.');
+          } else if (signInError.message === 'Email not confirmed' || signInError.message.includes('not confirmed')) {
+            setError('Tu email no ha sido confirmado. Revisa tu bandeja de entrada y haz clic en el enlace de confirmación.');
           } else {
             setError(signInError.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.');
           }
@@ -290,10 +333,26 @@ const AuthPage = () => {
             <div
               role="alert"
               aria-live="assertive"
-              className="mb-6 flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+              className={`mb-6 flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm ${
+                error.startsWith('✅')
+                  ? 'border-green-500/40 bg-green-500/10 text-green-100'
+                  : 'border-red-500/40 bg-red-500/10 text-red-100'
+              }`}
             >
-              <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
-              <span>{error}</span>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1">{error}</span>
+              </div>
+              {error.includes('no ha sido confirmado') && (
+                <button
+                  type="button"
+                  onClick={handleResendConfirmationEmail}
+                  disabled={resendingEmail || !email}
+                  className="ml-8 text-left text-xs underline-offset-2 transition hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resendingEmail ? 'Reenviando...' : '¿No recibiste el email? Haz clic aquí para reenviarlo'}
+                </button>
+              )}
             </div>
           )}
 

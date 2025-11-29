@@ -22,6 +22,7 @@ interface DocumentListProps {
     isDeleting: string | null;
     isAdmin: boolean;
     isAdminOrEjecutivo: boolean;
+    canUpload: boolean;
     handleDownload: (doc: StoredDocument) => void;
     handleDeleteDocument: (doc: StoredDocument) => void;
     handleUpload: (typeId: string, files: FileList | null, bookingOverride?: string) => Promise<void>;
@@ -37,6 +38,7 @@ export function DocumentList({
     isDeleting,
     isAdmin,
     isAdminOrEjecutivo,
+    canUpload,
     handleDownload,
     handleDeleteDocument,
     handleUpload,
@@ -124,8 +126,7 @@ export function DocumentList({
                                                     : row.registro.contenedor ? [row.registro.contenedor] : [];
                                                 const numContenedores = contenedores.length || 1;
 
-                                                // Determinar si el usuario puede subir documentos (solo admin y ejecutivos)
-                                                const canUpload = isAdminOrEjecutivo;
+                                                // canUpload ya viene como prop, verifica isAdminOrEjecutivo Y puede_subir = true
 
                                                 return (
                                                     <td key={type.id} className="px-3 py-3">
@@ -303,8 +304,8 @@ export function DocumentList({
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                    {/* Solo mostrar botón para agregar más documentos si el usuario tiene permisos */}
-                                                                    {canUpload && numContenedores > docsForType.length && (
+                                                                    {/* Botón para agregar más documentos - siempre visible si el usuario tiene permisos */}
+                                                                    {canUpload && (
                                                                         <label
                                                                             htmlFor={`${uploadKey}-add`}
                                                                             className="flex items-center gap-1 cursor-pointer group mt-1"
@@ -318,7 +319,9 @@ export function DocumentList({
                                                                                 )}
                                                                             </div>
                                                                             <span className="text-[9px] text-slate-400 group-hover:text-sky-300 transition">
-                                                                                Agregar ({numContenedores - docsForType.length} más)
+                                                                                {numContenedores > docsForType.length 
+                                                                                    ? `Agregar (${numContenedores - docsForType.length} más)`
+                                                                                    : 'Agregar más'}
                                                                             </span>
                                                                             <input
                                                                                 id={`${uploadKey}-add`}

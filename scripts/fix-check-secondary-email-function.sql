@@ -55,3 +55,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Ahora el endpoint /api/user/check-email debería funcionar correctamente
 
 
+

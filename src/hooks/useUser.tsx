@@ -8,6 +8,7 @@ interface Usuario {
   email: string;
   rol: string;
   activo: boolean;
+  puede_subir?: boolean;
 }
 
 interface UserContextType {
