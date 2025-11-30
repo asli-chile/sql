@@ -610,9 +610,6 @@ export default function DashboardPage() {
         { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
         { label: 'Transportes', id: 'transportes', isActive: false },
         { label: 'Documentos', id: 'documentos', isActive: false },
-        ...(isAdmin || isEjecutivo
-          ? [{ label: 'Servicios', id: 'dashboard/servicios', isActive: false }]
-          : []),
       ],
     },
     {
