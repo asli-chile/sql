@@ -270,46 +270,49 @@ export default function TransportesPage() {
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
             <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
               {/* Búsqueda */}
-              <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 shadow-xl shadow-slate-950/30 backdrop-blur-xl p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Búsqueda</p>
-                    <p className="text-sm font-semibold text-slate-100">
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500 mb-1">Búsqueda y Filtros</p>
+                    <p className="text-lg font-semibold text-white">
                       {filteredRecords.length} de {records.length} registros
+                    </p>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Busca por booking, contenedor, conductor, patentes o cualquier campo
                     </p>
                   </div>
                   <div className="relative w-full sm:max-w-md">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                    <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <input
                       type="search"
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                       placeholder="Buscar por booking, contenedor, conductor, patentes..."
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-9 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                      className="w-full rounded-xl border border-slate-800/70 bg-slate-900/80 px-10 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-colors"
                     />
                   </div>
                 </div>
               </section>
 
               {/* Tabla principal */}
-              <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20 overflow-hidden w-full">
+              <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 shadow-xl shadow-slate-950/30 backdrop-blur-xl overflow-hidden w-full">
                 <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
                   <table className="min-w-full divide-y divide-slate-800/60">
-                    <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm">
+                    <thead className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/60">
                       <tr>
-                        <th scope="col" className="px-3 py-3 text-left">
+                        <th scope="col" className="px-4 py-4 text-left">
                           <input
                             type="checkbox"
                             checked={selectedRows.size === filteredRecords.length && filteredRecords.length > 0}
                             onChange={handleSelectAll}
-                            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-2 focus:ring-sky-500/50"
+                            className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-2 focus:ring-sky-500/50 cursor-pointer"
                           />
                         </th>
                         {transportesColumns.map((column) => (
                           <th
                             key={column.header}
                             scope="col"
-                            className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 whitespace-nowrap"
+                            className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-wider text-slate-400 whitespace-nowrap"
                           >
                             {column.header}
                           </th>
@@ -321,11 +324,11 @@ export default function TransportesPage() {
                         <tr>
                           <td
                             colSpan={transportesColumns.length + 1}
-                            className="px-3 py-8 text-center text-sm text-slate-400"
+                            className="px-4 py-12 text-center text-sm text-slate-400"
                           >
-                            <div className="flex items-center justify-center gap-2">
-                              <RefreshCcw className="h-4 w-4 animate-spin" />
-                              <span>Cargando transportes...</span>
+                            <div className="flex items-center justify-center gap-3">
+                              <RefreshCcw className="h-5 w-5 animate-spin text-sky-400" />
+                              <span className="text-slate-300">Cargando transportes...</span>
                             </div>
                           </td>
                         </tr>
@@ -333,31 +336,43 @@ export default function TransportesPage() {
                         <tr>
                           <td
                             colSpan={transportesColumns.length + 1}
-                            className="px-3 py-8 text-center text-sm text-slate-400"
+                            className="px-4 py-12 text-center text-sm text-slate-400"
                           >
-                            {searchTerm
-                              ? 'No se encontraron registros que coincidan con la búsqueda.'
-                              : 'No hay registros de transporte disponibles.'}
+                            <div className="flex flex-col items-center gap-2">
+                              <p className="text-slate-300">
+                                {searchTerm
+                                  ? 'No se encontraron registros que coincidan con la búsqueda.'
+                                  : 'No hay registros de transporte disponibles.'}
+                              </p>
+                              {searchTerm && (
+                                <button
+                                  onClick={() => setSearchTerm('')}
+                                  className="text-xs text-sky-400 hover:text-sky-300 underline"
+                                >
+                                  Limpiar búsqueda
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ) : (
                         filteredRecords.map((item) => (
                           <tr
                             key={item.id}
-                            className={`hover:bg-slate-900/50 transition-colors ${selectedRows.has(item.id) ? 'bg-slate-800/30' : ''}`}
+                            className={`hover:bg-slate-900/60 transition-colors ${selectedRows.has(item.id) ? 'bg-slate-800/40' : ''}`}
                           >
-                            <td className="px-3 py-3">
+                            <td className="px-4 py-4">
                               <input
                                 type="checkbox"
                                 checked={selectedRows.has(item.id)}
                                 onChange={() => handleToggleRowSelection(item.id)}
-                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-2 focus:ring-sky-500/50"
+                                className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-sky-500 focus:ring-2 focus:ring-sky-500/50 cursor-pointer"
                               />
                             </td>
                             {transportesColumns.map((column) => (
                               <td
                                 key={`${item.id}-${column.header}`}
-                                className="px-3 py-3 text-sm text-slate-200 whitespace-nowrap"
+                                className="px-4 py-4 text-sm text-slate-200 whitespace-nowrap"
                               >
                                 {column.render ? (
                                   column.render(item)
