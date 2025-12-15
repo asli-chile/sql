@@ -578,11 +578,17 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             }}
             onViewStateChange={({ viewState: nextViewState }) => {
               // Asegurar que el zoom esté dentro de los límites
-              const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextViewState.zoom));
-              setViewState({
-                ...nextViewState,
-                zoom: clampedZoom,
-              } as typeof viewState);
+              // Verificar que nextViewState tenga la propiedad zoom (es MapViewState, no TransitionProps)
+              if ('zoom' in nextViewState && typeof nextViewState.zoom === 'number') {
+                const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextViewState.zoom));
+                setViewState({
+                  ...nextViewState,
+                  zoom: clampedZoom,
+                } as typeof viewState);
+              } else {
+                // Si no tiene zoom, actualizar sin modificar
+                setViewState(nextViewState as typeof viewState);
+              }
             }}
             layers={[
               originPortsLayer,
