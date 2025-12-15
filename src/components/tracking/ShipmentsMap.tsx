@@ -575,8 +575,6 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
               touchZoom: true,
               touchRotate: false,
               inertia: true,
-              minZoom: MIN_ZOOM,
-              maxZoom: MAX_ZOOM,
             }}
             onViewStateChange={({ viewState: nextViewState }) => {
               // Asegurar que el zoom esté dentro de los límites
