@@ -50,40 +50,46 @@ export function DocumentList({
 }: DocumentListProps) {
     const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
     return (
-        <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-5 shadow-xl shadow-slate-950/30">
-            <div className="flex items-center justify-between border-b border-slate-800/60 pb-4">
+        <section className="rounded-3xl border border-slate-800/70 bg-slate-950/70 p-6 shadow-xl shadow-slate-950/30 backdrop-blur-xl">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-800/60 pb-5">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Seguimiento</p>
-                    <h2 className="text-lg font-semibold text-white">Bookings con documentos pendientes</h2>
+                    <p className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-1">Seguimiento</p>
+                    <h2 className="text-xl font-semibold text-white">Bookings con documentos</h2>
+                    <p className="text-sm text-slate-400 mt-1">Gestiona y revisa los documentos de cada embarque</p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <div className="flex items-center gap-2">
-                        <label htmlFor="sort-order" className="text-xs text-slate-400">
-                            Ordenar por ingreso:
+                        <label htmlFor="sort-order" className="text-xs text-slate-400 font-medium">
+                            Ordenar:
                         </label>
                         <select
                             id="sort-order"
                             value={sortOrder}
                             onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                            className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                            className="rounded-lg border border-slate-700/80 bg-slate-900/80 px-3 py-1.5 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 transition-colors hover:border-slate-600"
                         >
                             <option value="asc">Más antiguo primero</option>
                             <option value="desc">Más reciente primero</option>
                         </select>
                     </div>
-                    <span className="text-sm text-slate-400">
-                        {pendingBookingsCount} booking{pendingBookingsCount === 1 ? '' : 's'} por completar
-                    </span>
+                    <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-1.5">
+                        <AlertCircle className="h-4 w-4 text-amber-400" />
+                        <span className="text-xs font-semibold text-amber-300">
+                            {pendingBookingsCount} booking{pendingBookingsCount === 1 ? '' : 's'} pendiente{pendingBookingsCount === 1 ? '' : 's'}
+                        </span>
+                    </div>
                 </div>
             </div>
             {bookingsWithDocs.length === 0 ? (
-                <div className="mt-4 rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-6 text-center text-sm text-slate-400">
-                    No encontramos bookings disponibles en esta temporada o con tus permisos.
+                <div className="mt-6 rounded-xl border border-slate-700/70 bg-gradient-to-br from-slate-950/60 to-slate-900/40 px-6 py-8 text-center backdrop-blur-sm">
+                    <AlertCircle className="h-8 w-8 text-slate-600 mx-auto mb-3" />
+                    <p className="text-sm text-slate-400 font-medium">No encontramos bookings disponibles</p>
+                    <p className="text-xs text-slate-500 mt-1">en esta temporada o con tus permisos.</p>
                 </div>
             ) : (
-                <div className="mt-4 max-h-[560px] overflow-x-auto overflow-y-auto rounded-2xl border border-slate-800/60">
+                <div className="mt-6 max-h-[600px] overflow-x-auto overflow-y-auto rounded-xl border border-slate-800/60 bg-slate-900/20 backdrop-blur-sm">
                     <table className="w-full text-sm">
-                        <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
+                        <thead className="bg-gradient-to-b from-slate-900/80 to-slate-950/80 text-xs uppercase tracking-wide text-slate-400 sticky top-0 z-20 backdrop-blur-sm">
                             <tr>
                                 <th className="px-4 py-3 text-center font-semibold sticky left-0 bg-slate-950 z-10 min-w-[140px]">Booking</th>
                                 <th className="px-4 py-3 text-center font-semibold sticky left-[140px] bg-slate-950 z-10 min-w-[150px]">Nave</th>
@@ -104,7 +110,7 @@ export function DocumentList({
                                     return orderedTypes.map((type) => {
                                         const IconComponent = type.icon;
                                         return (
-                                            <th key={type.id} className="px-3 py-3 text-center font-semibold min-w-[140px]">
+                                            <th key={type.id} className="px-3 py-3 text-center font-semibold min-w-[120px]">
                                                 <div className="flex flex-col items-center gap-1">
                                                     <IconComponent className="h-4 w-4" aria-hidden="true" />
                                                     <span className="text-[10px] leading-tight">{type.name}</span>
@@ -119,17 +125,19 @@ export function DocumentList({
                             {bookingsWithDocs.map((row) => {
                                 const isUploadingForThisBooking = uploadingBooking && row.bookingKey === normalizeBooking(uploadingBooking);
                                 return (
-                                    <tr key={row.bookingKey} className="hover:bg-slate-900/40">
-                                        <td className="px-4 py-3 font-semibold text-white text-center sticky left-0 bg-slate-950 z-10 min-w-[140px]">
-                                            {row.booking}
+                                    <tr key={row.bookingKey} className="hover:bg-slate-900/50 transition-colors group">
+                                        <td className="px-4 py-4 font-semibold text-white text-center sticky left-0 bg-slate-950/95 backdrop-blur-sm z-10 min-w-[140px] border-r border-slate-800/50">
+                                            <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-300">
+                                                {row.booking}
+                                            </span>
                                         </td>
-                                        <td className="px-4 py-3 text-slate-300 text-center sticky left-[140px] bg-slate-950 z-10 min-w-[150px]">
-                                            {row.registro.naveInicial || '-'}
+                                        <td className="px-4 py-4 text-slate-300 text-center sticky left-[140px] bg-slate-950/95 backdrop-blur-sm z-10 min-w-[150px] border-r border-slate-800/50">
+                                            {row.registro.naveInicial || <span className="text-slate-600">-</span>}
                                         </td>
-                                        <td className="px-4 py-3 text-slate-300 text-center min-w-[180px]">
+                                        <td className="px-4 py-4 text-slate-300 text-center min-w-[180px]">
                                             {Array.isArray(row.registro.contenedor) 
                                                 ? row.registro.contenedor.join(', ') 
-                                                : (row.registro.contenedor || '-')}
+                                                : (row.registro.contenedor || <span className="text-slate-600">-</span>)}
                                         </td>
                                         {(() => {
                                             // Reordenar: Instructivo primero, DUS al final
@@ -157,8 +165,8 @@ export function DocumentList({
                                                 // canUpload ya viene como prop, verifica isAdminOrEjecutivo Y puede_subir = true
 
                                                 return (
-                                                    <td key={type.id} className="px-3 py-3">
-                                                        <div className="flex flex-col items-center gap-1.5 min-w-[140px]">
+                                                    <td key={type.id} className="px-3 py-4">
+                                                        <div className="flex flex-col items-center gap-1.5 min-w-[120px]">
                                                             {hasDoc ? (
                                                                 <>
                                                                     <div className="flex flex-col items-center gap-1.5 relative">
@@ -348,7 +356,7 @@ export function DocumentList({
                                                                             </div>
                                                                             <span className="text-[9px] text-slate-400 group-hover:text-sky-300 transition">
                                                                                 {numContenedores > docsForType.length 
-                                                                                    ? `Agregar (${numContenedores - docsForType.length} más)`
+                                                                                    ? `Agregar (${numContenedores - docsForType.length} más)` 
                                                                                     : 'Agregar más'}
                                                                             </span>
                                                                             <input

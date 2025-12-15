@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { DeckGL } from '@deck.gl/react';
-import { ScatterplotLayer, TextLayer } from '@deck.gl/layers';
+import { ScatterplotLayer, TextLayer, IconLayer } from '@deck.gl/layers';
 import { Map as MaplibreMap } from 'react-map-gl/maplibre';
 import { CanvasContext } from '@luma.gl/core';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -51,7 +51,30 @@ const INITIAL_VIEW_STATE = {
   bearing: 0
 };
 
+// Límites de zoom: solo limitar zoom out (alejarse), no limitar zoom in (acercarse)
+const MIN_ZOOM = 1.0;
+const MAX_ZOOM = 20; // Máximo muy alto para permitir acercarse mucho
+
 type VistaMapa = 'puerto' | 'pais';
+
+// Crear icono de emoji de barco portacontenedores usando SVG (más confiable)
+const createShipEmojiIcon = (): string => {
+  const svg = `<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+    <text x="32" y="42" font-size="48" text-anchor="middle" dominant-baseline="middle">🚢</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+};
+
+const ICON_MAPPING = {
+  marker: {
+    x: 0,
+    y: 0,
+    width: 64,
+    height: 64,
+    mask: false,
+    anchorY: 64, // Anclar desde la parte inferior para que el barco "flote" en el agua
+  },
+};
 
 const IS_DEV = process.env.NODE_ENV !== 'production';
 
@@ -410,25 +433,25 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
     }
   });
 
-  // Capa de posiciones AIS de buques activos (punto tipo "estrella" amarilla)
-  const activeVesselsLayer = useMemo(
-    () =>
-      new ScatterplotLayer<ActiveVessel>({
+  // Icono de emoji de barco portacontenedores
+  const shipEmojiIcon = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    return createShipEmojiIcon();
+  }, []);
+
+  // Capa de posiciones AIS de buques activos con emoji de barco portacontenedores
+  const activeVesselsLayer = useMemo(() => {
+    if (!shipEmojiIcon) {
+      // Fallback a ScatterplotLayer si no hay icono
+      return new ScatterplotLayer<ActiveVessel>({
         id: 'active-vessels-main',
         data: activeVesselPoints,
         getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
         getRadius: () => 9000,
-        getFillColor: () => [250, 204, 21, 255], // amarillo intenso
+        getFillColor: () => [59, 130, 246, 255],
         pickable: true,
-        radiusMinPixels: 3,
-        radiusMaxPixels: 14,
-        stroked: true,
-        getLineWidth: () => 2,
-        lineWidthUnits: 'pixels',
-        getLineColor: () => [252, 211, 77, 255],
-        updateTriggers: {
-          getPosition: [activeVesselPoints],
-        },
+        radiusMinPixels: 5,
+        radiusMaxPixels: 15,
         onHover: (info) => {
           if (info.object) {
             setHoveredVessel(info.object as ActiveVessel);
@@ -436,9 +459,33 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             setHoveredVessel(null);
           }
         },
-      }),
-    [activeVesselPoints],
-  );
+      });
+    }
+    
+    return new IconLayer<ActiveVessel>({
+      id: 'active-vessels-main',
+      data: activeVesselPoints,
+      getPosition: (vessel) => [vessel.last_lon as number, vessel.last_lat as number],
+      getIcon: () => 'marker',
+      getSize: () => 50,
+      iconAtlas: shipEmojiIcon,
+      iconMapping: ICON_MAPPING,
+      sizeUnits: 'pixels',
+      sizeMinPixels: 24,
+      sizeMaxPixels: 64,
+      pickable: true,
+      updateTriggers: {
+        getPosition: [activeVesselPoints],
+      },
+      onHover: (info) => {
+        if (info.object) {
+          setHoveredVessel(info.object as ActiveVessel);
+        } else {
+          setHoveredVessel(null);
+        }
+      },
+    });
+  }, [activeVesselPoints, shipEmojiIcon]);
 
   // Capa de nombres de buques
   const vesselNamesLayer = useMemo(
@@ -528,9 +575,16 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
               touchZoom: true,
               touchRotate: false,
               inertia: true,
+              minZoom: MIN_ZOOM,
+              maxZoom: MAX_ZOOM,
             }}
             onViewStateChange={({ viewState: nextViewState }) => {
-              setViewState(nextViewState as typeof viewState);
+              // Asegurar que el zoom esté dentro de los límites
+              const clampedZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, nextViewState.zoom));
+              setViewState({
+                ...nextViewState,
+                zoom: clampedZoom,
+              } as typeof viewState);
             }}
             layers={[
               originPortsLayer,
@@ -573,6 +627,8 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
               style={{ width: '100%', height: '100%' }}
               reuseMaps={true}
               scrollZoom={true}
+              minZoom={MIN_ZOOM}
+              maxZoom={MAX_ZOOM}
               onError={(error) => {
                 if (error) {
                   console.error('Error de MapLibre:', error);
@@ -786,7 +842,7 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
                 <span>Puertos de salida (POL)</span>
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <span className="h-3 w-3 rounded-full border border-yellow-300 bg-yellow-400"></span>
+                <span className="text-lg leading-none">🚢</span>
                 <span>Posición actual de buques (AIS)</span>
               </div>
             </div>

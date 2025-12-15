@@ -184,7 +184,7 @@ export default function DashboardPage() {
   const [rawRegistros, setRawRegistros] = useState<RawRegistroStats[]>([]);
   const [registrosParaMapa, setRegistrosParaMapa] = useState<Registro[]>([]);
   const [activeVessels, setActiveVessels] = useState<ActiveVessel[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
+  const [selectedSeason, setSelectedSeason] = useState<string | null>('2025-2026');
   const [clienteOptions, setClienteOptions] = useState<string[]>([]);
   const [ejecutivoOptions, setEjecutivoOptions] = useState<string[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<string | null>(null);
@@ -612,10 +612,6 @@ export default function DashboardPage() {
         { label: 'Documentos', id: 'documentos', isActive: false },
       ],
     },
-    {
-      title: 'Espacios de trabajo',
-      items: seasonNavItems,
-    },
   ];
 
   return (
@@ -716,47 +712,19 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="flex-1 min-w-[240px] max-w-xl">
-              <div className="flex flex-wrap items-center gap-3">
-                <select
-                  value={selectedCliente ?? ''}
-                  onChange={(event) => setSelectedCliente(event.target.value || null)}
-                  className="min-w-[180px] rounded-full border border-slate-800 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                >
-                  <option value="">Todos los clientes</option>
-                  {clienteOptions.map((cliente) => (
-                    <option key={cliente} value={cliente}>
-                      {cliente}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedEjecutivo ?? ''}
-                  onChange={(event) => setSelectedEjecutivo(event.target.value || null)}
-                  className="min-w-[180px] rounded-full border border-slate-800 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                >
-                  <option value="">Todos los ejecutivos</option>
-                  {ejecutivoOptions.map((ejecutivo) => (
-                    <option key={ejecutivo} value={ejecutivo}>
-                      {ejecutivo}
-                    </option>
-                  ))}
-                </select>
-                {(selectedCliente || selectedEjecutivo) && (
-                  <button
-                    onClick={() => {
-                      setSelectedCliente(null);
-                      setSelectedEjecutivo(null);
-                    }}
-                    className="rounded-full border border-slate-700/80 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-sky-400/60 hover:text-sky-200"
-                  >
-                    Limpiar personas
-                  </button>
-                )}
-              </div>
-            </div>
-
             <div className="flex items-center gap-3">
+              <select
+                value={selectedSeason ?? ''}
+                onChange={(event) => setSelectedSeason(event.target.value || null)}
+                className="min-w-[200px] rounded-full border border-slate-800 bg-slate-900/80 px-4 py-2 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+              >
+                <option value="">Todas las temporadas</option>
+                {Array.from(new Set([...DEFAULT_SEASON_ORDER, ...Object.keys(seasonStats)])).map((seasonKey) => (
+                  <option key={seasonKey} value={seasonKey}>
+                    Temporada {seasonKey} ({seasonStats[seasonKey] ?? 0})
+                  </option>
+                ))}
+              </select>
               <button
                 onClick={() => router.push('/registros')}
                 className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-sky-500/50"
@@ -780,116 +748,49 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-
-          {/* Espacios de trabajo (temporadas) en pantallas pequeñas */}
-          {seasonNavItems.length > 0 && (
-            <div className="lg:hidden border-t border-slate-800/60 bg-slate-950/80 px-4 pb-3 pt-2">
-              <p className="mb-2 text-[11px] uppercase tracking-[0.28em] text-slate-500/80">
-                Espacios de trabajo
-              </p>
-              <div className="flex flex-wrap gap-2 pb-1">
-                {seasonNavItems.map((item) => (
-                  'counter' in item && (
-                    <button
-                      key={item.label}
-                      type="button"
-                      onClick={() => {
-                        if ('onClick' in item && typeof item.onClick === 'function') {
-                          item.onClick();
-                        }
-                      }}
-                      aria-pressed={item.isActive}
-                      className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap border ${item.isActive
-                        ? 'border-sky-400/70 bg-sky-500/15 text-sky-100'
-                        : 'border-slate-700/70 bg-slate-900/70 text-slate-300'
-                        }`}
-                    >
-                      <span>{item.label}</span>
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]}`}
-                      >
-                        {item.counter}
-                      </span>
-                    </button>
-                  )
-                ))}
-              </div>
-            </div>
-          )}
         </header>
 
-        <main className="flex-1 overflow-y-auto px-6 pb-10 pt-8 space-y-10">
-          <section className="rounded-2xl border border-slate-800/60 bg-slate-950/60 p-6 shadow-xl shadow-sky-900/10">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+        <main className="flex-1 overflow-y-auto px-6 pb-10 pt-8 space-y-8">
+          {/* Sección de bienvenida simplificada */}
+          <section className="rounded-2xl border border-slate-800/60 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-6 shadow-xl">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">Bienvenido de nuevo</p>
+                <p className="text-sm text-slate-400 mb-1">Bienvenido</p>
                 <h2 className="text-2xl font-semibold text-white">
                   {userInfo?.nombre || user.user_metadata?.full_name || 'Usuario'}
                 </h2>
-              </div>
-              <div className="flex flex-wrap items-center gap-4 text-xs">
-                <div className="rounded-full bg-green-500/15 px-3 py-1 text-green-300">
-                  {displayedStats.confirmados} Confirmados
-                </div>
-                <div className="rounded-full bg-yellow-500/15 px-3 py-1 text-yellow-300">
-                  {displayedStats.pendientes} Pendientes
-                </div>
-                <div className="rounded-full bg-red-500/15 px-3 py-1 text-red-300">
-                  {displayedStats.cancelados} Cancelados
-                </div>
-                <div className="rounded-full border border-slate-700/80 px-3 py-1 text-slate-300">
-                  {displayedStats.totalContenedores} Contenedores
-                </div>
-              </div>
-              {displayedSeasonLabel && (
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-sky-300">
-                  <span>
-                    Mostrando datos de <span className="font-semibold">{displayedSeasonLabel}</span>
-                  </span>
-                  <button
-                    onClick={() => setSelectedSeason(null)}
-                    className="rounded-full border border-sky-400/50 px-3 py-1 font-semibold text-sky-200 hover:border-sky-300 hover:text-sky-50"
-                  >
-                    Limpiar filtro
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* KPIs de seguimiento de buques */}
-          <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-800/60 bg-slate-950/70 p-5 shadow-lg shadow-slate-900/30">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500/80">
-                    Bookings en tránsito
+                {displayedSeasonLabel && (
+                  <p className="text-sm text-slate-400 mt-2">
+                    Temporada: <span className="text-sky-300 font-medium">{displayedSeasonLabel}</span>
                   </p>
-                  <h3 className="mt-1 text-sm font-semibold text-slate-100">
-                    Zarpe realizado, sin arribo registrado
-                  </h3>
-                </div>
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
-                  <Clock className="h-4 w-4" />
-                </div>
+                )}
               </div>
-              <div className="mt-4 rounded-xl bg-slate-900/70 p-4 text-sm">
-                <p className="text-[11px] uppercase tracking-[0.25em] text-slate-500">
-                  Bookings en ruta
-                </p>
-                <p className="mt-2 text-2xl font-semibold text-emerald-300">
-                  {inTransitBookingsCount}
-                </p>
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Considera bookings cuyo ETD ya ocurrió y cuya ETA aún no se cumple.
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-white">{displayedStats.total}</p>
+                  <p className="text-xs text-slate-400 mt-1">Embarques</p>
+                </div>
+                <div className="h-12 w-px bg-slate-700"></div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-emerald-400">{displayedStats.confirmados}</p>
+                  <p className="text-xs text-slate-400 mt-1">Confirmados</p>
+                </div>
+                <div className="h-12 w-px bg-slate-700"></div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-amber-400">{displayedStats.pendientes}</p>
+                  <p className="text-xs text-slate-400 mt-1">Pendientes</p>
+                </div>
               </div>
             </div>
           </section>
 
+          {/* Módulos principales - Simplificados */}
           <section className="space-y-4">
-            <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Módulos principales</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-1">Accesos rápidos</h3>
+              <p className="text-sm text-slate-400">Selecciona una opción para comenzar</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {modules.map((module) => {
                 const IconComponent = module.icon;
                 const isDisabled = !module.available;
@@ -903,59 +804,46 @@ export default function DashboardPage() {
                       }
                     }}
                     disabled={isDisabled}
-                    className={`group relative overflow-hidden rounded-xl border border-slate-800/70 bg-slate-950/60 p-5 text-left transition-all ${isDisabled
+                    className={`group relative overflow-hidden rounded-xl border-2 border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60 p-6 text-left transition-all ${isDisabled
                       ? 'opacity-60 cursor-not-allowed'
-                      : 'hover:border-sky-500/60 hover:shadow-lg hover:shadow-sky-900/20 active:scale-[0.98]'
+                      : 'hover:border-sky-500/60 hover:shadow-xl hover:shadow-sky-900/30 hover:scale-[1.02] active:scale-[0.98]'
                       }`}
                   >
-                    <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-500 via-indigo-500 to-sky-600 opacity-40 group-hover:opacity-100 transition-opacity" />
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-500/15 text-sky-300">
-                          <IconComponent className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <h4 className="text-lg font-semibold text-white">{module.title}</h4>
-                          <p className="text-sm text-slate-400">{module.description}</p>
-                        </div>
+                    <div className="flex items-start gap-4">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border border-sky-500/30 flex-shrink-0">
+                        <IconComponent className="h-7 w-7 text-sky-300" />
                       </div>
-                      <ArrowRight className="h-4 w-4 text-slate-500 group-hover:text-sky-300 transition" />
+                      <div className="flex-1">
+                        <h4 className="text-xl font-semibold text-white mb-1">{module.title}</h4>
+                        <p className="text-sm text-slate-400 mb-3">{module.description}</p>
+                        {module.stats && (
+                          <div className="flex items-center gap-4 text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <div className="h-2 w-2 rounded-full bg-emerald-400"></div>
+                              <span className="text-slate-300">{module.stats.confirmados} confirmados</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="h-2 w-2 rounded-full bg-amber-400"></div>
+                              <span className="text-slate-300">{module.stats.pendientes} pendientes</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <ArrowRight className="h-5 w-5 text-slate-500 group-hover:text-sky-300 transition flex-shrink-0" />
                     </div>
-                    {module.stats && (
-                      <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-300">
-                        <div className="rounded-lg bg-slate-900/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Total</p>
-                          <p className="text-lg font-semibold text-white">{module.stats.total}</p>
-                        </div>
-                        <div className="rounded-lg bg-slate-900/60 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Contenedores</p>
-                          <p className="text-lg font-semibold text-white">{module.stats.totalContenedores}</p>
-                        </div>
-                        <div className="rounded-lg bg-green-500/10 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-green-300">Confirmados</p>
-                          <p className="text-lg font-semibold text-green-200">{module.stats.confirmados}</p>
-                        </div>
-                        <div className="rounded-lg bg-yellow-500/10 p-3">
-                          <p className="text-[11px] uppercase tracking-[0.2em] text-yellow-300">Pendientes</p>
-                          <p className="text-lg font-semibold text-yellow-200">{module.stats.pendientes}</p>
-                        </div>
-                      </div>
-                    )}
                   </button>
                 );
               })}
             </div>
           </section>
 
-          <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-slate-400">Mapa de embarques</h3>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Clock className="h-4 w-4" />
-                Actualizado hace 15 min
-              </div>
+          {/* Mapa de embarques - Simplificado */}
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-1">Ubicación de embarques</h3>
+              <p className="text-sm text-slate-400">Visualiza el estado de tus embarques en tiempo real</p>
             </div>
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4">
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-950/60 p-4 shadow-lg">
               <ShipmentsMap registros={filteredRegistrosParaMapa} activeVessels={filteredActiveVessels} />
             </div>
           </section>

@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect, createContext, useContext } from 'react';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('useUser');
 
 interface Usuario {
   id: string;
@@ -44,7 +47,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(null);
       setIsLoading(false);
     } catch (error) {
-      console.error('Error loading user from Supabase:', error);
+      log.error('Error loading user from Supabase', error);
       setIsLoading(false);
     }
   };

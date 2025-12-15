@@ -190,4 +190,3 @@ export default function MiPagina() {
 3. Especifica si necesitas formularios, modales, o componentes especiales
 4. El asistente convertirá todo manteniendo la coherencia visual con el proyecto
 
-

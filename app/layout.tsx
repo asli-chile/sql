@@ -3,6 +3,7 @@ import { Fira_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { UserProvider } from "@/hooks/useUser";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const firaSans = Fira_Sans({
   weight: '700',
@@ -42,11 +43,13 @@ export default function RootLayout({
         className={`${firaSans.variable} antialiased`}
         style={{ fontFamily: 'var(--font-fira-sans), sans-serif' }}
       >
-        <ThemeProvider>
-          <UserProvider>
-            {children}
-          </UserProvider>
-        </ThemeProvider>
+        <ErrorBoundary>
+          <ThemeProvider>
+            <UserProvider>
+              {children}
+            </UserProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

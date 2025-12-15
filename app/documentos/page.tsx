@@ -55,6 +55,8 @@ export default function DocumentosPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [downloadUrlLoading, setDownloadUrlLoading] = useState<string | null>(null);
   const [selectedBooking, setSelectedBooking] = useState('');
+  const [selectedBookingFromSelect, setSelectedBookingFromSelect] = useState('');
+  const [selectedContenedorFromSelect, setSelectedContenedorFromSelect] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [inspectedBooking, setInspectedBooking] = useState('');
   const [inspectedContenedor, setInspectedContenedor] = useState('');
@@ -630,7 +632,46 @@ export default function DocumentosPage() {
     return 'booking';
   };
 
-  const handleInspect = () => {
+  const handleInspect = (bookingValue?: string, contenedorValue?: string) => {
+    // Si se pasa una cadena vacía explícitamente, limpiar todo
+    if (bookingValue === '' || contenedorValue === '') {
+      setSearchInput('');
+      setSelectedBooking('');
+      setInspectedBooking('');
+      setInspectedContenedor('');
+      setSelectedBookingFromSelect('');
+      setSelectedContenedorFromSelect('');
+      return;
+    }
+
+    // Si se pasan valores desde los selects, usarlos directamente
+    if (bookingValue) {
+      const normalized = normalizeBooking(bookingValue);
+      if (normalized) {
+        setSearchInput(normalized);
+        setSelectedBooking(normalized);
+        setInspectedBooking(normalized);
+        setInspectedContenedor('');
+        setSelectedBookingFromSelect(bookingValue);
+        setSelectedContenedorFromSelect('');
+        return;
+      }
+    }
+
+    if (contenedorValue) {
+      const normalized = contenedorValue.trim().toUpperCase();
+      if (normalized) {
+        setSearchInput(normalized);
+        setInspectedContenedor(normalized);
+        setSelectedBooking('');
+        setInspectedBooking('');
+        setSelectedContenedorFromSelect(contenedorValue);
+        setSelectedBookingFromSelect('');
+        return;
+      }
+    }
+
+    // Si no hay valores desde selects, usar el input manual
     const trimmed = searchInput.trim();
     if (!trimmed) {
       showError('Ingresa un booking o contenedor válido para buscar.');
@@ -648,14 +689,18 @@ export default function DocumentosPage() {
       setSearchInput(normalized);
       setSelectedBooking(normalized);
       setInspectedBooking(normalized);
-      setInspectedContenedor(''); // Limpiar contenedor inspeccionado
+      setInspectedContenedor('');
+      setSelectedBookingFromSelect(normalized);
+      setSelectedContenedorFromSelect('');
     } else {
       // Búsqueda por contenedor
       const normalized = trimmed.toUpperCase();
       setSearchInput(normalized);
       setInspectedContenedor(normalized);
-      setSelectedBooking(''); // Limpiar booking seleccionado
-      setInspectedBooking(''); // Limpiar booking inspeccionado
+      setSelectedBooking('');
+      setInspectedBooking('');
+      setSelectedContenedorFromSelect(normalized);
+      setSelectedBookingFromSelect('');
     }
   };
 
@@ -691,11 +736,6 @@ export default function DocumentosPage() {
     return facturas.filter((factura) => refsPermitidos.has(factura.refAsli));
   }, [facturas, registrosFiltrados, selectedTemporada, isAdminOrEjecutivo]);
 
-  const registrosSinFactura = useMemo(() => {
-    const facturasPorRegistro = new Set(facturasFiltradas.map((f) => f.registroId));
-    return registrosFiltrados.filter((r) => r.id && !facturasPorRegistro.has(r.id));
-  }, [registrosFiltrados, facturasFiltradas]);
-
   const bookingOptions = useMemo(() => {
     const set = new Set(
       registrosFiltrados
@@ -703,6 +743,24 @@ export default function DocumentosPage() {
         .filter((booking): booking is string => Boolean(booking && booking.length > 0)),
     );
     return Array.from(set).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+  }, [registrosFiltrados]);
+
+  const contenedorOptions = useMemo(() => {
+    const set = new Set<string>();
+    registrosFiltrados.forEach((r) => {
+      const contenedores = Array.isArray(r.contenedor)
+        ? r.contenedor
+        : r.contenedor
+          ? [r.contenedor]
+          : [];
+      contenedores.forEach((cont) => {
+        const contStr = typeof cont === 'string' ? cont.trim().toUpperCase() : String(cont).trim().toUpperCase();
+        if (contStr && contStr.length > 0) {
+          set.add(contStr);
+        }
+      });
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }));
   }, [registrosFiltrados]);
 
   const temporadasDisponibles = useMemo(() => {
@@ -723,20 +781,16 @@ export default function DocumentosPage() {
   }, [registros]);
 
   useEffect(() => {
+    // Limpiar búsqueda si no hay opciones disponibles
     if (bookingOptions.length === 0) {
       setSelectedBooking('');
       setSearchInput('');
       setInspectedBooking('');
       setInspectedContenedor('');
-      return;
+      setSelectedBookingFromSelect('');
+      setSelectedContenedorFromSelect('');
     }
-    if (!selectedBooking && !searchInput && !inspectedBooking && !inspectedContenedor) {
-      const first = normalizeBooking(bookingOptions[0]);
-      setSelectedBooking(first);
-      setSearchInput(first);
-      setInspectedBooking(first);
-    }
-  }, [bookingOptions, selectedBooking, searchInput, inspectedBooking, inspectedContenedor]);
+  }, [bookingOptions]);
 
   const bookingMap = useMemo(() => {
     const map = new Map<string, Registro>();
@@ -796,6 +850,26 @@ export default function DocumentosPage() {
     });
     return next;
   }, [documentsByType, allowedBookingsSet, isAdminOrEjecutivo, selectedTemporada, clientesAsignados, currentUser, deletedDocuments]);
+
+  const registrosSinFacturaProforma = useMemo(() => {
+    // Obtener todos los bookings que tienen factura proforma subida
+    const bookingsConProforma = new Set<string>();
+    const proformaDocs = filteredDocumentsByType['factura-proforma'] || [];
+    proformaDocs.forEach((doc) => {
+      if (doc.booking) {
+        const bookingKey = normalizeBooking(doc.booking);
+        if (bookingKey) {
+          bookingsConProforma.add(bookingKey);
+        }
+      }
+    });
+
+    // Filtrar registros que NO tienen factura proforma subida
+    return registrosFiltrados.filter((r) => {
+      const bookingKey = normalizeBooking(r.booking);
+      return bookingKey && !bookingsConProforma.has(bookingKey);
+    });
+  }, [registrosFiltrados, filteredDocumentsByType]);
 
   const documentsByBookingMap = useMemo(() => {
     const map = new Map<string, Record<string, StoredDocument[]>>();
@@ -942,7 +1016,7 @@ export default function DocumentosPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-8 sm:px-6 lg:px-0">
+      <div className="mx-auto flex w-full max-w-[95vw] xl:max-w-[98vw] flex-col gap-10 px-4 py-8 sm:px-6 lg:px-6">
 
         <DocumentFilters
           searchInput={searchInput}
@@ -957,7 +1031,13 @@ export default function DocumentosPage() {
           temporadasDisponibles={temporadasDisponibles}
           totalUploadedDocs={totalUploadedDocs}
           facturasCount={facturasFiltradas.length}
-          registrosSinFacturaCount={registrosSinFactura.length}
+          registrosSinFacturaProformaCount={registrosSinFacturaProforma.length}
+          bookingOptions={bookingOptions}
+          contenedorOptions={contenedorOptions}
+          selectedBookingFromSelect={selectedBookingFromSelect}
+          setSelectedBookingFromSelect={setSelectedBookingFromSelect}
+          selectedContenedorFromSelect={selectedContenedorFromSelect}
+          setSelectedContenedorFromSelect={setSelectedContenedorFromSelect}
         />
 
         <DocumentList
@@ -980,7 +1060,7 @@ export default function DocumentosPage() {
 
       </div>
 
-      <AppFooter className="mx-auto mb-10 mt-4 w-full max-w-6xl" />
+      <AppFooter className="mx-auto mb-10 mt-4 w-full max-w-[95vw] xl:max-w-[98vw] px-4 sm:px-6 lg:px-6" />
 
       {isCreatorOpen && registroSeleccionado && (
         <FacturaCreator
