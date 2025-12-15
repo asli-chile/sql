@@ -109,7 +109,8 @@ export default function TransportesPage() {
     return () => {
       isMounted = false;
     };
-  }, [router]); // Removido setCurrentUser de dependencias
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router]); // setCurrentUser es estable desde useUser hook
 
   useEffect(() => {
     let isMounted = true;
