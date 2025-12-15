@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Configuración de Turbopack (vacía para usar webpack)
+  turbopack: {},
+  
   webpack: (config, { isServer }) => {
     // Excluir deck.gl y mapbox de SSR
     if (!isServer) {
