@@ -21,6 +21,7 @@ export interface Registro {
   co2: number | null;
   o2: number | null;
   tratamientoFrio?: string | null;
+  tipoAtmosfera?: string | null;
   pol: string;
   pod: string;
   deposito: string;
