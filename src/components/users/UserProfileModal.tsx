@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase-browser';
-import { X, User, Mail, Save, AlertCircle } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useRouter } from 'next/navigation';
+import { X, User, Mail, Save, AlertCircle, LogOut, Users } from 'lucide-react';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -16,6 +18,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const supabase = createClient();
+  const { theme } = useTheme();
+  const router = useRouter();
+  const isDark = theme === 'dark';
 
   useEffect(() => {
     if (userInfo) {
@@ -67,122 +72,258 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   if (!isOpen) return null;
 
+  const clientesAsignados = userInfo?.clientes_asignados || [];
+  const clienteNombre = userInfo?.cliente_nombre || null;
+  const isEjecutivo = userInfo?.rol === 'ejecutivo';
+  const isCliente = userInfo?.rol === 'cliente';
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div 
+        className={`rounded-lg shadow-xl max-w-md w-full ${
+          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b dark:border-gray-700">
+        <div className={`flex items-center justify-between p-6 border-b ${
+          isDark ? 'border-slate-700' : 'border-gray-200'
+        }`}>
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+              isDark ? 'bg-blue-600' : 'bg-blue-600'
+            }`}>
               <User className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Editar Perfil
+              <h2 className={`text-lg font-semibold ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`}>
+                Perfil de Usuario
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Actualiza tu información personal
+              <p className={`text-sm ${
+                isDark ? 'text-slate-400' : 'text-gray-600'
+              }`}>
+                Información de tu cuenta
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            className={`transition-colors ${
+              isDark 
+                ? 'text-slate-400 hover:text-slate-300' 
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Error message */}
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center">
-              <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
-              <span className="text-red-700 dark:text-red-300 text-sm">{error}</span>
+            <div className={`p-3 rounded-lg flex items-center border ${
+              isDark
+                ? 'bg-red-900/20 border-red-800'
+                : 'bg-red-50 border-red-200'
+            }`}>
+              <AlertCircle className={`w-4 h-4 mr-2 ${
+                isDark ? 'text-red-400' : 'text-red-500'
+              }`} />
+              <span className={`text-sm ${
+                isDark ? 'text-red-300' : 'text-red-700'
+              }`}>{error}</span>
             </div>
           )}
 
-          {/* Email (readonly) */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Email
-            </label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="email"
-                value={userInfo?.email || ''}
-                disabled
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed"
-              />
-            </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              El email no se puede cambiar
-            </p>
-          </div>
-
           {/* Nombre */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className={`block text-sm font-medium mb-1 ${
+              isDark ? 'text-slate-200' : 'text-gray-700'
+            }`}>
               Nombre Completo *
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <User className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+                isDark ? 'text-slate-500' : 'text-gray-400'
+              }`} />
               <input
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  isDark
+                    ? 'border-slate-600 bg-slate-700 text-white placeholder-slate-400'
+                    : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
+                }`}
                 placeholder="Tu nombre completo"
                 required
               />
             </div>
           </div>
 
+          {/* Email (readonly) */}
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${
+              isDark ? 'text-slate-200' : 'text-gray-700'
+            }`}>
+              Email
+            </label>
+            <div className="relative">
+              <Mail className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+                isDark ? 'text-slate-500' : 'text-gray-400'
+              }`} />
+              <input
+                type="email"
+                value={userInfo?.email || ''}
+                disabled
+                className={`w-full pl-10 pr-4 py-2 border rounded-lg cursor-not-allowed ${
+                  isDark
+                    ? 'border-slate-600 bg-slate-700/50 text-slate-400'
+                    : 'border-gray-300 bg-gray-50 text-gray-500'
+                }`}
+              />
+            </div>
+            <p className={`text-xs mt-1 ${
+              isDark ? 'text-slate-500' : 'text-gray-500'
+            }`}>
+              El email no se puede cambiar
+            </p>
+          </div>
+
           {/* Rol (readonly) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            <label className={`block text-sm font-medium mb-1 ${
+              isDark ? 'text-slate-200' : 'text-gray-700'
+            }`}>
               Rol
             </label>
-            <div className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
-              <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+            <div className={`px-3 py-2 border rounded-lg ${
+              isDark
+                ? 'border-slate-600 bg-slate-700'
+                : 'border-gray-300 bg-gray-50'
+            }`}>
+              <span className={`text-sm font-medium capitalize ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`}>
                 {userInfo?.rol || 'usuario'}
               </span>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className={`text-xs mt-1 ${
+              isDark ? 'text-slate-500' : 'text-gray-500'
+            }`}>
               El rol solo puede ser cambiado por un administrador
             </p>
           </div>
+
+          {/* Clientes Asignados (solo para ejecutivos) */}
+          {isEjecutivo && clientesAsignados.length > 0 && (
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${
+                isDark ? 'text-slate-200' : 'text-gray-700'
+              }`}>
+                <Users className="inline w-4 h-4 mr-1" />
+                Clientes Asignados
+              </label>
+              <div className={`space-y-2 max-h-32 overflow-y-auto ${
+                isDark ? 'bg-slate-700/50' : 'bg-gray-50'
+              } rounded-lg p-3`}>
+                {clientesAsignados.map((cliente: string, index: number) => (
+                  <div
+                    key={index}
+                    className={`text-sm px-2 py-1 rounded ${
+                      isDark
+                        ? 'bg-slate-600 text-slate-200'
+                        : 'bg-white text-gray-700 border border-gray-200'
+                    }`}
+                  >
+                    {cliente}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cliente Nombre (solo para clientes) */}
+          {isCliente && clienteNombre && (
+            <div>
+              <label className={`block text-sm font-medium mb-1 ${
+                isDark ? 'text-slate-200' : 'text-gray-700'
+              }`}>
+                Cliente
+              </label>
+              <div className={`px-3 py-2 border rounded-lg ${
+                isDark
+                  ? 'border-slate-600 bg-slate-700'
+                  : 'border-gray-300 bg-gray-50'
+              }`}>
+                <span className={`text-sm font-medium ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {clienteNombre}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end space-x-3 p-6 border-t dark:border-gray-700">
+        <div className={`flex items-center justify-between p-6 border-t ${
+          isDark ? 'border-slate-700' : 'border-gray-200'
+        }`}>
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+            onClick={handleLogout}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              isDark
+                ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200'
+                : 'text-red-600 hover:bg-red-50'
+            }`}
           >
-            Cancelar
+            <LogOut className="w-4 h-4" />
+            <span>Cerrar sesión</span>
           </button>
-          <button
-            onClick={handleSave}
-            disabled={loading || !nombre.trim()}
-            className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Guardando...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Guardar</span>
-              </>
-            )}
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                isDark
+                  ? 'text-slate-300 hover:text-slate-200 hover:bg-slate-700'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+              }`}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={loading || !nombre.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Guardando...</span>
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  <span>Guardar</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

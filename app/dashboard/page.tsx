@@ -25,6 +25,7 @@ import {
   Settings,
   Users,
   X,
+  LayoutDashboard,
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
@@ -616,9 +617,15 @@ export default function DashboardPage() {
 
   const sidebarNav: SidebarSection[] = [
     {
+      title: 'Inicio',
+      items: [
+        { label: 'Dashboard', id: 'dashboard', isActive: true, icon: LayoutDashboard },
+      ],
+    },
+    {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: 'registros', isActive: true, icon: Ship },
+        { label: 'Embarques', id: 'registros', isActive: false, icon: Ship },
         { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false, icon: Globe },
         { label: 'Transportes', id: 'transportes', isActive: false, icon: Truck },
         { label: 'Documentos', id: 'documentos', isActive: false, icon: FileText },
@@ -635,7 +642,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Overlay para móvil */}
       {isMobileMenuOpen && (
         <div 
@@ -646,7 +653,7 @@ export default function DashboardPage() {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:relative left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
+        className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } ${
           isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
@@ -713,6 +720,11 @@ export default function DashboardPage() {
                         key={item.label}
                         onClick={() => {
                           if ('id' in item) {
+                            if (item.id === 'dashboard') {
+                              // Si ya estamos en dashboard, no hacer nada
+                              setIsMobileMenuOpen(false);
+                              return;
+                            }
                             router.push(`/${item.id}`);
                             setIsMobileMenuOpen(false);
                           } else if ('onClick' in item && typeof item.onClick === 'function') {
@@ -759,27 +771,12 @@ export default function DashboardPage() {
               <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
               <ThemeToggle variant="switch" label="Tema" />
             </div>
-            <div className="space-y-2 sm:space-y-3">
-              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Cuenta</p>
-              <button
-                onClick={handleLogout}
-                className={`group w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
-                  theme === 'dark'
-                    ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200'
-                    : 'text-red-600 hover:bg-red-50'
-                }`}
-                aria-label="Cerrar sesión"
-              >
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="text-xs sm:text-sm font-semibold">Cerrar sesión</span>
-              </button>
-            </div>
           </div>
         )}
       </aside>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
         <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
           <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 py-3 sm:py-4">
             {/* Botón hamburguesa para móvil */}

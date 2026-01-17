@@ -3,19 +3,26 @@
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
+import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { AlertCircle, Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState, useEffect } from 'react';
 
 type AuthMode = 'login' | 'register';
 
-const inputClasses =
-  'w-full rounded-xl border border-white/10 bg-white/5 px-12 py-3 text-sm text-white placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/50';
-
 const AuthPage = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const supabase = createClient();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+
+  const inputClasses = `w-full rounded-xl border px-12 py-3.5 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:shadow-md ${
+    isDark
+      ? 'border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
+      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
+  }`;
 
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -235,68 +242,104 @@ const AuthPage = () => {
   };
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-12">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-20 top-16 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
-        <div className="absolute bottom-12 right-12 h-80 w-80 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-500/10 blur-3xl" />
+    <main className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 ${
+      isDark
+        ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+        : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100'
+    }`}>
+      {/* Botón de cambio de tema - Esquina superior derecha */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle variant="icon" />
       </div>
 
-      <section className="relative z-10 grid w-full max-w-5xl gap-8 rounded-[32px] border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-2xl md:grid-cols-[1fr_minmax(0,420px)]">
-        <aside className="hidden flex-col justify-between rounded-2xl bg-gradient-to-br from-sky-500/20 via-slate-900/60 to-blue-600/30 p-8 text-slate-100 shadow-xl md:flex">
-          <div className="space-y-6">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-medium uppercase tracking-[0.35em] text-slate-100/90">
+      {/* Efectos de fondo sutiles */}
+      <div className="pointer-events-none absolute inset-0">
+        {isDark ? (
+          <>
+            <div className="absolute -left-20 top-16 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
+            <div className="absolute bottom-12 right-12 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
+          </>
+        ) : (
+          <>
+            <div className="absolute -left-20 top-16 h-96 w-96 rounded-full bg-blue-400/20 blur-3xl" />
+            <div className="absolute bottom-12 right-12 h-80 w-80 rounded-full bg-sky-400/15 blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-300/10 blur-3xl" />
+          </>
+        )}
+      </div>
+
+      <section className={`relative z-10 grid w-full max-w-6xl gap-0 rounded-3xl border shadow-2xl backdrop-blur-xl md:grid-cols-[1.2fr_1fr] overflow-hidden ${
+        isDark
+          ? 'border-slate-700/80 bg-slate-800/80'
+          : 'border-slate-200/80 bg-white/80'
+      }`}>
+        {/* Panel izquierdo - Información */}
+        <aside className="hidden flex-col justify-between rounded-l-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-10 text-white shadow-2xl md:flex">
+          <div className="space-y-8">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white/95 shadow-lg">
               Plataforma ASLI
-            </span>
-            <div className="space-y-4">
-              <h2 className="text-3xl font-semibold text-white">
+            </div>
+            <div className="space-y-5">
+              <h2 className="text-4xl font-bold leading-tight text-white">
                 Gestiona la logística con datos confiables y decisiones ágiles
               </h2>
-              <p className="text-sm text-slate-200">
+              <p className="text-base leading-relaxed text-blue-50/90">
                 Centraliza la información de tu operación y accede a tableros inteligentes para planificar, ejecutar y medir en tiempo real.
               </p>
             </div>
-            <ul className="space-y-3 text-sm text-slate-100/80">
-              <li className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-sky-300" aria-hidden="true" />
-                Monitoreo continuo de embarques y documentación
+            <ul className="space-y-4 text-base text-blue-50/90">
+              <li className="flex items-start gap-4">
+                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
+                <span>Monitoreo continuo de embarques y documentación</span>
               </li>
-              <li className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-sky-300" aria-hidden="true" />
-                Flujos colaborativos con tu equipo y clientes
+              <li className="flex items-start gap-4">
+                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
+                <span>Flujos colaborativos con tu equipo y clientes</span>
               </li>
-              <li className="flex items-center gap-3">
-                <span className="h-2 w-2 rounded-full bg-sky-300" aria-hidden="true" />
-                Autenticación segura respaldada por Supabase
+              <li className="flex items-start gap-4">
+                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
+                <span>Autenticación segura respaldada por Supabase</span>
               </li>
             </ul>
           </div>
-          <div className="mt-10 space-y-2 text-sm text-slate-200">
-            <p className="font-medium text-white">Soporte dedicado</p>
-            <p>Escríbenos a rodrigo.caceres@asli.cl</p>
+          <div className="mt-12 space-y-2 rounded-xl bg-white/10 backdrop-blur-sm p-5 border border-white/20">
+            <p className="font-semibold text-white">Soporte dedicado</p>
+            <p className="text-sm text-blue-50/90">Escríbenos a rodrigo.caceres@asli.cl</p>
           </div>
         </aside>
 
-        <div className="rounded-2xl bg-slate-950/70 p-6 shadow-lg sm:p-8">
-          <div className="mb-8 flex flex-col items-center gap-4 text-center md:items-start md:text-left">
+        {/* Panel derecho - Formulario */}
+        <div className={`rounded-r-3xl p-8 shadow-xl sm:p-10 ${
+          isDark ? 'bg-slate-800' : 'bg-white'
+        }`}>
+          <div className="mb-10 flex flex-col items-center gap-5 text-center md:items-start md:text-left">
             <div
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl"
+              className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ${
+                isDark
+                  ? 'from-blue-600 to-indigo-700 shadow-blue-500/30'
+                  : 'from-blue-500 to-indigo-600 shadow-blue-500/30'
+              }`}
               data-preserve-bg
             >
               <Image
                 src="/logoasli.png"
                 alt="Logo ASLI"
-                width={56}
-                height={56}
-                className="h-12 w-12 object-contain drop-shadow-[0_0_16px_rgba(125,211,252,0.45)]"
+                width={64}
+                height={64}
+                className="h-14 w-14 object-contain"
                 priority
               />
             </div>
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold text-white">
+            <div className="space-y-2">
+              <h1 className={`text-3xl font-bold ${
+                isDark ? 'text-white' : 'text-slate-900'
+              }`}>
                 {isLogin ? 'Bienvenido de vuelta' : 'Crea tu acceso seguro'}
               </h1>
-              <p className="text-sm text-slate-300">
+              <p className={`text-base ${
+                isDark ? 'text-slate-300' : 'text-slate-600'
+              }`}>
                 {isLogin
                   ? 'Ingresa tus credenciales para continuar gestionando tu operación.'
                   : 'Completa los datos para habilitar tu cuenta y comienza a colaborar.'}
@@ -304,14 +347,24 @@ const AuthPage = () => {
             </div>
           </div>
 
-          <div className="mb-6 flex rounded-xl bg-white/5 p-1 text-sm font-medium">
+          <div className={`mb-8 flex rounded-xl p-1.5 text-sm font-medium shadow-inner ${
+            isDark ? 'bg-slate-700/50' : 'bg-slate-100'
+          }`}>
             <button
               type="button"
               onClick={() => handleToggleMode('login')}
               aria-pressed={isLogin}
               aria-controls="auth-form"
               disabled={loading}
-              className={`group flex-1 rounded-lg px-4 py-2 transition ${isLogin ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-300 hover:bg-white/10'}`}
+              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${
+                isLogin
+                  ? isDark
+                    ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
+                    : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
+                  : isDark
+                    ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
             >
               <span className="flex items-center justify-center gap-2">
                 <LogIn className="h-4 w-4" aria-hidden="true" />
@@ -324,7 +377,15 @@ const AuthPage = () => {
               aria-pressed={!isLogin}
               aria-controls="auth-form"
               disabled={loading}
-              className={`group flex-1 rounded-lg px-4 py-2 transition ${!isLogin ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30' : 'text-slate-300 hover:bg-white/10'}`}
+              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${
+                !isLogin
+                  ? isDark
+                    ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
+                    : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
+                  : isDark
+                    ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
             >
               <span className="flex items-center justify-center gap-2">
                 <UserPlus className="h-4 w-4" aria-hidden="true" />
@@ -337,10 +398,14 @@ const AuthPage = () => {
             <div
               role="alert"
               aria-live="assertive"
-              className={`mb-6 flex flex-col gap-2 rounded-xl border px-4 py-3 text-sm ${
+              className={`mb-6 flex flex-col gap-2 rounded-xl border-2 px-5 py-4 text-sm shadow-sm ${
                 error.startsWith('✅')
-                  ? 'border-green-500/40 bg-green-500/10 text-green-100'
-                  : 'border-red-500/40 bg-red-500/10 text-red-100'
+                  ? isDark
+                    ? 'border-green-500/50 bg-green-900/30 text-green-300'
+                    : 'border-green-200 bg-green-50 text-green-800'
+                  : isDark
+                    ? 'border-red-500/50 bg-red-900/30 text-red-300'
+                    : 'border-red-200 bg-red-50 text-red-800'
               }`}
             >
               <div className="flex items-start gap-3">
@@ -363,11 +428,15 @@ const AuthPage = () => {
           <form id="auth-form" onSubmit={handleAuth} className="space-y-4" noValidate>
             {!isLogin && (
               <div className="space-y-2">
-                <label htmlFor="fullName" className="text-sm font-medium text-slate-200">
+                <label htmlFor="fullName" className={`text-sm font-semibold ${
+                  isDark ? 'text-slate-200' : 'text-slate-700'
+                }`}>
                   Nombre / Exportadora
                 </label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <User className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                    isDark ? 'text-slate-500' : 'text-slate-400'
+                  }`} aria-hidden="true" />
                   <input
                     id="fullName"
                     name="fullName"
@@ -384,11 +453,15 @@ const AuthPage = () => {
             )}
 
             <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-slate-200">
+              <label htmlFor="email" className={`text-sm font-semibold ${
+                isDark ? 'text-slate-200' : 'text-slate-700'
+              }`}>
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Mail className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                  isDark ? 'text-slate-500' : 'text-slate-400'
+                }`} aria-hidden="true" />
                 <input
                   id="email"
                   name="email"
@@ -404,11 +477,15 @@ const AuthPage = () => {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-slate-200">
+              <label htmlFor="password" className={`text-sm font-semibold ${
+                isDark ? 'text-slate-200' : 'text-slate-700'
+              }`}>
                 Contraseña
               </label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                  isDark ? 'text-slate-500' : 'text-slate-400'
+                }`} aria-hidden="true" />
                 <input
                   id="password"
                   name="password"
@@ -424,7 +501,11 @@ const AuthPage = () => {
                 <button
                   type="button"
                   onClick={handleTogglePasswordVisibility}
-                  className="absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg bg-white/5 text-slate-300 transition hover:bg-white/10"
+                  className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition ${
+                    isDark
+                      ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
+                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                  }`}
                   aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
@@ -434,11 +515,15 @@ const AuthPage = () => {
 
             {!isLogin && (
               <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-medium text-slate-200">
+                <label htmlFor="confirmPassword" className={`text-sm font-semibold ${
+                  isDark ? 'text-slate-200' : 'text-slate-700'
+                }`}>
                   Confirmar contraseña
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                    isDark ? 'text-slate-500' : 'text-slate-400'
+                  }`} aria-hidden="true" />
                   <input
                     id="confirmPassword"
                     name="confirmPassword"
@@ -459,7 +544,11 @@ const AuthPage = () => {
               type="submit"
               disabled={loading}
               aria-busy={loading}
-              className="group relative flex w-full items-center justify-center gap-3 rounded-xl bg-sky-500 py-3 text-sm font-semibold text-white transition hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-70"
+              className={`group relative flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r py-4 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:shadow-lg ${
+                isDark
+                  ? 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-500 hover:to-indigo-600 hover:shadow-blue-500/40 focus:ring-offset-slate-800'
+                  : 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-500/40 focus:ring-offset-white'
+              }`}
             >
               {loading ? (
                 <>
@@ -477,25 +566,35 @@ const AuthPage = () => {
             </button>
           </form>
 
-          <div className="mt-8 text-center text-sm text-slate-300">
+          <div className={`mt-8 text-center text-sm ${
+            isDark ? 'text-slate-300' : 'text-slate-600'
+          }`}>
             {isLogin ? (
               <p>
-                ¿No tienes cuenta?
+                ¿No tienes cuenta?{' '}
                 <button
                   type="button"
                   onClick={() => handleToggleMode('register')}
-                  className="ml-2 text-sky-300 underline-offset-4 transition hover:text-sky-200 hover:underline"
+                  className={`font-semibold underline-offset-4 transition hover:underline ${
+                    isDark
+                      ? 'text-blue-400 hover:text-blue-300'
+                      : 'text-blue-600 hover:text-blue-700'
+                  }`}
                 >
                   Solicitar acceso
                 </button>
               </p>
             ) : (
               <p>
-                ¿Ya perteneces a ASLI?
+                ¿Ya perteneces a ASLI?{' '}
                 <button
                   type="button"
                   onClick={() => handleToggleMode('login')}
-                  className="ml-2 text-sky-300 underline-offset-4 transition hover:text-sky-200 hover:underline"
+                  className={`font-semibold underline-offset-4 transition hover:underline ${
+                    isDark
+                      ? 'text-blue-400 hover:text-blue-300'
+                      : 'text-blue-600 hover:text-blue-700'
+                  }`}
                 >
                   Inicia sesión aquí
                 </button>

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "download-logo": "node scripts/descargar-logo-azul.js",
+    "create-user": "node scripts/create-user.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

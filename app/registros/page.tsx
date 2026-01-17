@@ -158,9 +158,7 @@ export default function RegistrosPage() {
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
   const [isEjecutivo, setIsEjecutivo] = useState(false);
   const isCliente = currentUser?.rol === 'cliente';
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   type DeleteConfirmState = {
     registros: Registro[];
@@ -221,18 +219,6 @@ export default function RegistrosPage() {
     };
   }, [deleteConfirm, deleteProcessing]);
 
-  useEffect(() => {
-    if (!isUserMenuOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsUserMenuOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isUserMenuOpen]);
 
   const checkUser = async () => {
     try {
@@ -295,6 +281,7 @@ export default function RegistrosPage() {
           rol: userData.rol,
           activo: userData.activo,
           cliente_nombre: userData.cliente_nombre ?? null,
+          clientes_asignados: userData.clientes_asignados ?? [],
         };
         setCurrentUser(usuarioActualizado);
 
@@ -304,9 +291,16 @@ export default function RegistrosPage() {
 
         if (userData.rol === 'cliente') {
           const clienteNombre = userData.cliente_nombre?.trim();
-          setClientesAsignados(clienteNombre ? [clienteNombre] : []);
+          const clientesCliente = clienteNombre ? [clienteNombre] : [];
+          setClientesAsignados(clientesCliente);
+          // Actualizar currentUser con los clientes para clientes
+          setCurrentUser({
+            ...usuarioActualizado,
+            clientes_asignados: clientesCliente,
+          });
         } else {
           // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
+          // La función loadClientesAsignados ya actualiza currentUser automáticamente
           await loadClientesAsignados(userData.id, userData.nombre);
         }
 
@@ -388,9 +382,19 @@ export default function RegistrosPage() {
 
       const clientesFinales = Array.from(clientesAsignadosSet);
       setClientesAsignados(clientesFinales);
+      // Actualizar currentUser con los clientes asignados
+      setCurrentUser((prev: any) => ({
+        ...prev,
+        clientes_asignados: clientesFinales,
+      }));
     } catch (error) {
       console.error('Error loading clientes asignados:', error);
       setClientesAsignados([]);
+      // Actualizar currentUser con array vacío en caso de error
+      setCurrentUser((prev: any) => ({
+        ...prev,
+        clientes_asignados: [],
+      }));
     }
   };
 
@@ -2560,21 +2564,6 @@ export default function RegistrosPage() {
               <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
               <ThemeToggle variant="switch" label="Tema" />
             </div>
-            <div className="space-y-2 sm:space-y-3">
-              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Cuenta</p>
-              <button
-                onClick={handleLogout}
-                className={`group w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
-                  theme === 'dark'
-                    ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200'
-                    : 'text-red-600 hover:bg-red-50'
-                }`}
-                aria-label="Cerrar sesión"
-              >
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="text-xs sm:text-sm font-semibold">Cerrar sesión</span>
-              </button>
-            </div>
           </div>
           )}
         </aside>
@@ -2629,10 +2618,9 @@ export default function RegistrosPage() {
                   <div className="relative hidden sm:flex flex-shrink-0">
                     <button
                       type="button"
-                      onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                      onClick={() => setShowProfileModal(true)}
                       className={`flex items-center gap-1.5 sm:gap-2 rounded-full border ${theme === 'dark' ? 'border-slate-600 bg-slate-700 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-50 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700'} shadow-sm transition`}
                       aria-haspopup="dialog"
-                      aria-expanded={isUserMenuOpen}
                     >
                       <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                       <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
@@ -2905,110 +2893,6 @@ export default function RegistrosPage() {
         />
       )}
 
-      {isUserMenuOpen && (
-        <div
-          className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-          onClick={() => setIsUserMenuOpen(false)}
-        >
-          <div
-            ref={userMenuRef}
-            onClick={(event) => event.stopPropagation()}
-            className={`w-full max-w-[960px] rounded-2xl border shadow-2xl ${theme === 'dark'
-              ? 'border-slate-700/70 bg-slate-900 text-slate-100'
-              : 'border-gray-200 bg-white text-gray-900'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b px-8 py-6">
-              <div className="flex items-center gap-4">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${theme === 'dark' ? 'bg-slate-800 text-sky-200' : 'bg-blue-50 text-blue-600'}`}>
-                  <Users className="h-8 w-8" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-lg font-semibold">
-                    {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                  </p>
-                  <p className={`truncate text-base ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                    {currentUser?.email || user?.email || ''}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsUserMenuOpen(false)}
-                className={`rounded-full p-1 transition ${theme === 'dark'
-                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                }`}
-                aria-label="Cerrar"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="px-8 py-6">
-              <p className={`text-sm font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                Clientes asignados
-              </p>
-              <div className="mt-3 space-y-2">
-                {(currentUser?.rol === 'admin') && (
-                  <span className={`block rounded-xl px-4 py-2 text-base font-medium ${theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
-                    Acceso total
-                  </span>
-                )}
-                {currentUser?.rol === 'cliente' && (
-                  <span className={`block rounded-xl px-4 py-2 text-base font-medium ${theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
-                    {currentUser?.cliente_nombre || 'Sin cliente asignado'}
-                  </span>
-                )}
-                {currentUser?.rol !== 'admin' && currentUser?.rol !== 'cliente' && clientesAsignados.length === 0 && (
-                  <span className={`block rounded-xl px-4 py-2 text-base font-medium ${theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
-                    Sin clientes asignados
-                  </span>
-                )}
-                {currentUser?.rol !== 'admin' && currentUser?.rol !== 'cliente' && clientesAsignados.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {clientesAsignados.map((cliente) => (
-                      <span
-                        key={cliente}
-                        className={`rounded-full px-4 py-2 text-base font-semibold ${theme === 'dark'
-                          ? 'bg-slate-800 text-slate-200'
-                          : 'bg-gray-100 text-gray-700'
-                        }`}
-                      >
-                        {cliente}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="border-t px-8 py-6 flex items-center gap-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUserMenuOpen(false);
-                  setShowProfileModal(true);
-                }}
-                className={`flex-1 rounded-2xl px-6 py-3 text-base font-semibold transition ${theme === 'dark'
-                  ? 'bg-slate-800 text-slate-100 hover:bg-slate-700'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                Editar nombre
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className={`flex-1 rounded-2xl px-6 py-3 text-base font-semibold transition ${theme === 'dark'
-                  ? 'bg-rose-500/20 text-rose-200 hover:bg-rose-500/30'
-                  : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
-                }`}
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <UserProfileModal
         isOpen={showProfileModal}
