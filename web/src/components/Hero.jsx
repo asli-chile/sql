@@ -25,6 +25,12 @@ const Hero = () => {
         // En producción, usar la ruta relativa /auth que será manejada por rewrites
         // Esto mantendrá el dominio asli.cl y redirigirá a la ERP vía rewrites
         window.location.href = '/auth'
+        // Fallback: si no funciona, redirigir directamente
+        setTimeout(() => {
+          if (window.location.pathname !== '/auth') {
+            window.location.href = '/auth'
+          }
+        }, 100)
       }
     }
   }
