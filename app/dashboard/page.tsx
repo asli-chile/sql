@@ -430,7 +430,8 @@ export default function DashboardPage() {
       if (error) throw error;
 
       if (!user) {
-        router.push('/auth');
+        // Usar window.location.replace para evitar bucles con rewrites
+        window.location.replace('/auth');
         return;
       }
 
@@ -457,7 +458,8 @@ export default function DashboardPage() {
       }
     } catch (error) {
       console.error('Error checking user:', error);
-      router.push('/auth');
+      // Usar window.location.replace para evitar bucles con rewrites
+      window.location.replace('/auth');
     } finally {
       setLoading(false);
     }

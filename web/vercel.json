@@ -42,7 +42,14 @@
     },
     {
       "source": "/auth",
-      "destination": "https://registo-de-embarques-asli-toox.vercel.app/auth"
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/auth",
+      "has": [
+        {
+          "type": "header",
+          "key": "x-forwarded-host",
+          "value": "asli.cl"
+        }
+      ]
     },
     {
       "source": "/contacto",
@@ -87,6 +94,17 @@
     {
       "source": "/vessel-diagnose/:path*",
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/vessel-diagnose/:path*"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/:path*",
+      "headers": [
+        {
+          "key": "x-forwarded-host",
+          "value": "asli.cl"
+        }
+      ]
     }
   ]
 }
