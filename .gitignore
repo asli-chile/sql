@@ -45,3 +45,6 @@ backup/*.env*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# credenciales y archivos sensibles
+asli-gmail-erp-*.json
