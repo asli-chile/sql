@@ -2,20 +2,38 @@
 import ExcelJS from 'exceljs';
 import { Factura } from '@/types/factura';
 
-export async function generarFacturaExcel(factura: Factura): Promise<void> {
+export type ExcelGenerationOptions = {
+  returnBlob?: boolean;
+  fileNameBase?: string;
+};
+
+export async function generarFacturaExcel(
+  factura: Factura
+): Promise<void>;
+export async function generarFacturaExcel(
+  factura: Factura,
+  options: ExcelGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void>;
+export async function generarFacturaExcel(
+  factura: Factura,
+  options?: ExcelGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void> {
   // Detectar plantilla según cliente
   const clienteNombre = factura.exportador.nombre?.toUpperCase() || '';
   const clientePlantilla = factura.clientePlantilla || '';
   
   if (clienteNombre.includes('FRUIT ANDES') || clientePlantilla === 'FRUIT ANDES SUR') {
-    return generarFacturaExcelFruitAndes(factura);
+    return generarFacturaExcelFruitAndes(factura, options);
   }
   
   // Plantilla por defecto (ALMA)
-  return generarFacturaExcelAlma(factura);
+  return generarFacturaExcelAlma(factura, options);
 }
 
-async function generarFacturaExcelAlma(factura: Factura): Promise<void> {
+async function generarFacturaExcelAlma(
+  factura: Factura,
+  options?: ExcelGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Factura');
 
@@ -296,17 +314,25 @@ async function generarFacturaExcelAlma(factura: Factura): Promise<void> {
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
+  const defaultFileName = `Factura_${factura.refAsli}_${factura.embarque.numeroEmbarque}.xlsx`;
+  const fileName = options?.fileNameBase ? `${options.fileNameBase}.xlsx` : defaultFileName;
+  if (options?.returnBlob) {
+    return { blob, fileName };
+  }
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Factura_${factura.refAsli}_${factura.embarque.numeroEmbarque}.xlsx`;
+  link.download = defaultFileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
 
-async function generarFacturaExcelFruitAndes(factura: Factura): Promise<void> {
+async function generarFacturaExcelFruitAndes(
+  factura: Factura,
+  options?: ExcelGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void> {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet('Proforma');
 
@@ -317,10 +343,15 @@ async function generarFacturaExcelFruitAndes(factura: Factura): Promise<void> {
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
+  const defaultFileName = `Proforma_${factura.refAsli}_${factura.embarque.numeroInvoice}.xlsx`;
+  const fileName = options?.fileNameBase ? `${options.fileNameBase}.xlsx` : defaultFileName;
+  if (options?.returnBlob) {
+    return { blob, fileName };
+  }
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `Proforma_${factura.refAsli}_${factura.embarque.numeroInvoice}.xlsx`;
+  link.download = defaultFileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
