@@ -1,10 +1,9 @@
 import type { NextConfig } from "next";
 
+// NO usar assetPrefix cuando se accede desde asli.cl (vía rewrites)
+// El assetPrefix solo se usa si se accede directamente al dominio de Vercel
 const isProd = process.env.NODE_ENV === "production";
-const assetPrefix = isProd
-  ? process.env.NEXT_PUBLIC_ASSET_PREFIX ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
-  : undefined;
+const assetPrefix = undefined; // Deshabilitado para permitir rewrites desde asli.cl
 
 const nextConfig: NextConfig = {
   /* config options here */
