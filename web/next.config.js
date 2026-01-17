@@ -11,6 +11,21 @@ const nextConfig = {
   },
   async rewrites() {
     return [
+      // IMPORTANTE: Assets de Next.js PRIMERO (mayor prioridad)
+      // Assets de Next.js (JS, CSS, chunks, etc.) - ambas variantes
+      { source: "/_next/static/:path*", destination: `${erpBaseUrl}/_next/static/:path*` },
+      { source: "/_next/image/:path*", destination: `${erpBaseUrl}/_next/image/:path*` },
+      { source: "/_next/chunks/:path*", destination: `${erpBaseUrl}/_next/chunks/:path*` },
+      { source: "/_next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
+      { source: "/next/static/:path*", destination: `${erpBaseUrl}/_next/static/:path*` },
+      { source: "/next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
+      // Assets estáticos de la ERP (logos, imágenes, etc.)
+      { source: "/logoasli.png", destination: `${erpBaseUrl}/logoasli.png` },
+      { source: "/favicon.ico", destination: `${erpBaseUrl}/favicon.ico` },
+      // Fuentes y otros recursos
+      { source: "/fonts/:path*", destination: `${erpBaseUrl}/fonts/:path*` },
+      // Rutas API completas
+      { source: "/api/:path*", destination: `${erpBaseUrl}/api/:path*` },
       // Rutas principales de la ERP
       { source: "/auth", destination: `${erpBaseUrl}/auth` },
       { source: "/contacto", destination: `${erpBaseUrl}/contacto` },
@@ -27,16 +42,6 @@ const nextConfig = {
       },
       { source: "/transportes/:path*", destination: `${erpBaseUrl}/transportes/:path*` },
       { source: "/vessel-diagnose/:path*", destination: `${erpBaseUrl}/vessel-diagnose/:path*` },
-      // Rutas API completas
-      { source: "/api/:path*", destination: `${erpBaseUrl}/api/:path*` },
-      // Assets estáticos de la ERP (logos, imágenes, etc.)
-      { source: "/logoasli.png", destination: `${erpBaseUrl}/logoasli.png` },
-      { source: "/favicon.ico", destination: `${erpBaseUrl}/favicon.ico` },
-      // Assets de Next.js (JS, CSS, chunks, etc.) - ambas variantes
-      { source: "/_next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
-      { source: "/next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
-      // Fuentes y otros recursos
-      { source: "/fonts/:path*", destination: `${erpBaseUrl}/fonts/:path*` },
     ];
   },
 };
