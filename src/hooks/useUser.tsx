@@ -13,6 +13,7 @@ interface Usuario {
   activo: boolean;
   puede_subir?: boolean;
   cliente_nombre?: string | null;
+  clientes_asignados?: string[];
 }
 
 interface UserContextType {
