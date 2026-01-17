@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe,
+  Settings,
+  Users,
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
@@ -583,8 +585,8 @@ export default function DashboardPage() {
   } as const;
 
   type SidebarNavItem =
-    | { label: string; id: string; isActive?: boolean }
-    | { label: string; counter: number; tone: keyof typeof toneBadgeClasses; onClick?: () => void; isActive?: boolean };
+    | { label: string; id: string; isActive?: boolean; icon?: React.ComponentType<{ className?: string }> }
+    | { label: string; counter: number; tone: keyof typeof toneBadgeClasses; onClick?: () => void; isActive?: boolean; icon?: React.ComponentType<{ className?: string }> };
 
   type SidebarSection = {
     title: string;
@@ -611,17 +613,17 @@ export default function DashboardPage() {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: 'registros', isActive: true },
-        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false },
-        { label: 'Transportes', id: 'transportes', isActive: false },
-        { label: 'Documentos', id: 'documentos', isActive: false },
+        { label: 'Embarques', id: 'registros', isActive: true, icon: Ship },
+        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false, icon: Globe },
+        { label: 'Transportes', id: 'transportes', isActive: false, icon: Truck },
+        { label: 'Documentos', id: 'documentos', isActive: false, icon: FileText },
       ],
     },
     ...(canAccessMaintenance
       ? [
           {
             title: 'Sistema',
-            items: [{ label: 'Mantenimiento', id: 'mantenimiento', isActive: false }],
+            items: [{ label: 'Mantenimiento', id: 'mantenimiento', isActive: false, icon: Settings }],
           },
         ]
       : []),
@@ -684,7 +686,12 @@ export default function DashboardPage() {
                           : 'hover:bg-slate-800/40 text-slate-300'
                           }`}
                       >
-                        <span className="text-sm font-medium">{item.label}</span>
+                        <div className="flex items-center gap-2">
+                          {'icon' in item && item.icon && (
+                            <item.icon className="h-4 w-4 flex-shrink-0" />
+                          )}
+                          <span className="text-sm font-medium">{item.label}</span>
+                        </div>
                         {'counter' in item && (
                           <span
                             className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]} ${item.isActive ? 'ring-1 ring-sky-400/60' : ''
