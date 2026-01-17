@@ -604,6 +604,9 @@ export default function DashboardPage() {
   const isAdmin = userInfo?.rol === 'admin';
   const isEjecutivo = userInfo?.email?.endsWith('@asli.cl') || user?.email?.endsWith('@asli.cl');
 
+  const isRodrigo = userInfo?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+  const canAccessMaintenance = isAdmin || isRodrigo;
+
   const sidebarNav: SidebarSection[] = [
     {
       title: 'Módulos',
@@ -614,6 +617,14 @@ export default function DashboardPage() {
         { label: 'Documentos', id: 'documentos', isActive: false },
       ],
     },
+    ...(canAccessMaintenance
+      ? [
+          {
+            title: 'Sistema',
+            items: [{ label: 'Mantenimiento', id: 'mantenimiento', isActive: false }],
+          },
+        ]
+      : []),
   ];
 
   return (
