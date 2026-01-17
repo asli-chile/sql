@@ -16,14 +16,16 @@ export default function HomePage() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        router.push('/dashboard');
+        // Usar window.location.replace para evitar bucles con rewrites
+        window.location.replace('/dashboard');
       } else {
-        router.push('/auth');
+        // Usar window.location.replace para evitar bucles con rewrites
+        window.location.replace('/auth');
       }
     };
 
     checkSession();
-  }, [router]);
+  }, []);
 
   return <LoadingScreen message="Redirigiendo a tu experiencia personalizada..." />;
 }

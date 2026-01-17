@@ -137,6 +137,9 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * 
+     * NOTA: El middleware se deshabilita completamente cuando viene desde asli.cl
+     * dentro de la función middleware(), pero el matcher aún procesa todas las rutas
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
