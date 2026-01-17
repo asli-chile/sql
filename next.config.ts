@@ -1,9 +1,12 @@
 import type { NextConfig } from "next";
 
-// NO usar assetPrefix cuando se accede desde asli.cl (vía rewrites)
-// El assetPrefix solo se usa si se accede directamente al dominio de Vercel
+// Usar assetPrefix apuntando al dominio de Vercel de la ERP
+// Esto hace que los assets se carguen directamente desde el dominio de Vercel
+// incluso cuando se accede desde asli.cl (no necesita rewrites)
 const isProd = process.env.NODE_ENV === "production";
-const assetPrefix = undefined; // Deshabilitado para permitir rewrites desde asli.cl
+const assetPrefix = isProd
+  ? process.env.NEXT_PUBLIC_ASSET_PREFIX || "https://registo-de-embarques-asli-toox.vercel.app"
+  : undefined;
 
 const nextConfig: NextConfig = {
   /* config options here */
