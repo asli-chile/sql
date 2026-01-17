@@ -10,12 +10,13 @@ import {
   ColumnDef,
   SortingState,
   ColumnFiltersState,
+  type ColumnSizingState,
+  type Updater,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Filter, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink } from 'lucide-react';
+import { Search, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink, Copy, Truck } from 'lucide-react';
 
-import { ColumnToggle } from './ColumnToggle';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
 import { ReportGenerator } from '@/components/tools/ReportGenerator';
@@ -44,6 +45,17 @@ interface DataTableProps {
   // Prop para mantener filtros
   preserveFilters?: boolean;
   onShowHistorial?: (record: Registro) => void;
+  onSendToTransportes?: (record: Registro | Registro[]) => void;
+  // Callbacks para exponer estados al sidebar externo
+  onTableInstanceReady?: (table: any, states: {
+    executiveFilter: string;
+    setExecutiveFilter: (value: string) => void;
+    columnToggleOptions: Array<{ id: string; header: string; visible: boolean }>;
+    handleToggleColumn: (columnId: string) => void;
+    handleToggleAllColumns: (visible: boolean) => void;
+    alwaysVisibleColumns: string[];
+    navesFiltrables: Array<[string, string]>;
+  }) => void;
 }
 
 type ScrollLockState = {
@@ -79,6 +91,8 @@ export function DataTable({
   onBulkDelete,
   preserveFilters = true,
   onShowHistorial,
+  onTableInstanceReady,
+  onSendToTransportes,
 }: DataTableProps) {
   const { theme } = useTheme();
 
@@ -91,7 +105,7 @@ export function DataTable({
   const chipClasses = isDark
     ? 'rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-200'
     : 'rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700';
-  const controlButtonBase = 'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+  const controlButtonBase = 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full text-xs sm:text-sm font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
   const controlButtonDefault = isDark
     ? `${controlButtonBase} border border-slate-800/70 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
     : `${controlButtonBase} border border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
@@ -100,52 +114,55 @@ export function DataTable({
     : `${controlButtonBase} border border-blue-500 bg-blue-50 text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
   const toolbarButtonClasses = `${controlButtonDefault} shadow-inner shadow-slate-950/20`;
   const primaryActionClasses = isDark
-    ? 'inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-2.5 py-1 text-[11px] font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950'
-    : 'inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:ring-offset-1 focus-visible:ring-offset-white';
+    ? 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950'
+    : 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-blue-600 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:ring-offset-1 focus-visible:ring-offset-white';
   const destructiveButtonClasses = isDark
-    ? `${controlButtonBase} border border-rose-500/60 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20 focus-visible:ring-rose-500/40 focus-visible:ring-offset-slate-950`
-    : `${controlButtonBase} border border-red-500 bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-400/40 focus-visible:ring-offset-white`;
+    ? `${controlButtonBase} border border-red-500 bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-400/50 focus-visible:ring-offset-slate-950`
+    : `${controlButtonBase} border border-red-500 bg-red-500 text-black hover:bg-red-600 focus-visible:ring-red-400/40 focus-visible:ring-offset-white`;
 
-  // Helper para obtener estilos de filtro según el tema
-  const getFilterStyles = (hasFilter: boolean) => {
-    const baseStyles = "w-full px-3 py-2 text-sm border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors";
-
-    if (hasFilter) {
-      return theme === 'dark'
-        ? `${baseStyles} border-blue-500 bg-blue-900/30 font-semibold text-white`
-        : `${baseStyles} border-blue-600 bg-blue-100 font-semibold text-gray-900`;
-    } else {
-      return theme === 'dark'
-        ? `${baseStyles} border-gray-600 bg-gray-700 text-white placeholder:text-gray-400`
-        : `${baseStyles} border-gray-300 bg-white text-gray-900 placeholder:text-gray-500`;
-    }
-  };
-
-  const getLabelStyles = (hasFilter: boolean) => {
-    if (hasFilter) {
-      return theme === 'dark' ? 'text-blue-400 font-bold' : 'text-blue-600 font-bold';
-    } else {
-      return theme === 'dark' ? 'text-gray-400' : 'text-gray-600';
-    }
-  };
 
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'refAsli', desc: true } // Ordenar por REF ASLI descendente por defecto
   ]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [showSheetsPreview, setShowSheetsPreview] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
-  const [columnSizing, setColumnSizing] = useState<Record<string, number>>({});
+  const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
+  const columnSizingRef = useRef<ColumnSizingState>({});
+  const columnSizingRafRef = useRef<number | null>(null);
+  const pendingColumnSizingRef = useRef<ColumnSizingState | null>(null);
   const sheetsPreviewUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL ?? '';
   const sheetsEditUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID
     ? `https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}/edit`
     : '';
   const canPreviewSheets = Boolean(sheetsPreviewUrl);
   const scrollLockState = useRef<ScrollLockState | null>(null);
+  const sizingResetRef = useRef(false);
+
+  useEffect(() => {
+    if (sizingResetRef.current) {
+      return;
+    }
+    if (Object.keys(columnSizing).length > 0) {
+      setColumnSizing({});
+    }
+    sizingResetRef.current = true;
+  }, [columnSizing]);
+
+  useEffect(() => {
+    columnSizingRef.current = columnSizing;
+  }, [columnSizing]);
+
+  useEffect(() => {
+    return () => {
+      if (columnSizingRafRef.current) {
+        cancelAnimationFrame(columnSizingRafRef.current);
+      }
+    };
+  }, []);
 
   const handleSheetsUpdated = useCallback(() => {
     setIframeKey((prev) => prev + 1);
@@ -194,13 +211,31 @@ export function DataTable({
 
   const [executiveFilter, setExecutiveFilter] = useState('');
   const hasGlobalFilter = typeof globalFilter === 'string' && globalFilter.trim().length > 0;
-  const hasActiveFilters = columnFilters.length > 0 || hasGlobalFilter || executiveFilter !== '';
 
   // Refs
-  const filterPanelRef = useRef<HTMLDivElement>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
   const tableContainerRef = useRef<HTMLDivElement>(null);
+  const cardsScrollRef = useRef<HTMLDivElement>(null);
+  const cardsScrollStateRef = useRef({
+    lastScrollTop: 0,
+    lastDeltaY: 0,
+    lastWheelTs: 0,
+  });
+  const cardsWheelRafRef = useRef<number | null>(null);
+  const cardsWheelDeltaRef = useRef({ x: 0, y: 0 });
+  const [tableWidth, setTableWidth] = useState<number>(0);
+  const autoScrollRef = useRef({
+    isActive: false,
+    originX: 0,
+    originY: 0,
+    velocityX: 0,
+    velocityY: 0,
+    targetVelocityX: 0,
+    targetVelocityY: 0,
+    lastTimestamp: 0,
+  });
+  const autoScrollRafRef = useRef<number | null>(null);
 
   // Helper function para calcular clases de fila (fuera del map para optimización)
   const getRowClasses = (theme: string, isSelected: boolean, isCancelado: boolean, isPendiente: boolean) => {
@@ -218,7 +253,7 @@ export function DataTable({
   };
 
   // Funciones para manejar visibilidad de columnas
-  const handleToggleColumn = (columnId: string) => {
+  const handleToggleColumn = useCallback((columnId: string) => {
     // No permitir ocultar columnas críticas
     if (alwaysVisibleColumns.includes(columnId)) {
       return;
@@ -228,9 +263,9 @@ export function DataTable({
       ...prev,
       [columnId]: !prev[columnId]
     }));
-  };
+  }, [alwaysVisibleColumns]);
 
-  const handleToggleAllColumns = (visible: boolean) => {
+  const handleToggleAllColumns = useCallback((visible: boolean) => {
     const newVisibility: Record<string, boolean> = {};
     columns.forEach(column => {
       if (column.id) {
@@ -243,55 +278,84 @@ export function DataTable({
       }
     });
     setColumnVisibility(newVisibility);
-  };
+  }, [columns, alwaysVisibleColumns]);
 
   // Mantener filtros cuando los datos cambien
   // Los filtros se mantienen automáticamente por React Table
 
-  // Cerrar con ESC
-  useEffect(() => {
-    const handleEsc = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowFilters(false);
-      }
-    };
-
-    if (showFilters) {
-      document.addEventListener('keydown', handleEsc);
-    }
-
-    return () => {
-      document.removeEventListener('keydown', handleEsc);
-    };
-  }, [showFilters]);
-
-  // Cerrar con click fuera
+  // Cerrar menú contextual si se hace click fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-
-      // Verificar si el click fue fuera del panel de filtros
-      if (filterPanelRef.current && showFilters) {
-        // No cerrar si el click fue en el botón de filtros
-        if (!target.closest('[data-filter-button]') && !filterPanelRef.current.contains(target)) {
-          setShowFilters(false);
-        }
-      }
-
       // Cerrar menú contextual si se hace click fuera
       if (contextMenuRef.current && contextMenu && !contextMenuRef.current.contains(event.target as Node)) {
         setContextMenu(null);
       }
     };
 
-    if (showFilters || contextMenu) {
+    if (contextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [showFilters, contextMenu]);
+  }, [contextMenu]);
+
+  // Calcular ancho de la tabla dinámicamente
+  useEffect(() => {
+    let debounceTimer: NodeJS.Timeout;
+    
+    const updateTableWidth = () => {
+      if (tableContainerRef.current) {
+        // Obtener el ancho del contenedor padre (el div que envuelve tableContainerRef)
+        const parentElement = tableContainerRef.current.parentElement;
+        if (parentElement) {
+          const parentRect = parentElement.getBoundingClientRect();
+          const parentWidth = Math.floor(parentRect.width); // Redondear para evitar cambios mínimos
+          
+          // Solo actualizar si el cambio es significativo (más de 2px de diferencia)
+          if (parentWidth > 0 && Math.abs(parentWidth - tableWidth) > 2) {
+            setTableWidth(parentWidth);
+          }
+        } else {
+          // Fallback: usar el ancho del contenedor mismo
+          const rect = tableContainerRef.current.getBoundingClientRect();
+          const containerWidth = Math.floor(Math.max(rect.width, tableContainerRef.current.clientWidth || 0));
+          if (containerWidth > 0 && Math.abs(containerWidth - tableWidth) > 2) {
+            setTableWidth(containerWidth);
+          }
+        }
+      }
+    };
+
+    const debouncedUpdate = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(updateTableWidth, 16); // ~60fps
+    };
+
+    // Actualizar inmediatamente
+    updateTableWidth();
+    
+    // Usar requestAnimationFrame solo una vez al inicio
+    const rafId = requestAnimationFrame(updateTableWidth);
+    
+    window.addEventListener('resize', debouncedUpdate);
+    
+    // Usar ResizeObserver solo en el contenedor padre para evitar observaciones redundantes
+    const resizeObserver = new ResizeObserver(debouncedUpdate);
+    
+    const parentElement = tableContainerRef.current?.parentElement;
+    if (parentElement) {
+      resizeObserver.observe(parentElement);
+    }
+
+    return () => {
+      clearTimeout(debounceTimer);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', debouncedUpdate);
+      resizeObserver.disconnect();
+    };
+  }, [tableWidth]);
 
   // Filtrar datos por ejecutivo antes de pasar a la tabla
   const filteredData = useMemo(() => {
@@ -301,6 +365,24 @@ export function DataTable({
 
     return data.filter((row) => row.ejecutivo === executiveFilter);
   }, [data, executiveFilter]);
+
+  const handleColumnSizingChange = useCallback((updater: Updater<ColumnSizingState>) => {
+    const nextSizing = typeof updater === 'function'
+      ? updater(columnSizingRef.current)
+      : updater;
+
+    pendingColumnSizingRef.current = nextSizing;
+
+    if (columnSizingRafRef.current) return;
+
+    columnSizingRafRef.current = window.requestAnimationFrame(() => {
+      columnSizingRafRef.current = null;
+      if (pendingColumnSizingRef.current) {
+        setColumnSizing(pendingColumnSizingRef.current);
+        pendingColumnSizingRef.current = null;
+      }
+    });
+  }, []);
 
   const table = useReactTable({
     data: filteredData,
@@ -312,7 +394,7 @@ export function DataTable({
     onColumnFiltersChange: setColumnFilters,
     onGlobalFilterChange: setGlobalFilter,
     onColumnVisibilityChange: setColumnVisibility,
-    onColumnSizingChange: setColumnSizing,
+    onColumnSizingChange: handleColumnSizingChange,
     state: {
       sorting,
       columnFilters,
@@ -334,13 +416,96 @@ export function DataTable({
     setExecutiveFilter('');
   };
 
+
+  // Memoizar el cálculo de anchos de columnas para evitar recalcularlos en cada render
+  const columnWidths = useMemo(() => {
+    const widths: Map<string, number> = new Map();
+    const visibleColumns = table.getAllLeafColumns().filter(col =>
+      table.getIsAllColumnsVisible() || col.getIsVisible(),
+    );
+    const totalColumns = visibleColumns.length;
+    const hasCustomSizing = Object.keys(columnSizing).length > 0;
+    const fixedShipperWidth = 250;
+    const fixedNaveWidth = 250;
+    const fixedContratoWidth = 300;
+
+    // Si no hay columnas, retornar vacío
+    if (totalColumns === 0) {
+      return widths;
+    }
+
+    const getDefaultWidth = (column: (typeof visibleColumns)[number]) =>
+      column.columnDef.size ?? column.columnDef.minSize ?? 150;
+    const getColumnWidth = (column: (typeof visibleColumns)[number]) => {
+      if (column.id === 'shipper') return fixedShipperWidth;
+      if (column.id === 'naveInicial') return fixedNaveWidth;
+      if (column.id === 'contrato') return fixedContratoWidth;
+      return getDefaultWidth(column);
+    };
+
+    // Si tableWidth aún no está calculado, usar anchos por defecto
+    if (tableWidth === 0) {
+      visibleColumns.forEach(column => {
+        widths.set(column.id, getColumnWidth(column));
+      });
+      return widths;
+    }
+
+    // Si hay anchos personalizados, usarlos directamente
+    if (hasCustomSizing) {
+      visibleColumns.forEach(column => {
+        if (column.id === 'shipper') {
+          widths.set(column.id, fixedShipperWidth);
+          return;
+        }
+        if (column.id === 'naveInicial') {
+          widths.set(column.id, fixedNaveWidth);
+          return;
+        }
+        if (column.id === 'contrato') {
+          widths.set(column.id, fixedContratoWidth);
+          return;
+        }
+        const customSize = columnSizing[column.id];
+        if (customSize && customSize > 0) {
+          widths.set(column.id, customSize);
+        } else {
+          widths.set(column.id, getDefaultWidth(column));
+        }
+      });
+      return widths;
+    }
+
+    // Usar anchos estándar definidos por columna
+    visibleColumns.forEach(column => {
+      widths.set(column.id, getColumnWidth(column));
+    });
+
+    return widths;
+  }, [table, tableWidth, columnSizing, columnVisibility]);
+
+  const calculatedTableWidth = useMemo(() => {
+    if (tableWidth === 0) {
+      return tableWidth;
+    }
+
+    let totalWidth = 0;
+    columnWidths.forEach(size => {
+      totalWidth += size;
+    });
+
+    return Math.max(tableWidth, totalWidth);
+  }, [columnWidths, tableWidth]);
+
   // Virtualización para optimizar el renderizado de muchas filas
   const { rows } = table.getRowModel();
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => tableContainerRef.current,
-    estimateSize: () => 32, // Altura estimada de cada fila en píxeles
-    overscan: 10, // Renderizar 10 filas adicionales fuera del viewport para scroll suave
+    estimateSize: () => 40, // Altura estimada de cada fila en píxeles
+    overscan: rows.length > 50 ? 5 : 10, // Menos overscan para tablas grandes, más para pequeñas
+    paddingEnd: 20, // Padding al final para evitar vibración en el scroll
+    scrollPaddingEnd: 20, // Padding adicional para scroll suave
   });
 
   const selectedCount = selectedRows?.size ?? 0;
@@ -362,9 +527,50 @@ export function DataTable({
         visible: column.getIsVisible(),
       };
     }).filter((option) => option.id && !option.id.startsWith('_'));
-  }, [table]);
+  }, [table, columnVisibility]);
 
-  const handleToggleFilters = () => setShowFilters((prev) => !prev);
+  // Exponer estados al componente padre si se proporciona el callback
+  // Usar useRef para almacenar el callback y evitar re-renders infinitos
+  const onTableInstanceReadyRef = useRef(onTableInstanceReady);
+  useEffect(() => {
+    onTableInstanceReadyRef.current = onTableInstanceReady;
+  }, [onTableInstanceReady]);
+
+  // Almacenar estados actuales en refs para pasarlos frescos sin causar re-renders
+  const statesRef = useRef({
+    executiveFilter,
+    setExecutiveFilter,
+    columnToggleOptions,
+    handleToggleColumn,
+    handleToggleAllColumns,
+    alwaysVisibleColumns,
+    navesFiltrables,
+  });
+
+  // Actualizar refs cuando los estados cambien
+  useEffect(() => {
+    statesRef.current = {
+      executiveFilter,
+      setExecutiveFilter,
+      columnToggleOptions,
+      handleToggleColumn,
+      handleToggleAllColumns,
+      alwaysVisibleColumns,
+      navesFiltrables,
+    };
+  }, [executiveFilter, columnToggleOptions, navesFiltrables, handleToggleColumn, handleToggleAllColumns, alwaysVisibleColumns, setExecutiveFilter]);
+
+  // Solo ejecutar cuando la tabla cambie (nueva instancia)
+  // Usar useRef para rastrear la última tabla que se pasó al callback
+  const lastTableRef = useRef<any>(null);
+  useEffect(() => {
+    // Solo llamar si la tabla cambió (nueva referencia de objeto)
+    if (onTableInstanceReadyRef.current && table && lastTableRef.current !== table) {
+      lastTableRef.current = table;
+      // Pasar los estados frescos desde el ref
+      onTableInstanceReadyRef.current(table, statesRef.current);
+    }
+  }, [table]); // Solo dependemos de table para evitar ejecuciones innecesarias
 
   const handleSelectAllClick = () => {
     if (!onSelectAll) return;
@@ -414,6 +620,20 @@ export function DataTable({
     } else if (onDelete) {
       onDelete(contextMenu.record);
     }
+    closeContextMenu();
+  };
+
+  const handleContextSendToTransportes = () => {
+    if (!contextMenu || !onSendToTransportes) return;
+    
+    // Si hay múltiples registros seleccionados, enviarlos todos de una vez
+    if (hasSelection && selectedRecordsList.length > 0) {
+      onSendToTransportes(selectedRecordsList);
+    } else {
+      // Si no hay selección, enviar solo el registro del menú contextual
+      onSendToTransportes(contextMenu.record);
+    }
+    
     closeContextMenu();
   };
 
@@ -492,116 +712,281 @@ export function DataTable({
     unlockPageScroll();
   };
 
+  const handleCardsWheel = useCallback((event: React.WheelEvent<HTMLDivElement>) => {
+    const container = event.currentTarget;
+    const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+    const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+
+    if (maxScrollTop === 0 && maxScrollLeft === 0) return;
+
+    const isHorizontalIntent = Math.abs(event.deltaX) > Math.abs(event.deltaY) || event.shiftKey;
+    const deltaX = isHorizontalIntent ? (event.deltaX || event.deltaY) : event.deltaX;
+    const deltaY = isHorizontalIntent ? 0 : event.deltaY;
+
+    cardsWheelDeltaRef.current.x += deltaX;
+    cardsWheelDeltaRef.current.y += deltaY;
+
+    if (!cardsWheelRafRef.current) {
+      cardsWheelRafRef.current = requestAnimationFrame(() => {
+        cardsWheelRafRef.current = null;
+        const pendingX = cardsWheelDeltaRef.current.x;
+        const pendingY = cardsWheelDeltaRef.current.y;
+        cardsWheelDeltaRef.current.x = 0;
+        cardsWheelDeltaRef.current.y = 0;
+
+        const nextTop = Math.min(maxScrollTop, Math.max(0, container.scrollTop + pendingY));
+        const nextLeft = Math.min(maxScrollLeft, Math.max(0, container.scrollLeft + pendingX));
+
+        if (nextTop !== container.scrollTop) {
+          container.scrollTop = nextTop;
+        }
+        if (nextLeft !== container.scrollLeft) {
+          container.scrollLeft = nextLeft;
+        }
+      });
+    }
+
+    cardsScrollStateRef.current.lastDeltaY = event.deltaY;
+    cardsScrollStateRef.current.lastWheelTs = performance.now();
+    event.preventDefault();
+    event.stopPropagation();
+  }, []);
+
+  const handleCardsScroll = useCallback(() => {
+    const container = cardsScrollRef.current;
+    if (!container) return;
+    const currentTop = container.scrollTop;
+    const { lastScrollTop, lastDeltaY, lastWheelTs } = cardsScrollStateRef.current;
+    const now = performance.now();
+    const jumpedUp = currentTop < lastScrollTop - 40;
+    const scrollingDown = lastDeltaY > 0 && now - lastWheelTs < 200;
+
+    if (jumpedUp && scrollingDown) {
+      container.scrollTop = lastScrollTop;
+      return;
+    }
+
+    cardsScrollStateRef.current.lastScrollTop = currentTop;
+  }, []);
+
+  const stopAutoScroll = useCallback(() => {
+    const container = tableContainerRef.current;
+    if (container) {
+      container.style.cursor = '';
+    }
+    autoScrollRef.current.isActive = false;
+    autoScrollRef.current.velocityX = 0;
+    autoScrollRef.current.velocityY = 0;
+    autoScrollRef.current.targetVelocityX = 0;
+    autoScrollRef.current.targetVelocityY = 0;
+    autoScrollRef.current.lastTimestamp = 0;
+    if (autoScrollRafRef.current) {
+      cancelAnimationFrame(autoScrollRafRef.current);
+      autoScrollRafRef.current = null;
+    }
+  }, []);
+
+  const startAutoScroll = useCallback((originX: number, originY: number) => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    autoScrollRef.current.isActive = true;
+    autoScrollRef.current.originX = originX;
+    autoScrollRef.current.originY = originY;
+    container.style.cursor = 'all-scroll';
+
+    const tick = (timestamp: number) => {
+      if (!autoScrollRef.current.isActive) return;
+      const last = autoScrollRef.current.lastTimestamp || timestamp;
+      const dt = Math.min(0.05, (timestamp - last) / 1000);
+      autoScrollRef.current.lastTimestamp = timestamp;
+
+      const smooth = 12;
+      const ease = 1 - Math.exp(-smooth * dt);
+
+      autoScrollRef.current.velocityX +=
+        (autoScrollRef.current.targetVelocityX - autoScrollRef.current.velocityX) * ease;
+      autoScrollRef.current.velocityY +=
+        (autoScrollRef.current.targetVelocityY - autoScrollRef.current.velocityY) * ease;
+
+      const maxScrollLeft = Math.max(0, container.scrollWidth - container.clientWidth);
+      const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+
+      const nextLeft = Math.min(
+        maxScrollLeft,
+        Math.max(0, container.scrollLeft + autoScrollRef.current.velocityX),
+      );
+      const nextTop = Math.min(
+        maxScrollTop,
+        Math.max(0, container.scrollTop + autoScrollRef.current.velocityY),
+      );
+
+      if (
+        (nextLeft === 0 && autoScrollRef.current.targetVelocityX < 0) ||
+        (nextLeft === maxScrollLeft && autoScrollRef.current.targetVelocityX > 0)
+      ) {
+        autoScrollRef.current.velocityX = 0;
+        autoScrollRef.current.targetVelocityX = 0;
+      }
+
+      if (
+        (nextTop === 0 && autoScrollRef.current.targetVelocityY < 0) ||
+        (nextTop === maxScrollTop && autoScrollRef.current.targetVelocityY > 0)
+      ) {
+        autoScrollRef.current.velocityY = 0;
+        autoScrollRef.current.targetVelocityY = 0;
+      }
+
+      container.scrollLeft = nextLeft;
+      container.scrollTop = nextTop;
+      autoScrollRafRef.current = requestAnimationFrame(tick);
+    };
+
+    autoScrollRafRef.current = requestAnimationFrame(tick);
+  }, []);
+
+  const handleTableMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+
+    if (autoScrollRef.current.isActive) {
+      stopAutoScroll();
+      return;
+    }
+
+    startAutoScroll(event.clientX, event.clientY);
+  }, [startAutoScroll, stopAutoScroll]);
+
+  useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!autoScrollRef.current.isActive) return;
+      const dx = event.clientX - autoScrollRef.current.originX;
+      const dy = event.clientY - autoScrollRef.current.originY;
+      const maxSpeed = 20;
+      const nextX = Math.max(-maxSpeed, Math.min(maxSpeed, dx / 14));
+      const nextY = Math.max(-maxSpeed, Math.min(maxSpeed, dy / 14));
+      autoScrollRef.current.targetVelocityX = nextX;
+      autoScrollRef.current.targetVelocityY = nextY;
+    };
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (event.button === 1) return;
+      if (!autoScrollRef.current.isActive) return;
+      stopAutoScroll();
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (!autoScrollRef.current.isActive) return;
+      stopAutoScroll();
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [stopAutoScroll]);
+
   const renderToolbar = () => {
     return (
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center justify-between gap-1.5">
-          <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
             {canAdd && onAdd && (
-              <button onClick={onAdd} className={`${primaryActionClasses} justify-center`}>
-                <Plus className="h-3 w-3" />
-                <span className="hidden sm:inline">Nuevo</span>
+              <button
+                onClick={onAdd}
+                aria-label="Nuevo registro"
+                className={`${primaryActionClasses} flex-col justify-center flex-shrink-0 px-4 sm:px-5 md:px-6 py-3 sm:py-3.5 md:py-4 min-h-[60px] sm:min-h-[68px] md:min-h-[76px] min-w-[140px] sm:min-w-[160px] md:min-w-[180px]`}
+              >
+                <span className="text-[11px] sm:text-xs md:text-sm font-semibold leading-tight tracking-wide !text-white text-center uppercase">
+                  <span className="block">+ NUEVO</span>
+                  <span className="block">REGISTRO</span>
+                </span>
               </button>
             )}
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-400" />
+            <div className="relative flex-1 min-w-0 max-w-full">
+              <Search className={`pointer-events-none absolute left-2.5 sm:left-3 top-1/2 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
               <input
                 type="search"
                 value={globalFilter ?? ''}
                 onChange={handleGlobalSearchChange}
                 placeholder="Buscar..."
-                className={`w-32 rounded-full border pl-7 pr-2 py-1 text-[11px] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
+                className={`w-full min-w-[120px] max-w-full rounded-full border pl-8 sm:pl-10 md:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
                   ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
                   : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
-                  } sm:w-40 md:w-48`}
+                  }`}
               />
             </div>
-            <button
-              data-filter-button
-              onClick={handleToggleFilters}
-              className={showFilters || hasActiveFilters ? controlButtonActive : toolbarButtonClasses}
-            >
-              <div className="flex items-center gap-1">
-                <Filter className="h-3 w-3" />
-                <span className="hidden lg:inline">Filtros</span>
-                {hasActiveFilters && <span className="inline-flex h-2 w-2 rounded-full bg-sky-400"></span>}
-              </div>
+            <button onClick={handleToggleViewMode} className={`${toolbarButtonClasses} flex-shrink-0 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5`}>
+              {viewMode === 'table' ? <Grid className="h-4 w-4 sm:h-5 sm:w-5" /> : <List className="h-4 w-4 sm:h-5 sm:w-5" />}
+              <span className="hidden xl:inline whitespace-nowrap">{viewMode === 'table' ? 'Tarjetas' : 'Tabla'}</span>
             </button>
-            <button onClick={handleToggleViewMode} className={toolbarButtonClasses}>
-              {viewMode === 'table' ? <Grid className="h-3 w-3" /> : <List className="h-3 w-3" />}
-              <span className="hidden xl:inline">{viewMode === 'table' ? 'Tarjetas' : 'Tabla'}</span>
-            </button>
-            {columnToggleOptions.length > 0 && (
-              <div className="hidden xl:block">
-                <ColumnToggle
-                  columns={columnToggleOptions}
-                  onToggleColumn={handleToggleColumn}
-                  onToggleAll={handleToggleAllColumns}
-                  alwaysVisibleColumns={alwaysVisibleColumns}
-                />
-              </div>
-            )}
           </div>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-shrink-0">
             {canPreviewSheets && (
               <button
-                className={showSheetsPreview ? controlButtonActive : toolbarButtonClasses}
+                className={`${showSheetsPreview ? controlButtonActive : toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
                 onClick={() => setShowSheetsPreview((prev) => !prev)}
               >
-                <Eye className="h-3 w-3" />
-                <span className="hidden xl:inline">{showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets</span>
+                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden xl:inline whitespace-nowrap">{showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets</span>
               </button>
             )}
-            <button className={toolbarButtonClasses} onClick={() => setShowReportGenerator(true)}>
-              <Download className="h-3 w-3" />
-              <span className="hidden sm:inline">Exportar</span>
+            <button className={`${toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`} onClick={() => setShowReportGenerator(true)}>
+              <Download className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline whitespace-nowrap">Exportar</span>
             </button>
             <button
-              className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10`}
+              className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
               onClick={handleResetTable}
             >
-              <RefreshCw className="h-3 w-3" />
-              <span className="hidden xl:inline">Reset</span>
+              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xl:inline whitespace-nowrap">Reset</span>
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-1">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
             {onSelectAll && (
-              <button onClick={handleSelectAllClick} className={toolbarButtonClasses}>
-                <CheckSquare className="h-3 w-3" />
-                <span className="hidden lg:inline">Todo</span>
+              <button onClick={handleSelectAllClick} className={`${toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}>
+                <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden lg:inline whitespace-nowrap">Todo</span>
               </button>
             )}
             {onClearSelection && (
               <button
                 onClick={handleClearSelectionClick}
-                className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
                 disabled={!hasSelection}
               >
-                <RotateCcw className="h-3 w-3" />
-                <span className="hidden lg:inline">Limpiar</span>
+                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden lg:inline whitespace-nowrap">Limpiar</span>
               </button>
             )}
             {canDelete && onBulkDelete && (
               <button
                 onClick={handleBulkDeleteClick}
-                className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
                 disabled={!hasSelection}
               >
-                <Trash2 className="h-3 w-3" />
-                <span className="hidden lg:inline">Eliminar</span>
-              </button>
-            )}
+                <Trash2 className={`h-4 w-4 sm:h-5 sm:w-5 ${isDark ? 'text-white' : 'text-black'}`} />
+                <span className={`hidden lg:inline whitespace-nowrap ${isDark ? 'text-white' : 'text-black'}`}>Eliminar</span>
             {hasSelection && (
               <span
-                className={`inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[10px] font-semibold ${isDark
-                  ? 'bg-sky-500/10 text-sky-200 border border-sky-500/40'
-                  : 'bg-blue-100 text-blue-700 border border-blue-200'
+                    className={`ml-1.5 inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold ${isDark
+                      ? 'bg-white/20 text-white'
+                      : 'bg-black/15 text-black'
                   }`}
               >
                 {selectedCount}
               </span>
+                )}
+              </button>
             )}
           </div>
         </div>
@@ -610,16 +995,16 @@ export function DataTable({
   };
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full h-full flex flex-col min-w-0" style={{ width: '100%', maxWidth: '100%', minWidth: 0, height: '100%', padding: 0, margin: 0 }}>
       {/* Header con controles */}
-      <div className={`${panelClasses} rounded-2xl px-2.5 py-2`}>
+      <div className={`${panelClasses} py-2 sm:py-2.5 md:py-3 w-full flex-shrink-0 min-w-0`} style={{ paddingLeft: '8px', paddingRight: '8px' }}>
         {renderToolbar()}
       </div>
 
       {canPreviewSheets && showSheetsPreview && (
-        <div className={`${panelClasses} overflow-hidden rounded-2xl`}>
+        <div className={`${panelClasses} flex-shrink-0 w-full`}>
           <div
-            className={`flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 ${isDark ? 'border-slate-800/60 bg-slate-950/80' : 'border-gray-200 bg-slate-50'
+            className={`flex flex-wrap items-center justify-between gap-2 sm:gap-3 border-b px-3 sm:px-4 py-2 sm:py-3 ${isDark ? 'border-slate-800/60 bg-slate-950/80' : 'border-gray-200 bg-slate-50'
               }`}
           >
             <div>
@@ -672,354 +1057,57 @@ export function DataTable({
         </div>
       )}
 
-      {/* Panel de filtros */}
-      {showFilters && (
-        <div
-          ref={filterPanelRef}
-          className={`${panelClasses} rounded-2xl border border-slate-800/60 bg-slate-950/70 p-5 backdrop-blur transition-all`}
-        >
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Controles avanzados</p>
-              <h3 className="text-sm font-semibold text-slate-100">Filtros por columna</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              {(columnFilters.length > 0 || executiveFilter) && (
-                <button
-                  onClick={() => {
-                    setColumnFilters([]);
-                    setExecutiveFilter('');
-                  }}
-                  className={`${controlButtonActive} px-3 py-1 text-[11px]`}
-                >
-                  Limpiar filtros
-                </button>
-              )}
-              <button
-                onClick={() => setShowFilters(false)}
-                className={`${toolbarButtonClasses} px-3 py-1 text-[11px]`}
-              >
-                <X className="h-4 w-4" />
-                Cerrar
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <div className="space-y-1">
-              <label className={`text-xs font-medium ${getLabelStyles(executiveFilter !== '')}`}>
-                Ejecutivo {executiveFilter && '(✓)'}
-              </label>
-              <select
-                value={executiveFilter}
-                onChange={(e) => setExecutiveFilter(e.target.value)}
-                className={getFilterStyles(executiveFilter !== '')}
-              >
-                <option value="">Todos</option>
-                {ejecutivosUnicos.map((ejecutivo) => (
-                  <option key={ejecutivo} value={ejecutivo}>
-                    {ejecutivo}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Filtros de columnas principales */}
-            {table.getAllLeafColumns().map((column) => {
-              if (column.id.startsWith('_')) {
-                return null;
-              }
-
-              // Filtrar solo las columnas importantes
-              const importantColumns = ['refAsli', 'estado', 'naviera', 'shipper', 'pod', 'deposito', 'pol', 'especie', 'naveInicial'];
-              if (!importantColumns.includes(column.id)) {
-                return null;
-              }
-
-              const filterValue = (column.getFilterValue() ?? '') as string;
-              const hasFilter = filterValue !== '';
-
-              // Cambiar el label de refAsli a REF ASLI
-              if (column.id === 'refAsli') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      REF ASLI {hasFilter && '(✓)'}
-                    </label>
-                    <input
-                      type="text"
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      placeholder="Filtrar por REF ASLI..."
-                      className={getFilterStyles(hasFilter)}
-                    />
-                  </div>
-                );
-              }
-
-              // Cambiar el label de shipper a Cliente
-              if (column.id === 'shipper') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Cliente {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todos</option>
-                      {clientesUnicos.map((cliente) => (
-                        <option key={cliente} value={cliente}>
-                          {cliente}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              if (column.id === 'naveInicial') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Nave (registros) {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todas</option>
-                      {navesFiltrables.map(([value, label]) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              // Cambiar el label de pod a Destino
-              if (column.id === 'pod') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Destino {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todos</option>
-                      {destinosUnicos.map((destino) => (
-                        <option key={destino} value={destino}>
-                          {destino}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              // Cambiar el label de deposito a Depósito
-              if (column.id === 'deposito') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Depósito {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todos</option>
-                      {depositosUnicos.map((deposito) => (
-                        <option key={deposito} value={deposito}>
-                          {deposito}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              // Cambiar el label de pol a Puerto de Salida (POL)
-              if (column.id === 'pol') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Puerto de Salida (POL) {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todos</option>
-                      {polsUnicos.map((pol) => (
-                        <option key={pol} value={pol}>
-                          {pol}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              // Filtro especial para estado: desplegable
-              if (column.id === 'estado') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Estado {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todos</option>
-                      <option value="PENDIENTE">PENDIENTE</option>
-                      <option value="CONFIRMADO">CONFIRMADO</option>
-                      <option value="CANCELADO">CANCELADO</option>
-                    </select>
-                  </div>
-                );
-              }
-
-              // Filtro especial para naviera: desplegable
-              if (column.id === 'naviera') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Naviera {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todas</option>
-                      {navierasUnicas.map((naviera) => (
-                        <option key={naviera} value={naviera}>
-                          {naviera}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              // Filtro especial para ejecutivo: desplegable
-              if (column.id === 'ejecutivo') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Ejecutivo {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todos</option>
-                      {ejecutivosUnicos.map((ejecutivo) => (
-                        <option key={ejecutivo} value={ejecutivo}>
-                          {ejecutivo}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              // Filtro especial para especie: desplegable
-              if (column.id === 'especie') {
-                return (
-                  <div key={column.id} className="space-y-1">
-                    <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                      Especie {hasFilter && '(✓)'}
-                    </label>
-                    <select
-                      value={filterValue}
-                      onChange={(e) => column.setFilterValue(e.target.value)}
-                      className={getFilterStyles(hasFilter)}
-                    >
-                      <option value="">Todas</option>
-                      {especiesUnicas.map((especie) => (
-                        <option key={especie} value={especie}>
-                          {especie}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              }
-
-              return (
-                <div key={column.id} className="space-y-1">
-                  <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                    {column.id.toUpperCase()} {hasFilter && '(✓)'}
-                  </label>
-                  <input
-                    type="text"
-                    value={filterValue}
-                    onChange={(e) => column.setFilterValue(e.target.value)}
-                    placeholder={`Filtrar por ${column.id}...`}
-                    className={getFilterStyles(hasFilter)}
-                  />
-                </div>
-              );
-            })}
-
-          </div>
-        </div>
-      )}
-
       {/* Tabla con scroll interno */}
       {viewMode === 'table' && (
-        <div className={`${panelClasses} rounded-2xl overflow-hidden backdrop-blur`}
+        <div className={`${panelClasses} backdrop-blur flex-1 flex flex-col min-h-0 min-w-0`}
+          style={{ width: '100%', minWidth: 0, minHeight: 0, overflow: 'hidden', padding: 0, margin: 0 }}
         >
           <div
             ref={tableContainerRef}
-            className={`max-h-[70vh] overflow-y-auto overflow-x-auto ${isDark ? 'bg-slate-950/40' : 'bg-white'}`}
+            className={`flex-1 min-h-0 min-w-0 ${isDark ? 'bg-slate-950/40' : 'bg-white'}`}
             style={{
-              willChange: 'scroll-position',
-              WebkitOverflowScrolling: 'touch'
+              width: '100%',
+              minWidth: 0,
+              minHeight: 0,
+              overflow: 'auto',
+              overflowAnchor: 'none',
+              WebkitOverflowScrolling: 'touch',
+              padding: 0,
+              margin: 0,
+              overscrollBehavior: 'contain',
+              scrollbarGutter: 'stable both-edges',
             }}
+            onMouseDown={handleTableMouseDown}
           >
             <table
               style={{
                 tableLayout: 'fixed',
-                width: '100%',
+                width: calculatedTableWidth > 0 ? `${calculatedTableWidth}px` : '100%',
+                minWidth: calculatedTableWidth > 0 ? `${calculatedTableWidth}px` : '100%',
                 borderCollapse: 'collapse',
-                fontFamily: 'Arial, sans-serif',
-                fontSize: '10px',
+                fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                fontSize: '13px',
               }}
             >
               <thead className="sticky top-0 z-[250] shadow-[0_10px_24px_rgba(8,15,30,0.45)]">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      const canSort = header.column.getCanSort();
-                      const sortDirection = header.column.getIsSorted();
-                      const isRefAsliColumn = header.id === 'refAsli';
+                {table.getHeaderGroups().map((headerGroup) => {
+                  return (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        if (!table.getIsAllColumnsVisible() && !header.column.getIsVisible()) {
+                          return null;
+                        }
 
-                      let stickyClasses = '';
-                      let stickyStyles: React.CSSProperties = {};
+                        const canSort = header.column.getCanSort();
+                        const sortDirection = header.column.getIsSorted();
+                        const isRefClienteColumn = header.id === 'refCliente';
 
-                      const columnMinSize = header.column.columnDef.minSize || 100;
-                      const columnMaxSize = header.column.columnDef.maxSize || 300;
-                      const columnSize = Math.min(
-                        Math.max(header.column.getSize() || columnMinSize, columnMinSize),
-                        columnMaxSize
-                      );
-                      const headerBorderColor = isDark ? 'rgba(56, 74, 110, 0.9)' : 'rgba(209, 213, 219, 0.9)';
+                        let stickyClasses = '';
+                        let stickyStyles: React.CSSProperties = {};
+
+                        // Usar anchos memoizados para evitar recálculos
+                        const columnSize = columnWidths.get(header.id) || 150;
+                        const headerBorderColor = isDark ? 'rgba(56, 74, 110, 0.9)' : 'rgba(209, 213, 219, 0.9)';
 
                       const baseHeaderStyle = {
                         background: isDark
@@ -1029,7 +1117,7 @@ export function DataTable({
                         backdropFilter: 'blur(12px)',
                       };
 
-                      if (isRefAsliColumn) {
+                      if (isRefClienteColumn) {
                         stickyClasses = 'sticky left-0 z-[260]';
                         stickyStyles = {
                           ...baseHeaderStyle,
@@ -1038,17 +1126,10 @@ export function DataTable({
                           width: `${columnSize}px`,
                           minWidth: `${columnSize}px`,
                           maxWidth: `${columnSize}px`,
-                          transform: 'translateZ(0)',
-                          WebkitBackfaceVisibility: 'hidden',
-                          backfaceVisibility: 'hidden' as any,
-                          willChange: 'transform',
                           borderBottom: `1px solid ${headerBorderColor}`,
                           borderRight: `1px solid ${headerBorderColor}`,
-                          boxShadow: 'none',
-                          opacity: 1,
                         };
                       } else {
-                        stickyClasses = 'relative z-[220]';
                         stickyStyles = {
                           ...baseHeaderStyle,
                           width: `${columnSize}px`,
@@ -1075,7 +1156,7 @@ export function DataTable({
                           style={stickyStyles}
                         >
                           <div
-                            className={`relative flex min-h-[32px] w-full items-center justify-center gap-1 px-2 py-1 select-none`}
+                            className={`relative flex min-h-[36px] w-full items-center justify-center gap-1.5 px-3 py-1.5 select-none`}
                           >
                             <div
                               {...(canSort
@@ -1086,38 +1167,110 @@ export function DataTable({
                                   onKeyDown: handleKeyDown,
                                 }
                                 : {})}
-                              className={`flex items-center justify-center gap-1 text-center ${canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'
-                                }`}
+                              className={`flex items-center justify-center gap-1.5 text-center ${canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'}`}
                             >
-                              <span className={`block whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] ${isDark ? 'text-slate-100' : 'text-slate-700'
+                              <span className={`block whitespace-nowrap text-xs font-semibold uppercase tracking-[0.08em] ${isDark ? 'text-slate-100' : 'text-slate-700'
                                 }`}>
                                 {flexRender(header.column.columnDef.header, header.getContext())}
                               </span>
                               {sortDirection ? (
                                 sortDirection === 'asc' ? (
-                                  <ArrowUp size={12} />
+                                  <ArrowUp size={14} />
                                 ) : (
-                                  <ArrowDown size={12} />
+                                  <ArrowDown size={14} />
                                 )
                               ) : (
-                                canSort && <ArrowUpDown size={12} />
+                                canSort && <ArrowUpDown size={14} />
                               )}
                             </div>
                             {header.column.getCanResize() && (
                               <div
                                 onMouseDown={header.getResizeHandler()}
                                 onTouchStart={header.getResizeHandler()}
-                                className="absolute top-0 right-0 h-full w-2 cursor-col-resize select-none"
+                                onDoubleClick={() => {
+                                  // Auto-ajustar ancho de columna al contenido más largo (como Excel)
+                                  const columnId = header.column.id;
+                                  
+                                  // Crear un elemento temporal para medir el ancho del texto
+                                  const tempElement = document.createElement('span');
+                                  tempElement.style.visibility = 'hidden';
+                                  tempElement.style.position = 'absolute';
+                                  tempElement.style.whiteSpace = 'nowrap';
+                                  tempElement.style.fontSize = '13px';
+                                  tempElement.style.fontFamily = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                                  tempElement.style.fontWeight = '500';
+                                  document.body.appendChild(tempElement);
+                                  
+                                  let maxWidth = 0;
+                                  
+                                  // Medir el ancho del header
+                                  const headerText = typeof header.column.columnDef.header === 'string' 
+                                    ? header.column.columnDef.header 
+                                    : columnId;
+                                  tempElement.textContent = headerText;
+                                  tempElement.style.fontWeight = '600';
+                                  tempElement.style.fontSize = '12px';
+                                  tempElement.style.textTransform = 'uppercase';
+                                  tempElement.style.letterSpacing = '0.08em';
+                                  maxWidth = Math.max(maxWidth, tempElement.offsetWidth + 40); // +40 para padding y iconos
+                                  
+                                  // Medir el ancho de todas las celdas visibles
+                                  tempElement.style.fontWeight = '500';
+                                  tempElement.style.fontSize = '13px';
+                                  tempElement.style.textTransform = 'none';
+                                  tempElement.style.letterSpacing = 'normal';
+                                  
+                                  const rowsToMeasure = rows.slice(0, Math.min(100, rows.length)); // Medir máximo 100 filas para performance
+                                  rowsToMeasure.forEach(row => {
+                                    const cell = row.getVisibleCells().find(c => c.column.id === columnId);
+                                    if (cell) {
+                                      const cellValue = cell.getValue();
+                                      let textContent = '';
+                                      
+                                      if (cellValue === null || cellValue === undefined) {
+                                        textContent = '-';
+                                      } else if (Array.isArray(cellValue)) {
+                                        textContent = cellValue.join(', ');
+                                      } else if (typeof cellValue === 'object' && cellValue instanceof Date) {
+                                        textContent = cellValue.toLocaleDateString();
+                                      } else {
+                                        textContent = String(cellValue);
+                                      }
+                                      
+                                      tempElement.textContent = textContent;
+                                      maxWidth = Math.max(maxWidth, tempElement.offsetWidth + 24); // +24 para padding
+                                    }
+                                  });
+                                  
+                                  document.body.removeChild(tempElement);
+                                  
+                                  // Aplicar un ancho mínimo de 120px y máximo de 600px
+                                  const newWidth = Math.max(120, Math.min(600, maxWidth));
+                                  
+                                  // Actualizar el tamaño de la columna
+                                  setColumnSizing(prev => ({
+                                    ...prev,
+                                    [columnId]: newWidth
+                                  }));
+                                }}
+                                className="absolute top-0 right-0 h-full w-4 cursor-col-resize select-none z-[270] group"
+                                style={{ marginRight: '-2px' }}
+                                title="Doble clic para auto-ajustar al contenido"
                               >
-                                <div className="h-full w-[2px] bg-white/20 hover:bg-white/60" />
+                                <div className={`h-full w-[2px] transition-colors ${
+                                  isDark 
+                                    ? 'bg-slate-600/40 group-hover:bg-sky-400/80' 
+                                    : 'bg-gray-300/60 group-hover:bg-blue-500/80'
+                                }`} />
                               </div>
                             )}
                           </div>
                         </th>
                       );
                     })}
-                  </tr>
-                ))}
+                    </tr>
+                  );
+                })}
               </thead>
               <tbody
                 ref={tableBodyRef}
@@ -1156,58 +1309,45 @@ export function DataTable({
                         e.preventDefault();
                         const hasEditNaveViaje = currentUser?.rol === 'admin' &&
                           ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
-                        const hasDelete = canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete);
-                        if (hasEditNaveViaje || hasDelete) {
+                        if (hasEditNaveViaje) {
                           setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
                         }
                       }}
                     >
                       {row.getVisibleCells().map((cell) => {
-                        const isRefAsliColumnCell = cell.column.id === 'refAsli';
+                        const isRefClienteColumnCell = cell.column.id === 'refCliente';
+                        // Usar anchos memoizados para evitar recálculos
+                        const columnWidth = columnWidths.get(cell.column.id) || 150;
 
-                        let stickyClasses = '';
-                        let stickyStyles: React.CSSProperties = {};
+                        const cellStyles: React.CSSProperties = {
+                          width: `${columnWidth}px`,
+                          minWidth: `${columnWidth}px`,
+                          maxWidth: `${columnWidth}px`,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        };
 
-                        const columnMinSize = cell.column.columnDef.minSize || 100;
-                        const columnMaxSize = cell.column.columnDef.maxSize || 300;
-                        const columnWidth = Math.min(
-                          Math.max(cell.column.getSize() || columnMinSize, columnMinSize),
-                          columnMaxSize
-                        );
-
-                        if (isRefAsliColumnCell) {
-                          stickyClasses = `sticky z-[240]`;
-                          stickyStyles = {
-                            left: 0,
-                            width: `${columnWidth}px`,
-                            minWidth: `${columnWidth}px`,
-                            maxWidth: `${columnWidth}px`,
-                            transform: 'translateZ(0)',
-                            WebkitBackfaceVisibility: 'hidden',
-                            backfaceVisibility: 'hidden' as any,
-                            willChange: 'transform',
-                            boxShadow: `${refAsliShadow}, inset 0 -1px 0 0 ${borderColor}`,
-                            borderRight: `1px solid ${borderColor}`,
-                            background: rowClasses.refAsliBg,
-                          };
-                        } else {
-                          stickyClasses = 'relative z-[120]';
-                          stickyStyles = {
-                            width: `${columnWidth}px`,
-                            minWidth: `${columnWidth}px`,
-                            maxWidth: `${columnWidth}px`,
-                          };
+                        if (isRefClienteColumnCell) {
+                          cellStyles.left = 0;
+                          cellStyles.boxShadow = `${refAsliShadow}, inset 0 -1px 0 0 ${borderColor}`;
+                          cellStyles.borderRight = `1px solid ${borderColor}`;
+                          cellStyles.background = rowClasses.refAsliBg;
                         }
 
                         return (
                           <td
                             key={cell.id}
                             className={`p-0 whitespace-nowrap border-r ${isDark ? 'border-slate-800/40' : 'border-gray-200'
-                              } overflow-hidden ${rowClasses.text} ${stickyClasses}`}
-                            style={stickyStyles}
+                              } overflow-hidden text-ellipsis ${rowClasses.text} ${isRefClienteColumnCell ? 'sticky z-[240]' : ''}`}
+                            style={cellStyles}
                           >
                             <div
-                              className={`flex h-full w-full items-center justify-center px-2 py-1 text-[10px] font-semibold text-center`}
+                              className={`flex h-full w-full items-center justify-center px-3 py-1.5 text-sm font-medium text-center`}
+                              style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
                             >
                               {flexRender(cell.column.columnDef.cell, cell.getContext())}
                             </div>
@@ -1217,20 +1357,23 @@ export function DataTable({
                     </tr>
                   );
                 })}
-                {rowVirtualizer.getVirtualItems().length > 0 && (
-                  <tr>
-                    <td
-                      colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length}
-                      style={{
-                        height: `${rowVirtualizer.getTotalSize() -
-                          (rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]?.end ?? 0)
-                          }px`,
-                        padding: 0,
-                        border: 'none',
-                      }}
-                    />
-                  </tr>
-                )}
+                {rowVirtualizer.getVirtualItems().length > 0 && (() => {
+                  const lastItem = rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1];
+                  const paddingBottom = Math.max(0, rowVirtualizer.getTotalSize() - (lastItem?.end ?? 0));
+                  
+                  return paddingBottom > 0 ? (
+                    <tr>
+                      <td
+                        colSpan={table.getHeaderGroups()[0]?.headers.length ?? columns.length}
+                        style={{
+                          height: `${paddingBottom}px`,
+                          padding: 0,
+                          border: 'none',
+                        }}
+                      />
+                    </tr>
+                  ) : null;
+                })()}
               </tbody>
             </table>
           </div>
@@ -1238,8 +1381,15 @@ export function DataTable({
       )}
 
       {viewMode === 'cards' && (
-        <div className={`${panelClasses} rounded-2xl space-y-4 p-4 backdrop-blur`}>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className={`${panelClasses} backdrop-blur w-full flex-1 min-h-0`}>
+          <div
+            ref={cardsScrollRef}
+            className="h-full w-full overflow-y-auto overflow-x-hidden p-2 sm:p-3 md:p-4 overscroll-contain"
+            onWheel={handleCardsWheel}
+            onScroll={handleCardsScroll}
+            style={{ overscrollBehavior: 'contain', overflowAnchor: 'none' }}
+          >
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {filteredData.map((record, index) => {
               const key = record.id ?? `registro-${record.refAsli ?? index}`;
               const estado = record.estado ?? 'SIN ESTADO';
@@ -1255,16 +1405,180 @@ export function DataTable({
                 event.preventDefault();
                 const hasEditNaveViaje = currentUser?.rol === 'admin' &&
                   ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
-                const hasDelete = canDelete && (selectedRows.size > 0 ? onBulkDelete : onDelete);
-                if (onEdit || hasEditNaveViaje || hasDelete) {
+                if (hasEditNaveViaje) {
                   setContextMenu({ x: event.clientX, y: event.clientY, record });
+                }
+              };
+
+              const formatDate = (date: Date | null): string => {
+                if (!date) return '-';
+                // Formatear fecha en formato DD-MM-YYYY (estándar chileno)
+                const fecha = new Date(date);
+                const dia = String(fecha.getDate()).padStart(2, '0');
+                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                const año = fecha.getFullYear();
+                return `${dia}-${mes}-${año}`;
+              };
+
+              const formatNave = (): string => {
+                const nave = record.naveInicial || '';
+                const viaje = record.viaje;
+                if (viaje && !nave.includes('[')) {
+                  return `${nave} [${viaje}]`;
+                }
+                return nave || '-';
+              };
+
+              const calculateTransito = (): string => {
+                if (!record.etd || !record.eta) return '-';
+                const etdDate = new Date(record.etd);
+                const etaDate = new Date(record.eta);
+                const diffTime = etaDate.getTime() - etdDate.getTime();
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays >= 0 ? `${diffDays} días` : '-';
+              };
+
+              const escapeHtml = (text: string | null | undefined): string => {
+                if (!text) return '-';
+                const str = String(text);
+                return str
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#039;');
+              };
+
+              const handleCopyCard = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                
+                const estadoBadgeStyle = estado === 'CONFIRMADO'
+                  ? 'background-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3);'
+                  : estado === 'PENDIENTE'
+                    ? 'background-color: rgba(245, 158, 11, 0.15); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.3);'
+                    : estado === 'CANCELADO'
+                      ? 'background-color: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3);'
+                      : 'background-color: rgba(100, 116, 139, 0.15); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.3);';
+
+                const contenedorText = Array.isArray(record.contenedor) 
+                  ? record.contenedor.join(', ') 
+                  : (record.contenedor || '-');
+                
+                const cardHtml = `<div style="font-family: Arial, sans-serif; background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 16px; padding: 20px; max-width: 400px; color: #cbd5e1;">
+  <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
+    <div>
+      <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: #64748b; margin: 0 0 4px 0;">Ref ASLI</p>
+      <h3 style="font-size: 18px; font-weight: 600; color: #f1f5f9; margin: 0;">${escapeHtml(record.refAsli) || 'Sin referencia'}</h3>
+    </div>
+    <span style="display: inline-flex; align-items: center; border-radius: 9999px; padding: 4px 8px; font-size: 10px; font-weight: 600; ${estadoBadgeStyle}">${escapeHtml(estado)}</span>
+  </div>
+  <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: #cbd5e1;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">REF ASLI</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.refAsli)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">REF CLIENTE</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.refCliente)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">NAVIERA</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.naviera)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">NAVE</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatNave())}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">MERCANCIA</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.especie)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">BOOKING</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.booking)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">CONTENEDOR</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(contenedorText)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">POL</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.pol)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">ETD</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatDate(record.etd))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">POD</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.pod)}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">ETA</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatDate(record.eta))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">TRÁNSITO</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(calculateTransito())}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">CONSIGNATARIO</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml((record as any).consignatario)}</span>
+    </div>
+  </div>
+</div>`;
+
+                const cardText = `REF ASLI: ${record.refAsli || '-'}
+REF CLIENTE: ${record.refCliente || '-'}
+NAVIERA: ${record.naviera || '-'}
+NAVE: ${formatNave()}
+MERCANCIA: ${record.especie || '-'}
+BOOKING: ${record.booking || '-'}
+CONTENEDOR: ${contenedorText}
+POL: ${record.pol || '-'}
+ETD: ${formatDate(record.etd)}
+POD: ${record.pod || '-'}
+ETA: ${formatDate(record.eta)}
+TRÁNSITO: ${calculateTransito()}
+CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
+
+                try {
+                  // Copiar como HTML para preservar el formato visual
+                  const clipboardItem = new ClipboardItem({
+                    'text/html': new Blob([cardHtml], { type: 'text/html' }),
+                    'text/plain': new Blob([cardText], { type: 'text/plain' })
+                  });
+                  await navigator.clipboard.write([clipboardItem]);
+                } catch (err) {
+                  // Fallback a texto plano si falla la copia HTML
+                  try {
+                    await navigator.clipboard.writeText(cardText);
+                  } catch (fallbackErr) {
+                    console.error('Error al copiar:', fallbackErr);
+                  }
                 }
               };
 
               return (
                 <div
                   key={key}
-                  className="group relative space-y-3 rounded-2xl border border-slate-800/60 bg-slate-950/60 p-4 shadow-lg shadow-slate-950/20 transition-transform hover:-translate-y-[3px] hover:border-sky-500/60 sm:p-5"
+                  className={`group relative space-y-2 sm:space-y-3 rounded-xl sm:rounded-2xl border p-3 sm:p-4 md:p-5 shadow-lg transition-transform hover:-translate-y-[3px] w-full max-w-full overflow-hidden ${isDark 
+                    ? 'border-slate-800/60 bg-slate-950/60 shadow-slate-950/20 hover:border-sky-500/60' 
+                    : 'border-gray-200 bg-white shadow-gray-200/20 hover:border-blue-500/60'
+                  }`}
                   onContextMenu={handleCardContextMenu}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -1277,25 +1591,94 @@ export function DataTable({
                     </span>
                   </div>
 
-                  <div className="mt-3 grid gap-2 text-slate-300 text-[11px] sm:text-xs">
-                    <div className="flex justify-between gap-3"><span className="text-slate-500">Ref Externa</span><span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-slate-500">Cliente</span><span className="font-semibold text-right text-slate-200">{record.shipper || '-'}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-slate-500">Naviera</span><span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-slate-500">Booking</span><span className="font-semibold text-right text-slate-200">{record.booking || '-'}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-slate-500">Contenedor</span><span className="font-semibold text-right text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span></div>
-                    <div className="flex justify-between gap-3"><span className="text-slate-500">Ingresado</span><span className="font-semibold text-right text-slate-200">{record.ingresado ? new Date(record.ingresado).toLocaleDateString('es-CL') : '-'}</span></div>
+                  <div className="mt-3 grid gap-2.5 text-slate-300 text-[11px] sm:text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">REF ASLI</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.refAsli || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">REF CLIENTE</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">NAVIERA</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">NAVE</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{formatNave()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">MERCANCIA</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.especie || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">BOOKING</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.booking || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">CONTENEDOR</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">POL</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.pol || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">ETD</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{formatDate(record.etd)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">POD</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{record.pod || '-'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">ETA</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{formatDate(record.eta)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">TRÁNSITO</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{calculateTransito()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white font-bold flex-shrink-0">CONSIGNATARIO</span>
+                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                      <span className="font-semibold text-right text-slate-200">{(record as any).consignatario || '-'}</span>
+                    </div>
                   </div>
 
                   <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    {onEdit && (
+                    <div className="flex gap-2">
+                      {onEdit && (
+                        <button
+                          onClick={() => onEdit(record)}
+                          className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
+                        >
+                          <Edit className="h-4 w-4" />
+                          Editar
+                        </button>
+                      )}
                       <button
-                        onClick={() => onEdit(record)}
+                        onClick={handleCopyCard}
                         className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
+                        title="Copiar tarjeta al portapapeles"
                       >
-                        <Edit className="h-4 w-4" />
-                        Editar
+                        <Copy className="h-4 w-4" />
+                        Copiar
                       </button>
-                    )}
+                    </div>
                     {onShowHistorial && (
                       <button
                         onClick={() => onShowHistorial(record)}
@@ -1309,6 +1692,7 @@ export function DataTable({
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       )}
@@ -1337,31 +1721,33 @@ export function DataTable({
             Acciones rápidas
           </div>
           <div className="flex flex-col py-1 text-sm">
-            {onEdit && (
-              <button
-                onClick={handleContextEdit}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-sky-500/15 hover:text-sky-200"
-              >
-                <Edit className="h-4 w-4" />
-                Editar registro
-              </button>
-            )}
             {(onEditNaveViaje || onBulkEditNaveViaje) && (
               <button
                 onClick={handleContextEditNaveViaje}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-sky-500/15 hover:text-sky-200"
+                className={`flex w-full items-center gap-2 px-4 py-2 text-left transition-colors ${isDark ? 'hover:bg-sky-500/15 hover:text-sky-200' : 'hover:bg-blue-50 hover:text-blue-600'}`}
               >
                 <Send className="h-4 w-4" />
                 Editar Nave / Viaje
               </button>
             )}
-            {(canDelete && (onDelete || onBulkDelete)) && (
+            {onSendToTransportes && (
               <button
-                onClick={handleContextDelete}
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-rose-200 transition-colors hover:bg-rose-500/15"
+                onClick={handleContextSendToTransportes}
+                className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors ${isDark ? 'hover:bg-emerald-500/15 hover:text-emerald-200' : 'hover:bg-green-50 hover:text-green-600'}`}
               >
-                <Trash2 className="h-4 w-4" />
-                {hasSelection ? 'Eliminar selección' : 'Eliminar registro'}
+                <div className="flex items-center gap-2">
+                  <Truck className="h-4 w-4" />
+                  <span>Enviar a Transportes</span>
+                </div>
+                {hasSelection && selectedRecordsList.length > 0 && (
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    isDark 
+                      ? 'bg-emerald-500/20 text-emerald-300' 
+                      : 'bg-green-100 text-green-700'
+                  }`}>
+                    {selectedRecordsList.length}
+                  </span>
+                )}
               </button>
             )}
           </div>
