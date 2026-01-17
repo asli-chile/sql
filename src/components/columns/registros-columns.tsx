@@ -4,7 +4,7 @@ import { Registro } from '@/types/registros';
 import { Badge } from '@/components/ui/badge';
 import { calculateTransitTime, formatTransitTime } from '@/lib/transit-time-utils';
 import { InlineEditCell } from '@/components/InlineEditCell';
-import { History, Eye } from 'lucide-react';
+import { History, Eye, FileText, Upload, Plus, Edit, CheckCircle, CheckCircle2 } from 'lucide-react';
 import { Factura } from '@/types/factura';
 
 // Función para crear un mapeo de naves a navieras
@@ -58,39 +58,40 @@ const allowsBulkEdit = (field: keyof Registro): boolean => {
 
 // Mapeo de anchos mínimos y máximos para cada columna (dinámico según contenido)
 const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
-  refAsli: { min: 150, max: 220 }, // Fijo para sticky pero con rango
-  refCliente: { min: 120, max: 200 },
-  ejecutivo: { min: 120, max: 200 },
-  usuario: { min: 120, max: 200 },
-  ingresado: { min: 90, max: 120 },
-  shipper: { min: 150, max: 300 },
-  booking: { min: 120, max: 200 },
-  contenedor: { min: 100, max: 250 },
-  naviera: { min: 130, max: 220 },
-  naveInicial: { min: 130, max: 220 },
-  viaje: { min: 70, max: 120 },
-  especie: { min: 90, max: 180 },
-  pol: { min: 100, max: 180 },
-  pod: { min: 100, max: 180 },
-  etd: { min: 80, max: 120 },
-  eta: { min: 80, max: 120 },
-  tt: { min: 50, max: 80 },
-  deposito: { min: 100, max: 180 },
-  ingresoStacking: { min: 120, max: 200 },
-  flete: { min: 80, max: 150 },
-  contrato: { min: 180, max: 350 },
-  tipoIngreso: { min: 100, max: 180 },
-  estado: { min: 100, max: 150 },
-  temperatura: { min: 60, max: 100 },
-  cbm: { min: 50, max: 90 },
-  co2: { min: 50, max: 90 },
-  o2: { min: 50, max: 90 },
-  tratamientoFrio: { min: 120, max: 220 },
-  facturacion: { min: 150, max: 300 },
-  factura: { min: 150, max: 300 },
-  proforma: { min: 70, max: 120 },
-  comentario: { min: 200, max: 400 },
-  historial: { min: 70, max: 100 },
+  refAsli: { min: 100, max: 180 }, // Fijo para sticky pero con rango
+  refCliente: { min: 200, max: 320 },
+  ejecutivo: { min: 184, max: 288 },
+  usuario: { min: 173, max: 288 },
+  ingresado: { min: 127, max: 173 },
+  shipper: { min: 250, max: 250 },
+  booking: { min: 207, max: 345 },
+  contenedor: { min: 150, max: 322 },
+  naviera: { min: 184, max: 299 },
+  naveInicial: { min: 250, max: 250 },
+  viaje: { min: 104, max: 173 },
+  especie: { min: 138, max: 253 },
+  pol: { min: 150, max: 253 },
+  pod: { min: 150, max: 253 },
+  etd: { min: 115, max: 173 },
+  eta: { min: 115, max: 173 },
+  tt: { min: 81, max: 127 },
+  deposito: { min: 150, max: 253 },
+  ingresoStacking: { min: 173, max: 288 },
+  flete: { min: 115, max: 207 },
+  contrato: { min: 300, max: 300 },
+  tipoIngreso: { min: 150, max: 253 },
+  estado: { min: 150, max: 207 },
+  temperatura: { min: 92, max: 150 },
+  cbm: { min: 81, max: 138 },
+  co2: { min: 81, max: 138 },
+  o2: { min: 81, max: 138 },
+  tipoAtmosfera: { min: 150, max: 253 },
+  tratamientoFrio: { min: 173, max: 299 },
+  facturacion: { min: 207, max: 403 },
+  factura: { min: 207, max: 403 },
+  proforma: { min: 207, max: 322 },
+  comentario: { min: 288, max: 575 },
+  historial: { min: 104, max: 150 },
 };
 
 // Función para crear las columnas con soporte de selección
@@ -117,10 +118,17 @@ export const createRegistrosColumns = (
   co2sUnicos?: string[],
   o2sUnicos?: string[],
   tratamientosFrioOpciones?: string[],
+  tiposAtmosferaOpciones?: string[],
   facturacionesUnicas?: string[],
   onShowHistorial?: (registro: Registro) => void,
   facturasPorRegistro?: Map<string, Factura>,
-  onViewFactura?: (factura: Factura) => void
+  onViewFactura?: (factura: Factura) => void,
+  bookingsConProforma?: Map<string, { nombre: string; fecha: string }>,
+  onUploadProforma?: (booking: string, file: File) => Promise<void>,
+  onGenerateProforma?: (registro: Registro) => void,
+  onOpenBookingModal?: (registro: Registro) => void,
+  bookingDocuments?: Map<string, { nombre: string; fecha: string }>,
+  canUploadProforma?: boolean
 ): ColumnDef<Registro>[] => {
   // Crear mapeo de naves a navieras
   const naveToNavierasMap = createNaveToNavieraMap(data);
@@ -132,32 +140,19 @@ export const createRegistrosColumns = (
   };
   const baseColumns: ColumnDef<Registro>[] = [
   {
-    id: 'refAsli',
-    accessorKey: 'refAsli',
-    size: COLUMN_WIDTHS.refAsli.min,
-    minSize: COLUMN_WIDTHS.refAsli.min,
-    maxSize: COLUMN_WIDTHS.refAsli.max,
-    header: 'REF ASLI',
+    id: 'refCliente',
+    accessorKey: 'refCliente',
+    size: COLUMN_WIDTHS.refCliente.min,
+    minSize: COLUMN_WIDTHS.refCliente.min,
+    maxSize: COLUMN_WIDTHS.refCliente.max,
+    header: 'Ref Externa',
     cell: ({ row }) => {
-      const refAsli = row.getValue('refAsli') as string;
-      const tipoIngreso = row.original.tipoIngreso;
       const selectedRecordsArray = getSelectedRecords();
       const isCurrentRecordSelected = selectedRecordsArray.some(selected => selected.id === row.original.id);
       const shouldShowIndicator = selectedRecordsArray.length > 1 && isCurrentRecordSelected;
       const rowId = row.original.id || '';
       const isSelected = selectedRows?.has(rowId) || false;
       const rowIndex = row.index;
-      
-      // Color del texto según tipoIngreso, sin fondo de color en la celda
-      let textColor = 'text-green-600 dark:text-green-400';
-      
-      if (tipoIngreso === 'EARLY') {
-        textColor = 'text-cyan-600 dark:text-cyan-400';
-      } else if (tipoIngreso === 'LATE') {
-        textColor = 'text-yellow-600 dark:text-yellow-400';
-      } else if (tipoIngreso === 'EXTRA LATE') {
-        textColor = 'text-red-600 dark:text-red-400';
-      }
       
       return (
         <div className="flex w-full items-center justify-center gap-3 overflow-hidden px-2">
@@ -172,9 +167,17 @@ export const createRegistrosColumns = (
             className="h-4 w-4 cursor-pointer rounded border-slate-500 text-blue-500 focus:ring-blue-500"
           />
           <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-            <span className={`truncate text-center font-semibold ${textColor}`}>
-              {refAsli}
-            </span>
+            <InlineEditCell
+              value={row.original.refCliente || ''}
+              field="refCliente"
+              record={row.original}
+              onSave={onUpdateRecord || (() => {})}
+              onBulkSave={onBulkUpdate}
+              type="text"
+              selectedRecords={selectedRecordsArray}
+              isSelectionMode={true}
+              className="justify-center text-center font-semibold"
+            />
             {shouldShowIndicator && (
               <span className="flex-shrink-0 text-[10px] font-semibold text-white bg-blue-500 rounded-full px-1 py-0.5">
                 {selectedRecordsArray.length}
@@ -186,25 +189,31 @@ export const createRegistrosColumns = (
     },
   },
   {
-    id: 'refCliente',
-    accessorKey: 'refCliente',
-    size: COLUMN_WIDTHS.refCliente.min,
-    minSize: COLUMN_WIDTHS.refCliente.min,
-    maxSize: COLUMN_WIDTHS.refCliente.max,
-    header: 'Ref Externa',
+    id: 'refAsli',
+    accessorKey: 'refAsli',
+    size: COLUMN_WIDTHS.refAsli.min,
+    minSize: COLUMN_WIDTHS.refAsli.min,
+    maxSize: COLUMN_WIDTHS.refAsli.max,
+    header: 'REF ASLI',
     cell: ({ row }) => {
+      const refAsli = row.getValue('refAsli') as string;
+      const tipoIngreso = row.original.tipoIngreso;
+      
+      // Color del texto según tipoIngreso, sin fondo de color en la celda
+      let textColor = 'text-green-600 dark:text-green-400';
+      
+      if (tipoIngreso === 'EARLY') {
+        textColor = 'text-cyan-600 dark:text-cyan-400';
+      } else if (tipoIngreso === 'LATE') {
+        textColor = 'text-yellow-600 dark:text-yellow-400';
+      } else if (tipoIngreso === 'EXTRA LATE') {
+        textColor = 'text-red-600 dark:text-red-400';
+      }
+      
       return (
-        <InlineEditCell
-          value={row.original.refCliente || ''}
-          field="refCliente"
-          record={row.original}
-          onSave={onUpdateRecord || (() => {})}
-          onBulkSave={onBulkUpdate}
-          type="text"
-          selectedRecords={getSelectedRecords()}
-          isSelectionMode={true}
-          className="justify-center text-center"
-        />
+        <span className={`truncate text-center font-semibold ${textColor}`}>
+          {refAsli}
+        </span>
       );
     },
   },
@@ -262,7 +271,11 @@ export const createRegistrosColumns = (
           : (rawValue as Date);
 
         if (parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
-          display = parsedDate.toLocaleDateString('es-CL');
+          // Formatear fecha en formato DD-MM-YYYY (estándar chileno)
+          const dia = String(parsedDate.getDate()).padStart(2, '0');
+          const mes = String(parsedDate.getMonth() + 1).padStart(2, '0');
+          const año = parsedDate.getFullYear();
+          display = `${dia}-${mes}-${año}`;
         }
       }
 
@@ -272,6 +285,7 @@ export const createRegistrosColumns = (
   {
     id: 'shipper',
     accessorKey: 'shipper',
+    size: COLUMN_WIDTHS.shipper.min,
     minSize: COLUMN_WIDTHS.shipper.min,
     maxSize: COLUMN_WIDTHS.shipper.max,
     header: 'Cliente',
@@ -301,22 +315,45 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const value = row.getValue('booking') as string;
       const estado = row.original.estado;
-      
-      // Si está cancelado, aplicar fondo rojo intenso con texto negro
       const isCancelado = estado === 'CANCELADO';
       
+      // Verificar si existe un documento PDF para este booking
+      const bookingKey = value ? value.trim().toUpperCase().replace(/\s+/g, '') : '';
+      const existingDocument = bookingKey ? bookingDocuments?.get(bookingKey) : undefined;
+      
       return (
-        <InlineEditCell
-          value={value}
-          field="booking"
-          record={row.original}
-          onSave={onUpdateRecord || (() => {})}
-          onBulkSave={allowsBulkEdit('booking') ? onBulkUpdate : undefined}
-          type="text"
-          className={isCancelado ? 'bg-red-600 text-black px-2 py-0.5 rounded text-[10px]' : ''}
-          selectedRecords={allowsBulkEdit('booking') ? getSelectedRecords() : []}
-          isSelectionMode={allowsBulkEdit('booking')}
-        />
+        <div className="flex items-center gap-2 w-full">
+          <div className="flex-1 flex items-center gap-2">
+            {value ? (
+              <span className={`px-2 py-1 text-xs font-medium ${
+                isCancelado ? 'bg-red-600 text-black rounded' : ''
+              }`}>
+                {value}
+              </span>
+            ) : (
+              <span className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
+                Sin booking
+              </span>
+            )}
+            {existingDocument && (
+              <span title="PDF disponible en Documentos">
+                <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0" />
+              </span>
+            )}
+          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenBookingModal) {
+                onOpenBookingModal(row.original);
+              }
+            }}
+            className="p-2.5 rounded transition-colors dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-gray-200 text-gray-500 hover:text-gray-700 flex-shrink-0"
+            title={value ? 'Editar booking' : 'Agregar booking'}
+          >
+            {value ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+          </button>
+        </div>
       );
     },
   },
@@ -447,6 +484,7 @@ export const createRegistrosColumns = (
   {
     id: 'naveInicial',
     accessorKey: 'naveInicial',
+    size: COLUMN_WIDTHS.naveInicial.min,
     minSize: COLUMN_WIDTHS.naveInicial.min,
     maxSize: COLUMN_WIDTHS.naveInicial.max,
     header: 'Nave',
@@ -463,7 +501,7 @@ export const createRegistrosColumns = (
       
       // Mostrar nave y viaje juntos, sin edición inline (solo se edita con clic derecho)
       return (
-        <div className="text-[10px]">
+        <div className="text-sm">
           {value || '-'}
           {viaje && <span className="text-gray-500 dark:text-gray-400"> [{viaje}]</span>}
         </div>
@@ -740,6 +778,29 @@ export const createRegistrosColumns = (
     },
   },
   {
+    id: 'tipoAtmosfera',
+    accessorKey: 'tipoAtmosfera',
+    minSize: COLUMN_WIDTHS.tipoAtmosfera.min,
+    maxSize: COLUMN_WIDTHS.tipoAtmosfera.max,
+    header: 'Tipo Atmósfera',
+    cell: ({ row }) => {
+      const tipoAtmosfera = row.getValue('tipoAtmosfera') as string;
+      return (
+        <InlineEditCell
+          value={tipoAtmosfera || ''}
+          field="tipoAtmosfera"
+          record={row.original}
+          onSave={onUpdateRecord || (() => {})}
+          onBulkSave={onBulkUpdate}
+          type="select"
+          options={tiposAtmosferaOpciones || []}
+          selectedRecords={getSelectedRecords()}
+          isSelectionMode={true}
+        />
+      );
+    },
+  },
+  {
     id: 'flete',
     accessorKey: 'flete',
     minSize: COLUMN_WIDTHS.flete.min,
@@ -788,6 +849,7 @@ export const createRegistrosColumns = (
   {
     id: 'contrato',
     accessorKey: 'contrato',
+    size: COLUMN_WIDTHS.contrato.min,
     minSize: COLUMN_WIDTHS.contrato.min,
     maxSize: COLUMN_WIDTHS.contrato.max,
     header: 'Contrato',
@@ -839,7 +901,13 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const registroId = row.original.id;
       const factura = registroId ? facturasPorRegistro?.get(registroId) : undefined;
+      
+      // Verificar si hay documento proforma en storage
+      const booking = row.original.booking;
+      const bookingKey = booking?.trim().toUpperCase().replace(/\s+/g, '') || '';
+      const documentoProforma = bookingKey ? bookingsConProforma?.get(bookingKey) : undefined;
 
+      // Si hay factura o documento proforma, mostrar como disponible
       if (factura && onViewFactura) {
         return (
           <div className="flex items-center justify-center">
@@ -857,11 +925,86 @@ export const createRegistrosColumns = (
         );
       }
 
-      return (
-        <div className="flex items-center justify-center">
-          <span className="text-[10px] text-gray-500 dark:text-gray-400">PENDIENTE</span>
-        </div>
-      );
+      // Si hay documento proforma pero no factura, mostrar nombre y fecha
+      if (documentoProforma) {
+        return (
+          <div className="flex flex-col items-center justify-center gap-1 px-2 py-1 max-w-[180px]">
+            <span className="text-xs text-green-600 dark:text-green-400 font-medium truncate w-full text-center" title={documentoProforma.nombre}>
+              {documentoProforma.nombre}
+            </span>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+              {documentoProforma.fecha}
+            </span>
+          </div>
+        );
+      }
+
+      if (canUploadProforma === false) {
+        return (
+          <div className="flex flex-col items-center justify-center gap-1 px-2 py-2">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Solo lectura</span>
+          </div>
+        );
+      }
+
+      // Componente interno para manejar el upload
+      const ProformaUploadCell = () => {
+        const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+        const handleUploadClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          fileInputRef.current?.click();
+        };
+
+        const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+          const file = e.target.files?.[0];
+          if (file && booking && onUploadProforma) {
+            await onUploadProforma(booking, file);
+            // Resetear el input para permitir subir el mismo archivo otra vez
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          }
+        };
+
+        return (
+          <>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.xls,.xlsx"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <div className="flex flex-col items-center justify-center gap-1.5 px-1 py-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onGenerateProforma?.(row.original);
+                  }}
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors border border-blue-300 dark:border-blue-700"
+                  title="Generar proforma"
+                >
+                  <FileText size={12} />
+                  <span>Generar</span>
+                </button>
+                <button
+                  onClick={handleUploadClick}
+                  className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/30 rounded transition-colors border border-green-300 dark:border-green-700"
+                  title="Subir proforma"
+                >
+                  <Upload size={12} />
+                  <span>Subir</span>
+                </button>
+              </div>
+              <span className="text-[9px] text-gray-500 dark:text-gray-400">PENDIENTE</span>
+            </div>
+          </>
+        );
+      };
+
+      return <ProformaUploadCell />;
     },
     enableSorting: false,
   },
