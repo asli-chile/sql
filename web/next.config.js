@@ -32,8 +32,9 @@ const nextConfig = {
       // Assets estáticos de la ERP (logos, imágenes, etc.)
       { source: "/logoasli.png", destination: `${erpBaseUrl}/logoasli.png` },
       { source: "/favicon.ico", destination: `${erpBaseUrl}/favicon.ico` },
-      // Assets de Next.js (JS, CSS, chunks, etc.)
+      // Assets de Next.js (JS, CSS, chunks, etc.) - ambas variantes
       { source: "/_next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
+      { source: "/next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
       // Fuentes y otros recursos
       { source: "/fonts/:path*", destination: `${erpBaseUrl}/fonts/:path*` },
     ];
