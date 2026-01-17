@@ -19,6 +19,7 @@ interface InlineEditCellProps {
 
 const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
+  'fin_stacking',
   'cut_off',
   'fecha_planta',
   'created_at',

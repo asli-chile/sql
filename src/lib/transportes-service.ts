@@ -10,23 +10,43 @@ export type TransporteRecord = {
   nave: string | null;
   naviera: string | null;
   stacking: string | null;
+  fin_stacking: string | null;
   cut_off: string | null;
   late: boolean | null;
+  extra_late: boolean | null;
   contenedor: string | null;
   sello: string | null;
   tara: number | null;
+  porteo: boolean | null;
+  horario_retiro: string | null;
   especie: string | null;
+  atmosfera_controlada: boolean | null;
+  co2: number | null;
+  o2: number | null;
   temperatura: number | null;
   vent: string | null;
   pol: string | null;
   pod: string | null;
+  ubicacion: string | null;
+  dia_presentacion: string | null;
+  hora_presentacion: string | null;
   fecha_planta: string | null;
+  llegada_planta: string | null;
+  salida_planta: string | null;
   guia_despacho: string | null;
+  terminal_portuario: string | null;
+  llegada_puerto: string | null;
   transportes: string | null;
   conductor: string | null;
   rut: string | null;
   fono: string | null;
   patentes: string | null;
+  patente_rem: string | null;
+  ingresado_stacking: boolean | null;
+  sobreestadia: boolean | null;
+  scanner: boolean | null;
+  lote_carga: string | null;
+  observacion: string | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -62,7 +82,7 @@ export async function createTransporte(payload: Partial<TransporteRecord>): Prom
   });
   
   // Convertir fechas de string a formato correcto
-  const dateFields = ['stacking', 'cut_off', 'fecha_planta'];
+  const dateFields = ['stacking', 'fin_stacking', 'cut_off', 'fecha_planta'];
   dateFields.forEach((field) => {
     if (insertData[field] && typeof insertData[field] === 'string') {
       const dateStr = insertData[field].trim();
