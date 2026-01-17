@@ -6,19 +6,24 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/ui/table/DataTable';
+import { FiltersPanel } from '@/components/ui/table/FiltersPanel';
+import { ColumnToggleInline } from '@/components/ui/table/ColumnToggleInline';
 import { createRegistrosColumns } from '@/components/columns/registros-columns';
 import { EditModal } from '@/components/modals/EditModal';
 import { AddModal } from '@/components/modals/AddModal';
 import { TrashModal } from '@/components/modals/TrashModal';
 import { HistorialModal } from '@/components/modals/HistorialModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
+import { BookingModal } from '@/components/modals/BookingModal';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/hooks/useToast';
+import { UserProfileModal } from '@/components/users/UserProfileModal';
 import { ToastContainer } from '@/components/layout/Toast';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { Registro } from '@/types/registros';
@@ -29,9 +34,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2 } from 'lucide-react';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
+import { FacturaCreator } from '@/components/facturas/FacturaCreator';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
-import { AppFooter } from '@/components/layout/AppFooter';
+import { parseStoredDocumentName, formatFileDisplayName, sanitizeFileName } from '@/utils/documentUtils';
+import { generarFacturaPDF } from '@/lib/factura-pdf';
+import { generarFacturaExcel } from '@/lib/factura-excel';
 
 const normalizeTemporada = (value?: string | null): string => {
   if (!value) {
@@ -58,6 +66,34 @@ export default function RegistrosPage() {
   const searchParams = useSearchParams();
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Estados para filtros y columnas del DataTable
+  const [tableInstance, setTableInstance] = useState<any>(null);
+  const [tableStates, setTableStates] = useState<{
+    executiveFilter: string;
+    setExecutiveFilter: (value: string) => void;
+    columnToggleOptions: Array<{ id: string; header: string; visible: boolean }>;
+    handleToggleColumn: (columnId: string) => void;
+    handleToggleAllColumns: (visible: boolean) => void;
+    alwaysVisibleColumns: string[];
+    navesFiltrables: Array<[string, string]>;
+  } | null>(null);
+
+  // Callback memorizado para evitar re-renders infinitos
+  const handleTableInstanceReady = useCallback((table: any, states: {
+    executiveFilter: string;
+    setExecutiveFilter: (value: string) => void;
+    columnToggleOptions: Array<{ id: string; header: string; visible: boolean }>;
+    handleToggleColumn: (columnId: string) => void;
+    handleToggleAllColumns: (visible: boolean) => void;
+    alwaysVisibleColumns: string[];
+    navesFiltrables: Array<[string, string]>;
+  }) => {
+    setTableInstance(table);
+    setTableStates(states);
+  }, []);
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
@@ -79,6 +115,7 @@ export default function RegistrosPage() {
   const [co2sUnicos, setCo2sUnicos] = useState<string[]>([]);
   const [o2sUnicos, setO2sUnicos] = useState<string[]>([]);
   const [tratamientosFrioUnicos, setTratamientosFrioUnicos] = useState<string[]>([]);
+  const [tiposAtmosferaUnicos, setTiposAtmosferaUnicos] = useState<string[]>([]);
   const [facturacionesUnicas, setFacturacionesUnicas] = useState<string[]>([]);
 
   const [navierasFiltro, setNavierasFiltro] = useState<string[]>([]);
@@ -94,16 +131,23 @@ export default function RegistrosPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
+  const [trashCount, setTrashCount] = useState(0);
   const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
   const [selectedRegistroForHistorial, setSelectedRegistroForHistorial] = useState<Registro | null>(null);
   const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
   const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
   const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
 
+  // Estados para modal de booking
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedRegistroForBooking, setSelectedRegistroForBooking] = useState<Registro | null>(null);
+
   // Estados para facturas
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
   const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
+  const [registroSeleccionadoProforma, setRegistroSeleccionadoProforma] = useState<Registro | null>(null);
+  const [isProformaCreatorOpen, setIsProformaCreatorOpen] = useState(false);
 
   // Estado para selección múltiple
   const [selectionMode, setSelectionMode] = useState(false);
@@ -113,6 +157,10 @@ export default function RegistrosPage() {
   // Estado para clientes asignados al ejecutivo
   const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
   const [isEjecutivo, setIsEjecutivo] = useState(false);
+  const isCliente = currentUser?.rol === 'cliente';
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   type DeleteConfirmState = {
     registros: Registro[];
@@ -154,6 +202,7 @@ export default function RegistrosPage() {
     checkUser();
   }, []);
 
+
   useEffect(() => {
     if (!deleteConfirm) {
       return;
@@ -172,6 +221,19 @@ export default function RegistrosPage() {
     };
   }, [deleteConfirm, deleteProcessing]);
 
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsUserMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isUserMenuOpen]);
+
   const checkUser = async () => {
     try {
       const supabase = createClient();
@@ -180,7 +242,11 @@ export default function RegistrosPage() {
       // Si hay error de refresh token, limpiar sesión y redirigir
       if (error) {
         // Si es un error de refresh token inválido, es esperado y no necesita log
-        if (error.message?.includes('Refresh Token') || error.message?.includes('JWT')) {
+        if (
+          error.message?.includes('Refresh Token') ||
+          error.message?.includes('JWT') ||
+          error.message?.includes('User from sub claim in JWT does not exist')
+        ) {
           await supabase.auth.signOut();
           router.push('/auth');
           return;
@@ -227,16 +293,22 @@ export default function RegistrosPage() {
           nombre: userData.nombre, // Nombre desde BD (fuente de verdad)
           email: userData.email,
           rol: userData.rol,
-          activo: userData.activo
+          activo: userData.activo,
+          cliente_nombre: userData.cliente_nombre ?? null,
         };
         setCurrentUser(usuarioActualizado);
 
-        // Verificar si es ejecutivo (@asli.cl) y cargar sus clientes asignados
-        const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
-        setIsEjecutivo(emailEsEjecutivo);
+        // Verificar si es ejecutivo por rol
+        const esEjecutivo = userData.rol === 'ejecutivo';
+        setIsEjecutivo(esEjecutivo);
 
-        // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
-        await loadClientesAsignados(userData.id, userData.nombre);
+        if (userData.rol === 'cliente') {
+          const clienteNombre = userData.cliente_nombre?.trim();
+          setClientesAsignados(clienteNombre ? [clienteNombre] : []);
+        } else {
+          // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
+          await loadClientesAsignados(userData.id, userData.nombre);
+        }
 
       }
 
@@ -335,8 +407,12 @@ export default function RegistrosPage() {
       // Esto aplica tanto para ejecutivos como para usuarios cuyo nombre coincide con un cliente
       // NOTA: Los usuarios normales sin coincidencia seguirán viendo solo sus registros por RLS
       const esAdmin = currentUser?.rol === 'admin';
-      if (!esAdmin && clientesAsignados.length > 0) {
-        // Si tiene clientes asignados (por asignación o coincidencia de nombre), filtrar por esos clientes
+      const clienteNombre = currentUser?.rol === 'cliente' ? currentUser?.cliente_nombre?.trim() : '';
+      if (!esAdmin && clienteNombre) {
+        // Cliente: filtrar directo por su cliente_nombre (case-insensitive)
+        query = query.ilike('shipper', clienteNombre);
+      } else if (!esAdmin && clientesAsignados.length > 0) {
+        // Ejecutivo u otros: filtrar por lista de clientes asignados
         query = query.in('shipper', clientesAsignados);
       }
 
@@ -366,6 +442,32 @@ export default function RegistrosPage() {
       console.error('Error loading registros:', error);
     }
   }, [isEjecutivo, clientesAsignados]);
+
+  const loadTrashCount = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from('registros')
+        .select('id', { count: 'exact', head: true })
+        .not('deleted_at', 'is', null);
+
+      if (error) {
+        throw error;
+      }
+
+      setTrashCount(count ?? 0);
+    } catch (err) {
+      console.warn('[Registros] Error cargando contador de papelera:', err);
+      setTrashCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentUser?.id) {
+      return;
+    }
+    void loadTrashCount();
+  }, [currentUser?.id, loadTrashCount]);
 
   const loadFacturas = useCallback(async () => {
     try {
@@ -406,6 +508,147 @@ export default function RegistrosPage() {
       // Cargar catálogo de estados primero
       await loadEstadosFromCatalog();
 
+      // ============================================================
+      // CARGAR DESDE NUEVAS TABLAS SEPARADAS
+      // ============================================================
+
+      // 1. Navieras desde catalogos_navieras
+      const { data: navierasData, error: navierasError } = await supabase
+        .from('catalogos_navieras')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (!navierasError && navierasData) {
+        const navieras = navierasData.map((n: any) => n.nombre).filter(Boolean);
+        setNavierasUnicas(navieras);
+        setNavierasFiltro(navieras);
+      }
+
+      // 2. Ejecutivos desde catalogos_ejecutivos
+      const { data: ejecutivosData, error: ejecutivosError } = await supabase
+        .from('catalogos_ejecutivos')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (!ejecutivosError && ejecutivosData) {
+        const ejecutivos = ejecutivosData.map((e: any) => e.nombre).filter(Boolean);
+        setEjecutivosUnicos(ejecutivos);
+        setEjecutivosFiltro(ejecutivos);
+      }
+
+      // 3. Clientes desde catalogos_clientes
+      const { data: clientesData, error: clientesError } = await supabase
+        .from('catalogos_clientes')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (!clientesError && clientesData) {
+        const todosLosClientes = clientesData.map((c: any) => c.nombre).filter(Boolean);
+        // Si es ejecutivo, filtrar solo sus clientes asignados
+        const currentClientesAsignados = clientesAsignados;
+        const currentIsEjecutivo = isEjecutivo;
+        if (currentIsEjecutivo && currentClientesAsignados.length > 0) {
+          const clientesFiltrados = todosLosClientes.filter((cliente: string) =>
+            currentClientesAsignados.includes(cliente)
+          );
+          setClientesUnicos(clientesFiltrados);
+          setClientesFiltro(clientesFiltrados);
+        } else {
+          setClientesUnicos(todosLosClientes);
+          setClientesFiltro(todosLosClientes);
+        }
+      }
+
+      // 4. Destinos desde catalogos_destinos
+      const { data: destinosData, error: destinosError } = await supabase
+        .from('catalogos_destinos')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (!destinosError && destinosData) {
+        const destinos = destinosData.map((d: any) => d.nombre).filter(Boolean);
+        setDestinosUnicos(destinos);
+        setDestinosFiltro(destinos);
+      }
+
+      // 5. Naves desde catalogos_naves (con relación a navieras)
+      const { data: navesData, error: navesError } = await supabase
+        .from('catalogos_naves')
+        .select('nombre, naviera_nombre')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (!navesError && navesData) {
+        // Filtrar solo las naves que tienen naviera_nombre (excluir las que no tienen naviera asignada)
+        const navesConNaviera = navesData.filter((n: any) => n.naviera_nombre && n.naviera_nombre.trim() !== '' && n.nombre && n.nombre.trim() !== '');
+        const todasLasNaves = navesConNaviera.map((n: any) => n.nombre.trim()).filter(Boolean);
+        setNavesUnicas(todasLasNaves);
+        
+        // Crear mapping de naviera -> naves desde catalogos_naves
+        const navesMapping: Record<string, string[]> = {};
+        navesConNaviera.forEach((nave: any) => {
+          const navieraNombre = nave.naviera_nombre.trim();
+          const nombreNave = nave.nombre.trim();
+          
+          if (!navesMapping[navieraNombre]) {
+            navesMapping[navieraNombre] = [];
+          }
+          if (!navesMapping[navieraNombre].includes(nombreNave)) {
+            navesMapping[navieraNombre].push(nombreNave);
+          }
+        });
+        
+        // Ordenar naves dentro de cada naviera
+        Object.keys(navesMapping).forEach(naviera => {
+          navesMapping[naviera].sort();
+        });
+        
+        setNavierasNavesMappingCatalog(navesMapping);
+      }
+
+      // 5. Condiciones desde catalogos_condiciones (temperatura, co2, o2, cbm, tratamiento_frio)
+      const { data: condicionesData, error: condicionesError } = await supabase
+        .from('catalogos_condiciones')
+        .select('tipo, valor')
+        .eq('activo', true)
+        .order('valor');
+
+      if (!condicionesError && condicionesData) {
+        const condicionesPorTipo: Record<string, string[]> = {};
+        condicionesData.forEach((cond: any) => {
+          if (!condicionesPorTipo[cond.tipo]) {
+            condicionesPorTipo[cond.tipo] = [];
+          }
+          condicionesPorTipo[cond.tipo].push(cond.valor);
+        });
+
+        if (condicionesPorTipo['temperatura']) {
+          setTemperaturasUnicas(condicionesPorTipo['temperatura']);
+        }
+        if (condicionesPorTipo['co2']) {
+          setCo2sUnicos(condicionesPorTipo['co2']);
+        }
+        if (condicionesPorTipo['o2']) {
+          setO2sUnicos(condicionesPorTipo['o2']);
+        }
+        if (condicionesPorTipo['cbm']) {
+          setCbmUnicos(condicionesPorTipo['cbm']);
+        }
+        if (condicionesPorTipo['tratamiento_frio']) {
+          setTratamientosFrioUnicos(condicionesPorTipo['tratamiento_frio']);
+        }
+        if (condicionesPorTipo['tipo_atmosfera']) {
+          setTiposAtmosferaUnicos(condicionesPorTipo['tipo_atmosfera']);
+        }
+      }
+
+      // ============================================================
+      // CARGAR DESDE TABLA CATALOGOS ORIGINAL (para el resto)
+      // ============================================================
       const { data: catalogos, error } = await supabase
         .from('catalogos')
         .select('*');
@@ -415,7 +658,7 @@ export default function RegistrosPage() {
         return;
       }
 
-      // Procesar catálogos
+      // Procesar catálogos restantes desde tabla original
       catalogos.forEach(catalogo => {
         const categoria = (catalogo.categoria || '').toLowerCase().trim();
         const rawValores = catalogo.valores ?? [];
@@ -432,33 +675,9 @@ export default function RegistrosPage() {
         const mapping = catalogo.mapping;
 
         switch (categoria) {
-          case 'navieras':
-            setNavierasUnicas(valores);
-            setNavierasFiltro(valores);
-            break;
-          case 'ejecutivos':
-            setEjecutivosUnicos(valores);
-            setEjecutivosFiltro(valores);
-            break;
           case 'especies':
             setEspeciesUnicas(valores);
             setEspeciesFiltro(valores);
-            break;
-          case 'clientes':
-            // Si es ejecutivo, filtrar solo sus clientes asignados
-            // Usar el estado actual de clientesAsignados
-            const currentClientesAsignados = clientesAsignados;
-            const currentIsEjecutivo = isEjecutivo;
-            if (currentIsEjecutivo && currentClientesAsignados.length > 0) {
-              const clientesFiltrados = valores.filter((cliente: string) =>
-                currentClientesAsignados.includes(cliente)
-              );
-              setClientesUnicos(clientesFiltrados);
-              setClientesFiltro(clientesFiltrados);
-            } else {
-              setClientesUnicos(valores);
-              setClientesFiltro(valores);
-            }
             break;
           case 'refcliente':
             setRefExternasUnicas(valores);
@@ -467,40 +686,19 @@ export default function RegistrosPage() {
             setPolsUnicos(valores);
             setPolsFiltro(valores);
             break;
-          case 'destinos':
-            setDestinosUnicos(valores);
-            setDestinosFiltro(valores);
-            break;
           case 'depositos':
             setDepositosUnicos(valores);
             setDepositosFiltro(valores);
             break;
-          case 'naves':
-            setNavesUnicas(valores);
-            break;
+          // case 'naves': - Ahora se cargan desde catalogos_naves
           case 'fletes':
             setFletesUnicos(valores);
-            break;
-          case 'cbm':
-            setCbmUnicos(valores);
             break;
           case 'contratos':
             setContratosUnicos(valores);
             break;
           case 'tipoingreso':
             setTipoIngresoUnicos(valores);
-            break;
-          case 'temperatura':
-            setTemperaturasUnicas(valores);
-            break;
-          case 'co2':
-            setCo2sUnicos(valores);
-            break;
-          case 'o2':
-            setO2sUnicos(valores);
-            break;
-          case 'tratamiento de frio':
-            setTratamientosFrioUnicos(valores);
             break;
           case 'facturacion':
             setFacturacionesUnicas(valores);
@@ -618,6 +816,7 @@ export default function RegistrosPage() {
         }
 
         await loadStats();
+        await loadTrashCount();
 
         if (mode === 'single') {
           const ref = targets[0]?.refAsli ?? 'registro';
@@ -634,7 +833,7 @@ export default function RegistrosPage() {
         setDeleteProcessing(false);
       }
     },
-    [error, success, loadStats, setSelectedRows, setSelectionMode],
+    [error, success, loadStats, loadTrashCount, setSelectedRows, setSelectionMode],
   );
 
   const handleConfirmDelete = useCallback(() => {
@@ -703,10 +902,18 @@ export default function RegistrosPage() {
 
   // Funciones de manejo de eventos
   const handleAdd = () => {
+    if (isCliente) {
+      error('No tienes permisos para agregar registros.');
+      return;
+    }
     setIsAddModalOpen(true);
   };
 
   const handleEdit = (registro: Registro) => {
+    if (isCliente) {
+      error('No tienes permisos para editar registros.');
+      return;
+    }
     // Validar que el ejecutivo solo pueda editar registros de sus clientes
     if (isEjecutivo && clientesAsignados.length > 0) {
       if (!clientesAsignados.includes(registro.shipper || '')) {
@@ -720,6 +927,11 @@ export default function RegistrosPage() {
 
   const handleDelete = async (registro: Registro) => {
     const esAdmin = currentUser?.rol === 'admin';
+
+    if (isCliente) {
+      error('No tienes permisos para eliminar registros.');
+      return;
+    }
 
     if (!esAdmin) {
       if (isEjecutivo && clientesAsignados.length > 0) {
@@ -744,7 +956,117 @@ export default function RegistrosPage() {
     setSelectedRegistroForHistorial(null);
   };
 
+  const handleSendToTransportes = async (registroOrRegistros: Registro | Registro[]) => {
+    if (isCliente) {
+      error('No tienes permisos para enviar registros a Transportes.');
+      return;
+    }
+    const registros = Array.isArray(registroOrRegistros) ? registroOrRegistros : [registroOrRegistros];
+    const supabase = createClient();
+    
+    let exitosos = 0;
+    let fallidos = 0;
+    const errores: string[] = [];
+    
+    for (const registro of registros) {
+      try {
+        // Verificar campos requeridos
+        if (!registro.booking || registro.booking.trim() === '') {
+          errores.push(`${registro.refAsli || 'Registro sin ref'}: Sin booking`);
+          fallidos++;
+          continue;
+        }
+        
+        // Verificar si ya existe un transporte para este registro
+        const { data: existingTransporte, error: checkError } = await supabase
+          .from('transportes')
+          .select('*')
+          .eq('registro_id', registro.id)
+          .maybeSingle();
+        
+        if (checkError) {
+          console.error('Error al verificar transporte existente:', checkError);
+          errores.push(`${registro.refAsli || registro.booking}: Error al verificar`);
+          fallidos++;
+          continue;
+        }
+        
+        if (existingTransporte) {
+          errores.push(`${registro.refAsli || registro.booking}: Ya existe en transportes`);
+          fallidos++;
+          continue;
+        }
+        
+        // Extraer contenedor (puede ser array o string)
+        const contenedorValue = Array.isArray(registro.contenedor)
+          ? registro.contenedor[0] || ''
+          : registro.contenedor || '';
+        
+        // Crear nuevo registro de transporte con los datos del registro de embarque
+        const transporteData = {
+          registro_id: registro.id,
+          booking: registro.booking.trim(),
+          contenedor: contenedorValue.trim() || null,
+          nave: registro.naveInicial || null,
+          naviera: registro.naviera || null,
+          especie: registro.especie || null,
+          temperatura: registro.temperatura ?? null,
+          pol: registro.pol || null,
+          pod: registro.pod || null,
+          vent: registro.cbm ?? null,
+          deposito: registro.deposito || null,
+          stacking: registro.ingresoStacking ? new Date(registro.ingresoStacking).toISOString().split('T')[0] : null,
+          cut_off: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : null,
+          semana: registro.semanaIngreso ?? registro.semanaZarpe ?? null,
+          exportacion: registro.shipper || null,
+          created_by: currentUser?.id || null,
+        };
+        
+        const { data, error: insertError } = await supabase
+          .from('transportes')
+          .insert([transporteData])
+          .select();
+        
+        if (insertError) {
+          console.error('Error de inserción:', insertError);
+          errores.push(`${registro.refAsli || registro.booking}: ${insertError.message}`);
+          fallidos++;
+          continue;
+        }
+        
+        if (!data || data.length === 0) {
+          errores.push(`${registro.refAsli || registro.booking}: No se recibió confirmación`);
+          fallidos++;
+          continue;
+        }
+        
+        exitosos++;
+        
+      } catch (err) {
+        console.error('Error al enviar a transportes:', err);
+        errores.push(`${registro.refAsli || registro.booking}: ${err instanceof Error ? err.message : 'Error desconocido'}`);
+        fallidos++;
+      }
+    }
+    
+    // Mostrar resultado
+    if (exitosos > 0 && fallidos === 0) {
+      success(`${exitosos} registro${exitosos > 1 ? 's' : ''} enviado${exitosos > 1 ? 's' : ''} a Transportes exitosamente`);
+    } else if (exitosos > 0 && fallidos > 0) {
+      warning(`${exitosos} enviados, ${fallidos} fallidos. Errores: ${errores.join('; ')}`);
+    } else {
+      error(`No se pudo enviar ningún registro. Errores: ${errores.join('; ')}`);
+      return; // No abrir correo si no se envió ninguno
+    }
+    
+    // Se eliminó el envío automático de correo al enviar a Transportes
+  };
+
   const handleEditNaveViaje = (registro: Registro) => {
+    if (isCliente) {
+      error('No tienes permisos para editar registros.');
+      return;
+    }
     // Validar que el ejecutivo solo pueda editar registros de sus clientes
     if (isEjecutivo && clientesAsignados.length > 0) {
       if (!clientesAsignados.includes(registro.shipper || '')) {
@@ -784,6 +1106,11 @@ export default function RegistrosPage() {
   const handleSaveNaveViaje = async (nave: string, viaje: string) => {
     if (!selectedRegistroForNaveViaje?.id) return;
 
+    if (isCliente) {
+      error('No tienes permisos para editar registros.');
+      return;
+    }
+
     // Validar que el ejecutivo solo pueda editar registros de sus clientes
     if (isEjecutivo && clientesAsignados.length > 0) {
       if (!clientesAsignados.includes(selectedRegistroForNaveViaje.shipper || '')) {
@@ -819,6 +1146,10 @@ export default function RegistrosPage() {
   };
 
   const handleBulkEditNaveViaje = (records: Registro[]) => {
+    if (isCliente) {
+      error('No tienes permisos para editar registros.');
+      return;
+    }
     // Validar que todos los registros sean de clientes asignados al ejecutivo
     if (isEjecutivo && clientesAsignados.length > 0) {
       const registrosValidos = records.filter(r =>
@@ -840,6 +1171,10 @@ export default function RegistrosPage() {
   };
 
   const handleBulkSaveNaveViaje = async (nave: string, viaje: string, records: Registro[]) => {
+    if (isCliente) {
+      error('No tienes permisos para editar registros.');
+      return;
+    }
     // Validar que todos los registros sean de clientes asignados al ejecutivo
     let registrosParaActualizar = records;
     if (isEjecutivo && clientesAsignados.length > 0) {
@@ -976,6 +1311,11 @@ export default function RegistrosPage() {
 
     const esAdmin = currentUser?.rol === 'admin';
 
+    if (isCliente) {
+      error('No tienes permisos para eliminar registros.');
+      return;
+    }
+
     const registrosSeleccionados = registros.filter((r) => r.id && selectedRows.has(r.id));
 
     let registrosParaEliminar = registrosSeleccionados;
@@ -1011,6 +1351,11 @@ export default function RegistrosPage() {
   const handleBulkUpdate = useCallback(async (field: keyof Registro, value: any, selectedRecords: Registro[]) => {
     if (selectedRecords.length === 0) return;
 
+    if (isCliente) {
+      error('No tienes permisos para editar registros.');
+      return;
+    }
+
     // Si es ejecutivo, validar que todos los registros sean de sus clientes
     let registrosParaActualizar = selectedRecords;
     if (isEjecutivo && clientesAsignados.length > 0) {
@@ -1042,10 +1387,27 @@ export default function RegistrosPage() {
         return fieldMapping[fieldName] || fieldName;
       };
 
+      const normalizeBulkValue = (fieldName: keyof Registro, rawValue: any) => {
+        if (rawValue === '' || rawValue === undefined) return null;
+
+        const numericFields = new Set<keyof Registro>(['temperatura', 'cbm', 'co2', 'o2']);
+        if (numericFields.has(fieldName)) {
+          if (rawValue === null) return null;
+          const numericValue = Number(rawValue);
+          if (Number.isNaN(numericValue)) {
+            throw new Error(`Valor inválido para el campo ${String(fieldName)}`);
+          }
+          return numericValue;
+        }
+
+        return rawValue;
+      };
+
       // Preparar datos para actualizar
       const dbFieldName = getDatabaseFieldName(field);
+      const normalizedValue = normalizeBulkValue(field, value);
       const updateData: any = {
-        [dbFieldName]: value,
+        [dbFieldName]: normalizedValue,
         updated_at: new Date().toISOString()
       };
 
@@ -1063,7 +1425,7 @@ export default function RegistrosPage() {
         .in('id', recordIds);
 
       if (updateError) {
-        throw updateError;
+        throw new Error(updateError.message || 'Error al actualizar registros en Supabase');
       }
 
       for (const record of registrosParaActualizar) {
@@ -1072,7 +1434,7 @@ export default function RegistrosPage() {
             registroId: record.id,
             field,
             previousValue: record[field],
-            newValue: value,
+            newValue: normalizedValue,
           });
         } catch (historialError) {
           console.warn(`⚠️ Error creando historial para registro ${record.id}:`, historialError);
@@ -1085,7 +1447,7 @@ export default function RegistrosPage() {
           if (registrosParaActualizar.some(selected => selected.id === record.id)) {
             return {
               ...record,
-              [field]: value,
+              [field]: normalizedValue,
               updated_at: new Date().toISOString()
             };
           }
@@ -1116,8 +1478,12 @@ export default function RegistrosPage() {
       success(`✅ Se actualizaron ${registrosParaActualizar.length} registros en el campo "${fieldDisplayName}"`);
 
     } catch (err: any) {
+      const errorMessage =
+        err?.message ||
+        err?.error?.message ||
+        (typeof err === 'string' ? err : JSON.stringify(err));
       console.error('Error en edición masiva:', err);
-      error(`Error al actualizar los registros: ${err.message}`);
+      error(`Error al actualizar los registros: ${errorMessage || 'Error desconocido'}`);
     }
   }, [success, error, isEjecutivo, clientesAsignados]);
 
@@ -1325,11 +1691,629 @@ export default function RegistrosPage() {
     return mapa;
   }, [facturas]);
 
+  // Cargar documentos proforma desde storage y crear Map de bookings con información del documento
+  const [bookingsConProforma, setBookingsConProforma] = useState<Map<string, { nombre: string; fecha: string }>>(new Map());
+  
+  const loadProformaDocuments = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from('documentos')
+        .list('factura-proforma', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'updated_at', order: 'desc' },
+        });
+
+      if (error) {
+        console.warn('No se pudieron cargar documentos proforma:', error.message);
+        return;
+      }
+
+      // Extraer bookings de los nombres de archivo y guardar información del documento
+      const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
+      
+      data?.forEach((file) => {
+        const separatorIndex = file.name.indexOf('__');
+        if (separatorIndex !== -1) {
+          const bookingSegment = file.name.slice(0, separatorIndex);
+          try {
+            const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
+            if (booking) {
+              // Parsear nombre del archivo
+              const { originalName } = parseStoredDocumentName(file.name);
+              const nombreFormateado = formatFileDisplayName(originalName);
+              
+              // Formatear fecha en formato DD-MM-YYYY
+              const fechaArchivo = file.updated_at || file.created_at;
+              let fechaFormateada = '-';
+              if (fechaArchivo) {
+                const fecha = new Date(fechaArchivo);
+                const dia = String(fecha.getDate()).padStart(2, '0');
+                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                const año = fecha.getFullYear();
+                fechaFormateada = `${dia}-${mes}-${año}`;
+              }
+              
+              // Si ya existe un documento para este booking, mantener el más reciente
+              const existente = bookingsMap.get(booking);
+              if (!existente) {
+                bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+              } else if (fechaArchivo && existente.fecha !== '-') {
+                // Comparar fechas en formato DD-MM-YYYY
+                const fechaExistente = existente.fecha.split('-').reverse().join('-'); // DD-MM-YYYY -> YYYY-MM-DD
+                const fechaNueva = fechaArchivo.split('T')[0]; // ISO string -> YYYY-MM-DD
+                if (fechaNueva > fechaExistente) {
+                  bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+                }
+              }
+            }
+          } catch {
+            // Si falla decodeURIComponent, usar el segmento directamente
+            const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
+            if (booking) {
+              const { originalName } = parseStoredDocumentName(file.name);
+              const nombreFormateado = formatFileDisplayName(originalName);
+              const fechaArchivo = file.updated_at || file.created_at;
+              // Formatear fecha en formato DD-MM-YYYY
+              let fechaFormateada = '-';
+              if (fechaArchivo) {
+                const fecha = new Date(fechaArchivo);
+                const dia = String(fecha.getDate()).padStart(2, '0');
+                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                const año = fecha.getFullYear();
+                fechaFormateada = `${dia}-${mes}-${año}`;
+              }
+              const existente = bookingsMap.get(booking);
+              if (!existente) {
+                bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+              } else if (fechaArchivo && existente.fecha !== '-') {
+                // Comparar fechas en formato DD-MM-YYYY
+                const fechaExistente = existente.fecha.split('-').reverse().join('-'); // DD-MM-YYYY -> YYYY-MM-DD
+                const fechaNueva = fechaArchivo.split('T')[0]; // ISO string -> YYYY-MM-DD
+                if (fechaNueva > fechaExistente) {
+                  bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+                }
+              }
+            }
+          }
+        }
+      });
+
+      setBookingsConProforma(bookingsMap);
+    } catch (err) {
+      console.error('Error cargando documentos proforma:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProformaDocuments();
+  }, [loadProformaDocuments]);
+
+  // Cargar documentos booking desde storage
+  const [bookingDocuments, setBookingDocuments] = useState<Map<string, { nombre: string; fecha: string }>>(new Map());
+  
+  useEffect(() => {
+    const loadBookingDocuments = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.storage
+          .from('documentos')
+          .list('booking', {
+            limit: 1000,
+            offset: 0,
+            sortBy: { column: 'updated_at', order: 'desc' },
+          });
+
+        if (error) {
+          console.warn('No se pudieron cargar documentos booking:', error.message);
+          return;
+        }
+
+        const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
+        
+        data?.forEach((file) => {
+          const separatorIndex = file.name.indexOf('__');
+          if (separatorIndex !== -1) {
+            const bookingSegment = file.name.slice(0, separatorIndex);
+            try {
+              const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
+              if (booking) {
+                const { originalName } = parseStoredDocumentName(file.name);
+                // Usar el nombre original sin formatear para mostrar el nombre que el usuario le dio
+                const nombreOriginal = originalName;
+                
+                const fechaArchivo = file.updated_at || file.created_at;
+                let fechaFormateada = '-';
+                if (fechaArchivo) {
+                  const fecha = new Date(fechaArchivo);
+                  const dia = String(fecha.getDate()).padStart(2, '0');
+                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                  const año = fecha.getFullYear();
+                  fechaFormateada = `${dia}-${mes}-${año}`;
+                }
+                
+                const existente = bookingsMap.get(booking);
+                if (!existente) {
+                  bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
+                } else if (fechaArchivo && existente.fecha !== '-') {
+                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                  const fechaNueva = fechaArchivo.split('T')[0];
+                  if (fechaNueva > fechaExistente) {
+                    bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
+                  }
+                }
+              }
+            } catch {
+              const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
+              if (booking) {
+                const { originalName } = parseStoredDocumentName(file.name);
+                // Usar el nombre original sin formatear para mostrar el nombre que el usuario le dio
+                const nombreOriginal = originalName;
+                const fechaArchivo = file.updated_at || file.created_at;
+                let fechaFormateada = '-';
+                if (fechaArchivo) {
+                  const fecha = new Date(fechaArchivo);
+                  const dia = String(fecha.getDate()).padStart(2, '0');
+                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                  const año = fecha.getFullYear();
+                  fechaFormateada = `${dia}-${mes}-${año}`;
+                }
+                const existente = bookingsMap.get(booking);
+                if (!existente) {
+                  bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
+                } else if (fechaArchivo && existente.fecha !== '-') {
+                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                  const fechaNueva = fechaArchivo.split('T')[0];
+                  if (fechaNueva > fechaExistente) {
+                    bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        setBookingDocuments(bookingsMap);
+        console.log('Documentos booking cargados:', Array.from(bookingsMap.entries()));
+      } catch (err) {
+        console.error('Error cargando documentos booking:', err);
+      }
+    };
+
+    void loadBookingDocuments();
+  }, []);
+
   // Handler para ver factura
   const handleViewFactura = useCallback((factura: Factura) => {
     setFacturaSeleccionada(factura);
     setIsFacturaViewerOpen(true);
   }, []);
+
+  const handleOpenProformaCreator = useCallback((registro: Registro) => {
+    if (currentUser?.rol === 'cliente') {
+      error('No tienes permisos para generar proformas.');
+      return;
+    }
+    setRegistroSeleccionadoProforma(registro);
+    setIsProformaCreatorOpen(true);
+  }, [currentUser?.rol, error]);
+
+  const handleCloseProformaCreator = useCallback(() => {
+    setIsProformaCreatorOpen(false);
+    setRegistroSeleccionadoProforma(null);
+  }, []);
+
+  const handleGenerateProforma = useCallback(async (factura: Factura) => {
+    if (!registroSeleccionadoProforma) {
+      throw new Error('No se seleccionó un registro para proforma.');
+    }
+
+    const refExterna = registroSeleccionadoProforma.refCliente?.trim();
+    if (!refExterna) {
+      throw new Error('La referencia externa es obligatoria para generar la proforma.');
+    }
+
+    const booking = registroSeleccionadoProforma.booking?.trim().toUpperCase().replace(/\s+/g, '');
+    if (!booking) {
+      throw new Error('El booking es obligatorio para generar la proforma.');
+    }
+    if (bookingsConProforma.has(booking)) {
+      throw new Error('Ya existe una proforma para este booking.');
+    }
+
+    const supabase = createClient();
+    const safeBaseName = refExterna.replace(/[\\/]/g, '-').trim();
+    const fileBaseName = `${safeBaseName} PROFORMA`;
+    const bookingSegment = encodeURIComponent(booking);
+
+    const pdfResult = await generarFacturaPDF(factura, {
+      returnBlob: true,
+      fileNameBase: fileBaseName,
+    });
+    if (!pdfResult) {
+      throw new Error('No se pudo generar el PDF de la proforma.');
+    }
+
+    const excelResult = await generarFacturaExcel(factura, {
+      returnBlob: true,
+      fileNameBase: fileBaseName,
+    });
+    if (!excelResult) {
+      throw new Error('No se pudo generar el Excel de la proforma.');
+    }
+
+    const pdfPath = `factura-proforma/${bookingSegment}__${pdfResult.fileName}`;
+    const excelPath = `factura-proforma/${bookingSegment}__${excelResult.fileName}`;
+
+    const { error: pdfError } = await supabase.storage
+      .from('documentos')
+      .upload(pdfPath, pdfResult.blob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'application/pdf',
+      });
+
+    if (pdfError) {
+      throw pdfError;
+    }
+
+    const { error: excelError } = await supabase.storage
+      .from('documentos')
+      .upload(excelPath, excelResult.blob, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
+    if (excelError) {
+      throw excelError;
+    }
+
+    await loadProformaDocuments();
+    success('Proforma generada y subida (PDF + Excel).');
+    handleCloseProformaCreator();
+  }, [registroSeleccionadoProforma, bookingsConProforma, loadProformaDocuments, success, handleCloseProformaCreator]);
+
+  // Handler para subir proforma desde la tabla
+  const handleUploadProforma = useCallback(async (booking: string, file: File) => {
+    if (!booking || !booking.trim()) {
+      error('El booking es requerido para subir la proforma.');
+      return;
+    }
+    if (currentUser?.rol === 'cliente') {
+      error('No tienes permisos para subir proformas.');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+      const bookingSegment = encodeURIComponent(normalizedBooking);
+      
+      // Validar extensión del archivo
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      const allowedExtensions = ['pdf', 'xls', 'xlsx'];
+      if (!extension || !allowedExtensions.includes(extension)) {
+        error('Solo se admiten archivos PDF o Excel (.xls, .xlsx).');
+        return;
+      }
+
+      // Sanitizar nombre del archivo
+      const sanitizeFileName = (name: string) => {
+        const cleanName = name.toLowerCase().replace(/[^a-z0-9.\-]/g, '-');
+        const [base, ext] = cleanName.split(/\.(?=[^.\s]+$)/);
+        const safeBase = base?.replace(/-+/g, '-').replace(/^-|-$/g, '') || `archivo-${Date.now()}`;
+        return `${safeBase}.${ext || 'pdf'}`;
+      };
+
+      const safeName = sanitizeFileName(file.name);
+      const filePath = `factura-proforma/${bookingSegment}__${Date.now()}-0-${safeName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      success('Proforma subida correctamente.');
+      
+      // Recargar documentos proforma
+      const { data, error: listError } = await supabase.storage
+        .from('documentos')
+        .list('factura-proforma', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'updated_at', order: 'desc' },
+        });
+
+      if (!listError && data) {
+        const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
+        
+        data.forEach((file) => {
+          const separatorIndex = file.name.indexOf('__');
+          if (separatorIndex !== -1) {
+            const bookingSegment = file.name.slice(0, separatorIndex);
+            try {
+              const bookingKey = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
+              if (bookingKey) {
+                const { originalName } = parseStoredDocumentName(file.name);
+                const nombreFormateado = formatFileDisplayName(originalName);
+                
+                const fechaArchivo = file.updated_at || file.created_at;
+                let fechaFormateada = '-';
+                if (fechaArchivo) {
+                  const fecha = new Date(fechaArchivo);
+                  const dia = String(fecha.getDate()).padStart(2, '0');
+                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                  const año = fecha.getFullYear();
+                  fechaFormateada = `${dia}-${mes}-${año}`;
+                }
+                
+                const existente = bookingsMap.get(bookingKey);
+                if (!existente) {
+                  bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
+                } else if (fechaArchivo && existente.fecha !== '-') {
+                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                  const fechaNueva = fechaArchivo.split('T')[0];
+                  if (fechaNueva > fechaExistente) {
+                    bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
+                  }
+                }
+              }
+            } catch {
+              const bookingKey = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
+              if (bookingKey) {
+                const { originalName } = parseStoredDocumentName(file.name);
+                const nombreFormateado = formatFileDisplayName(originalName);
+                const fechaArchivo = file.updated_at || file.created_at;
+                let fechaFormateada = '-';
+                if (fechaArchivo) {
+                  const fecha = new Date(fechaArchivo);
+                  const dia = String(fecha.getDate()).padStart(2, '0');
+                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                  const año = fecha.getFullYear();
+                  fechaFormateada = `${dia}-${mes}-${año}`;
+                }
+                const existente = bookingsMap.get(bookingKey);
+                if (!existente) {
+                  bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
+                } else if (fechaArchivo && existente.fecha !== '-') {
+                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                  const fechaNueva = fechaArchivo.split('T')[0];
+                  if (fechaNueva > fechaExistente) {
+                    bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        setBookingsConProforma(bookingsMap);
+      }
+    } catch (err: any) {
+      console.error('Error subiendo proforma:', err);
+      error('No se pudo subir la proforma. Intenta nuevamente.');
+    }
+  }, [currentUser?.rol, success, error]);
+
+  // Handler para abrir modal de booking
+  const handleOpenBookingModal = useCallback((registro: Registro) => {
+    if (currentUser?.rol === 'cliente') {
+      error('No tienes permisos para editar bookings.');
+      return;
+    }
+    setSelectedRegistroForBooking(registro);
+    setIsBookingModalOpen(true);
+  }, [currentUser?.rol, error]);
+
+  // Handler para guardar booking y subir PDF
+  const handleSaveBooking = useCallback(async (booking: string, file?: File, customFileName?: string) => {
+    if (!selectedRegistroForBooking) {
+      error('No se seleccionó un registro.');
+      return;
+    }
+    if (currentUser?.rol === 'cliente') {
+      error('No tienes permisos para editar bookings.');
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const registroId = selectedRegistroForBooking.id;
+
+      if (!registroId) {
+        error('El registro no tiene un ID válido.');
+        return;
+      }
+
+      // Actualizar el booking en el registro
+      const { error: updateError } = await supabase
+        .from('registros')
+        .update({ booking: booking.trim().toUpperCase() })
+        .eq('id', registroId);
+
+      if (updateError) {
+        throw new Error(updateError.message || 'No tienes permisos para actualizar el booking.');
+      }
+
+      // Si hay un archivo, subirlo a storage
+      if (file) {
+        const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+        
+        // Validar extensión del archivo
+        const extension = file.name.split('.').pop()?.toLowerCase();
+        if (extension !== 'pdf') {
+          error('Solo se admiten archivos PDF.');
+          return;
+        }
+
+        // Usar el nombre personalizado que el usuario proporcionó
+        const fileNameToUse = customFileName && customFileName.trim() 
+          ? `${customFileName.trim()}.pdf`
+          : file.name.replace(/\.pdf$/i, '') + '.pdf';
+        
+        // Sanitizar nombre del archivo (mantener caracteres normales)
+        const safeName = sanitizeFileName(fileNameToUse);
+        
+        // Formato simple: bookingSegment__nombrePersonalizado.pdf (sin timestamp)
+        const filePath = `booking/${normalizedBooking}__${safeName}`;
+        
+        // Intentar eliminar archivos anteriores para este booking
+        try {
+          const { data: existingFiles, error: listError } = await supabase.storage
+            .from('documentos')
+            .list('booking', {
+              limit: 1000,
+            });
+          
+          if (listError) {
+            console.warn('Error al listar archivos existentes:', listError);
+          } else if (existingFiles && existingFiles.length > 0) {
+            const filesToDelete = existingFiles
+              .filter(f => {
+                const fileBookingKey = f.name.split('__')[0];
+                try {
+                  const decodedKey = decodeURIComponent(fileBookingKey);
+                  return decodedKey === normalizedBooking || fileBookingKey === normalizedBooking;
+                } catch {
+                  return fileBookingKey === normalizedBooking;
+                }
+              })
+              .map(f => `booking/${f.name}`);
+            
+            if (filesToDelete.length > 0) {
+              const { error: deleteError } = await supabase.storage
+                .from('documentos')
+                .remove(filesToDelete);
+              
+              if (deleteError) {
+                console.warn('Error al eliminar archivos anteriores:', deleteError);
+              }
+            }
+          }
+        } catch (deleteError) {
+          // Si hay error al eliminar, continuar de todas formas
+          console.warn('Error al procesar archivos anteriores:', deleteError);
+        }
+
+        const { error: uploadError } = await supabase.storage
+          .from('documentos')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+      }
+
+      // Actualizar el estado local
+      setRegistros(prevRegistros =>
+        prevRegistros.map(record =>
+          record.id === registroId
+            ? { ...record, booking: booking.trim().toUpperCase() }
+            : record
+        )
+      );
+
+      // Si se subió un archivo, recargar documentos booking
+      if (file) {
+        const supabase = createClient();
+        const { data, error } = await supabase.storage
+          .from('documentos')
+          .list('booking', {
+            limit: 1000,
+            offset: 0,
+            sortBy: { column: 'updated_at', order: 'desc' },
+          });
+
+        if (!error && data) {
+          const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
+          
+          data.forEach((file) => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex !== -1) {
+              const bookingSegment = file.name.slice(0, separatorIndex);
+              try {
+                const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
+                if (booking) {
+                  const { originalName } = parseStoredDocumentName(file.name);
+                  const nombreFormateado = formatFileDisplayName(originalName);
+                  
+                  const fechaArchivo = file.updated_at || file.created_at;
+                  let fechaFormateada = '-';
+                  if (fechaArchivo) {
+                    const fecha = new Date(fechaArchivo);
+                    const dia = String(fecha.getDate()).padStart(2, '0');
+                    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                    const año = fecha.getFullYear();
+                    fechaFormateada = `${dia}-${mes}-${año}`;
+                  }
+                  
+                  const existente = bookingsMap.get(booking);
+                  if (!existente) {
+                    bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+                  } else if (fechaArchivo && existente.fecha !== '-') {
+                    const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                    const fechaNueva = fechaArchivo.split('T')[0];
+                    if (fechaNueva > fechaExistente) {
+                      bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+                    }
+                  }
+                }
+              } catch {
+                const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
+                if (booking) {
+                  const { originalName } = parseStoredDocumentName(file.name);
+                  const nombreFormateado = formatFileDisplayName(originalName);
+                  const fechaArchivo = file.updated_at || file.created_at;
+                  let fechaFormateada = '-';
+                  if (fechaArchivo) {
+                    const fecha = new Date(fechaArchivo);
+                    const dia = String(fecha.getDate()).padStart(2, '0');
+                    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                    const año = fecha.getFullYear();
+                    fechaFormateada = `${dia}-${mes}-${año}`;
+                  }
+                  const existente = bookingsMap.get(booking);
+                  if (!existente) {
+                    bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+                  } else if (fechaArchivo && existente.fecha !== '-') {
+                    const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                    const fechaNueva = fechaArchivo.split('T')[0];
+                    if (fechaNueva > fechaExistente) {
+                      bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          setBookingDocuments(bookingsMap);
+        }
+      }
+
+      success(file ? 'Booking y PDF guardados correctamente.' : 'Booking guardado correctamente.');
+      setIsBookingModalOpen(false);
+      setSelectedRegistroForBooking(null);
+    } catch (err: any) {
+      const errorMessage =
+        err?.message ||
+        err?.error?.message ||
+        (typeof err === 'string' ? err : JSON.stringify(err));
+      console.error('Error guardando booking:', err);
+      error(`No se pudo guardar el booking. ${errorMessage || 'Intenta nuevamente.'}`);
+    }
+  }, [selectedRegistroForBooking, currentUser?.rol, success, error]);
 
   // Memoizar las columnas para evitar recrearlas en cada render
   const columns = useMemo(() => createRegistrosColumns(
@@ -1355,10 +2339,17 @@ export default function RegistrosPage() {
     co2sUnicos,
     o2sUnicos,
     tratamientosFrioUnicos,
+    tiposAtmosferaUnicos,
     facturacionesUnicas,
     handleShowHistorial,
     facturasPorRegistro,
-    handleViewFactura
+    handleViewFactura,
+    bookingsConProforma, // bookings con documentos proforma en storage
+    handleUploadProforma, // handler para subir proforma
+    handleOpenProformaCreator, // handler para generar proforma
+    handleOpenBookingModal, // handler para abrir modal de booking
+    bookingDocuments, // documentos PDF de booking en storage
+    currentUser?.rol !== 'cliente'
   ), [
     registrosVisibles,
     selectedRows,
@@ -1382,11 +2373,18 @@ export default function RegistrosPage() {
     co2sUnicos,
     o2sUnicos,
     tratamientosFrioUnicos,
+    tiposAtmosferaUnicos,
     facturacionesUnicas,
     handleShowHistorial,
     facturasPorRegistro,
-    handleViewFactura
-  ]);
+    handleViewFactura,
+    bookingsConProforma,
+    handleUploadProforma,
+    handleOpenProformaCreator,
+    handleOpenBookingModal,
+    bookingDocuments,
+    currentUser?.rol
+  ]); 
 
   if (loading) {
     return <LoadingScreen message="Cargando registros..." />;
@@ -1397,22 +2395,7 @@ export default function RegistrosPage() {
   }
 
   const totalRegistros = new Set(registrosVisibles.map(r => r.refAsli).filter(Boolean)).size;
-  const totalBookings = registrosVisibles.filter(r => r.booking && r.booking !== '-').length;
-  const totalContenedores = registrosVisibles
-    .filter(r => r.contenedor && r.contenedor !== '-' && r.contenedor !== null && r.contenedor !== '')
-    .flatMap(r => {
-      const contenedorStr = r.contenedor.toString().trim();
-      const containerPattern = /[A-Za-z]{4}\s+.{7}/g;
-      const containerMatches = contenedorStr.match(containerPattern);
-      if (containerMatches && containerMatches.length > 0) {
-        return containerMatches;
-      }
-      const contenedores = contenedorStr.split(/\s+/);
-      return contenedores.filter(contenedor => /[a-zA-Z0-9]/.test(contenedor));
-    }).length;
-  const totalConfirmados = registrosVisibles.filter(r => r.estado === 'CONFIRMADO').length;
-  const totalPendientes = registrosVisibles.filter(r => r.estado === 'PENDIENTE').length;
-  const totalCancelados = registrosVisibles.filter(r => r.estado === 'CANCELADO').length;
+  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   const toneBadgeClasses = {
     sky: 'bg-sky-500/20 text-sky-300',
@@ -1426,6 +2409,7 @@ export default function RegistrosPage() {
     counter?: number;
     tone?: keyof typeof toneBadgeClasses;
     isActive?: boolean;
+    onClick?: () => void;
   };
 
   type SidebarSection = {
@@ -1435,78 +2419,135 @@ export default function RegistrosPage() {
 
   const sidebarSections: SidebarSection[] = [
     {
-      title: 'Principal',
+      title: 'Inicio',
       items: [
-        { label: 'Dashboard', id: '/dashboard' },
+        { label: 'Inicio', id: '/dashboard' },
       ],
     },
     {
       title: 'Módulos',
       items: [
-        { label: 'Registros de Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky' },
+        { label: 'Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky' },
         { label: 'Transportes', id: '/transportes' },
         { label: 'Documentos', id: '/documentos' },
+        { label: 'Tracking', id: '/dashboard/seguimiento' },
       ],
     },
+    {
+      title: 'Sistema',
+      items: [
+        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet' },
+      ],
+    },
+    ...(isRodrigo
+      ? [
+          {
+            title: 'Mantenimiento',
+            items: [{ label: 'Usuarios', id: '/mantenimiento' }],
+          },
+        ]
+      : []),
   ];
 
   const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   return (
     <EditingCellProvider>
-      <div className="flex min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-        <aside
-          className={`fixed left-0 top-0 hidden h-screen flex-col border-r border-slate-800/60 bg-slate-950/60 backdrop-blur-xl transition-all duration-300 lg:flex ${isSidebarCollapsed ? 'w-20' : 'w-64'
-            }`}
+      <div className="h-screen w-screen overflow-hidden">
+        <div
+          className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}
+          style={{
+            transform: 'scale(0.8)',
+            transformOrigin: 'top left',
+            width: '125%',
+            height: '125%',
+          }}
         >
-          <div className="flex items-center gap-3 px-4 py-4 border-b border-slate-800/60">
-            <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-900/70 flex items-center justify-center">
-              <img
-                src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                alt="ASLI Gestión Logística"
-                className="h-8 w-8 object-contain"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-            {!isSidebarCollapsed && (
-              <div>
-                <p className="text-sm font-semibold text-slate-200">ASLI Gestión Logística</p>
-                <p className="text-xs text-slate-500">Plataforma Operativa</p>
-              </div>
-            )}
+        {/* Overlay para móvil */}
+        {isMobileMenuOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )}
+
+        <aside
+          className={`fixed lg:relative left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
+            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          } ${
+            isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
+          }`}
+        >
+          <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'} sticky top-0 z-10 overflow-hidden`}>
+            {/* Botón cerrar móvil */}
             <button
-              onClick={toggleSidebar}
-              className="absolute top-[calc(4rem+30px)] -right-[18px] flex h-11 w-11 items-center justify-center rounded-full border border-slate-700/60 bg-slate-950 text-slate-300 shadow-lg shadow-slate-950/60 hover:border-sky-500/60 hover:text-sky-200 transition"
-              aria-label={isSidebarCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'}`}
+              aria-label="Cerrar menú"
             >
-              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              <X className="h-5 w-5" />
             </button>
+
+            {(!isSidebarCollapsed || isMobileMenuOpen) && (
+              <>
+                <div className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'} flex items-center justify-center`}>
+                  <img
+                    src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
+                    alt="ASLI Gestión Logística"
+                    className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
+                    onError={(event) => {
+                      event.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>ASLI Gestión Logística</p>
+                  <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Plataforma Operativa</p>
+                </div>
+              </>
+            )}
+            {!isSidebarCollapsed && !isMobileMenuOpen && (
+              <button
+                onClick={toggleSidebar}
+                className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
+                aria-label="Contraer menú lateral"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            )}
           </div>
-          <div className="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+          {(!isSidebarCollapsed || isMobileMenuOpen) && (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
             {sidebarSections.map((section) => (
-              <div key={section.title} className="space-y-3">
-                {!isSidebarCollapsed && (
-                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500/60">{section.title}</p>
-                )}
-                <div className="space-y-1.5 overflow-y-visible">
+              <div key={section.title} className="space-y-2 sm:space-y-3">
+                <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{section.title}</p>
+                <div className="space-y-1 sm:space-y-1.5 overflow-y-visible">
                   {section.items.map((item) => (
                     <button
                       key={item.label}
                       onClick={() => {
-                        if (item.id) {
+                        if (item.onClick) {
+                          item.onClick();
+                          setIsMobileMenuOpen(false);
+                        } else if (item.id) {
                           router.push(item.id);
+                          setIsMobileMenuOpen(false);
                         }
                       }}
-                      className={`group w-full text-left flex items-center justify-between rounded-lg px-3 py-2 transition-colors ${item.isActive
-                        ? 'bg-slate-800/80 text-white'
-                        : 'hover:bg-slate-800/40 text-slate-300'
+                      className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${item.isActive
+                        ? `${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}`
+                        : `${theme === 'dark' ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-blue-50 text-blue-600 font-semibold'}`
                         }`}
                     >
-                      <span className={`text-sm font-medium ${isSidebarCollapsed ? 'truncate' : ''}`}>{item.label}</span>
-                      {!isSidebarCollapsed && item.counter !== undefined && item.tone && (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${toneBadgeClasses[item.tone]}`}>
+                      <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
+                        item.isActive 
+                          ? '!text-white' 
+                          : theme === 'light' 
+                            ? '!text-blue-600' 
+                            : ''
+                      }`}>{item.label}</span>
+                      {item.counter !== undefined && item.tone && (
+                        <span className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${toneBadgeClasses[item.tone]}`}>
                           {item.counter}
                         </span>
                       )}
@@ -1515,159 +2556,98 @@ export default function RegistrosPage() {
                 </div>
               </div>
             ))}
+            <div className="space-y-2 sm:space-y-3">
+              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
+              <ThemeToggle variant="switch" label="Tema" />
+            </div>
+            <div className="space-y-2 sm:space-y-3">
+              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Cuenta</p>
+              <button
+                onClick={handleLogout}
+                className={`group w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
+                  theme === 'dark'
+                    ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200'
+                    : 'text-red-600 hover:bg-red-50'
+                }`}
+                aria-label="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="text-xs sm:text-sm font-semibold">Cerrar sesión</span>
+              </button>
+            </div>
           </div>
+          )}
         </aside>
 
         <div
-          className={`flex flex-1 flex-col min-w-0 transition-all ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'
-            }`}
+          className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all"
+          style={{ width: '100%', maxWidth: '100%' }}
         >
-          <header className="sticky top-0 z-40 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur-xl">
-            <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-3 px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-6">
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-0.5">
-                  <p className="text-[9px] uppercase tracking-[0.25em] text-slate-500/80">Módulo Operativo</p>
-                  <h1 className="text-base sm:text-lg lg:text-xl font-semibold text-white">Registros de Embarques</h1>
-                  <p className="hidden text-[11px] text-slate-400 md:block">Gestión de contenedores y embarques</p>
+          <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
+            <div className="flex w-full flex-col gap-2 sm:gap-3 py-2 sm:py-2.5 md:py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
+              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between w-full">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
+                  {/* Botón hamburguesa para móvil */}
+                  <button
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
+                      theme === 'dark' 
+                        ? 'text-slate-300 hover:bg-slate-700' 
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    aria-label="Abrir menú"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                  {isSidebarCollapsed && !isMobileMenuOpen && (
+                    <button
+                      onClick={toggleSidebar}
+                      className={`hidden lg:flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
+                      aria-label="Expandir menú lateral"
+                    >
+                      <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  )}
+                  <div className="space-y-0.5 flex-1 min-w-0 overflow-hidden">
+                    <p className={`text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Módulo Operativo</p>
+                    <h1 className={`text-sm sm:text-base md:text-lg lg:text-xl font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros de Embarques</h1>
+                    <p className={`hidden text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'} md:block truncate`}>Gestión de contenedores y embarques</p>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <div className="flex items-center gap-1">
-                  </div>
-                  <div className="flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs text-slate-300">
-                    <UserIcon className="h-4 w-4" />
-                    <span className="max-w-[160px] truncate text-[11px] sm:text-xs">
-                      {currentUser?.nombre || user.user_metadata?.full_name || user.email || 'Usuario'}
-                    </span>
-                  </div>
+                <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0">
                   <button
-                    onClick={() => setIsTrashModalOpen(true)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs text-slate-300 hover:border-amber-400/60 hover:text-amber-200"
+                    onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+                    className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border transition flex-shrink-0 ${
+                      isRightSidebarOpen
+                        ? `${theme === 'dark' ? 'border-sky-500/60 bg-sky-500/10 text-sky-200' : 'border-blue-500 bg-blue-50 text-blue-600'}`
+                        : `${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-700'}`
+                    }`}
+                    aria-label={isRightSidebarOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros"}
                   >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="hidden 2xl:inline">Papelera</span>
+                    <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
                   </button>
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-transparent px-3 py-1.5 text-xs text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    <span className="hidden 2xl:inline">Salir</span>
-                  </button>
+                  <div className="relative hidden sm:flex flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setIsUserMenuOpen((prev) => !prev)}
+                      className={`flex items-center gap-1.5 sm:gap-2 rounded-full border ${theme === 'dark' ? 'border-slate-600 bg-slate-700 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-50 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700'} shadow-sm transition`}
+                      aria-haspopup="dialog"
+                      aria-expanded={isUserMenuOpen}
+                    >
+                      <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                      <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
+                        {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
-            <div className="mx-auto w-full max-w-[1600px] px-3 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
-              <section className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                      <CardTitle className="text-sm font-medium text-slate-300">Total Registros</CardTitle>
-                      <Package className="h-4 w-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-semibold text-white sm:text-2xl">{totalRegistros}</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div>
-                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                      <CardTitle className="text-sm font-medium text-slate-300">Total Bookings</CardTitle>
-                      <FileText className="h-4 w-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-semibold text-blue-400 sm:text-2xl">{totalBookings}</div>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div>
-                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                      <CardTitle className="text-sm font-medium text-slate-300">Total Contenedores</CardTitle>
-                      <Container className="h-4 w-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="text-xl font-semibold text-purple-400 sm:text-2xl">{totalContenedores}</div>
-                      <p className="mt-1 text-[11px] text-slate-400 sm:text-xs">Total contenedores (divididos por espacios)</p>
-                    </CardContent>
-                  </Card>
-                </div>
-
-                <div>
-                  <Card className="h-full border-slate-800/60 bg-slate-950/60 text-slate-100 shadow-xl shadow-slate-950/20">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                      <CardTitle className="text-sm font-medium text-slate-300">Estados</CardTitle>
-                      <CheckCircle className="h-4 w-4 text-slate-500" />
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <div className="space-y-2 text-[11px] font-medium sm:text-xs">
-                        <div className="flex items-center justify-between rounded-lg bg-emerald-500/15 px-3 py-2 text-emerald-200">
-                          <span>Confirmados</span>
-                          <span className="text-base font-semibold sm:text-lg">{totalConfirmados}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg bg-amber-500/15 px-3 py-2 text-amber-200">
-                          <span>Pendientes</span>
-                          <span className="text-base font-semibold sm:text-lg">{totalPendientes}</span>
-                        </div>
-                        <div className="flex items-center justify-between rounded-lg bg-rose-500/15 px-3 py-2 text-rose-200">
-                          <span>Cancelados</span>
-                          <span className="text-base font-semibold sm:text-lg">{totalCancelados}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </section>
-
-              <section className="rounded-3xl border border-slate-800/60 bg-slate-950/60 shadow-xl shadow-slate-950/20">
-                <div className="overflow-x-auto">
-                  <div className="min-w-full px-2 pb-4">
-                    {selectedTemporada && (
-                      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-sky-100">
-                        <span className="text-sm font-medium">
-                          Filtrando por <span className="font-semibold">Temporada {selectedTemporada}</span>
-                        </span>
-                        <button
-                          onClick={() => router.push('/registros')}
-                          className="rounded-full border border-sky-500/50 px-3 py-1 text-xs font-semibold text-sky-100 transition hover:border-sky-300 hover:text-sky-50"
-                        >
-                          Quitar filtro
-                        </button>
-                      </div>
-                    )}
-                    {temporadasDisponibles.length > 0 && (
-                      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-800/60 bg-slate-900/40 px-4 py-3">
-                        <div>
-                          <p className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Selector</p>
-                          <h3 className="text-sm font-semibold text-slate-100">Temporada</h3>
-                        </div>
-                        <select
-                          value={selectedTemporada ?? ''}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            if (!value) {
-                              router.push('/registros');
-                            } else {
-                              router.push(`/registros?temporada=${encodeURIComponent(value)}`);
-                            }
-                          }}
-                          className="rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                        >
-                          <option value="">Todas las temporadas</option>
-                          {temporadasDisponibles.map((temporada) => (
-                            <option key={temporada} value={temporada}>
-                              Temporada {temporada}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    <DataTable
+          <main className="flex-1 min-w-0 min-h-0 w-full flex flex-col overflow-hidden">
+            <section className={`border-0 w-full h-full flex flex-col min-h-0 min-w-0 overflow-hidden ${theme === 'dark' ? 'bg-slate-950/60' : 'bg-white'}`}>
+                <DataTable
                       data={registrosVisibles}
                       columns={columns}
                       navierasUnicas={navierasFiltro}
@@ -1688,15 +2668,134 @@ export default function RegistrosPage() {
                       onClearSelection={handleClearSelection}
                       onBulkDelete={handleBulkDelete}
                       preserveFilters={true}
+                      onTableInstanceReady={handleTableInstanceReady}
+                      onShowHistorial={handleShowHistorial}
+                      onSendToTransportes={handleSendToTransportes}
                     />
-                  </div>
-                </div>
               </section>
-              <AppFooter className="mt-6" />
-            </div>
           </main>
         </div>
-      </div>
+
+        {/* Overlay para sidebar de filtros en móvil */}
+        {isRightSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsRightSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar derecho para filtros y configuración de columnas */}
+        <aside
+          className={`fixed lg:relative right-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-800/60 bg-slate-950/60' : 'border-l border-gray-200 bg-white'} backdrop-blur-xl ${
+            isRightSidebarOpen 
+              ? 'translate-x-0 lg:w-80 lg:opacity-100 lg:pointer-events-auto' 
+              : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none'
+            } w-80`}
+        >
+          <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'}`}>
+            <h2 className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros y Configuración</h2>
+            <button
+              onClick={() => setIsRightSidebarOpen(false)}
+              className={`flex h-8 w-8 items-center justify-center rounded-full border transition ${theme === 'dark' ? 'border-slate-700/60 bg-slate-950 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-700'}`}
+              aria-label="Cerrar panel de filtros"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div 
+            className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+            onWheel={(e) => {
+              const element = e.currentTarget;
+              const { scrollTop, scrollHeight, clientHeight } = element;
+              const isScrollingUp = e.deltaY < 0;
+              const isScrollingDown = e.deltaY > 0;
+              
+              // Si está en el top y hace scroll hacia arriba, prevenir
+              if (isScrollingUp && scrollTop === 0) {
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+              }
+              
+              // Si está en el bottom y hace scroll hacia abajo, prevenir
+              if (isScrollingDown && scrollTop + clientHeight >= scrollHeight - 1) {
+                e.stopPropagation();
+                e.preventDefault();
+                return;
+              }
+            }}
+          >
+            {/* Sección de Temporada */}
+            {temporadasDisponibles.length > 0 && (
+              <div className="space-y-4">
+                <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Temporada</h3>
+                <div className="space-y-2">
+                  <select
+                    value={selectedTemporada ?? ''}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (!value) {
+                        router.push('/registros');
+                      } else {
+                        router.push(`/registros?temporada=${encodeURIComponent(value)}`);
+                      }
+                    }}
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${theme === 'dark' ? 'border-slate-700/80 bg-slate-900/80 text-white focus:border-sky-500 focus:ring-sky-500/30 hover:border-slate-600' : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30 hover:border-gray-400'}`}
+                  >
+                    <option value="">Todas las temporadas</option>
+                    {temporadasDisponibles.map((temporada) => (
+                      <option key={temporada} value={temporada}>
+                        Temporada {temporada}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedTemporada && (
+                    <button
+                      onClick={() => router.push('/registros')}
+                      className={`w-full rounded-lg border px-3 py-1.5 text-xs font-medium transition ${theme === 'dark' ? 'border-sky-500/50 bg-sky-500/10 text-sky-200 hover:border-sky-500 hover:bg-sky-500/20' : 'border-blue-500 bg-blue-50 text-blue-600 hover:border-blue-600 hover:bg-blue-100'}`}
+                    >
+                      Quitar filtro
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Sección de Filtros */}
+            {tableInstance && tableStates && (
+              <div className="space-y-4">
+                <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Filtros</h3>
+                <FiltersPanel
+                  table={tableInstance}
+                  executiveFilter={tableStates.executiveFilter}
+                  setExecutiveFilter={tableStates.setExecutiveFilter}
+                  navierasUnicas={navierasFiltro}
+                  ejecutivosUnicos={ejecutivosFiltro}
+                  especiesUnicas={especiesFiltro}
+                  clientesUnicos={clientesFiltro}
+                  polsUnicos={polsUnicos}
+                  destinosUnicos={destinosUnicos}
+                  depositosUnicos={depositosUnicos}
+                  navesFiltrables={tableStates.navesFiltrables}
+                  compact={true}
+                />
+              </div>
+            )}
+
+            {/* Sección de Configuración de Columnas */}
+            {tableStates && (
+              <div className="space-y-4">
+                <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Columnas</h3>
+                <ColumnToggleInline
+                  columns={tableStates.columnToggleOptions}
+                  onToggleColumn={tableStates.handleToggleColumn}
+                  onToggleAll={tableStates.handleToggleAllColumns}
+                  alwaysVisibleColumns={tableStates.alwaysVisibleColumns}
+                />
+              </div>
+            )}
+          </div>
+        </aside>
 
       {/* Modals */}
       <AddModal
@@ -1707,6 +2806,9 @@ export default function RegistrosPage() {
           loadCatalogos();
           setIsAddModalOpen(false);
         }}
+        createdByName={
+          currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'
+        }
         navierasUnicas={navierasUnicas}
         ejecutivosUnicos={ejecutivosUnicos}
         especiesUnicas={especiesUnicas}
@@ -1753,6 +2855,7 @@ export default function RegistrosPage() {
         onClose={() => setIsTrashModalOpen(false)}
         onRestore={() => {
           loadRegistros();
+          loadTrashCount();
           setIsTrashModalOpen(false);
         }}
         onSuccess={success}
@@ -1767,6 +2870,154 @@ export default function RegistrosPage() {
           registroRefAsli={selectedRegistroForHistorial.refAsli}
         />
       )}
+
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => {
+          setIsBookingModalOpen(false);
+          setSelectedRegistroForBooking(null);
+        }}
+        onSave={handleSaveBooking}
+        currentBooking={selectedRegistroForBooking?.booking || ''}
+        registroId={selectedRegistroForBooking?.id || ''}
+        existingDocument={
+          (() => {
+            if (!selectedRegistroForBooking?.booking) return null;
+            const bookingKey = selectedRegistroForBooking.booking.trim().toUpperCase().replace(/\s+/g, '');
+            const doc = bookingDocuments.get(bookingKey);
+            console.log('🔍 Buscando documento para booking:', bookingKey);
+            console.log('📊 Total documentos cargados:', bookingDocuments.size);
+            console.log('📋 Claves disponibles:', Array.from(bookingDocuments.keys()).slice(0, 10));
+            console.log('✅ Documento encontrado:', doc);
+            return doc || null;
+          })()
+        }
+      />
+
+      {isProformaCreatorOpen && registroSeleccionadoProforma && (
+        <FacturaCreator
+          registro={registroSeleccionadoProforma}
+          isOpen={isProformaCreatorOpen}
+          onClose={handleCloseProformaCreator}
+          onSave={handleCloseProformaCreator}
+          mode="proforma"
+          onGenerateProforma={handleGenerateProforma}
+        />
+      )}
+
+      {isUserMenuOpen && (
+        <div
+          className="fixed inset-0 z-[3000] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+          onClick={() => setIsUserMenuOpen(false)}
+        >
+          <div
+            ref={userMenuRef}
+            onClick={(event) => event.stopPropagation()}
+            className={`w-full max-w-[960px] rounded-2xl border shadow-2xl ${theme === 'dark'
+              ? 'border-slate-700/70 bg-slate-900 text-slate-100'
+              : 'border-gray-200 bg-white text-gray-900'
+            }`}
+          >
+            <div className="flex items-center justify-between border-b px-8 py-6">
+              <div className="flex items-center gap-4">
+                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl ${theme === 'dark' ? 'bg-slate-800 text-sky-200' : 'bg-blue-50 text-blue-600'}`}>
+                  <Users className="h-8 w-8" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-semibold">
+                    {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                  </p>
+                  <p className={`truncate text-base ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    {currentUser?.email || user?.email || ''}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsUserMenuOpen(false)}
+                className={`rounded-full p-1 transition ${theme === 'dark'
+                  ? 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                }`}
+                aria-label="Cerrar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-8 py-6">
+              <p className={`text-sm font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                Clientes asignados
+              </p>
+              <div className="mt-3 space-y-2">
+                {(currentUser?.rol === 'admin') && (
+                  <span className={`block rounded-xl px-4 py-2 text-base font-medium ${theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
+                    Acceso total
+                  </span>
+                )}
+                {currentUser?.rol === 'cliente' && (
+                  <span className={`block rounded-xl px-4 py-2 text-base font-medium ${theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
+                    {currentUser?.cliente_nombre || 'Sin cliente asignado'}
+                  </span>
+                )}
+                {currentUser?.rol !== 'admin' && currentUser?.rol !== 'cliente' && clientesAsignados.length === 0 && (
+                  <span className={`block rounded-xl px-4 py-2 text-base font-medium ${theme === 'dark' ? 'bg-slate-800 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
+                    Sin clientes asignados
+                  </span>
+                )}
+                {currentUser?.rol !== 'admin' && currentUser?.rol !== 'cliente' && clientesAsignados.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {clientesAsignados.map((cliente) => (
+                      <span
+                        key={cliente}
+                        className={`rounded-full px-4 py-2 text-base font-semibold ${theme === 'dark'
+                          ? 'bg-slate-800 text-slate-200'
+                          : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {cliente}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="border-t px-8 py-6 flex items-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsUserMenuOpen(false);
+                  setShowProfileModal(true);
+                }}
+                className={`flex-1 rounded-2xl px-6 py-3 text-base font-semibold transition ${theme === 'dark'
+                  ? 'bg-slate-800 text-slate-100 hover:bg-slate-700'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Editar nombre
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className={`flex-1 rounded-2xl px-6 py-3 text-base font-semibold transition ${theme === 'dark'
+                  ? 'bg-rose-500/20 text-rose-200 hover:bg-rose-500/30'
+                  : 'bg-rose-50 text-rose-600 hover:bg-rose-100'
+                }`}
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        userInfo={currentUser}
+        onUserUpdate={(updatedUser) => {
+          setCurrentUser({ ...currentUser, ...updatedUser });
+        }}
+      />
 
       {facturaSeleccionada && (
         <FacturaViewer
@@ -1852,7 +3103,9 @@ export default function RegistrosPage() {
         />
       )}
 
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
+        <ToastContainer toasts={toasts} onRemove={removeToast} />
+        </div>
+      </div>
     </EditingCellProvider>
   );
 }

@@ -73,16 +73,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Permisos según roles:
-  // admin: puede hacer todo
-  // ejecutivo (@asli.cl): puede hacer todo PERO solo sobre sus clientes asignados
-  // usuario: puede agregar registros y descargar, NO puede editar campos existentes
-  // lector: solo puede ver y descargar, NO puede agregar ni editar
-  const isEjecutivo = currentUser?.email?.endsWith('@asli.cl') || false;
-  const canEdit = currentUser ? (currentUser.rol === 'admin' || isEjecutivo) : false;
-  const canAdd = currentUser ? ['admin', 'usuario'].includes(currentUser.rol) || isEjecutivo : false;
-  const canViewHistory = currentUser ? ['admin', 'usuario', 'lector'].includes(currentUser.rol) || isEjecutivo : false;
-  const canDelete = currentUser ? (currentUser.rol === 'admin' || isEjecutivo) : false;
-  const canExport = currentUser ? ['admin', 'usuario', 'lector'].includes(currentUser.rol) || isEjecutivo : false;
+  // admin: acceso total
+  // ejecutivo: acceso sobre sus clientes asignados
+  // cliente: solo lectura
+  const isAdmin = currentUser?.rol === 'admin';
+  const isEjecutivo = currentUser?.rol === 'ejecutivo'
+    || (currentUser?.email?.endsWith('@asli.cl') && currentUser?.rol !== 'cliente')
+    || false;
+  const canEdit = currentUser ? (isAdmin || isEjecutivo) : false;
+  const canAdd = currentUser ? (isAdmin || isEjecutivo) : false;
+  const canViewHistory = currentUser ? (isAdmin || isEjecutivo) : false;
+  const canDelete = currentUser ? (isAdmin || isEjecutivo) : false;
+  const canExport = currentUser ? (isAdmin || isEjecutivo) : false;
 
   const value: UserContextType = {
     currentUser,

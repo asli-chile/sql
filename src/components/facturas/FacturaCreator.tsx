@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Download, Eye } from 'lucide-react';
+import { X, Save, Download } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { Factura, ProductoFactura } from '@/types/factura';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import { useToast } from '@/hooks/useToast';
+import { ToastContainer } from '@/components/layout/Toast';
 import { PlantillaAlma } from '@/components/facturas/PlantillaAlma';
 import { PlantillaFruitAndes } from '@/components/facturas/PlantillaFruitAndes';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
@@ -17,11 +18,33 @@ interface FacturaCreatorProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: () => void;
+  mode?: 'factura' | 'proforma';
+  onGenerateProforma?: (factura: Factura) => Promise<void>;
 }
 
-export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCreatorProps) {
+const TEMPLATE_OPTIONS = [
+  { value: 'ALMAFRUIT', label: 'Almafruit' },
+  { value: 'FRUIT ANDES SUR', label: 'Fruit Andes Sur' },
+];
+
+const resolveTemplateFromRegistro = (registro: Registro) => {
+  const shipper = registro.shipper?.toUpperCase() || '';
+  if (shipper.includes('FRUIT ANDES')) {
+    return 'FRUIT ANDES SUR';
+  }
+  return 'ALMAFRUIT';
+};
+
+export function FacturaCreator({
+  registro,
+  isOpen,
+  onClose,
+  onSave,
+  mode = 'factura',
+  onGenerateProforma,
+}: FacturaCreatorProps) {
   const { theme } = useTheme();
-  const { success, error: showError } = useToast();
+  const { success, error: showError, warning, toasts, removeToast } = useToast();
   const supabase = createClient();
 
   // Estado de la factura
@@ -33,13 +56,20 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
   const [guardando, setGuardando] = useState(false);
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // Inicializar factura cuando cambia el registro
   useEffect(() => {
     if (isOpen && registro) {
-      setFactura(initializeFacturaFromRegistro(registro));
+      const baseFactura = initializeFacturaFromRegistro(registro);
+      if (mode === 'proforma') {
+        baseFactura.clientePlantilla = resolveTemplateFromRegistro(registro);
+      }
+      setFactura(baseFactura);
     }
-  }, [isOpen, registro]);
+  }, [isOpen, registro, mode]);
 
   // Calcular totales cuando cambian los productos
   const totalesCalculados = useMemo(() => {
@@ -67,6 +97,64 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
     }));
   }, [totalesCalculados]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setPreviewUrl(current => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+        return null;
+      });
+      return;
+    }
+
+    if (mode !== 'proforma') {
+      return;
+    }
+
+    let isCancelled = false;
+    const debounceTimer = setTimeout(async () => {
+      setIsPreviewLoading(true);
+      setPreviewError(null);
+      try {
+        const facturaCompleta = { ...factura, totales: totalesCalculados };
+        const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
+        const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
+        const pdfResult = await generarFacturaPDF(facturaCompleta, {
+          returnBlob: true,
+          fileNameBase: `Proforma_${safeRef}_${safeInvoice}`,
+        });
+        if (!pdfResult || !('blob' in pdfResult)) {
+          throw new Error('No se pudo generar el PDF de la proforma.');
+        }
+        const url = URL.createObjectURL(pdfResult.blob);
+        if (isCancelled) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setPreviewUrl(current => {
+          if (current) {
+            URL.revokeObjectURL(current);
+          }
+          return url;
+        });
+      } catch (err: any) {
+        if (!isCancelled) {
+          setPreviewError(err?.message || 'No se pudo generar la vista previa.');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsPreviewLoading(false);
+        }
+      }
+    }, 450);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(debounceTimer);
+    };
+  }, [factura, totalesCalculados, isOpen, mode]);
+
   const handleSave = async (e?: React.MouseEvent) => {
     // Prevenir comportamiento por defecto si hay evento
     if (e) {
@@ -75,43 +163,74 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
     }
 
     // Validaciones básicas
+    const faltantes: string[] = [];
+
     if (!factura.exportador.nombre || !factura.exportador.nombre.trim()) {
-      console.error('❌ Error: Nombre del exportador faltante');
-      showError('El nombre del exportador es obligatorio');
-      return;
+      faltantes.push('Nombre del exportador');
     }
 
     if (!factura.consignatario.nombre || !factura.consignatario.nombre.trim()) {
-      console.error('❌ Error: Nombre del consignatario faltante');
-      showError('El nombre del consignatario es obligatorio');
-      return;
+      faltantes.push('Nombre del consignatario');
     }
 
     if (!factura.embarque.numeroInvoice || !factura.embarque.numeroInvoice.trim()) {
-      console.error('❌ Error: Número de invoice faltante');
-      showError('El número de invoice es obligatorio');
-      return;
+      faltantes.push('Número de invoice');
+    }
+
+    if (mode === 'proforma') {
+      if (!registro.refCliente || !registro.refCliente.trim()) {
+        faltantes.push('Referencia externa (REF CLIENTE)');
+      }
+      if (!registro.booking || !registro.booking.trim()) {
+        faltantes.push('Booking');
+      }
     }
 
     if (factura.productos.length === 0) {
-      console.error('❌ Error: No hay productos');
-      showError('Debe agregar al menos un producto');
+      faltantes.push('Al menos un producto');
+    }
+
+    if (faltantes.length > 0) {
+      showError(`Faltan datos obligatorios: ${faltantes.join(', ')}.`);
       return;
     }
 
-    // Validar que todos los productos tengan datos válidos
-    const productosInvalidos = factura.productos.some(
-      (p) => !p.cantidad || p.cantidad <= 0 || !p.precioPorCaja || p.precioPorCaja <= 0
-    );
+    const productosConErrores = factura.productos
+      .map((producto, index) => {
+        const camposInvalidos: string[] = [];
+        if (!producto.cantidad || producto.cantidad <= 0) {
+          camposInvalidos.push('cantidad');
+        }
+        if (!producto.precioPorCaja || producto.precioPorCaja <= 0) {
+          camposInvalidos.push('precio');
+        }
+        if (camposInvalidos.length === 0) {
+          return null;
+        }
+        return `Producto ${index + 1}: ${camposInvalidos.join(' y ')}`;
+      })
+      .filter((item): item is string => Boolean(item));
 
-    if (productosInvalidos) {
-      console.error('❌ Error: Productos con datos inválidos');
-      showError('Todos los productos deben tener cantidad y precio válidos');
+    if (productosConErrores.length > 0) {
+      showError(`Revisa los productos: ${productosConErrores.join('. ')}.`);
       return;
     }
 
     setGuardando(true);
     try {
+      if (mode === 'proforma') {
+        if (!onGenerateProforma) {
+          throw new Error('No se configuró el generador de proformas.');
+        }
+        const facturaCompleta = { ...factura, totales: totalesCalculados };
+        warning('Generando proforma, espera un momento...');
+        await onGenerateProforma(facturaCompleta);
+        setTimeout(() => {
+          onSave();
+        }, 300);
+        return;
+      }
+
       // Obtener usuario actual
       const { data: userData } = await supabase.auth.getUser();
       const userEmail = userData?.user?.email || 'unknown';
@@ -146,7 +265,11 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
     } catch (err: any) {
       console.error('Error guardando factura:', err);
       const errorMessage = err.message || 'Error desconocido al guardar la factura';
-      showError(`Error al guardar la factura: ${errorMessage}`);
+      if (mode === 'proforma') {
+        showError(`Error al generar la proforma: ${errorMessage}`);
+      } else {
+        showError(`Error al guardar la factura: ${errorMessage}`);
+      }
     } finally {
       setGuardando(false);
     }
@@ -183,9 +306,10 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+    <div className="fixed inset-0 z-50 bg-black/50">
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div
-        className={`relative w-full max-w-[95vw] h-[95vh] rounded-lg shadow-xl overflow-hidden flex flex-col ${
+        className={`absolute inset-0 w-full h-full shadow-xl overflow-hidden flex flex-col ${
           theme === 'dark' ? 'bg-gray-800' : 'bg-white'
         }`}
       >
@@ -197,41 +321,71 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
         >
           <div>
             <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Crear Factura
+              {mode === 'proforma' ? 'Generar Proforma' : 'Crear Factura'}
             </h2>
             {factura.refAsli && (
               <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
                 REF ASLI: <span className="font-semibold">{factura.refAsli}</span>
               </p>
             )}
+            {mode === 'proforma' && (
+              <div className="mt-2">
+                <label className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Plantilla
+                </label>
+                <select
+                  value={factura.clientePlantilla}
+                  onChange={(event) => {
+                    const selected = event.target.value;
+                    setFactura(prev => ({ ...prev, clientePlantilla: selected }));
+                  }}
+                  className={`mt-1 w-full max-w-[220px] rounded-lg border px-2 py-1 text-xs outline-none transition ${
+                    theme === 'dark'
+                      ? 'border-gray-700 bg-gray-900 text-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
+                  }`}
+                >
+                  {TEMPLATE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={handleDownloadPDF}
-              disabled={descargandoPDF}
-              className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
-                descargandoPDF
-                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : 'bg-red-600 text-white hover:bg-red-700'
-              }`}
-            >
-              <Download className="w-4 h-4" />
-              <span>PDF</span>
-            </button>
-            <button
-              onClick={handleDownloadExcel}
-              disabled={descargandoExcel}
-              className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
-                descargandoExcel
-                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : 'bg-green-600 text-white hover:bg-green-700'
-              }`}
-            >
-              <Download className="w-4 h-4" />
-              <span>Excel</span>
-            </button>
+            {mode !== 'proforma' && (
+              <>
+                <button
+                  onClick={handleDownloadPDF}
+                  disabled={descargandoPDF}
+                  className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    descargandoPDF
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-red-600 text-white hover:bg-red-700'
+                  }`}
+                >
+                  <Download className="w-4 h-4" />
+                  <span>PDF</span>
+                </button>
+                <button
+                  onClick={handleDownloadExcel}
+                  disabled={descargandoExcel}
+                  className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                    descargandoExcel
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Excel</span>
+                </button>
+              </>
+            )}
             <button
               onClick={onClose}
+              aria-label="Cerrar"
               className={`p-1 rounded hover:bg-opacity-20 transition-colors ${
                 theme === 'dark'
                   ? 'text-gray-400 hover:bg-white'
@@ -255,8 +409,40 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
           </div>
 
           {/* Vista previa (70%) */}
-          <div className="flex-1 overflow-y-auto p-4 bg-white">
-            <PlantillaAlma factura={{ ...factura, totales: totalesCalculados }} />
+          <div className="flex-1 overflow-hidden bg-white">
+            {mode === 'proforma' ? (
+              <div className="relative h-full w-full bg-gray-100">
+                {previewUrl ? (
+                  <iframe
+                    title="Vista previa PDF de la proforma"
+                    src={previewUrl}
+                    className="h-full w-full border-0"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-gray-500">
+                    No hay vista previa disponible.
+                  </div>
+                )}
+                {isPreviewLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/70 text-sm text-gray-600">
+                    Generando vista previa...
+                  </div>
+                )}
+                {!isPreviewLoading && previewError && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 text-sm text-red-600">
+                    {previewError}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="h-full overflow-y-auto p-4">
+                {factura.clientePlantilla === 'FRUIT ANDES SUR' ? (
+                  <PlantillaFruitAndes factura={{ ...factura, totales: totalesCalculados }} />
+                ) : (
+                  <PlantillaAlma factura={{ ...factura, totales: totalesCalculados }} />
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -291,7 +477,7 @@ export function FacturaCreator({ registro, isOpen, onClose, onSave }: FacturaCre
             }`}
           >
             <Save className="w-4 h-4" />
-            <span>{guardando ? 'Guardando...' : 'Guardar Factura'}</span>
+            <span>{guardando ? 'Guardando...' : mode === 'proforma' ? 'Generar Proforma' : 'Guardar Factura'}</span>
           </button>
         </div>
       </div>
@@ -332,7 +518,6 @@ function FormularioFactura({
     setFactura(prev => ({
       ...prev,
       productos: [
-        ...prev.productos,
         {
           cantidad: 0,
           tipoEnvase: 'CASES',
@@ -346,6 +531,7 @@ function FormularioFactura({
           precioPorCaja: 0,
           total: 0,
         },
+        ...prev.productos,
       ],
     }));
   };
