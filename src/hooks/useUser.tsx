@@ -12,6 +12,7 @@ interface Usuario {
   rol: string;
   activo: boolean;
   puede_subir?: boolean;
+  cliente_nombre?: string | null;
 }
 
 interface UserContextType {
