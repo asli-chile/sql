@@ -73,12 +73,17 @@ export async function middleware(req: NextRequest) {
 
   const { pathname } = req.nextUrl;
 
-  // Detectar si la petición viene desde asli.cl (vía rewrites)
-  // Verificar tanto el host como el referer para detectar acceso desde asli.cl
+  // Detectar si la petición viene desde asli.cl (vía rewrites de Vercel)
+  // Vercel envía x-forwarded-host cuando hace rewrites
+  const forwardedHost = req.headers.get('x-forwarded-host') || '';
   const host = req.headers.get('host') || '';
   const referer = req.headers.get('referer') || '';
   const origin = req.headers.get('origin') || '';
-  const isFromAsliCl = host.includes('asli.cl') || referer.includes('asli.cl') || origin.includes('asli.cl');
+  const isFromAsliCl = 
+    forwardedHost.includes('asli.cl') || 
+    host.includes('asli.cl') || 
+    referer.includes('asli.cl') || 
+    origin.includes('asli.cl');
 
   // Si está en una ruta protegida y no tiene sesión, redirigir a auth
   // IMPORTANTE: Limpiar cualquier parámetro de credenciales de la URL por seguridad
@@ -93,11 +98,10 @@ export async function middleware(req: NextRequest) {
 
   // Si está en auth y ya tiene sesión, redirigir a dashboard
   // PERO solo si realmente está en /auth (no en otras rutas que empiecen con /auth)
-  if (pathname === '/auth' && session) {
-    // Si viene desde asli.cl, usar URL absoluta para evitar bucles
-    const dashboardUrl = isFromAsliCl
-      ? new URL('https://asli.cl/dashboard')
-      : new URL('/dashboard', req.url);
+  // IMPORTANTE: NO redirigir si viene desde asli.cl para evitar bucles infinitos
+  // El código del cliente manejará la redirección después del login
+  if (pathname === '/auth' && session && !isFromAsliCl) {
+    const dashboardUrl = new URL('/dashboard', req.url);
     return NextResponse.redirect(dashboardUrl);
   }
 
@@ -121,7 +125,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Si está en una ruta protegida Y tiene sesión, NO redirigir (dejar pasar)
-  // Esto evita bucles infinitos
+  // Esto evita bucles infinitos cuando ya está en la ruta correcta
 
   return res;
 }
