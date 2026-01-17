@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/lib/supabase-server';
 
 type RefAsliRequest = {
   count?: number;
 };
 
-const getAdminClient = () => {
+const getAdminClient = (): SupabaseClient => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !serviceRoleKey) {
@@ -14,7 +15,7 @@ const getAdminClient = () => {
   }
   return createAdminClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
-  });
+  }) as SupabaseClient;
 };
 
 const validateUser = async () => {
@@ -41,7 +42,7 @@ const validateUser = async () => {
   return { ok: true };
 };
 
-const fetchAllRefAsliNumbers = async (adminClient: ReturnType<typeof createAdminClient>) => {
+const fetchAllRefAsliNumbers = async (adminClient: SupabaseClient) => {
   const pageSize = 1000;
   let from = 0;
   const numbers = new Set<number>();
