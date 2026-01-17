@@ -173,7 +173,9 @@ const AuthPage = () => {
         }
 
         console.log('[Login] Login exitoso, redirigiendo...');
-        router.push('/dashboard');
+        // Usar window.location.replace para evitar bucles con middleware y rewrites
+        // Esto fuerza una navegación completa del navegador en lugar de una navegación del cliente
+        window.location.replace('/dashboard');
         return;
       }
 
@@ -217,7 +219,9 @@ const AuthPage = () => {
         return;
       }
 
-      router.push('/dashboard');
+      // Usar window.location.replace para evitar bucles con middleware y rewrites
+      // Esto fuerza una navegación completa del navegador en lugar de una navegación del cliente
+      window.location.replace('/dashboard');
     } catch (authError: any) {
       console.error('[Auth] Error inesperado:', authError);
       // El error ya debería estar establecido en setError() dentro de los bloques try
