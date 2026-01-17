@@ -2,6 +2,11 @@
 import jsPDF from 'jspdf';
 import { Factura } from '@/types/factura';
 
+export type PdfGenerationOptions = {
+  returnBlob?: boolean;
+  fileNameBase?: string;
+};
+
 // Función para convertir número a palabras (en inglés, como en la factura)
 function numberToWords(num: number): string {
   const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE'];
@@ -88,20 +93,33 @@ function numberToWords(num: number): string {
   }
 }
 
-export async function generarFacturaPDF(factura: Factura): Promise<void> {
+export async function generarFacturaPDF(
+  factura: Factura
+): Promise<void>;
+export async function generarFacturaPDF(
+  factura: Factura,
+  options: PdfGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void>;
+export async function generarFacturaPDF(
+  factura: Factura,
+  options?: PdfGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void> {
   // Detectar plantilla según cliente
   const clienteNombre = factura.exportador.nombre?.toUpperCase() || '';
   const clientePlantilla = factura.clientePlantilla || '';
   
   if (clienteNombre.includes('FRUIT ANDES') || clientePlantilla === 'FRUIT ANDES SUR') {
-    return generarFacturaPDFFruitAndes(factura);
+    return generarFacturaPDFFruitAndes(factura, options);
   }
   
   // Plantilla por defecto (ALMA)
-  return generarFacturaPDFAlma(factura);
+  return generarFacturaPDFAlma(factura, options);
 }
 
-async function generarFacturaPDFAlma(factura: Factura): Promise<void> {
+async function generarFacturaPDFAlma(
+  factura: Factura,
+  options?: PdfGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -649,11 +667,19 @@ async function generarFacturaPDFAlma(factura: Factura): Promise<void> {
   const footerTextWidth = doc.getTextWidth(footerText);
   doc.text(footerText, margin + (contentWidth / 2) - (footerTextWidth / 2), y);
 
+  const defaultFileName = `Factura_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`;
+  const fileName = options?.fileNameBase ? `${options.fileNameBase}.pdf` : defaultFileName;
+  if (options?.returnBlob) {
+    return { blob: doc.output('blob'), fileName };
+  }
   // Descargar PDF
-  doc.save(`Factura_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`);
+  doc.save(defaultFileName);
 }
 
-async function generarFacturaPDFFruitAndes(factura: Factura): Promise<void> {
+async function generarFacturaPDFFruitAndes(
+  factura: Factura,
+  options?: PdfGenerationOptions
+): Promise<{ blob: Blob; fileName: string } | void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -906,6 +932,11 @@ async function generarFacturaPDFFruitAndes(factura: Factura): Promise<void> {
   const cifTextWidth = doc.getTextWidth(cifText);
   doc.text(cifText, margin + colWidths[0] * 8 + colWidths[8] - cifTextWidth - 2, y);
 
+  const defaultFileName = `Proforma_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`;
+  const fileName = options?.fileNameBase ? `${options.fileNameBase}.pdf` : defaultFileName;
+  if (options?.returnBlob) {
+    return { blob: doc.output('blob'), fileName };
+  }
   // Descargar PDF
-  doc.save(`Proforma_${factura.refAsli}_${factura.embarque.numeroInvoice}.pdf`);
+  doc.save(defaultFileName);
 }
