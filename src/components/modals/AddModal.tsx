@@ -99,7 +99,7 @@ export function AddModal({
     pod: '',
     deposito: '',
     estado: 'PENDIENTE',
-    tipoIngreso: 'NORMAL',
+    tipoIngreso: '',
     flete: '',
     comentario: '',
     etd: '',
@@ -296,7 +296,7 @@ export function AddModal({
       case 2:
         return !!(formData.naviera && formData.naveInicial && formData.deposito && formData.pol && formData.pod && formData.flete && formData.tipoIngreso);
       case 3:
-        return !!(formData.cbm);
+        return !!(formData.cbm && formData.temperatura);
       case 4:
         return true; // Paso 4 no tiene campos obligatorios
       case 5:
@@ -1232,6 +1232,7 @@ Saludos cordiales.`;
                 className={getSelectStyles()}
                 required
               >
+                <option value="">Seleccionar flete</option>
                 {fletesUnicos.map((flete) => (
                   <option key={flete} value={flete}>
                     {flete}
@@ -1252,6 +1253,7 @@ Saludos cordiales.`;
                 className={getSelectStyles()}
                 required
               >
+                <option value="">Seleccionar tipo de ingreso</option>
                 <option value="NORMAL">NORMAL</option>
                 <option value="EARLY">EARLY</option>
                 <option value="LATE">LATE</option>
@@ -1414,13 +1416,14 @@ Saludos cordiales.`;
                 {/* Temperatura */}
                 <div className="space-y-2">
                   <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                    Temperatura (°C)
+                    Temperatura (°C) *
                   </label>
                   <select
                     name="temperatura"
                     value={formData.temperatura}
                     onChange={handleChange}
                     className={getSelectStyles()}
+                    required
                   >
                     <option value="">Seleccionar temperatura</option>
                     {Array.from({ length: 21 }, (_, i) => {
