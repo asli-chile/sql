@@ -74,10 +74,11 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Detectar si la petición viene desde asli.cl (vía rewrites)
-  // Si viene desde asli.cl, NO hacer redirecciones para evitar bucles infinitos
+  // Verificar tanto el host como el referer para detectar acceso desde asli.cl
   const host = req.headers.get('host') || '';
   const referer = req.headers.get('referer') || '';
-  const isFromAsliCl = host.includes('asli.cl') || referer.includes('asli.cl');
+  const origin = req.headers.get('origin') || '';
+  const isFromAsliCl = host.includes('asli.cl') || referer.includes('asli.cl') || origin.includes('asli.cl');
 
   // Si está en una ruta protegida y no tiene sesión, redirigir a auth
   // IMPORTANTE: Limpiar cualquier parámetro de credenciales de la URL por seguridad
@@ -91,7 +92,8 @@ export async function middleware(req: NextRequest) {
   }
 
   // Si está en auth y ya tiene sesión, redirigir a dashboard
-  if (authRoutes.some(route => pathname.startsWith(route)) && session) {
+  // PERO solo si realmente está en /auth (no en otras rutas que empiecen con /auth)
+  if (pathname === '/auth' && session) {
     // Si viene desde asli.cl, usar URL absoluta para evitar bucles
     const dashboardUrl = isFromAsliCl
       ? new URL('https://asli.cl/dashboard')
@@ -117,6 +119,9 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(authUrl);
     }
   }
+
+  // Si está en una ruta protegida Y tiene sesión, NO redirigir (dejar pasar)
+  // Esto evita bucles infinitos
 
   return res;
 }
