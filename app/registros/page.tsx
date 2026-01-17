@@ -2540,10 +2540,10 @@ export default function RegistrosPage() {
                         }`}
                     >
                       <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
-                        item.isActive 
-                          ? '!text-white' 
-                          : theme === 'light' 
-                            ? '!text-blue-600' 
+                        item.isActive
+                          ? '!text-white'
+                          : theme !== 'dark'
+                            ? '!text-blue-600'
                             : ''
                       }`}>{item.label}</span>
                       {item.counter !== undefined && item.tone && (
