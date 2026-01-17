@@ -40,23 +40,13 @@ El middleware ya está deshabilitado cuando viene desde `asli.cl`, pero puede qu
 
 ## 🛠️ PRÓXIMOS PASOS A PROBAR
 
-### ⚠️ PASO CRÍTICO: Agregar dominio asli.cl en Vercel (HACER PRIMERO)
+### ✅ VERIFICADO: Dominio asli.cl en Vercel
 
-**PROBLEMA DETECTADO:** `asli.cl` NO está configurado como dominio en Vercel. Sin esto, los rewrites NO funcionarán.
+**ESTADO:** `asli.cl` ya está configurado en Vercel con "Valid Configuration" ✅
 
-**SOLUCIÓN:**
-1. Ve a Vercel Dashboard → Tu proyecto **asli-web** (el proyecto de la página web)
-2. Ve a **Settings** → **Domains**
-3. Click en **"Add Domain"**
-4. Ingresa: `asli.cl`
-5. Click en **"Add"**
-6. Vercel te mostrará los registros DNS que necesitas configurar en cPanel
-7. **IMPORTANTE:** Configura los DNS en cPanel según lo que Vercel te indique
-8. Espera a que Vercel verifique el dominio (puede tardar unos minutos)
+El dominio está correctamente configurado, así que el problema debe estar en otra parte.
 
-**Una vez que `asli.cl` esté configurado y verificado en Vercel, los rewrites comenzarán a funcionar.**
-
-### Opción 1: Verificar configuración de Supabase (DESPUÉS de agregar dominio)
+### Opción 1: Verificar configuración de Supabase (MÁS IMPORTANTE AHORA)
 
 1. Ve a Supabase Dashboard → Authentication → URL Configuration
 2. Verifica que `https://asli.cl` esté en las Redirect URLs
