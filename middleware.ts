@@ -71,7 +71,7 @@ export async function middleware(req: NextRequest) {
   const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas', '/tablas-personalizadas'];
   const authRoutes = ['/auth'];
 
-  const { pathname } = req.nextUrl;
+  const { pathname, searchParams } = req.nextUrl;
 
   // Detectar si la petición viene desde asli.cl (vía rewrites de Vercel)
   // Vercel envía x-forwarded-host cuando hace rewrites
@@ -84,6 +84,16 @@ export async function middleware(req: NextRequest) {
     host.includes('asli.cl') || 
     referer.includes('asli.cl') || 
     origin.includes('asli.cl');
+
+  // CRÍTICO: Excluir peticiones RSC (React Server Components) cuando vienen desde asli.cl
+  // Las peticiones RSC tienen el parámetro ?rsc= en la URL y causan bucles infinitos
+  const isRSCRequest = searchParams.has('rsc');
+  
+  if (isFromAsliCl && isRSCRequest) {
+    // Para peticiones RSC desde asli.cl, simplemente dejar pasar sin ninguna lógica
+    // Esto evita completamente los bucles infinitos
+    return res;
+  }
 
   // ESTRATEGIA: Cuando viene desde asli.cl, deshabilitar TODAS las redirecciones automáticas
   // Solo proteger rutas que requieren autenticación (redirigir a auth si no hay sesión)
