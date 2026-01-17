@@ -383,18 +383,22 @@ export default function RegistrosPage() {
       const clientesFinales = Array.from(clientesAsignadosSet);
       setClientesAsignados(clientesFinales);
       // Actualizar currentUser con los clientes asignados
-      setCurrentUser((prev: any) => ({
-        ...prev,
-        clientes_asignados: clientesFinales,
-      }));
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          clientes_asignados: clientesFinales,
+        });
+      }
     } catch (error) {
       console.error('Error loading clientes asignados:', error);
       setClientesAsignados([]);
       // Actualizar currentUser con array vacío en caso de error
-      setCurrentUser((prev: any) => ({
-        ...prev,
-        clientes_asignados: [],
-      }));
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          clientes_asignados: [],
+        });
+      }
     }
   };
 
