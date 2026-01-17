@@ -26,7 +26,7 @@ const Footer = () => {
           {/* Logo y slogan */}
           <div>
             <img
-              src="https://asli.cl/img/logoblanco.png"
+              src="/img/logoblanco.png"
               alt="ASLI Logo"
               className="h-12 mb-3 object-contain"
             />

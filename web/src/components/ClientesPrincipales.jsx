@@ -8,37 +8,37 @@ const ClientesPrincipales = () => {
     {
       id: 1,
       nombre: 'Alma',
-      logo: 'https://asli.cl/img/alma.png',
+      logo: '/img/alma.png',
     },
     {
       id: 2,
       nombre: 'Cope',
-      logo: 'https://asli.cl/img/cope.png',
+      logo: '/img/cope.png',
     },
     {
       id: 3,
       nombre: 'Hillvilla',
-      logo: 'https://asli.cl/img/hillvilla.png',
+      logo: '/img/hillvilla.png',
     },
     {
       id: 4,
       nombre: 'Xsur',
-      logo: 'https://asli.cl/img/xsur.png',
+      logo: '/img/xsur.png',
     },
     {
       id: 5,
       nombre: 'Jotrisa',
-      logo: 'https://asli.cl/img/jotrisa.png',
+      logo: '/img/jotrisa.png',
     },
     {
       id: 6,
       nombre: 'San Andrés',
-      logo: 'https://asli.cl/img/san-andres.png',
+      logo: '/img/san-andres.png',
     },
     {
       id: 7,
       nombre: 'Rino',
-      logo: 'https://asli.cl/img/rino.png',
+      logo: '/img/rino.png',
     },
   ]
 

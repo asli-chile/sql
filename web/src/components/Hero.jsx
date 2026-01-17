@@ -41,7 +41,7 @@ const Hero = () => {
       id="inicio"
       className="relative min-h-[90vh] flex items-center justify-start bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: `url('https://asli.cl/img/HERO.webp')`,
+        backgroundImage: `url('/img/HERO.webp')`,
       }}
     >
       {/* Overlay oscuro semi-transparente - degradado vertical de abajo hacia arriba */}
@@ -53,7 +53,7 @@ const Hero = () => {
           {/* Logo con sombreado detrás de las letras */}
           <div className="mb-6 flex justify-center md:justify-start">
             <img
-              src="https://asli.cl/img/logoblanco.png"
+              src="/img/logoblanco.png"
               alt="ASLI Logo"
               className="h-24 md:h-[120px] object-contain drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] drop-shadow-[0_2px_4px_rgba(0,0,0,0.6)]"
               style={{

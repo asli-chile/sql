@@ -76,15 +76,15 @@ const Servicios = () => {
           {servicios.map((servicio) => {
             // Definir imágenes de fondo para todos los servicios
             const imagenesFondo = {
-              1: 'https://asli.cl/img/expo.webp', // Exportaciones
-              2: 'https://asli.cl/img/impo.webp', // Importaciones
-              3: 'https://asli.cl/img/docs.webp', // Documental
-              4: 'https://asli.cl/img/maritimo.webp', // Marítimo
-              5: 'https://asli.cl/img/aereo.webp', // Aéreo
-              6: 'https://asli.cl/img/camion.webp', // Terrestre
-              7: 'https://asli.cl/img/container.webp', // Contenedores
-              8: 'https://asli.cl/img/aduana.webp', // Aduanas
-              9: 'https://asli.cl/img/logistica.webp', // Logística Integral
+              1: '/img/expo.webp', // Exportaciones
+              2: '/img/impo.webp', // Importaciones
+              3: '/img/docs.webp', // Documental
+              4: '/img/maritimo.webp', // Marítimo
+              5: '/img/aereo.webp', // Aéreo
+              6: '/img/camion.webp', // Terrestre
+              7: '/img/container.webp', // Contenedores
+              8: '/img/aduana.webp', // Aduanas
+              9: '/img/logistica.webp', // Logística Integral
             }
             const tieneImagenFondo = imagenesFondo[servicio.id]
 

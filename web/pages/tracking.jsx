@@ -15,11 +15,11 @@ const TrackingPage = () => {
         <link
           rel="icon"
           type="image/png"
-          href="https://asli.cl/img/logoblanco.png"
+          href="/img/logoblanco.png"
         />
         <link
           rel="apple-touch-icon"
-          href="https://asli.cl/img/logoblanco.png"
+          href="/img/logoblanco.png"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>

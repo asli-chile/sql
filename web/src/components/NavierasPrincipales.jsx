@@ -4,21 +4,21 @@
  */
 const NavierasPrincipales = () => {
   const navieras = [
-    { nombre: 'Avianca', logo: 'https://asli.cl/img/avianca.png' },
-    { nombre: 'CMA', logo: 'https://asli.cl/img/cma.png' },
-    { nombre: 'LATAM', logo: 'https://asli.cl/img/latamcargo.png' },
-    { nombre: 'ZIM', logo: 'https://asli.cl/img/zim.png' },
-    { nombre: 'Maersk', logo: 'https://asli.cl/img/maersk.png' },
-    { nombre: 'OOCL', logo: 'https://asli.cl/img/oocl.png' },
-    { nombre: 'Iberia', logo: 'https://asli.cl/img/iberia.png' },
-    { nombre: 'MSC', logo: 'https://asli.cl/img/msc.png' },
-    { nombre: 'PIL', logo: 'https://asli.cl/img/pil.png' },
-    { nombre: 'SkyLogo', logo: 'https://asli.cl/img/skylogo.png' },
-    { nombre: 'COSCO', logo: 'https://asli.cl/img/cosco.png' },
-    { nombre: 'Yangming', logo: 'https://asli.cl/img/yangming.png' },
-    { nombre: 'ONE', logo: 'https://asli.cl/img/one.png' },
-    { nombre: 'JetSmart', logo: 'https://asli.cl/img/jetsmart.png' },
-    { nombre: 'Wan Hai', logo: 'https://asli.cl/img/wanhai.png' },
+    { nombre: 'Avianca', logo: '/img/avianca.png' },
+    { nombre: 'CMA', logo: '/img/cma.png' },
+    { nombre: 'LATAM', logo: '/img/latamcargo.png' },
+    { nombre: 'ZIM', logo: '/img/zim.png' },
+    { nombre: 'Maersk', logo: '/img/maersk.png' },
+    { nombre: 'OOCL', logo: '/img/oocl.png' },
+    { nombre: 'Iberia', logo: '/img/iberia.png' },
+    { nombre: 'MSC', logo: '/img/msc.png' },
+    { nombre: 'PIL', logo: '/img/pil.png' },
+    { nombre: 'SkyLogo', logo: '/img/skylogo.png' },
+    { nombre: 'COSCO', logo: '/img/cosco.png' },
+    { nombre: 'Yangming', logo: '/img/yangming.png' },
+    { nombre: 'ONE', logo: '/img/one.png' },
+    { nombre: 'JetSmart', logo: '/img/jetsmart.png' },
+    { nombre: 'Wan Hai', logo: '/img/wanhai.png' },
   ]
 
   return (

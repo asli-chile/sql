@@ -82,7 +82,7 @@ const QuienesSomos = () => {
             <div 
               className="bg-cover bg-center bg-no-repeat rounded-lg aspect-video"
               style={{
-                backgroundImage: 'url(https://asli.cl/img/edificio.webp)',
+                backgroundImage: 'url(/img/edificio.webp)',
               }}
             >
             </div>

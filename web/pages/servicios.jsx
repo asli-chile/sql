@@ -9,63 +9,63 @@ const ServiciosPage = () => {
       titulo: 'Asesoría En Exportaciones',
       descripcion:
         'Gestión completa del proceso de exportación, desde la documentación hasta la coordinación con navieras y aduanas.',
-      imagen: 'https://asli.cl/img/expo.webp',
+      imagen: '/img/expo.webp',
     },
     {
       id: 2,
       titulo: 'Asesoría En Importaciones',
       descripcion:
         'Facilitamos la importación de tus productos, manejando trámites aduaneros y coordinación logística.',
-      imagen: 'https://asli.cl/img/impo.webp',
+      imagen: '/img/impo.webp',
     },
     {
       id: 3,
       titulo: 'Asesoría Documental',
       descripcion:
         'Asesoría especializada en documentación aduanera, certificados, permisos y toda la tramitación necesaria.',
-      imagen: 'https://asli.cl/img/docs.webp',
+      imagen: '/img/docs.webp',
     },
     {
       id: 4,
       titulo: 'Transporte Marítimo',
       descripcion:
         'Coordinación con las principales navieras del mundo para el transporte seguro de tu carga.',
-      imagen: 'https://asli.cl/img/maritimo.webp',
+      imagen: '/img/maritimo.webp',
     },
     {
       id: 5,
       titulo: 'Transporte Aéreo',
       descripcion:
         'Soluciones de transporte aéreo para cargas urgentes o de alto valor.',
-      imagen: 'https://asli.cl/img/aereo.webp',
+      imagen: '/img/aereo.webp',
     },
     {
       id: 6,
       titulo: 'Transporte Terrestre',
       descripcion:
         'Red de transporte terrestre confiable para mover tu carga desde y hacia puertos y aeropuertos.',
-      imagen: 'https://asli.cl/img/camion.webp',
+      imagen: '/img/camion.webp',
     },
     {
       id: 7,
       titulo: 'Gestión de Contenedores',
       descripcion:
         'Administración eficiente de contenedores, optimizando espacio y costos.',
-      imagen: 'https://asli.cl/img/container.webp',
+      imagen: '/img/container.webp',
     },
     {
       id: 8,
       titulo: 'Servicios Aduaneros',
       descripcion:
         'Tramitación aduanera completa, cumplimiento normativo y agilización de procesos.',
-      imagen: 'https://asli.cl/img/aduana.webp',
+      imagen: '/img/aduana.webp',
     },
     {
       id: 9,
       titulo: 'Asesoría Logística Integral',
       descripcion:
         'Soluciones logísticas completas y personalizadas para cada necesidad de tu empresa.',
-      imagen: 'https://asli.cl/img/logistica.webp',
+      imagen: '/img/logistica.webp',
     },
   ]
 
@@ -80,11 +80,11 @@ const ServiciosPage = () => {
         <link
           rel="icon"
           type="image/png"
-          href="https://asli.cl/img/logoblanco.png"
+          href="/img/logoblanco.png"
         />
         <link
           rel="apple-touch-icon"
-          href="https://asli.cl/img/logoblanco.png"
+          href="/img/logoblanco.png"
         />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
       </Head>
@@ -116,7 +116,7 @@ const ServiciosPage = () => {
                   </h2>
                   <div className="flex flex-col items-center mb-6">
                     <img
-                      src="https://asli.cl/img/nina.png"
+                      src="/img/nina.png"
                       alt="Nina Scotti - Ejecutiva de Operaciones e Importaciones"
                       className="w-32 h-32 rounded-full object-cover border-4 border-asli-primary mb-4 shadow-lg"
                     />
@@ -169,7 +169,7 @@ const ServiciosPage = () => {
                   </h2>
                   <div className="flex flex-col items-center mb-6">
                     <img
-                      src="https://asli.cl/img/alex.png"
+                      src="/img/alex.png"
                       alt="Alex Cárdenas - Coordinador de Transportes"
                       className="w-32 h-32 rounded-full object-cover border-4 border-asli-primary mb-4 shadow-lg"
                     />
@@ -214,7 +214,7 @@ const ServiciosPage = () => {
                   </h2>
                   <div className="flex flex-col items-center mb-6">
                     <img
-                      src="https://asli.cl/img/poli.jpg"
+                      src="/img/poli.jpg"
                       alt="Poliana Cisterna - Subgerente Comercial"
                       className="w-32 h-32 rounded-full object-cover border-4 border-asli-primary mb-4 shadow-lg"
                     />
@@ -269,7 +269,7 @@ const ServiciosPage = () => {
                     </h2>
                     <div className="flex flex-col items-center mb-6 flex-grow">
                       <img
-                        src="https://asli.cl/img/rocio.png"
+                        src="/img/rocio.png"
                         alt="Rocio Villareal - Subgerente de Seguridad Alimentaria"
                         className="w-32 h-32 rounded-full object-cover border-4 border-asli-primary mb-4 shadow-lg"
                       />
@@ -314,7 +314,7 @@ const ServiciosPage = () => {
                   </h2>
                   <div className="flex flex-col items-center mb-6 flex-grow">
                     <img
-                      src="https://asli.cl/img/hansv.png"
+                      src="/img/hansv.png"
                       alt="Hans Vasquez - Subgerente de Operaciones"
                       className="w-32 h-32 rounded-full object-cover border-4 border-asli-primary mb-4 shadow-lg"
                     />

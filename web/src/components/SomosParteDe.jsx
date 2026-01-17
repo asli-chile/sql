@@ -8,22 +8,22 @@ const SomosParteDe = () => {
     {
       id: 1,
       nombre: 'Agronexo',
-      logo: 'https://asli.cl/img/agronexo.png',
+      logo: '/img/agronexo.png',
     },
     {
       id: 2,
       nombre: 'Fedefruta',
-      logo: 'https://asli.cl/img/fedefruta.png',
+      logo: '/img/fedefruta.png',
     },
     {
       id: 3,
       nombre: 'Maulealimenta',
-      logo: 'https://asli.cl/img/maulealimenta.png',
+      logo: '/img/maulealimenta.png',
     },
     {
       id: 4,
       nombre: 'ProChile',
-      logo: 'https://asli.cl/img/prochile2.png',
+      logo: '/img/prochile2.png',
     },
   ]
 

@@ -8,17 +8,17 @@ const NuestroEquipo = () => {
     {
       nombre: 'Mario Basaez',
       cargo: 'Fundador y Gerente General',
-      imagen: 'https://asli.cl/img/mariobasaez.png',
+      imagen: '/img/mariobasaez.png',
     },
     {
       nombre: 'Hans Vasquez',
       cargo: 'Subgerente de Operaciones',
-      imagen: 'https://asli.cl/img/hansv.png',
+      imagen: '/img/hansv.png',
     },
     {
       nombre: 'Poliana Cisterna',
       cargo: 'Subgerente Comercial',
-      imagen: 'https://asli.cl/img/poli.jpg',
+      imagen: '/img/poli.jpg',
     },
   ]
 
@@ -26,17 +26,17 @@ const NuestroEquipo = () => {
     {
       nombre: 'Rocio Villareal',
       cargo: 'Subgerente de Seguridad Alimentaria',
-      imagen: 'https://asli.cl/img/rocio.png',
+      imagen: '/img/rocio.png',
     },
     {
       nombre: 'Ricardo Lazo',
       cargo: 'Subgerente Comercio Exterior',
-      imagen: 'https://asli.cl/img/ricardolazo.png',
+      imagen: '/img/ricardolazo.png',
     },
     {
       nombre: 'Nina Scotti',
       cargo: 'Ejecutiva Comercial e Importaciones',
-      imagen: 'https://asli.cl/img/nina.png',
+      imagen: '/img/nina.png',
     },
   ]
 
@@ -44,17 +44,17 @@ const NuestroEquipo = () => {
     {
       nombre: 'Alex Cárdenas',
       cargo: 'Coordinador de Transportes',
-      imagen: 'https://asli.cl/img/alex.png',
+      imagen: '/img/alex.png',
     },
     {
       nombre: 'Stefania Cordova',
       cargo: 'Subgerente de Administración y Finanzas',
-      imagen: 'https://asli.cl/img/stefanie.png',
+      imagen: '/img/stefanie.png',
     },
     {
       nombre: 'Rodrigo Cáceres',
       cargo: 'Customer Services',
-      imagen: 'https://asli.cl/img/rodrigo.png',
+      imagen: '/img/rodrigo.png',
     },
   ]
 

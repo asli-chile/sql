@@ -48,12 +48,12 @@ const Header = () => {
               aria-label="ASLI - Inicio"
             >
               <img
-                src="https://asli.cl/img/logoblanco.png"
+                src="/img/logoblanco.png"
                 alt="ASLI Logo"
                 className="h-10 md:h-12 object-contain"
               />
               <img
-                src="https://asli.cl/img/logopro.png"
+                src="/img/logopro.png"
                 alt="ASLI Pro Logo"
                 className="h-10 md:h-12 object-contain"
               />
