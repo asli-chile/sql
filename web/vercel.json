@@ -56,6 +56,10 @@
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/contacto"
     },
     {
+      "source": "/dashboard",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/dashboard"
+    },
+    {
       "source": "/dashboard/:path*",
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/dashboard/:path*"
     },
@@ -103,6 +107,10 @@
         {
           "key": "x-forwarded-host",
           "value": "asli.cl"
+        },
+        {
+          "key": "x-forwarded-proto",
+          "value": "https"
         }
       ]
     }
