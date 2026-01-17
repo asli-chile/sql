@@ -71,7 +71,7 @@ export async function middleware(req: NextRequest) {
   const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas', '/tablas-personalizadas'];
   const authRoutes = ['/auth'];
 
-  const { pathname, searchParams } = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
   // Detectar si la petición viene desde asli.cl (vía rewrites de Vercel)
   // Vercel envía x-forwarded-host cuando hace rewrites
@@ -85,30 +85,12 @@ export async function middleware(req: NextRequest) {
     referer.includes('asli.cl') || 
     origin.includes('asli.cl');
 
-  // CRÍTICO: Excluir peticiones RSC (React Server Components) cuando vienen desde asli.cl
-  // Las peticiones RSC tienen el parámetro ?rsc= en la URL y causan bucles infinitos
-  const isRSCRequest = searchParams.has('rsc');
-  
-  if (isFromAsliCl && isRSCRequest) {
-    // Para peticiones RSC desde asli.cl, simplemente dejar pasar sin ninguna lógica
-    // Esto evita completamente los bucles infinitos
-    return res;
-  }
-
-  // ESTRATEGIA: Cuando viene desde asli.cl, deshabilitar TODAS las redirecciones automáticas
-  // Solo proteger rutas que requieren autenticación (redirigir a auth si no hay sesión)
-  // El código del cliente manejará todas las redirecciones después del login
-  
+  // SOLUCIÓN RADICAL: Deshabilitar completamente el middleware cuando viene desde asli.cl
+  // El middleware está causando bucles infinitos con los rewrites de Vercel
+  // El código del cliente y las páginas manejarán la autenticación y redirecciones
   if (isFromAsliCl) {
-    // Si viene desde asli.cl, solo proteger rutas que requieren autenticación
-    // NO hacer ninguna otra redirección automática para evitar bucles
-    if (protectedRoutes.some(route => pathname.startsWith(route)) && !session) {
-      // Solo redirigir a auth si está en una ruta protegida sin sesión
-      const authUrl = new URL('https://asli.cl/auth');
-      authUrl.search = '';
-      return NextResponse.redirect(authUrl);
-    }
-    // Para todas las demás rutas cuando viene desde asli.cl, simplemente dejar pasar
+    // Simplemente retornar sin ninguna lógica cuando viene desde asli.cl
+    // Esto evita completamente cualquier interferencia del middleware
     return res;
   }
 
