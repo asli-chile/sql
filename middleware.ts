@@ -85,47 +85,49 @@ export async function middleware(req: NextRequest) {
     referer.includes('asli.cl') || 
     origin.includes('asli.cl');
 
+  // ESTRATEGIA: Cuando viene desde asli.cl, deshabilitar TODAS las redirecciones automáticas
+  // Solo proteger rutas que requieren autenticación (redirigir a auth si no hay sesión)
+  // El código del cliente manejará todas las redirecciones después del login
+  
+  if (isFromAsliCl) {
+    // Si viene desde asli.cl, solo proteger rutas que requieren autenticación
+    // NO hacer ninguna otra redirección automática para evitar bucles
+    if (protectedRoutes.some(route => pathname.startsWith(route)) && !session) {
+      // Solo redirigir a auth si está en una ruta protegida sin sesión
+      const authUrl = new URL('https://asli.cl/auth');
+      authUrl.search = '';
+      return NextResponse.redirect(authUrl);
+    }
+    // Para todas las demás rutas cuando viene desde asli.cl, simplemente dejar pasar
+    return res;
+  }
+
+  // Comportamiento normal cuando NO viene desde asli.cl (acceso directo al dominio de Vercel)
+  
   // Si está en una ruta protegida y no tiene sesión, redirigir a auth
-  // IMPORTANTE: Limpiar cualquier parámetro de credenciales de la URL por seguridad
   if (protectedRoutes.some(route => pathname.startsWith(route)) && !session) {
-    // Si viene desde asli.cl, usar URL absoluta para evitar bucles
-    const authUrl = isFromAsliCl 
-      ? new URL('https://asli.cl/auth')
-      : new URL('/auth', req.url);
+    const authUrl = new URL('/auth', req.url);
     authUrl.search = '';
     return NextResponse.redirect(authUrl);
   }
 
   // Si está en auth y ya tiene sesión, redirigir a dashboard
-  // PERO solo si realmente está en /auth (no en otras rutas que empiecen con /auth)
-  // IMPORTANTE: NO redirigir si viene desde asli.cl para evitar bucles infinitos
-  // El código del cliente manejará la redirección después del login
-  if (pathname === '/auth' && session && !isFromAsliCl) {
+  if (pathname === '/auth' && session) {
     const dashboardUrl = new URL('/dashboard', req.url);
     return NextResponse.redirect(dashboardUrl);
   }
 
   // Si está en la raíz, redirigir a dashboard si tiene sesión, sino a auth
-  // IMPORTANTE: Limpiar cualquier parámetro de credenciales de la URL por seguridad
   if (pathname === '/') {
     if (session) {
-      // Si viene desde asli.cl, usar URL absoluta para evitar bucles
-      const dashboardUrl = isFromAsliCl
-        ? new URL('https://asli.cl/dashboard')
-        : new URL('/dashboard', req.url);
+      const dashboardUrl = new URL('/dashboard', req.url);
       return NextResponse.redirect(dashboardUrl);
     } else {
-      // Si viene desde asli.cl, usar URL absoluta para evitar bucles
-      const authUrl = isFromAsliCl
-        ? new URL('https://asli.cl/auth')
-        : new URL('/auth', req.url);
+      const authUrl = new URL('/auth', req.url);
       authUrl.search = '';
       return NextResponse.redirect(authUrl);
     }
   }
-
-  // Si está en una ruta protegida Y tiene sesión, NO redirigir (dejar pasar)
-  // Esto evita bucles infinitos cuando ya está en la ruta correcta
 
   return res;
 }
