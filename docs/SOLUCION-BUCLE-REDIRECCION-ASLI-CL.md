@@ -13,12 +13,23 @@ Supabase puede estar rechazando las redirecciones desde `asli.cl` si no está co
 1. Ve a tu dashboard de Supabase: https://supabase.com/dashboard
 2. Selecciona tu proyecto
 3. Ve a **Authentication** → **URL Configuration**
-4. En **Redirect URLs**, agrega:
-   - `https://asli.cl/auth`
-   - `https://asli.cl/dashboard`
-   - `https://asli.cl/*`
-5. En **Site URL**, asegúrate de que esté: `https://asli.cl`
-6. Guarda los cambios
+
+**CORRECCIONES NECESARIAS:**
+
+4. **Site URL** - Debe tener `https://`:
+   - ❌ Actual: `asli.cl`
+   - ✅ Correcto: `https://asli.cl`
+   - Cambia el valor y haz clic en **"Save changes"**
+
+5. **Redirect URLs** - Corregir y agregar:
+   - ❌ Elimina: `asli.cl/dashboard` (sin https://)
+   - ✅ Mantén: `https://asli.cl/auth`
+   - ✅ Mantén: `https://asli.cl/dashboard`
+   - ✅ Mantén: `https://asli.cl/`
+   - ✅ Agrega: `https://asli.cl/*` (wildcard para todas las rutas)
+   - Haz clic en **"Add URL"** para agregar el wildcard si no está
+
+6. **IMPORTANTE:** Todas las URLs deben empezar con `https://` (no solo el dominio)
 
 ### 2. **Cookies no se están pasando correctamente con rewrites**
 Cuando Vercel hace un rewrite de `asli.cl/dashboard` a la ERP, las cookies pueden no estar pasando correctamente.
