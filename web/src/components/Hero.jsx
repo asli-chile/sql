@@ -22,8 +22,9 @@ const Hero = () => {
         // Usar replace para evitar que el botón "atrás" regrese a esta página
         window.location.replace(erpUrl)
       } else {
-        // En producción, ir a la URL de Vercel
-        window.location.href = 'https://registo-de-embarques-asli-toox.vercel.app'
+        // En producción, usar la ruta relativa /auth que será manejada por rewrites
+        // Esto mantendrá el dominio asli.cl y redirigirá a la ERP vía rewrites
+        window.location.href = '/auth'
       }
     }
   }
