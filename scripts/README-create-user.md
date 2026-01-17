@@ -20,8 +20,7 @@ Script de Node.js para crear usuarios (admin, ejecutivo, cliente) en Supabase de
 En la **raíz del proyecto** (mismo nivel que `package.json`), crea un archivo llamado `.env.local` con este contenido:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://knbnwbrjzkknarnkyriv.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-aqui
+
 ```
 
 **⚠️ IMPORTANTE**: 
