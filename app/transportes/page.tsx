@@ -57,7 +57,7 @@ export default function TransportesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const { canAdd, setCurrentUser, currentUser } = useUser();
+  const { canAdd, canEdit, setCurrentUser, currentUser } = useUser();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -258,6 +258,12 @@ export default function TransportesPage() {
   // Función para descargar el PDF de booking
   const handleDownloadBooking = async (booking: string | null) => {
     if (!booking) return;
+    
+    // Validar permisos: solo ejecutivos y admin pueden descargar
+    if (!canEdit) {
+      console.warn('No tienes permisos para descargar bookings');
+      return;
+    }
     
     const bookingKey = booking.trim().toUpperCase().replace(/\s+/g, '');
     const document = bookingDocuments.get(bookingKey);
@@ -1053,7 +1059,7 @@ export default function TransportesPage() {
                                 >
                                     <div className="flex items-center justify-center gap-2">
                                       <span>{bookingValue || '—'}</span>
-                                      {hasPdf && (
+                                      {hasPdf && canEdit && (
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
