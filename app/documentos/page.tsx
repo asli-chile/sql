@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -10,6 +10,8 @@ import { useUser } from '@/hooks/useUser';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { createClient } from '@/lib/supabase-browser';
 import { Registro } from '@/types/registros';
+import { normalizeBooking, sanitizeFileName, parseStoredDocumentName } from '@/utils/documentUtils';
+import { useToast } from '@/hooks/useToast';
 
 interface DocumentoRow {
   id: string;
@@ -28,6 +30,26 @@ interface DocumentoRow {
   fullset: boolean;
 }
 
+// Mapeo de columnas a tipos de documentos en storage
+const DOCUMENT_TYPE_MAP: Record<string, string> = {
+  reservaPdf: 'booking',
+  instructivo: 'instructivo-embarque',
+  guiaDespacho: 'guia-despacho',
+  packingList: 'packing-list',
+  proformaInvoice: 'factura-proforma',
+  blSwbTelex: 'bl',
+  facturaSii: 'factura-comercial',
+  dusLegalizado: 'dus',
+  fullset: 'fullset',
+};
+
+interface DocumentInfo {
+  path: string;
+  name: string;
+}
+
+type DocumentMap = Map<string, Map<string, DocumentInfo>>; // Map<booking, Map<documentType, DocumentInfo>>
+
 export default function DocumentosPage() {
   const router = useRouter();
   const { theme } = useTheme();
@@ -38,10 +60,213 @@ export default function DocumentosPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [documents, setDocuments] = useState<DocumentMap>(new Map());
+  const [uploadingDoc, setUploadingDoc] = useState<{ booking: string; type: string } | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState<{ booking: string; type: string } | null>(null);
+  const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const dataLoadedRef = useRef(false);
+  const { success, error: showError } = useToast();
 
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
+
+  // Cargar documentos desde storage
+  const loadDocuments = useCallback(async () => {
+    try {
+      const newDocuments: DocumentMap = new Map();
+      const STORAGE_BUCKET = 'documentos';
+
+      // Cargar todos los tipos de documentos
+      const documentTypes = Object.values(DOCUMENT_TYPE_MAP);
+      
+      for (const docType of documentTypes) {
+        try {
+          const { data, error: listError } = await supabase.storage
+            .from(STORAGE_BUCKET)
+            .list(docType, {
+              limit: 1000,
+              offset: 0,
+              sortBy: { column: 'updated_at', order: 'desc' },
+            });
+
+          if (listError) {
+            console.warn(`No se pudieron cargar documentos ${docType}:`, listError.message);
+            continue;
+          }
+
+          data?.forEach((file) => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return;
+
+            const bookingSegment = file.name.slice(0, separatorIndex);
+            let booking: string;
+            
+            try {
+              booking = normalizeBooking(decodeURIComponent(bookingSegment));
+            } catch {
+              booking = normalizeBooking(bookingSegment);
+            }
+
+            if (!booking) return;
+
+            // Obtener el booking sin espacios para la clave
+            const bookingKey = booking.replace(/\s+/g, '');
+
+            if (!newDocuments.has(bookingKey)) {
+              newDocuments.set(bookingKey, new Map());
+            }
+
+            const bookingDocs = newDocuments.get(bookingKey)!;
+            
+            // Si ya existe un documento para este tipo, mantener el más reciente
+            const existing = bookingDocs.get(docType);
+            if (!existing || (file.updated_at && (!existing.path || file.updated_at > existing.path))) {
+              const { originalName } = parseStoredDocumentName(file.name);
+              bookingDocs.set(docType, {
+                path: `${docType}/${file.name}`,
+                name: originalName,
+              });
+            }
+          });
+        } catch (err) {
+          console.error(`Error cargando documentos ${docType}:`, err);
+        }
+      }
+
+      setDocuments(newDocuments);
+    } catch (err) {
+      console.error('Error cargando documentos:', err);
+    }
+  }, [supabase]);
+
+  // Upload documento
+  const handleUploadDocument = useCallback(async (booking: string, documentType: string, file: File) => {
+    if (!booking || !booking.trim()) {
+      showError('El booking es requerido para subir documentos');
+      return;
+    }
+
+    const docTypeId = DOCUMENT_TYPE_MAP[documentType];
+    if (!docTypeId) {
+      showError('Tipo de documento no válido');
+      return;
+    }
+
+    try {
+      setUploadingDoc({ booking, type: documentType });
+
+      const normalizedBooking = normalizeBooking(booking);
+      const bookingSegment = encodeURIComponent(normalizedBooking);
+      const safeName = sanitizeFileName(file.name);
+      const filePath = `${docTypeId}/${bookingSegment}__${Date.now()}-0-${safeName}`;
+
+      // Eliminar archivos anteriores para este booking y tipo si existe
+      const bookingKey = normalizedBooking.replace(/\s+/g, '');
+      const bookingDocs = documents.get(bookingKey);
+      if (bookingDocs) {
+        const existing = bookingDocs.get(docTypeId);
+        if (existing?.path) {
+          try {
+            await supabase.storage.from('documentos').remove([existing.path]);
+          } catch (deleteErr) {
+            console.warn('Error al eliminar archivo anterior:', deleteErr);
+          }
+        }
+      }
+
+      // Subir nuevo archivo
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Recargar documentos
+      await loadDocuments();
+      success('Documento subido correctamente');
+    } catch (err: any) {
+      console.error('Error subiendo documento:', err);
+      showError('No se pudo subir el documento. Intenta nuevamente.');
+    } finally {
+      setUploadingDoc(null);
+    }
+  }, [supabase, documents, loadDocuments, success, showError]);
+
+  // Download documento
+  const handleDownloadDocument = useCallback(async (booking: string, documentType: string) => {
+    const docTypeId = DOCUMENT_TYPE_MAP[documentType];
+    if (!docTypeId) {
+      showError('Tipo de documento no válido');
+      return;
+    }
+
+    const bookingKey = normalizeBooking(booking).replace(/\s+/g, '');
+    const bookingDocs = documents.get(bookingKey);
+    const docInfo = bookingDocs?.get(docTypeId);
+
+    if (!docInfo) {
+      showError('Documento no encontrado');
+      return;
+    }
+
+    try {
+      const { data, error: urlError } = await supabase.storage
+        .from('documentos')
+        .createSignedUrl(docInfo.path, 60);
+
+      if (urlError || !data?.signedUrl) throw urlError;
+
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Error descargando documento:', err);
+      showError('No se pudo descargar el archivo.');
+    }
+  }, [documents, supabase, showError]);
+
+  // Delete documento
+  const handleDeleteDocument = useCallback(async (booking: string, documentType: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+      return;
+    }
+
+    const docTypeId = DOCUMENT_TYPE_MAP[documentType];
+    if (!docTypeId) {
+      showError('Tipo de documento no válido');
+      return;
+    }
+
+    const bookingKey = normalizeBooking(booking).replace(/\s+/g, '');
+    const bookingDocs = documents.get(bookingKey);
+    const docInfo = bookingDocs?.get(docTypeId);
+
+    if (!docInfo) {
+      showError('Documento no encontrado');
+      return;
+    }
+
+    try {
+      setDeletingDoc({ booking, type: documentType });
+
+      const { error: deleteError } = await supabase.storage
+        .from('documentos')
+        .remove([docInfo.path]);
+
+      if (deleteError) throw deleteError;
+
+      // Recargar documentos
+      await loadDocuments();
+      success('Documento eliminado correctamente');
+    } catch (err) {
+      console.error('Error eliminando documento:', err);
+      showError('No se pudo eliminar el documento.');
+    } finally {
+      setDeletingDoc(null);
+    }
+  }, [documents, supabase, loadDocuments, success, showError]);
 
   const loadRegistros = useCallback(async () => {
     try {
@@ -52,7 +277,10 @@ export default function DocumentosPage() {
         .is('deleted_at', null)
         .order('ref_asli', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error en consulta de registros:', error);
+        throw error;
+      }
 
       const registrosData = (data || []).map((r: any) => ({
         id: r.id,
@@ -65,37 +293,225 @@ export default function DocumentosPage() {
       setRegistros(registrosData as any);
     } catch (err: any) {
       console.error('Error cargando registros:', err);
+      showError('Error al cargar los registros. Por favor, recarga la página.');
+      setRegistros([]);
     } finally {
       setIsLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, showError]);
+
+  // Verificar y cargar usuario autenticado
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkUser = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+
+        if (!isMounted) return;
+
+        // Si hay error de refresh token, limpiar sesión y redirigir
+        if (error) {
+          if (
+            error.message?.includes('Refresh Token') ||
+            error.message?.includes('JWT') ||
+            error.message?.includes('User from sub claim in JWT does not exist')
+          ) {
+            await supabase.auth.signOut();
+            router.push('/auth');
+            return;
+          }
+          throw error;
+        }
+
+        if (!user) {
+          router.push('/auth');
+          return;
+        }
+
+        // SIEMPRE cargar datos frescos desde Supabase (fuente de verdad)
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('currentUserTimestamp');
+
+        // Cargar datos del usuario desde la tabla usuarios
+        const { data: userData, error: userError } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('auth_user_id', user.id)
+          .single();
+
+        if (userError) {
+          console.error('Error loading user data:', userError);
+          router.push('/auth');
+          return;
+        }
+
+        if (userData && isMounted) {
+          const usuarioActualizado = {
+            id: userData.id,
+            nombre: userData.nombre,
+            email: userData.email,
+            rol: userData.rol,
+            activo: userData.activo,
+            puede_subir: userData.puede_subir ?? false,
+            clientes_asignados: userData.clientes_asignados ?? [],
+          };
+          setCurrentUser(usuarioActualizado);
+        }
+      } catch (error: any) {
+        if (!isMounted) return;
+        if (!error?.message?.includes('Refresh Token') && !error?.message?.includes('JWT')) {
+          console.error('[Documentos] Error comprobando usuario:', error);
+        }
+        router.push('/auth');
+      }
+    };
+
+    void checkUser();
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Solo ejecutar una vez al montar
 
   useEffect(() => {
-    if (currentUser) {
-      loadRegistros();
+    // Solo cargar datos una vez cuando currentUser esté disponible
+    if (currentUser && !dataLoadedRef.current) {
+      dataLoadedRef.current = true;
+      const fetchData = async () => {
+        try {
+          await Promise.all([loadRegistros(), loadDocuments()]);
+        } catch (err) {
+          console.error('Error cargando datos:', err);
+          dataLoadedRef.current = false; // Permitir reintentar en caso de error
+        }
+      };
+      fetchData();
     }
-  }, [currentUser, loadRegistros]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id]); // Solo depende del ID del usuario, no del objeto completo
 
   if (!currentUser) {
     return <LoadingScreen message="Cargando..." />;
   }
 
-  const documentosRows: DocumentoRow[] = registros.map((reg: any) => ({
-    id: reg.id,
-    nave: reg.naveInicial || '',
-    booking: reg.booking || '',
-    contenedor: reg.contenedor || '',
-    refCliente: reg.refCliente || '',
-    reservaPdf: false,
-    instructivo: false,
-    guiaDespacho: false,
-    packingList: false,
-    proformaInvoice: false,
-    blSwbTelex: false,
-    facturaSii: false,
-    dusLegalizado: false,
-    fullset: false,
-  }));
+  // Obtener información de documentos para cada registro
+  const getDocumentStatus = (booking: string, docType: string): boolean => {
+    const bookingKey = normalizeBooking(booking).replace(/\s+/g, '');
+    const bookingDocs = documents.get(bookingKey);
+    const docTypeId = DOCUMENT_TYPE_MAP[docType];
+    return !!bookingDocs?.get(docTypeId);
+  };
+
+  // Renderizar celda de documento interactiva
+  const renderDocumentCell = (booking: string, docType: string, hasDocument: boolean) => {
+    const cellKey = `${booking}-${docType}`;
+    const isUploading = uploadingDoc?.booking === booking && uploadingDoc?.type === docType;
+    const isDeleting = deletingDoc?.booking === booking && deletingDoc?.type === docType;
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        handleUploadDocument(booking, docType, file);
+      }
+      // Reset input
+      e.target.value = '';
+    };
+
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <input
+          ref={(el) => {
+            if (el) {
+              fileInputRefs.current.set(cellKey, el);
+            } else {
+              fileInputRefs.current.delete(cellKey);
+            }
+          }}
+          type="file"
+          accept=".pdf,.xlsx,.xls"
+          onChange={handleFileChange}
+          className="hidden"
+          disabled={isUploading || isDeleting}
+        />
+        {hasDocument ? (
+          <>
+            <button
+              onClick={() => handleDownloadDocument(booking, docType)}
+              disabled={isUploading || isDeleting}
+              className={`p-1.5 rounded transition-colors ${
+                theme === 'dark'
+                  ? 'text-green-400 hover:bg-slate-700 hover:text-green-300'
+                  : 'text-green-600 hover:bg-gray-100 hover:text-green-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label="Descargar documento"
+              title="Descargar"
+            >
+              <Download className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => handleDeleteDocument(booking, docType)}
+              disabled={isUploading || isDeleting}
+              className={`p-1.5 rounded transition-colors ${
+                theme === 'dark'
+                  ? 'text-red-400 hover:bg-slate-700 hover:text-red-300'
+                  : 'text-red-600 hover:bg-gray-100 hover:text-red-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label="Eliminar documento"
+              title="Eliminar"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => fileInputRefs.current.get(cellKey)?.click()}
+            disabled={isUploading || isDeleting}
+            className={`p-1.5 rounded transition-colors ${
+              theme === 'dark'
+                ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300'
+                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            aria-label="Subir documento"
+            title="Subir"
+          >
+            <Upload className="h-4 w-4" />
+          </button>
+        )}
+        {isUploading && (
+          <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+            Subiendo...
+          </span>
+        )}
+        {isDeleting && (
+          <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+            Eliminando...
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  const documentosRows: DocumentoRow[] = registros.map((reg: any) => {
+    const booking = reg.booking || '';
+    return {
+      id: reg.id,
+      nave: reg.naveInicial || '',
+      booking,
+      contenedor: reg.contenedor || '',
+      refCliente: reg.refCliente || '',
+      reservaPdf: getDocumentStatus(booking, 'reservaPdf'),
+      instructivo: getDocumentStatus(booking, 'instructivo'),
+      guiaDespacho: getDocumentStatus(booking, 'guiaDespacho'),
+      packingList: getDocumentStatus(booking, 'packingList'),
+      proformaInvoice: getDocumentStatus(booking, 'proformaInvoice'),
+      blSwbTelex: getDocumentStatus(booking, 'blSwbTelex'),
+      facturaSii: getDocumentStatus(booking, 'facturaSii'),
+      dusLegalizado: getDocumentStatus(booking, 'dusLegalizado'),
+      fullset: getDocumentStatus(booking, 'fullset'),
+    };
+  });
 
   const sidebarSections = [
     {
@@ -404,103 +820,31 @@ export default function DocumentosPage() {
                             {row.refCliente || '—'}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.reservaPdf 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.reservaPdf ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'reservaPdf', row.reservaPdf)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.instructivo 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.instructivo ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'instructivo', row.instructivo)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.guiaDespacho 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.guiaDespacho ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'guiaDespacho', row.guiaDespacho)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.packingList 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.packingList ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'packingList', row.packingList)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.proformaInvoice 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.proformaInvoice ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'proformaInvoice', row.proformaInvoice)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.blSwbTelex 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.blSwbTelex ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'blSwbTelex', row.blSwbTelex)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.facturaSii 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.facturaSii ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'facturaSii', row.facturaSii)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.dusLegalizado 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.dusLegalizado ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'dusLegalizado', row.dusLegalizado)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
-                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
-                              row.fullset 
-                                ? 'bg-green-500 text-white' 
-                                : theme === 'dark' 
-                                  ? 'bg-slate-700 text-slate-500' 
-                                  : 'bg-gray-200 text-gray-400'
-                            }`}>
-                              {row.fullset ? '✓' : '—'}
-                            </div>
+                            {renderDocumentCell(row.booking, 'fullset', row.fullset)}
                           </td>
                         </tr>
                       ))
