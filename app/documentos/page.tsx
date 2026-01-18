@@ -31,7 +31,7 @@ interface DocumentoRow {
 export default function DocumentosPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { currentUser } = useUser();
+  const { currentUser, setCurrentUser } = useUser();
   const supabase = useMemo(() => createClient(), []);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -518,6 +518,7 @@ export default function DocumentosPage() {
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         userInfo={currentUser}
+        onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
       />
     </div>
   );
