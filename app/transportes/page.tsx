@@ -16,6 +16,7 @@ import { UserProfileModal } from '@/components/users/UserProfileModal';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { InlineEditCell } from '@/components/transportes/InlineEditCell';
+import { TrashModalTransportes } from '@/components/transportes/TrashModalTransportes';
 
 const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
@@ -65,6 +66,8 @@ export default function TransportesPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: TransporteRecord } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<TransporteRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
+  const [trashCount, setTrashCount] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -382,19 +385,48 @@ export default function TransportesPage() {
     handleUpdateRecord({ ...record, [field]: checked });
   };
 
+  const loadTrashCount = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from('transportes')
+        .select('*', { count: 'exact', head: true })
+        .not('deleted_at', 'is', null);
+
+      if (error) {
+        throw error;
+      }
+
+      setTrashCount(count ?? 0);
+    } catch (err) {
+      console.warn('[Transportes] Error cargando contador de papelera:', err);
+      setTrashCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (currentUser?.id) {
+      void loadTrashCount();
+    }
+  }, [currentUser?.id, loadTrashCount]);
+
   const handleDeleteTransporte = async (transporte: TransporteRecord) => {
     setDeleteConfirm(transporte);
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteConfirm || isDeleting) return;
+    if (!deleteConfirm || isDeleting || !currentUser?.id) return;
 
     setIsDeleting(true);
     try {
       const supabase = createClient();
       const { error } = await supabase
         .from('transportes')
-        .delete()
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: currentUser.id,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', deleteConfirm.id);
 
       if (error) {
@@ -405,6 +437,7 @@ export default function TransportesPage() {
       // Actualizar estado local
       setRecords((prev) => prev.filter((r) => r.id !== deleteConfirm.id));
       setDeleteConfirm(null);
+      await loadTrashCount();
     } catch (error: any) {
       console.error('Error eliminando transporte:', error);
       alert(`Error al eliminar el transporte: ${error?.message || 'Error desconocido'}`);
@@ -497,6 +530,12 @@ export default function TransportesPage() {
         { label: 'Transportes', id: '/transportes', isActive: true, icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         { label: 'Tracking', id: '/dashboard/seguimiento', icon: Globe },
+      ],
+    },
+    {
+      title: 'Sistema',
+      items: [
+        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet' },
       ],
     },
     ...(isRodrigo
@@ -1105,6 +1144,23 @@ export default function TransportesPage() {
             }}
           />
 
+          {/* Modal de papelera */}
+          <TrashModalTransportes
+            isOpen={isTrashModalOpen}
+            onClose={() => setIsTrashModalOpen(false)}
+            onRestore={async () => {
+              // Recargar transportes después de restaurar
+              await reload();
+              await loadTrashCount();
+            }}
+            onSuccess={(message) => {
+              console.log(message);
+            }}
+            onError={(message) => {
+              console.error(message);
+            }}
+          />
+
           {/* Menú contextual */}
           {contextMenu && (
             <>
@@ -1191,14 +1247,14 @@ export default function TransportesPage() {
                         theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}
                     >
-                      Eliminar transporte
+                      Enviar a papelera
                     </h3>
                     <p className={`mt-2 text-sm ${
                       theme === 'dark' ? 'text-slate-300' : 'text-gray-600'
                     }`}>
-                      ¿Estás seguro de que quieres eliminar el transporte{' '}
-                      <strong>{deleteConfirm.booking || deleteConfirm.contenedor || 'este registro'}</strong>?
-                      Esta acción no se puede deshacer.
+                      ¿Quieres enviar el transporte{' '}
+                      <strong>{deleteConfirm.booking || deleteConfirm.contenedor || 'este registro'}</strong> a la papelera?
+                      Podrás restaurarlo más tarde desde la papelera.
                     </p>
                   </div>
                 </div>
@@ -1228,7 +1284,7 @@ export default function TransportesPage() {
                         Eliminando…
                       </>
                     ) : (
-                      'Eliminar'
+                      'Enviar a papelera'
                     )}
                   </button>
                 </div>

@@ -52,6 +52,8 @@ export type TransporteRecord = {
   updated_at: string;
   created_by: string | null;
   updated_by: string | null;
+  deleted_at: string | null;
+  deleted_by: string | null;
 };
 
 export async function fetchTransportes(): Promise<TransporteRecord[]> {
@@ -59,10 +61,32 @@ export async function fetchTransportes(): Promise<TransporteRecord[]> {
   const { data, error } = await supabase
     .from('transportes')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching transportes:', error);
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+export async function fetchDeletedTransportes(selectedDays: number = 7): Promise<TransporteRecord[]> {
+  const supabase = createClient();
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - selectedDays);
+  cutoffDate.setHours(0, 0, 0, 0);
+  
+  const { data, error } = await supabase
+    .from('transportes')
+    .select('*')
+    .not('deleted_at', 'is', null)
+    .gte('deleted_at', cutoffDate.toISOString())
+    .order('deleted_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching deleted transportes:', error);
     throw error;
   }
 
