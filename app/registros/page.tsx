@@ -985,6 +985,13 @@ export default function RegistrosPage() {
           continue;
         }
         
+        // Verificar que tenga PDF de booking cargado
+        if (!registro.bookingPdf || registro.bookingPdf.trim() === '') {
+          errores.push(`${registro.refAsli || registro.booking}: No tiene PDF de booking cargado`);
+          fallidos++;
+          continue;
+        }
+        
         // Verificar si ya existe un transporte para este registro
         const { data: existingTransporte, error: checkError } = await supabase
           .from('transportes')
@@ -1012,7 +1019,6 @@ export default function RegistrosPage() {
         
         // Crear nuevo registro de transporte con los datos del registro de embarque
         const transporteData = {
-          registro_id: registro.id,
           booking: registro.booking.trim(),
           contenedor: contenedorValue.trim() || null,
           nave: registro.naveInicial || null,
@@ -1021,7 +1027,7 @@ export default function RegistrosPage() {
           temperatura: registro.temperatura ?? null,
           pol: registro.pol || null,
           pod: registro.pod || null,
-          vent: registro.cbm ?? null,
+          vent: registro.cbm ? String(registro.cbm) : null,
           deposito: registro.deposito || null,
           stacking: registro.ingresoStacking ? new Date(registro.ingresoStacking).toISOString().split('T')[0] : null,
           cut_off: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : null,
@@ -1037,7 +1043,8 @@ export default function RegistrosPage() {
         
         if (insertError) {
           console.error('Error de inserción:', insertError);
-          errores.push(`${registro.refAsli || registro.booking}: ${insertError.message}`);
+          const errorMessage = insertError.message || insertError.details || JSON.stringify(insertError);
+          errores.push(`${registro.refAsli || registro.booking}: ${errorMessage}`);
           fallidos++;
           continue;
         }
@@ -2221,15 +2228,36 @@ export default function RegistrosPage() {
         if (uploadError) {
           throw uploadError;
         }
+
+        // Actualizar el campo booking_pdf en la tabla registros con la ruta del archivo
+        const { error: updatePdfError } = await supabase
+          .from('registros')
+          .update({ booking_pdf: filePath })
+          .eq('id', registroId);
+
+        if (updatePdfError) {
+          console.warn('Error al actualizar booking_pdf en el registro:', updatePdfError);
+          // No lanzar error, solo advertir, ya que el archivo se subió correctamente
+        }
       }
 
       // Actualizar el estado local
       setRegistros(prevRegistros =>
-        prevRegistros.map(record =>
-          record.id === registroId
-            ? { ...record, booking: booking.trim().toUpperCase() }
-            : record
-        )
+        prevRegistros.map(record => {
+          if (record.id === registroId) {
+            const updatedRecord = { ...record, booking: booking.trim().toUpperCase() };
+            if (file) {
+              const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+              const fileNameToUse = customFileName && customFileName.trim() 
+                ? `${customFileName.trim()}.pdf`
+                : file.name.replace(/\.pdf$/i, '') + '.pdf';
+              const safeName = sanitizeFileName(fileNameToUse);
+              updatedRecord.bookingPdf = `booking/${normalizedBooking}__${safeName}`;
+            }
+            return updatedRecord;
+          }
+          return record;
+        })
       );
 
       // Si se subió un archivo, recargar documentos booking
@@ -2663,6 +2691,7 @@ export default function RegistrosPage() {
                       onTableInstanceReady={handleTableInstanceReady}
                       onShowHistorial={handleShowHistorial}
                       onSendToTransportes={handleSendToTransportes}
+                      bookingDocuments={bookingDocuments}
                     />
               </section>
           </main>

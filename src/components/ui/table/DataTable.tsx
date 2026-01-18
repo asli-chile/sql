@@ -46,6 +46,7 @@ interface DataTableProps {
   preserveFilters?: boolean;
   onShowHistorial?: (record: Registro) => void;
   onSendToTransportes?: (record: Registro | Registro[]) => void;
+  bookingDocuments?: Map<string, { nombre: string; fecha: string }>;
   // Callbacks para exponer estados al sidebar externo
   onTableInstanceReady?: (table: any, states: {
     executiveFilter: string;
@@ -93,6 +94,7 @@ export function DataTable({
   onShowHistorial,
   onTableInstanceReady,
   onSendToTransportes,
+  bookingDocuments,
 }: DataTableProps) {
   const { theme } = useTheme();
 
@@ -1307,9 +1309,14 @@ export function DataTable({
                       style={{ height: `${virtualRow.size}px` }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        const hasEditNaveViaje = currentUser?.rol === 'admin' &&
-                          ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
-                        if (hasEditNaveViaje) {
+                        // Mostrar menú si hay alguna opción disponible
+                        const hasAnyOption = 
+                          ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje) ||
+                          onSendToTransportes ||
+                          onEdit ||
+                          onDelete ||
+                          onShowHistorial;
+                        if (hasAnyOption) {
                           setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
                         }
                       }}
@@ -1730,26 +1737,82 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
                 Editar Nave / Viaje
               </button>
             )}
-            {onSendToTransportes && (
-              <button
-                onClick={handleContextSendToTransportes}
-                className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors ${isDark ? 'hover:bg-emerald-500/15 hover:text-emerald-200' : 'hover:bg-green-50 hover:text-green-600'}`}
-              >
-                <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4" />
-                  <span>Enviar a Transportes</span>
-                </div>
-                {hasSelection && selectedRecordsList.length > 0 && (
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    isDark 
-                      ? 'bg-emerald-500/20 text-emerald-300' 
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {selectedRecordsList.length}
-                  </span>
-                )}
-              </button>
-            )}
+            {onSendToTransportes && (() => {
+              // Verificar si el registro tiene PDF de booking cargado
+              const bookingPdfValue = contextMenu.record.bookingPdf;
+              const bookingValue = contextMenu.record.booking;
+              
+              // Verificar si tiene bookingPdf en el campo
+              const hasPdfField = bookingPdfValue && 
+                                 typeof bookingPdfValue === 'string' &&
+                                 bookingPdfValue.trim() !== '' &&
+                                 bookingPdfValue.trim() !== 'null' &&
+                                 bookingPdfValue.trim() !== 'undefined';
+              
+              // Verificar si existe PDF en storage usando bookingDocuments
+              let hasPdfInStorage = false;
+              if (bookingValue && bookingDocuments) {
+                const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
+                hasPdfInStorage = bookingDocuments.has(bookingKey);
+              }
+              
+              const recordHasPdf = hasPdfField || hasPdfInStorage;
+              
+              // Si hay selección múltiple, verificar que todos tengan PDF
+              let allHavePdf = recordHasPdf;
+              if (hasSelection && selectedRecordsList.length > 0) {
+                allHavePdf = selectedRecordsList.every(r => {
+                  const pdfValue = r.bookingPdf;
+                  const bookingVal = r.booking;
+                  
+                  const hasPdf = pdfValue && 
+                                typeof pdfValue === 'string' &&
+                                pdfValue.trim() !== '' &&
+                                pdfValue.trim() !== 'null' &&
+                                pdfValue.trim() !== 'undefined';
+                  
+                  let hasStoragePdf = false;
+                  if (bookingVal && bookingDocuments) {
+                    const bookingKey = bookingVal.trim().toUpperCase().replace(/\s+/g, '');
+                    hasStoragePdf = bookingDocuments.has(bookingKey);
+                  }
+                  
+                  return hasPdf || hasStoragePdf;
+                });
+              }
+              
+              // Mostrar el botón siempre, pero deshabilitado si no hay PDF
+              return (
+                <button
+                  onClick={allHavePdf ? handleContextSendToTransportes : undefined}
+                  disabled={!allHavePdf}
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors ${
+                    allHavePdf
+                      ? isDark 
+                        ? 'hover:bg-emerald-500/15 hover:text-emerald-200 cursor-pointer' 
+                        : 'hover:bg-green-50 hover:text-green-600 cursor-pointer'
+                      : isDark
+                        ? 'opacity-50 cursor-not-allowed text-slate-500'
+                        : 'opacity-50 cursor-not-allowed text-gray-400'
+                  }`}
+                  title={!allHavePdf ? 'El registro debe tener PDF de booking cargado para enviar a Transportes' : ''}
+                >
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    <span>Enviar a Transportes</span>
+                  </div>
+                  {hasSelection && selectedRecordsList.length > 0 && (
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      isDark 
+                        ? allHavePdf ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/50 text-slate-500'
+                        : allHavePdf ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      {selectedRecordsList.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })()}
           </div>
           <button
             onClick={closeContextMenu}

@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2 } from 'lucide-react';
+import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
 import { AddTransporteModal } from '@/components/transportes/AddTransporteModal';
@@ -59,6 +60,8 @@ export default function TransportesPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [bookingDocuments, setBookingDocuments] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
+  const [downloadingBooking, setDownloadingBooking] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -119,6 +122,97 @@ export default function TransportesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]); // setCurrentUser es estable desde useUser hook
 
+  // Cargar documentos booking desde storage
+  const loadBookingDocuments = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from('documentos')
+        .list('booking', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'updated_at', order: 'desc' },
+        });
+
+      if (error) {
+        console.warn('No se pudieron cargar documentos booking:', error.message);
+        return;
+      }
+
+      const bookingsMap = new Map<string, { nombre: string; fecha: string; path: string }>();
+      
+      data?.forEach((file) => {
+        const separatorIndex = file.name.indexOf('__');
+        if (separatorIndex !== -1) {
+          const bookingSegment = file.name.slice(0, separatorIndex);
+          try {
+            const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
+            if (booking) {
+              const { originalName } = parseStoredDocumentName(file.name);
+              const nombreFormateado = formatFileDisplayName(originalName);
+              const filePath = `booking/${file.name}`;
+              
+              const fechaArchivo = file.updated_at || file.created_at;
+              let fechaFormateada = '-';
+              if (fechaArchivo) {
+                const fecha = new Date(fechaArchivo);
+                const dia = String(fecha.getDate()).padStart(2, '0');
+                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                const año = fecha.getFullYear();
+                fechaFormateada = `${dia}-${mes}-${año}`;
+              }
+              
+              const existente = bookingsMap.get(booking);
+              if (!existente) {
+                bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath });
+              } else if (fechaArchivo && existente.fecha !== '-') {
+                const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                const fechaNueva = fechaArchivo.split('T')[0];
+                if (fechaNueva > fechaExistente) {
+                  bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath });
+                }
+              }
+            }
+          } catch {
+            const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
+            if (booking) {
+              const { originalName } = parseStoredDocumentName(file.name);
+              const nombreFormateado = formatFileDisplayName(originalName);
+              const filePath = `booking/${file.name}`;
+              const fechaArchivo = file.updated_at || file.created_at;
+              let fechaFormateada = '-';
+              if (fechaArchivo) {
+                const fecha = new Date(fechaArchivo);
+                const dia = String(fecha.getDate()).padStart(2, '0');
+                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                const año = fecha.getFullYear();
+                fechaFormateada = `${dia}-${mes}-${año}`;
+              }
+              const existente = bookingsMap.get(booking);
+              if (!existente) {
+                bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath });
+              } else if (fechaArchivo && existente.fecha !== '-') {
+                const fechaExistente = existente.fecha.split('-').reverse().join('-');
+                const fechaNueva = fechaArchivo.split('T')[0];
+                if (fechaNueva > fechaExistente) {
+                  bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath });
+                }
+              }
+            }
+          }
+        }
+      });
+
+      setBookingDocuments(bookingsMap);
+    } catch (err) {
+      console.error('Error cargando documentos booking:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBookingDocuments();
+  }, [loadBookingDocuments]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -154,6 +248,37 @@ export default function TransportesPage() {
       isMounted = false;
     };
   }, [user]);
+
+  // Función para descargar el PDF de booking
+  const handleDownloadBooking = async (booking: string | null) => {
+    if (!booking) return;
+    
+    const bookingKey = booking.trim().toUpperCase().replace(/\s+/g, '');
+    const document = bookingDocuments.get(bookingKey);
+    
+    if (!document) {
+      console.warn('No se encontró PDF para el booking:', booking);
+      return;
+    }
+
+    try {
+      setDownloadingBooking(bookingKey);
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from('documentos')
+        .createSignedUrl(document.path, 60);
+
+      if (error || !data?.signedUrl) {
+        throw error || new Error('No se pudo generar la URL de descarga');
+      }
+
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error('Error descargando booking PDF:', err);
+    } finally {
+      setDownloadingBooking(null);
+    }
+  };
 
   const reload = async () => {
     try {
@@ -824,6 +949,49 @@ export default function TransportesPage() {
                                           : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
                                       }`}
                                     />
+                                  </td>
+                                );
+                              }
+                              
+                              // Renderizado especial para BOOKING con botón de descarga
+                              if (column.key === 'booking') {
+                                const bookingValue = item.booking;
+                                const bookingKey = bookingValue ? bookingValue.trim().toUpperCase().replace(/\s+/g, '') : '';
+                                const hasPdf = bookingKey && bookingDocuments.has(bookingKey);
+                                
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap ${
+                                      theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <span className="flex-1">{bookingValue || '—'}</span>
+                                      {hasPdf && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDownloadBooking(bookingValue);
+                                          }}
+                                          disabled={downloadingBooking === bookingKey}
+                                          className={`p-1.5 rounded transition-colors flex-shrink-0 ${
+                                            downloadingBooking === bookingKey
+                                              ? 'opacity-50 cursor-not-allowed'
+                                              : theme === 'dark'
+                                                ? 'hover:bg-slate-700 text-slate-300 hover:text-sky-200'
+                                                : 'hover:bg-gray-200 text-gray-600 hover:text-blue-600'
+                                          }`}
+                                          title="Descargar PDF de booking"
+                                        >
+                                          {downloadingBooking === bookingKey ? (
+                                            <RefreshCcw className="h-4 w-4 animate-spin" />
+                                          ) : (
+                                            <Download className="h-4 w-4" />
+                                          )}
+                                        </button>
+                                      )}
+                                    </div>
                                   </td>
                                 );
                               }
