@@ -675,6 +675,26 @@ export default function TransportesPage() {
                 <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
                 <ThemeToggle variant="switch" label="Tema" />
               </div>
+              
+              {/* Botón de usuario para móvil */}
+              <div className="lg:hidden space-y-2 sm:space-y-3 pt-2 border-t border-slate-700/60">
+                <button
+                  onClick={() => {
+                    setShowProfileModal(true);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
+                    theme === 'dark'
+                      ? 'hover:bg-slate-700 text-slate-300'
+                      : 'hover:bg-blue-50 text-blue-600 font-semibold'
+                  }`}
+                >
+                  <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
+                    {currentUser?.nombre || user?.email}
+                  </span>
+                </button>
+              </div>
             </div>
           )}
         </aside>
@@ -682,7 +702,7 @@ export default function TransportesPage() {
         {/* Content */}
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
           <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
-            <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 py-3 sm:py-4">
+            <div className="flex flex-wrap items-center gap-4 pl-4 pr-2 sm:px-6 py-3 sm:py-4">
               {/* Botón hamburguesa para móvil */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -721,7 +741,7 @@ export default function TransportesPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
                 <button
                   type="button"
                   onClick={reload}
@@ -757,6 +777,7 @@ export default function TransportesPage() {
                       ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
                       : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
                   }`}
+                  title={currentUser?.nombre || user?.email}
                 >
                   <UserIcon className="h-4 w-4" />
                   {currentUser?.nombre || user?.email}

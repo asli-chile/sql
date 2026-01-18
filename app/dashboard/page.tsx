@@ -771,6 +771,26 @@ export default function DashboardPage() {
               <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
               <ThemeToggle variant="switch" label="Tema" />
             </div>
+            
+            {/* Botón de usuario para móvil */}
+            <div className={`lg:hidden space-y-2 sm:space-y-3 pt-2 ${theme === 'dark' ? 'border-t border-slate-700/60' : 'border-t border-gray-200'}`}>
+              <button
+                onClick={() => {
+                  setShowProfileModal(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-slate-700 text-slate-300'
+                    : 'hover:bg-blue-50 text-blue-600 font-semibold'
+                }`}
+              >
+                <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
+                  {userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                </span>
+              </button>
+            </div>
           </div>
         )}
       </aside>

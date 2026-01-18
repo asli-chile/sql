@@ -2591,6 +2591,26 @@ export default function RegistrosPage() {
               <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
               <ThemeToggle variant="switch" label="Tema" />
             </div>
+            
+            {/* Botón de usuario para móvil */}
+            <div className={`lg:hidden space-y-2 sm:space-y-3 pt-2 ${theme === 'dark' ? 'border-t border-slate-700/60' : 'border-t border-gray-200'}`}>
+              <button
+                onClick={() => {
+                  setShowProfileModal(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
+                  theme === 'dark'
+                    ? 'hover:bg-slate-700 text-slate-300'
+                    : 'hover:bg-blue-50 text-blue-600 font-semibold'
+                }`}
+              >
+                <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
+                  {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                </span>
+              </button>
+            </div>
           </div>
           )}
         </aside>
@@ -2600,7 +2620,7 @@ export default function RegistrosPage() {
           style={{ width: '100%', maxWidth: '100%' }}
         >
           <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
-            <div className="flex w-full flex-col gap-2 sm:gap-3 py-2 sm:py-2.5 md:py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
+            <div className="flex w-full flex-col gap-2 sm:gap-3 py-2 sm:py-2.5 md:py-3" style={{ paddingLeft: '8px', paddingRight: '4px' }}>
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between w-full">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
                   {/* Botón hamburguesa para móvil */}
@@ -2648,6 +2668,7 @@ export default function RegistrosPage() {
                       onClick={() => setShowProfileModal(true)}
                       className={`flex items-center gap-1.5 sm:gap-2 rounded-full border ${theme === 'dark' ? 'border-slate-600 bg-slate-700 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-50 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700'} shadow-sm transition`}
                       aria-haspopup="dialog"
+                      title={currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
                     >
                       <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                       <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
