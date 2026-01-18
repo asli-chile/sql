@@ -193,7 +193,7 @@ export default function DocumentosPage() {
                       <button
                         key={item.label}
                         onClick={() => {
-                          if (item.onClick) {
+                          if ('onClick' in item && item.onClick) {
                             item.onClick();
                             setIsMobileMenuOpen(false);
                           } else if (item.id) {
