@@ -1,1138 +1,527 @@
 'use client';
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase-browser';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { UserProfileModal } from '@/components/users/UserProfileModal';
 import { useUser } from '@/hooks/useUser';
-import { Registro } from '@/types/registros';
-import { Factura } from '@/types/factura';
-import { Trash2, Download } from 'lucide-react';
-import { FacturaCreator } from '@/components/facturas/FacturaCreator';
-import { FacturaViewer } from '@/components/facturas/FacturaViewer';
-import { useToast } from '@/hooks/useToast';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { DocumentFilters } from '@/components/documentos/DocumentFilters';
-import { DocumentList } from '@/components/documentos/DocumentList';
-import { DOCUMENT_TYPES } from '@/components/documentos/constants';
-import { StoredDocument } from '@/types/documents';
-import {
-  allowedExtensions,
-  sanitizeFileName,
-  formatFileDisplayName,
-  normalizeBooking,
-  normalizeTemporada,
-  parseStoredDocumentName,
-} from '@/utils/documentUtils';
+import { createClient } from '@/lib/supabase-browser';
+import { Registro } from '@/types/registros';
 
-const STORAGE_BUCKET = 'documentos';
-
-const createEmptyDocumentsMap = () =>
-  DOCUMENT_TYPES.reduce<Record<string, StoredDocument[]>>((acc, type) => {
-    acc[type.id] = [];
-    return acc;
-  }, {});
+interface DocumentoRow {
+  id: string;
+  nave: string;
+  booking: string;
+  contenedor: string;
+  refCliente: string;
+  reservaPdf: boolean;
+  instructivo: boolean;
+  guiaDespacho: boolean;
+  packingList: boolean;
+  proformaInvoice: boolean;
+  blSwbTelex: boolean;
+  facturaSii: boolean;
+  dusLegalizado: boolean;
+  fullset: boolean;
+}
 
 export default function DocumentosPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { currentUser, setCurrentUser } = useUser();
-  const { success, error: showError } = useToast();
+  const { theme } = useTheme();
+  const { currentUser } = useUser();
   const supabase = useMemo(() => createClient(), []);
-
-  const [facturas, setFacturas] = useState<Factura[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [registros, setRegistros] = useState<Registro[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isCreatorOpen, setIsCreatorOpen] = useState(false);
-  const [isViewerOpen, setIsViewerOpen] = useState(false);
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
-  const [registroSeleccionado, setRegistroSeleccionado] = useState<Registro | null>(null);
-  const [documentsByType, setDocumentsByType] = useState<Record<string, StoredDocument[]>>(createEmptyDocumentsMap);
-  const [uploadingType, setUploadingType] = useState<string | null>(null);
-  const [uploadingBooking, setUploadingBooking] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [downloadUrlLoading, setDownloadUrlLoading] = useState<string | null>(null);
-  const [selectedBooking, setSelectedBooking] = useState('');
-  const [selectedBookingFromSelect, setSelectedBookingFromSelect] = useState('');
-  const [selectedContenedorFromSelect, setSelectedContenedorFromSelect] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [inspectedBooking, setInspectedBooking] = useState('');
-  const [inspectedContenedor, setInspectedContenedor] = useState('');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc'); // 'asc' = más antiguo primero, 'desc' = más reciente primero
-  const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
-  const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
-  const [isEjecutivo, setIsEjecutivo] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ doc: StoredDocument; x: number; y: number } | null>(null);
-  const [deletedDocuments, setDeletedDocuments] = useState<Set<string>>(new Set());
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const temporadaParam = searchParams?.get('temporada');
-  // Verificar permisos de subida: debe ser admin/ejecutivo Y tener puede_subir = true
-  // Si puede_subir es explícitamente false, no puede subir (incluso si es admin/ejecutivo)
-  const isAdminOrEjecutivo = (currentUser?.rol === 'admin') || Boolean(currentUser?.email?.endsWith('@asli.cl'));
-  // Si puede_subir es false, no puede subir. Si es null/undefined, por defecto true solo para admin/ejecutivo
-  const puedeSubir = currentUser?.puede_subir !== undefined ? currentUser.puede_subir : (isAdminOrEjecutivo ? true : false);
-  const canUpload = isAdminOrEjecutivo && puedeSubir === true;
-  const isAdmin = currentUser?.rol === 'admin';
-
-  // Inicializar temporada desde URL params o establecer "25-26" por defecto
-  useEffect(() => {
-    if (temporadaParam) {
-      const normalized = normalizeTemporada(temporadaParam);
-      if (normalized) {
-        setSelectedTemporada(normalized);
-      }
-    } else {
-      // Establecer "2025-2026" por defecto si no hay temporada en la URL
-      const defaultTemporada = '2025-2026';
-      setSelectedTemporada(defaultTemporada);
-      // Actualizar URL sin recargar
-      const params = new URLSearchParams(window.location.search);
-      params.set('temporada', defaultTemporada);
-      router.push(`/documentos?${params.toString()}`, { scroll: false });
-    }
-  }, [temporadaParam, router]);
-
-  useEffect(() => {
-    void checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    try {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      if (!user) {
-        router.push('/auth');
-        return;
-      }
-
-      const { data: userData, error: userError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (userError || !userData) {
-        // Usuario no existe en la tabla usuarios - por defecto no puede subir
-        const emailEsEjecutivo = user.email?.endsWith('@asli.cl') || false;
-        const basicUser = {
-          id: user.id,
-          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-          email: user.email || '',
-          rol: 'usuario',
-          activo: true,
-          puede_subir: false, // Por defecto false - solo admins/ejecutivos pueden tener true
-        };
-        setCurrentUser(basicUser);
-        return;
-      }
-
-      // Si puede_subir es null, usar false por defecto (más seguro)
-      const puedeSubirValue = userData.puede_subir ?? false;
-      console.log('Usuario cargado:', {
-        email: userData.email,
-        rol: userData.rol,
-        puede_subir: userData.puede_subir,
-        puedeSubirValue,
-        isAdminOrEjecutivo: (userData.rol === 'admin') || Boolean(userData.email?.endsWith('@asli.cl'))
-      });
-      
-      setCurrentUser({
-        id: userData.id,
-        nombre: userData.nombre,
-        email: userData.email,
-        rol: userData.rol,
-        activo: userData.activo,
-        puede_subir: puedeSubirValue,
-      });
-
-      // Verificar si es ejecutivo y cargar clientes asignados
-      const emailEsEjecutivo = userData.email?.endsWith('@asli.cl') || false;
-      setIsEjecutivo(emailEsEjecutivo);
-      await loadClientesAsignados(userData.id, userData.nombre);
-    } catch (err) {
-      console.error('Error checking user:', err);
-      router.push('/auth');
-    }
-  };
-
-  // Función para cargar clientes asignados (similar a registros)
-  const loadClientesAsignados = async (userId: string, nombreUsuario?: string) => {
-    try {
-      const clientesAsignadosSet = new Set<string>();
-
-      // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
-      const { data, error } = await supabase
-        .from('ejecutivo_clientes')
-        .select('cliente_nombre')
-        .eq('ejecutivo_id', userId)
-        .eq('activo', true);
-
-      if (!error && data) {
-        data.forEach(item => clientesAsignadosSet.add(item.cliente_nombre));
-      }
-
-      // 2. Si el nombre de usuario coincide con un cliente, agregarlo también
-      if (nombreUsuario) {
-        const { data: catalogoClientes, error: catalogoError } = await supabase
-          .from('catalogos')
-          .select('valores')
-          .eq('categoria', 'clientes')
-          .single();
-
-        if (!catalogoError && catalogoClientes?.valores) {
-          const valores = Array.isArray(catalogoClientes.valores)
-            ? catalogoClientes.valores
-            : typeof catalogoClientes.valores === 'string'
-              ? JSON.parse(catalogoClientes.valores)
-              : [];
-
-          const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
-          const clienteCoincidente = valores.find((cliente: string) =>
-            cliente.toUpperCase().trim() === nombreUsuarioUpper
-          );
-
-          if (clienteCoincidente) {
-            clientesAsignadosSet.add(clienteCoincidente);
-          }
-        }
-      }
-
-      setClientesAsignados(Array.from(clientesAsignadosSet));
-    } catch (error) {
-      console.error('Error loading clientes asignados:', error);
-      setClientesAsignados([]);
-    }
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   const loadRegistros = useCallback(async () => {
     try {
-      let query = supabase
-        .from('registros')
-        .select('*')
-        .is('deleted_at', null);
-
-      // Filtrar por clientes asignados si hay alguno (aplica para ejecutivos y usuarios cuyo nombre coincide con un cliente)
-      const esAdmin = currentUser?.rol === 'admin';
-      if (!esAdmin && clientesAsignados.length > 0) {
-        query = query.in('shipper', clientesAsignados);
-      }
-
-      const { data, error } = await query.order('ingresado', { ascending: false });
-
-      if (error) throw error;
-
-      const registrosData = (data || []).map((r: any) => {
-        let naveInicial = r.nave_inicial || '';
-        let viaje = r.viaje || null;
-        const matchNave = naveInicial.match(/^(.+?)\s*\[(.+?)\]$/);
-        if (matchNave && matchNave.length >= 3) {
-          naveInicial = matchNave[1].trim();
-          viaje = matchNave[2].trim();
-        }
-
-        return {
-          ...r,
-          refAsli: r.ref_asli || '',
-          naveInicial,
-          viaje,
-          ingresado: r.ingresado ? new Date(r.ingresado) : null,
-          etd: r.etd ? new Date(r.etd) : null,
-          eta: r.eta ? new Date(r.eta) : null,
-          ingresoStacking: r.ingreso_stacking ? new Date(r.ingreso_stacking) : null,
-          createdAt: r.created_at ? new Date(r.created_at) : undefined,
-          updatedAt: r.updated_at ? new Date(r.updated_at) : undefined,
-        };
-      }) as Registro[];
-
-      setRegistros(registrosData);
-    } catch (err) {
-      console.error('Error cargando registros:', err);
-      showError('Error al cargar registros');
-    }
-  }, [showError, supabase, currentUser, clientesAsignados]);
-
-  const loadFacturas = useCallback(async () => {
-    try {
-      setLoading(true);
-      let query = supabase
-        .from('facturas')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (currentUser && currentUser.rol === 'usuario' && !currentUser.email?.endsWith('@asli.cl')) {
-        query = query.eq('created_by', currentUser.id);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      const facturasData = (data || []).map((f: any) => ({
-        id: f.id,
-        registroId: f.registro_id,
-        refAsli: f.ref_asli,
-        exportador: f.exportador || {},
-        consignatario: f.consignatario || {},
-        embarque: f.embarque || {},
-        productos: f.productos || [],
-        totales: f.totales || { cantidadTotal: 0, valorTotal: 0, valorTotalTexto: '' },
-        clientePlantilla: f.cliente_plantilla || 'ALMAFRUIT',
-        created_at: f.created_at,
-        updated_at: f.updated_at,
-        created_by: f.created_by,
-      })) as Factura[];
-
-      setFacturas(facturasData);
-    } catch (err) {
-      console.error('Error cargando facturas:', err);
-      showError('Error al cargar facturas');
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser, showError, supabase]);
-
-  const loadDeletedDocuments = useCallback(async () => {
-    if (!isAdmin) {
-      setDeletedDocuments(new Set());
-      return;
-    }
-
-    try {
+      setIsLoading(true);
       const { data, error } = await supabase
-        .from('documentos_eliminados')
-        .select('file_path')
-        .gt('expires_at', new Date().toISOString()); // Solo documentos que no han expirado
+        .from('registros')
+        .select('id, nave_inicial, booking, contenedor, ref_cliente')
+        .is('deleted_at', null)
+        .order('ref_asli', { ascending: false });
 
-      if (error) {
-        console.warn('Error cargando documentos eliminados:', error);
-        return;
-      }
+      if (error) throw error;
 
-      const deletedPaths = new Set(data?.map((d) => d.file_path) || []);
-      setDeletedDocuments(deletedPaths);
-    } catch (err) {
-      console.error('Error cargando documentos eliminados:', err);
+      const registrosData = (data || []).map((r: any) => ({
+        id: r.id,
+        naveInicial: r.nave_inicial || '',
+        booking: r.booking || '',
+        contenedor: Array.isArray(r.contenedor) ? r.contenedor.join(', ') : (r.contenedor || ''),
+        refCliente: r.ref_cliente || '',
+      }));
+
+      setRegistros(registrosData as any);
+    } catch (err: any) {
+      console.error('Error cargando registros:', err);
+    } finally {
+      setIsLoading(false);
     }
-  }, [isAdmin, supabase]);
-
-  const fetchDocuments = useCallback(async () => {
-    try {
-      const results = createEmptyDocumentsMap();
-
-      await Promise.all(
-        DOCUMENT_TYPES.map(async (type) => {
-          const { data, error } = await supabase.storage
-            .from(STORAGE_BUCKET)
-            .list(type.id, {
-              limit: 50,
-              offset: 0,
-              sortBy: { column: 'updated_at', order: 'desc' },
-            });
-
-          if (error) {
-            console.warn(`No se pudo listar ${type.name}:`, error.message);
-            results[type.id] = [];
-            return;
-          }
-
-          results[type.id] =
-            data?.map((file) => ({
-              typeId: type.id,
-              ...(() => {
-                const { booking, originalName, instructivoIndex } = parseStoredDocumentName(file.name);
-                return {
-                  booking,
-                  name: formatFileDisplayName(originalName),
-                  instructivoIndex,
-                };
-              })(),
-              path: `${type.id}/${file.name}`,
-              updatedAt: file.updated_at ?? file.created_at ?? null,
-            })) ?? [];
-        }),
-      );
-
-      setDocumentsByType(results);
-    } catch (err) {
-      console.error('Error cargando documentos:', err);
-      showError('No pudimos cargar los documentos.');
-    }
-  }, [showError, supabase]);
+  }, [supabase]);
 
   useEffect(() => {
-    if (currentUser !== undefined) {
-      void loadRegistros();
-      void loadFacturas();
-      // Cargar documentos eliminados primero, luego los documentos
-      void loadDeletedDocuments().then(() => {
-        void fetchDocuments();
-      });
+    if (currentUser) {
+      loadRegistros();
     }
-  }, [currentUser, clientesAsignados, loadRegistros, loadFacturas, fetchDocuments, loadDeletedDocuments]);
+  }, [currentUser, loadRegistros]);
 
-  // Cerrar menú contextual al hacer click fuera
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setContextMenu(null);
-    };
-    if (contextMenu) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [contextMenu]);
-
-  const handleCrearFactura = (registro: Registro) => {
-    setRegistroSeleccionado(registro);
-    setIsCreatorOpen(true);
-  };
-
-  const handleVerFactura = (factura: Factura) => {
-    setFacturaSeleccionada(factura);
-    setIsViewerOpen(true);
-  };
-
-  const handleFacturaGuardada = () => {
-    void loadFacturas();
-    setIsCreatorOpen(false);
-    setRegistroSeleccionado(null);
-    success('Factura creada exitosamente');
-  };
-
-  const handleUpload = async (typeId: string, files: FileList | null, bookingOverride?: string) => {
-    // Validar permisos de subida
-    if (!canUpload) {
-      showError('No tienes permisos para subir archivos. Solo puedes descargar.');
-      return;
-    }
-
-    const bookingToUse = bookingOverride || selectedBooking;
-    const normalizedBooking = normalizeBooking(bookingToUse);
-    if (!normalizedBooking) {
-      showError('Ingresa un booking válido antes de subir un documento.');
-      return;
-    }
-
-    // Validar que el booking pertenezca a los registros permitidos (filtrados por clientes asignados)
-    const esAdmin = currentUser?.rol === 'admin';
-    if (!esAdmin && clientesAsignados.length > 0) {
-      const bookingExiste = registros.some(
-        (r) => normalizeBooking(r.booking) === normalizedBooking &&
-          (clientesAsignados.includes(r.shipper) || clientesAsignados.length === 0)
-      );
-      if (!bookingExiste) {
-        showError('No tienes permisos para subir documentos de este booking.');
-        return;
-      }
-    }
-
-    if (!files || files.length === 0) {
-      return;
-    }
-
-    const fileArray = Array.from(files);
-    const hasInvalidFormat = fileArray.some((file) => {
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      return !extension || !allowedExtensions.includes(extension);
-    });
-
-    if (hasInvalidFormat) {
-      showError('Solo se admiten archivos PDF o Excel (.xls, .xlsx).');
-      return;
-    }
-
-    try {
-      setUploadingType(typeId);
-      setUploadingBooking(normalizedBooking);
-      setUploadProgress(10);
-
-      const bookingSegment = encodeURIComponent(normalizedBooking);
-
-      // Obtener el registro para saber cuántos contenedores tiene
-      const registro = registros.find(r => normalizeBooking(r.booking) === normalizedBooking);
-      const contenedores = registro?.contenedor
-        ? (Array.isArray(registro.contenedor) ? registro.contenedor : [registro.contenedor])
-        : [];
-      const numContenedores = contenedores.length || 1;
-
-      // Para instructivos, mantener el índice para identificarlos, pero no crear filas separadas
-      // Para otros documentos, no necesitamos asociarlos a instructivos específicos
-      let currentInstructivoIndex: number | null = null;
-
-      if (typeId === 'instructivo-embarque') {
-        // Si es un instructivo, contar cuántos ya existen para asignar el siguiente índice
-        const existingInstructivos = filteredDocumentsByType['instructivo-embarque']?.filter(
-          (doc) => doc.booking && normalizeBooking(doc.booking) === normalizedBooking
-        ) || [];
-        const maxIndex = existingInstructivos.reduce((max, doc) => {
-          const idx = doc.instructivoIndex ?? 0;
-          return Math.max(max, idx);
-        }, -1);
-        currentInstructivoIndex = maxIndex + 1;
-      }
-      // Para otros documentos, no asociarlos a instructivos específicos (instructivoIndex = null)
-
-      // Subir cada archivo
-      for (let i = 0; i < fileArray.length; i++) {
-        const file = fileArray[i];
-        const safeName = sanitizeFileName(file.name);
-        let filePath: string;
-
-        // Si es instructivo y hay múltiples archivos, incrementar el índice para cada uno
-        if (typeId === 'instructivo-embarque' && currentInstructivoIndex !== null) {
-          const fileInstructivoIndex = currentInstructivoIndex + i;
-          filePath = `${typeId}/${bookingSegment}__instructivo-${fileInstructivoIndex}__${Date.now()}-${i}-${safeName}`;
-        } else {
-          // Para otros documentos, no incluir instructivoIndex en el nombre
-          filePath = `${typeId}/${bookingSegment}__${Date.now()}-${i}-${safeName}`;
-        }
-
-        const { error } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-          });
-
-        if (error) {
-          throw error;
-        }
-
-        setUploadProgress((prev) => Math.min(prev + Math.round(70 / fileArray.length), 95));
-      }
-
-      await fetchDocuments();
-      setUploadProgress(100);
-      success('Documento cargado correctamente.');
-    } catch (err) {
-      console.error('Error subiendo documento:', err);
-      showError('No pudimos subir el documento. Intenta nuevamente.');
-    } finally {
-      setTimeout(() => {
-        setUploadingType(null);
-        setUploadingBooking(null);
-        setUploadProgress(0);
-      }, 800);
-    }
-  };
-
-  const handleDownload = async (doc: StoredDocument) => {
-    try {
-      setDownloadUrlLoading(doc.path);
-      const { data, error } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .createSignedUrl(doc.path, 60);
-
-      if (error || !data?.signedUrl) {
-        throw error;
-      }
-
-      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      console.error('Error descargando documento:', err);
-      showError('No pudimos descargar el archivo.');
-    } finally {
-      setDownloadUrlLoading(null);
-    }
-  };
-
-  const handleDeleteDocument = async (doc: StoredDocument) => {
-    if (!isAdmin) {
-      showError('Solo los administradores pueden eliminar documentos.');
-      return;
-    }
-
-    if (!confirm(`¿Estás seguro de que deseas eliminar "${doc.name}"?\n\nEl documento se moverá a la papelera y se eliminará permanentemente después de 7 días.`)) {
-      return;
-    }
-
-    try {
-      setIsDeleting(doc.path);
-
-      // Mover archivo a carpeta "papelera" en storage
-      const papeleraPath = `papelera/${doc.path}`;
-
-      // Copiar archivo a papelera
-      const { data: fileData, error: readError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .download(doc.path);
-
-      if (readError || !fileData) {
-        throw readError || new Error('No se pudo leer el archivo');
-      }
-
-      // Subir a papelera
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(papeleraPath, fileData, {
-          cacheControl: '3600',
-          upsert: true,
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Registrar eliminación en la tabla
-      const { error: insertError } = await supabase
-        .from('documentos_eliminados')
-        .insert({
-          file_path: doc.path,
-          type_id: doc.typeId,
-          booking: doc.booking,
-          original_name: doc.name,
-          deleted_by: currentUser?.id || null,
-        });
-
-      if (insertError) {
-        console.error('Error registrando eliminación:', insertError);
-        // Continuar aunque falle el registro, el archivo ya está en papelera
-      }
-
-      // Eliminar archivo original
-      const { error: deleteError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .remove([doc.path]);
-
-      if (deleteError) {
-        console.warn('Error eliminando archivo original:', deleteError);
-        // Continuar aunque falle, el archivo ya está en papelera
-      }
-
-      // Actualizar estado local
-      setDeletedDocuments((prev) => new Set([...prev, doc.path]));
-
-      // Recargar documentos
-      await fetchDocuments();
-      await loadDeletedDocuments();
-
-      success('Documento movido a la papelera. Se eliminará permanentemente después de 7 días.');
-    } catch (err) {
-      console.error('Error eliminando documento:', err);
-      showError('No pudimos eliminar el documento. Intenta nuevamente.');
-    } finally {
-      setIsDeleting(null);
-      setContextMenu(null);
-    }
-  };
-
-  // Función helper para detectar si el input es un booking o contenedor
-  const detectSearchType = (input: string): 'booking' | 'contenedor' => {
-    const trimmed = input.trim().toUpperCase();
-    // Si empieza con "BK", "BOOKING", o tiene formato típico de booking, es booking
-    if (trimmed.startsWith('BK') || trimmed.startsWith('BOOKING') || trimmed.match(/^[A-Z]{2,4}\d{4,}/)) {
-      return 'booking';
-    }
-    // Si tiene formato típico de contenedor (4 letras + 7 números, o similar)
-    if (trimmed.match(/^[A-Z]{4}\d{7}/) || trimmed.length >= 11) {
-      return 'contenedor';
-    }
-    // Por defecto, intentar primero como booking
-    return 'booking';
-  };
-
-  const handleInspect = (bookingValue?: string, contenedorValue?: string) => {
-    // Si se pasa una cadena vacía explícitamente, limpiar todo
-    if (bookingValue === '' || contenedorValue === '') {
-      setSearchInput('');
-      setSelectedBooking('');
-      setInspectedBooking('');
-      setInspectedContenedor('');
-      setSelectedBookingFromSelect('');
-      setSelectedContenedorFromSelect('');
-      return;
-    }
-
-    // Si se pasan valores desde los selects, usarlos directamente
-    if (bookingValue) {
-      const normalized = normalizeBooking(bookingValue);
-      if (normalized) {
-        setSearchInput(normalized);
-        setSelectedBooking(normalized);
-        setInspectedBooking(normalized);
-        setInspectedContenedor('');
-        setSelectedBookingFromSelect(bookingValue);
-        setSelectedContenedorFromSelect('');
-        return;
-      }
-    }
-
-    if (contenedorValue) {
-      const normalized = contenedorValue.trim().toUpperCase();
-      if (normalized) {
-        setSearchInput(normalized);
-        setInspectedContenedor(normalized);
-        setSelectedBooking('');
-        setInspectedBooking('');
-        setSelectedContenedorFromSelect(contenedorValue);
-        setSelectedBookingFromSelect('');
-        return;
-      }
-    }
-
-    // Si no hay valores desde selects, usar el input manual
-    const trimmed = searchInput.trim();
-    if (!trimmed) {
-      showError('Ingresa un booking o contenedor válido para buscar.');
-      return;
-    }
-
-    const searchType = detectSearchType(trimmed);
-    
-    if (searchType === 'booking') {
-      const normalized = normalizeBooking(trimmed);
-      if (!normalized) {
-        showError('Ingresa un booking válido para buscar.');
-        return;
-      }
-      setSearchInput(normalized);
-      setSelectedBooking(normalized);
-      setInspectedBooking(normalized);
-      setInspectedContenedor('');
-      setSelectedBookingFromSelect(normalized);
-      setSelectedContenedorFromSelect('');
-    } else {
-      // Búsqueda por contenedor
-      const normalized = trimmed.toUpperCase();
-      setSearchInput(normalized);
-      setInspectedContenedor(normalized);
-      setSelectedBooking('');
-      setInspectedBooking('');
-      setSelectedContenedorFromSelect(normalized);
-      setSelectedBookingFromSelect('');
-    }
-  };
-
-  const registrosFiltrados = useMemo(() => {
-    let filtered = registros;
-
-    // Filtrar por temporada si está seleccionada
-    if (selectedTemporada) {
-      filtered = filtered.filter((registro) => normalizeTemporada(registro.temporada) === selectedTemporada);
-    }
-
-    // Filtrar por permisos de usuario si no es admin/ejecutivo
-    // Si tiene clientes asignados, ya está filtrado por clientes en loadRegistros
-    // Si no tiene clientes asignados, filtrar solo por registros que creó
-    const esAdmin = currentUser?.rol === 'admin';
-    if (!esAdmin && !isAdminOrEjecutivo && currentUser?.id && clientesAsignados.length === 0) {
-      const allowedRefAsli = new Set(
-        registros
-          .filter((r) => r.createdBy === currentUser.id || r.usuario === currentUser.nombre)
-          .map((r) => r.refAsli),
-      );
-      filtered = filtered.filter((r) => allowedRefAsli.has(r.refAsli));
-    }
-
-    return filtered;
-  }, [registros, selectedTemporada, isAdminOrEjecutivo, currentUser, clientesAsignados]);
-
-  const facturasFiltradas = useMemo(() => {
-    if (!selectedTemporada && isAdminOrEjecutivo) {
-      return facturas;
-    }
-    const refsPermitidos = new Set(registrosFiltrados.map((registro) => registro.refAsli));
-    return facturas.filter((factura) => refsPermitidos.has(factura.refAsli));
-  }, [facturas, registrosFiltrados, selectedTemporada, isAdminOrEjecutivo]);
-
-  const bookingOptions = useMemo(() => {
-    const set = new Set(
-      registrosFiltrados
-        .map((r) => r.booking?.trim())
-        .filter((booking): booking is string => Boolean(booking && booking.length > 0)),
-    );
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
-  }, [registrosFiltrados]);
-
-  const contenedorOptions = useMemo(() => {
-    const set = new Set<string>();
-    registrosFiltrados.forEach((r) => {
-      const contenedores = Array.isArray(r.contenedor)
-        ? r.contenedor
-        : r.contenedor
-          ? [r.contenedor]
-          : [];
-      contenedores.forEach((cont) => {
-        const contStr = typeof cont === 'string' ? cont.trim().toUpperCase() : String(cont).trim().toUpperCase();
-        if (contStr && contStr.length > 0) {
-          set.add(contStr);
-        }
-      });
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base', numeric: true }));
-  }, [registrosFiltrados]);
-
-  const temporadasDisponibles = useMemo(() => {
-    const set = new Set(
-      registros
-        .map((r) => normalizeTemporada(r.temporada))
-        .filter((t): t is string => Boolean(t && t.length > 0)),
-    );
-    return Array.from(set).sort((a, b) => {
-      // Ordenar numéricamente si son números, sino alfabéticamente
-      const numA = parseInt(a, 10);
-      const numB = parseInt(b, 10);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        return numB - numA; // Más reciente primero
-      }
-      return b.localeCompare(a, 'es', { sensitivity: 'base' });
-    });
-  }, [registros]);
-
-  useEffect(() => {
-    // Limpiar búsqueda si no hay opciones disponibles
-    if (bookingOptions.length === 0) {
-      setSelectedBooking('');
-      setSearchInput('');
-      setInspectedBooking('');
-      setInspectedContenedor('');
-      setSelectedBookingFromSelect('');
-      setSelectedContenedorFromSelect('');
-    }
-  }, [bookingOptions]);
-
-  const bookingMap = useMemo(() => {
-    const map = new Map<string, Registro>();
-    registrosFiltrados.forEach((registro) => {
-      const key = normalizeBooking(registro.booking);
-      if (key) {
-        map.set(key, registro);
-      }
-    });
-    return map;
-  }, [registrosFiltrados]);
-
-  const allowedBookingsSet = useMemo(() => {
-    const set = new Set(
-      registrosFiltrados
-        .map((r) => normalizeBooking(r.booking))
-        .filter((booking): booking is string => Boolean(booking && booking.length > 0)),
-    );
-    return set;
-  }, [registrosFiltrados]);
-
-  const filteredDocumentsByType = useMemo(() => {
-    const next = createEmptyDocumentsMap();
-    const esAdmin = currentUser?.rol === 'admin';
-
-    Object.entries(documentsByType).forEach(([typeId, docs]) => {
-      next[typeId] = docs.filter((doc) => {
-        if (deletedDocuments.has(doc.path)) {
-          return false;
-        }
-
-        const bookingKey = doc.booking ? normalizeBooking(doc.booking) : '';
-
-        // Si hay temporada seleccionada, filtrar por bookings de esa temporada
-        if (selectedTemporada) {
-          return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
-        }
-
-        // Si es admin, mostrar todos los documentos
-        if (esAdmin) {
-          return true;
-        }
-
-        // Para ejecutivos y usuarios con clientes asignados, filtrar por bookings permitidos
-        if (clientesAsignados.length > 0) {
-          return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
-        }
-
-        // Para usuarios normales sin clientes asignados, filtrar por bookings de sus registros
-        if (!isAdminOrEjecutivo) {
-          return bookingKey ? allowedBookingsSet.has(bookingKey) : false;
-        }
-
-        // Para ejecutivos sin clientes asignados, mostrar todos
-        return true;
-      });
-    });
-    return next;
-  }, [documentsByType, allowedBookingsSet, isAdminOrEjecutivo, selectedTemporada, clientesAsignados, currentUser, deletedDocuments]);
-
-  const registrosSinFacturaProforma = useMemo(() => {
-    // Obtener todos los bookings que tienen factura proforma subida
-    const bookingsConProforma = new Set<string>();
-    const proformaDocs = filteredDocumentsByType['factura-proforma'] || [];
-    proformaDocs.forEach((doc) => {
-      if (doc.booking) {
-        const bookingKey = normalizeBooking(doc.booking);
-        if (bookingKey) {
-          bookingsConProforma.add(bookingKey);
-        }
-      }
-    });
-
-    // Filtrar registros que NO tienen factura proforma subida
-    return registrosFiltrados.filter((r) => {
-      const bookingKey = normalizeBooking(r.booking);
-      return bookingKey && !bookingsConProforma.has(bookingKey);
-    });
-  }, [registrosFiltrados, filteredDocumentsByType]);
-
-  const documentsByBookingMap = useMemo(() => {
-    const map = new Map<string, Record<string, StoredDocument[]>>();
-    Object.entries(filteredDocumentsByType).forEach(([typeId, docs]) => {
-      docs.forEach((doc) => {
-        if (!doc.booking) return;
-        const bookingKey = normalizeBooking(doc.booking);
-        if (!bookingKey) return;
-        if (!map.has(bookingKey)) {
-          map.set(bookingKey, {});
-        }
-        const entry = map.get(bookingKey)!;
-        if (!entry[typeId]) {
-          entry[typeId] = [];
-        }
-        entry[typeId]!.push(doc);
-      });
-    });
-    return map;
-  }, [filteredDocumentsByType]);
-
-  const bookingsWithDocs = useMemo(() => {
-    const rows: {
-      booking: string;
-      bookingKey: string;
-      cliente: string;
-      registro: Registro;
-      docsByType: Record<string, StoredDocument[]>;
-      hasPending: boolean;
-      instructivoIndex: number | null;
-    }[] = [];
-
-    bookingMap.forEach((registro, bookingKey) => {
-      const docsForBooking = documentsByBookingMap.get(bookingKey) || {};
-
-      // Crear UNA SOLA fila por booking, mostrando TODOS los documentos
-      // No crear filas separadas por instructivo
-      const missing = DOCUMENT_TYPES.filter((type) => !(docsForBooking[type.id]?.length));
-
-      rows.push({
-        booking: registro.booking || bookingKey,
-        bookingKey,
-        cliente: registro.shipper || '-',
-        registro,
-        docsByType: docsForBooking, // Todos los documentos del booking, sin filtrar por instructivo
-        hasPending: missing.length > 0,
-        instructivoIndex: null, // Ya no usamos instructivoIndex para separar filas
-      });
-    });
-
-    return rows.sort((a, b) => {
-      // Ordenar por fecha de ingreso (campo 'ingresado' de la tabla registros)
-      // Si no hay ingresado, usar createdAt como fallback
-      const getFecha = (registro: Registro): number | null => {
-        if (registro.ingresado) {
-          const fecha = registro.ingresado instanceof Date 
-            ? registro.ingresado 
-            : new Date(registro.ingresado);
-          if (!isNaN(fecha.getTime())) {
-            return fecha.getTime();
-          }
-        }
-        // Fallback a createdAt si ingresado no está disponible
-        if (registro.createdAt) {
-          const fecha = registro.createdAt instanceof Date 
-            ? registro.createdAt 
-            : new Date(registro.createdAt);
-          if (!isNaN(fecha.getTime())) {
-            return fecha.getTime();
-          }
-        }
-        return null;
-      };
-
-      const timeA = getFecha(a.registro);
-      const timeB = getFecha(b.registro);
-      
-      // Si ambas fechas existen, ordenar por fecha según sortOrder
-      if (timeA !== null && timeB !== null) {
-        const diff = timeA - timeB;
-        return sortOrder === 'asc' ? diff : -diff;
-      }
-      
-      // Si solo una tiene fecha, la que tiene fecha va primero
-      if (timeA !== null && timeB === null) return sortOrder === 'asc' ? -1 : 1;
-      if (timeA === null && timeB !== null) return sortOrder === 'asc' ? 1 : -1;
-      
-      // Si ninguna tiene fecha, ordenar por booking como fallback
-      const bookingCompare = a.booking.localeCompare(b.booking, 'es', { sensitivity: 'base', numeric: true });
-      return sortOrder === 'asc' ? bookingCompare : -bookingCompare;
-    });
-  }, [bookingMap, documentsByBookingMap, sortOrder]);
-
-  const pendingBookings = useMemo(() => {
-    return bookingsWithDocs.filter((row) => {
-      const missing = DOCUMENT_TYPES.filter((type) => !(row.docsByType[type.id]?.length));
-      return missing.length > 0;
-    });
-  }, [bookingsWithDocs]);
-
-  const totalUploadedDocs = useMemo(
-    () => Object.values(filteredDocumentsByType).reduce((sum, docs) => sum + docs.length, 0),
-    [filteredDocumentsByType],
-  );
-
-  // Función helper para buscar registro por contenedor
-  const findRegistroByContenedor = useCallback((contenedorSearch: string) => {
-    if (!contenedorSearch) return null;
-    const searchUpper = contenedorSearch.toUpperCase().trim();
-    return registrosFiltrados.find((registro) => {
-      const contenedores = Array.isArray(registro.contenedor)
-        ? registro.contenedor
-        : registro.contenedor
-          ? [registro.contenedor]
-          : [];
-      return contenedores.some((cont) => {
-        const contStr = typeof cont === 'string' ? cont.toUpperCase().trim() : String(cont).toUpperCase().trim();
-        return contStr === searchUpper || contStr.includes(searchUpper) || searchUpper.includes(contStr);
-      });
-    }) || null;
-  }, [registrosFiltrados]);
-
-  const inspectedBookingKey = normalizeBooking(inspectedBooking);
-  const inspectedRegistroByBooking = inspectedBookingKey ? bookingMap.get(inspectedBookingKey) : null;
-  const inspectedRegistroByContenedor = inspectedContenedor ? findRegistroByContenedor(inspectedContenedor) : null;
-  const inspectedRegistro = inspectedRegistroByBooking || inspectedRegistroByContenedor;
-  const inspectedDocsByType = useMemo(() => {
-    if (!inspectedRegistro) {
-      return {};
-    }
-    const result: Record<string, StoredDocument[]> = {};
-    const bookingKey = normalizeBooking(inspectedRegistro.booking);
-    DOCUMENT_TYPES.forEach((type) => {
-      result[type.id] = filteredDocumentsByType[type.id]?.filter(
-        (doc) => doc.booking && normalizeBooking(doc.booking) === bookingKey,
-      );
-    });
-    return result;
-  }, [filteredDocumentsByType, inspectedRegistro]);
-
-  if (loading) {
-    return <LoadingScreen message="Cargando documentos..." />;
+  if (!currentUser) {
+    return <LoadingScreen message="Cargando..." />;
   }
 
+  const documentosRows: DocumentoRow[] = registros.map((reg: any) => ({
+    id: reg.id,
+    nave: reg.naveInicial || '',
+    booking: reg.booking || '',
+    contenedor: reg.contenedor || '',
+    refCliente: reg.refCliente || '',
+    reservaPdf: false,
+    instructivo: false,
+    guiaDespacho: false,
+    packingList: false,
+    proformaInvoice: false,
+    blSwbTelex: false,
+    facturaSii: false,
+    dusLegalizado: false,
+    fullset: false,
+  }));
+
+  const sidebarSections = [
+    {
+      title: 'Principal',
+      items: [
+        { label: 'Dashboard', id: '/dashboard', isActive: false, icon: LayoutDashboard },
+        { label: 'Registros', id: '/registros', isActive: false, icon: Ship },
+        { label: 'Transportes', id: '/transportes', isActive: false, icon: Truck },
+        { label: 'Documentos', id: '/documentos', isActive: true, icon: FileText },
+      ],
+    },
+    {
+      title: 'Configuración',
+      items: [
+        { label: 'Ajustes', id: '/settings', isActive: false, icon: Settings },
+      ],
+    },
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100">
-      <div className="mx-auto flex w-full max-w-[95vw] xl:max-w-[98vw] flex-col gap-10 px-4 py-8 sm:px-6 lg:px-6">
-
-        <DocumentFilters
-          searchInput={searchInput}
-          setSearchInput={setSearchInput}
-          handleInspect={handleInspect}
-          inspectedBooking={inspectedBooking}
-          inspectedContenedor={inspectedContenedor}
-          inspectedRegistro={inspectedRegistro}
-          inspectedDocsByType={inspectedDocsByType}
-          selectedTemporada={selectedTemporada}
-          setSelectedTemporada={setSelectedTemporada}
-          temporadasDisponibles={temporadasDisponibles}
-          totalUploadedDocs={totalUploadedDocs}
-          facturasCount={facturasFiltradas.length}
-          registrosSinFacturaProformaCount={registrosSinFacturaProforma.length}
-          bookingOptions={bookingOptions}
-          contenedorOptions={contenedorOptions}
-          selectedBookingFromSelect={selectedBookingFromSelect}
-          setSelectedBookingFromSelect={setSelectedBookingFromSelect}
-          selectedContenedorFromSelect={selectedContenedorFromSelect}
-          setSelectedContenedorFromSelect={setSelectedContenedorFromSelect}
-        />
-
-        <DocumentList
-          bookingsWithDocs={bookingsWithDocs}
-          pendingBookingsCount={pendingBookings.length}
-          uploadingBooking={uploadingBooking}
-          uploadingType={uploadingType}
-          downloadUrlLoading={downloadUrlLoading}
-          isDeleting={isDeleting}
-          isAdmin={isAdmin}
-          isAdminOrEjecutivo={isAdminOrEjecutivo}
-          canUpload={canUpload}
-          handleDownload={handleDownload}
-          handleDeleteDocument={handleDeleteDocument}
-          handleUpload={handleUpload}
-          setContextMenu={setContextMenu}
-          sortOrder={sortOrder}
-          setSortOrder={setSortOrder}
-        />
-
-      </div>
-
-
-      {isCreatorOpen && registroSeleccionado && (
-        <FacturaCreator
-          registro={registroSeleccionado}
-          isOpen={isCreatorOpen}
-          onClose={() => {
-            setIsCreatorOpen(false);
-            setRegistroSeleccionado(null);
-          }}
-          onSave={handleFacturaGuardada}
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+      {/* Overlay para móvil */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {isViewerOpen && facturaSeleccionada && (
-        <FacturaViewer
-          factura={facturaSeleccionada}
-          isOpen={isViewerOpen}
-          onClose={() => {
-            setIsViewerOpen(false);
-            setFacturaSeleccionada(null);
-          }}
-          onUpdate={() => {
-            loadFacturas();
-          }}
-        />
-      )}
-
-      {/* Menú contextual para administrar documentos */}
-      {contextMenu && isAdmin && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setContextMenu(null)}
-          />
-          <div
-            className="fixed z-50 min-w-[200px] rounded-lg border border-slate-700 bg-slate-900 shadow-xl"
-            style={{
-              left: `${contextMenu.x}px`,
-              top: `${contextMenu.y}px`,
-            }}
-            onClick={(e) => e.stopPropagation()}
+      {/* Sidebar */}
+      <aside
+        className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        } ${
+          isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
+        }`}
+      >
+        <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'} sticky top-0 z-10 overflow-hidden`}>
+          {/* Botón cerrar móvil */}
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'}`}
+            aria-label="Cerrar menú"
           >
-            <div className="p-1">
-              <div className="mb-1 border-b border-slate-700 px-2 py-1.5">
-                <p className="text-xs font-semibold text-slate-300">{contextMenu.doc.name}</p>
+            <X className="h-5 w-5" />
+          </button>
+
+          {(!isSidebarCollapsed || isMobileMenuOpen) && (
+            <>
+              <div className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'} flex items-center justify-center`}>
+                <img
+                  src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
+                  alt="ASLI Gestión Logística"
+                  className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none';
+                  }}
+                />
               </div>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>ASLI Gestión Logística</p>
+                <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Plataforma Operativa</p>
+              </div>
+            </>
+          )}
+          {!isSidebarCollapsed && !isMobileMenuOpen && (
+            <button
+              onClick={toggleSidebar}
+              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
+              aria-label="Contraer menú lateral"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+          {isSidebarCollapsed && !isMobileMenuOpen && (
+            <button
+              onClick={toggleSidebar}
+              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
+              aria-label="Expandir menú lateral"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {(!isSidebarCollapsed || isMobileMenuOpen) && (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
+            {sidebarSections.map((section) => (
+              <div key={section.title} className="space-y-2 sm:space-y-3">
+                <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{section.title}</p>
+                <div className="space-y-1 sm:space-y-1.5 overflow-y-visible">
+                  {section.items.map((item) => {
+                    const isActive = item.isActive || false;
+                    return (
+                      <button
+                        key={item.label}
+                        onClick={() => {
+                          if (item.onClick) {
+                            item.onClick();
+                            setIsMobileMenuOpen(false);
+                          } else if (item.id) {
+                            router.push(item.id);
+                            setIsMobileMenuOpen(false);
+                          }
+                        }}
+                        className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${
+                          isActive
+                            ? 'bg-blue-600 text-white'
+                            : theme === 'dark'
+                              ? 'hover:bg-slate-700 text-slate-300'
+                              : 'hover:bg-blue-50 text-blue-600 font-semibold'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {item.icon && (
+                            <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                          )}
+                          <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
+                            isActive
+                              ? '!text-white'
+                              : theme !== 'dark'
+                                ? '!text-blue-600'
+                                : ''
+                          }`}>{item.label}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div className="space-y-2 sm:space-y-3">
+              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
+              <ThemeToggle variant="switch" label="Tema" />
+            </div>
+          </div>
+        )}
+      </aside>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
+          <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 py-3 sm:py-4">
+            {/* Botón hamburguesa para móvil */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
+                theme === 'dark' 
+                  ? 'text-slate-300 hover:bg-slate-700' 
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+              aria-label="Abrir menú"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+            {/* Botón para expandir sidebar colapsado en desktop */}
+            {isSidebarCollapsed && (
               <button
-                type="button"
-                onClick={() => {
-                  handleDownload(contextMenu.doc);
-                  setContextMenu(null);
-                }}
-                disabled={downloadUrlLoading === contextMenu.doc.path}
-                className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-sky-400 hover:bg-slate-800 disabled:opacity-50"
+                onClick={toggleSidebar}
+                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
+                  theme === 'dark' 
+                    ? 'text-slate-300 hover:bg-slate-700 border border-slate-700' 
+                    : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                }`}
+                aria-label="Expandir menú lateral"
               >
-                <Download className="h-4 w-4" />
-                <span>{downloadUrlLoading === contextMenu.doc.path ? 'Descargando…' : 'Descargar'}</span>
+                <ChevronRight className="h-5 w-5" />
               </button>
+            )}
+
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-sky-500/15' : 'bg-blue-100'}`}>
+                <FileText className={`h-7 w-7 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
+              </div>
+              <div>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
+                <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Documentos</h1>
+                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gestión de documentos y facturas de embarques</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 ml-auto">
               <button
-                type="button"
-                onClick={() => {
-                  void handleDeleteDocument(contextMenu.doc);
-                  setContextMenu(null);
-                }}
-                disabled={isDeleting === contextMenu.doc.path}
-                className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-400 hover:bg-slate-800 disabled:opacity-50"
+                onClick={() => setShowProfileModal(true)}
+                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${
+                  theme === 'dark'
+                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
+                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                }`}
               >
-                <Trash2 className="h-4 w-4" />
-                <span>{isDeleting === contextMenu.doc.path ? 'Eliminando…' : 'Eliminar'}</span>
+                <UserIcon className="h-4 w-4" />
+                {currentUser?.nombre || currentUser?.email}
               </button>
             </div>
           </div>
-        </>
-      )}
+        </header>
+
+        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
+          <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
+            {/* Tabla de Documentos */}
+            <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden ${
+              theme === 'dark'
+                ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
+                : 'border-gray-200 bg-white shadow-md'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className={`min-w-full divide-y ${
+                  theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
+                }`}>
+                  <thead className={`sticky top-0 z-10 backdrop-blur-sm ${
+                    theme === 'dark'
+                      ? 'bg-slate-900/95 border-b border-slate-800/60'
+                      : 'bg-white border-b border-gray-200'
+                  }`}>
+                    <tr>
+                      <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Nave | Booking | Contenedor
+                      </th>
+                      <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Ref Cliente
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Reserva PDF
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Instructivo
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Guía de Despacho
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Packing List
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Proforma Invoice
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        BL-SWB-TELEX
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Factura SII
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        DUS Legalizado
+                      </th>
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${
+                        theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      }`}>
+                        Fullset
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${
+                    theme === 'dark' ? 'divide-slate-800/60 bg-slate-900/50' : 'divide-gray-200 bg-white'
+                  }`}>
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={11} className={`px-4 py-8 text-center text-sm ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        }`}>
+                          Cargando documentos...
+                        </td>
+                      </tr>
+                    ) : documentosRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={11} className={`px-4 py-8 text-center text-sm ${
+                          theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        }`}>
+                          No hay documentos disponibles
+                        </td>
+                      </tr>
+                    ) : (
+                      documentosRows.map((row) => (
+                        <tr key={row.id} className={`hover:${
+                          theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
+                        } transition-colors`}>
+                          <td className={`px-4 py-3 whitespace-nowrap ${
+                            theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
+                          }`}>
+                            <div className="flex flex-col space-y-0.5">
+                              <span className="font-medium">{row.nave}</span>
+                              <span className="text-xs opacity-75">{row.booking}</span>
+                              <span className="text-xs opacity-75">{row.contenedor}</span>
+                            </div>
+                          </td>
+                          <td className={`px-4 py-3 whitespace-nowrap ${
+                            theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
+                          }`}>
+                            {row.refCliente || '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.reservaPdf 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.reservaPdf ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.instructivo 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.instructivo ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.guiaDespacho 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.guiaDespacho ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.packingList 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.packingList ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.proformaInvoice 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.proformaInvoice ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.blSwbTelex 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.blSwbTelex ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.facturaSii 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.facturaSii ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.dusLegalizado 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.dusLegalizado ? '✓' : '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                            <div className={`inline-flex items-center justify-center w-6 h-6 rounded ${
+                              row.fullset 
+                                ? 'bg-green-500 text-white' 
+                                : theme === 'dark' 
+                                  ? 'bg-slate-700 text-slate-500' 
+                                  : 'bg-gray-200 text-gray-400'
+                            }`}>
+                              {row.fullset ? '✓' : '—'}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+
+      {/* Modal de perfil de usuario */}
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        userInfo={currentUser}
+      />
     </div>
   );
 }

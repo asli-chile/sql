@@ -47,9 +47,9 @@ export function InlineEditCell({
       return '';
     }
     
-    // Siempre devolver como texto plano con espacios
-    // Limpiar espacios múltiples y mantener formato: "cont1 cont2 cont3"
-    return containerValue.trim().split(/\s+/).join(' ');
+    // Convertir a mayúsculas y limpiar espacios múltiples
+    // Mantener formato: "CONT1 CONT2 CONT3"
+    return containerValue.trim().split(/\s+/).map(c => c.toUpperCase()).join(' ');
   };
   const { theme } = useTheme();
   
