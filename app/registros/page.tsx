@@ -992,24 +992,27 @@ export default function RegistrosPage() {
           continue;
         }
         
-        // Verificar si ya existe un transporte para este registro
-        const { data: existingTransporte, error: checkError } = await supabase
-          .from('transportes')
-          .select('*')
-          .eq('registro_id', registro.id)
-          .maybeSingle();
-        
-        if (checkError) {
-          console.error('Error al verificar transporte existente:', checkError);
-          errores.push(`${registro.refAsli || registro.booking}: Error al verificar`);
-          fallidos++;
-          continue;
-        }
-        
-        if (existingTransporte) {
-          errores.push(`${registro.refAsli || registro.booking}: Ya existe en transportes`);
-          fallidos++;
-          continue;
+        // Verificar si ya existe un transporte para esta ref externa
+        // Solo verificar si el registro tiene refCliente
+        if (registro.refCliente && registro.refCliente.trim() !== '') {
+          const { data: existingTransporteByRef, error: checkErrorByRef } = await supabase
+            .from('transportes')
+            .select('*')
+            .eq('ref_cliente', registro.refCliente.trim())
+            .maybeSingle();
+          
+          if (checkErrorByRef) {
+            console.error('Error al verificar transporte existente por ref externa:', checkErrorByRef);
+            errores.push(`${registro.refAsli || registro.booking}: Error al verificar ref externa`);
+            fallidos++;
+            continue;
+          }
+          
+          if (existingTransporteByRef) {
+            errores.push(`${registro.refAsli || registro.booking}: Ya existe un transporte con la ref externa ${registro.refCliente}`);
+            fallidos++;
+            continue;
+          }
         }
         
         // Extraer contenedor (puede ser array o string)
@@ -1019,6 +1022,7 @@ export default function RegistrosPage() {
         
         // Crear nuevo registro de transporte con los datos del registro de embarque
         const transporteData = {
+          ref_cliente: registro.refCliente && registro.refCliente.trim() !== '' ? registro.refCliente.trim() : null,
           booking: registro.booking.trim(),
           contenedor: contenedorValue.trim() || null,
           nave: registro.naveInicial || null,

@@ -6,6 +6,7 @@ import { TransporteRecord } from '@/lib/transportes-service';
 import { createClient } from '@/lib/supabase-browser';
 import { useEditingCell } from '@/contexts/EditingCellContext';
 import { useUser } from '@/hooks/useUser';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface InlineEditCellProps {
   value: any;
@@ -36,6 +37,7 @@ export function InlineEditCell({
   className = '',
 }: InlineEditCellProps) {
   const { canEdit } = useUser();
+  const { theme } = useTheme();
   const { setEditingCell, isEditing: isEditingInContext, clearEditing } = useEditingCell();
 
   const [editValue, setEditValue] = useState(value || '');
@@ -169,7 +171,7 @@ export function InlineEditCell({
 
   if (!canEdit) {
     return (
-      <span className={`text-sm text-slate-200 ${className}`}>
+      <span className={`text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'} ${className}`}>
         {formatDisplayValue(value)}
       </span>
     );
@@ -185,7 +187,11 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="w-full rounded border border-sky-500 bg-slate-900 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+              theme === 'dark'
+                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+            }`}
             disabled={loading}
           >
             <option value="">—</option>
@@ -203,7 +209,11 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="w-full rounded border border-sky-500 bg-slate-900 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+              theme === 'dark'
+                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+            }`}
             disabled={loading}
           />
         ) : type === 'number' ? (
@@ -214,7 +224,11 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="w-full rounded border border-sky-500 bg-slate-900 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+              theme === 'dark'
+                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+            }`}
             disabled={loading}
           />
         ) : (
@@ -225,7 +239,11 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className="w-full rounded border border-sky-500 bg-slate-900 px-2 py-1 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500/50"
+            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+              theme === 'dark'
+                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+            }`}
             disabled={loading}
           />
         )}
@@ -246,10 +264,20 @@ export function InlineEditCell({
   return (
     <div
       onClick={handleCellClick}
-      className={`group flex items-center gap-1 cursor-pointer hover:bg-slate-800/50 rounded px-1 py-0.5 -mx-1 -my-0.5 transition-colors ${className}`}
+      className={`group flex items-center gap-1 cursor-pointer rounded px-1 py-0.5 -mx-1 -my-0.5 transition-colors ${
+        theme === 'dark'
+          ? 'hover:bg-slate-800/50'
+          : 'hover:bg-gray-100'
+      } ${className}`}
     >
-      <span className="text-sm text-slate-200 flex-1">{formatDisplayValue(value)}</span>
-      <Edit3 className="h-3 w-3 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+      <span className={`text-sm flex-1 ${
+        theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+      }`}>
+        {formatDisplayValue(value)}
+      </span>
+      <Edit3 className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+        theme === 'dark' ? 'text-slate-500' : 'text-gray-500'
+      }`} />
     </div>
   );
 }

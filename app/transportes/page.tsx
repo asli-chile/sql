@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2 } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
@@ -62,6 +62,9 @@ export default function TransportesPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [bookingDocuments, setBookingDocuments] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
   const [downloadingBooking, setDownloadingBooking] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: TransporteRecord } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<TransporteRecord | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -377,6 +380,41 @@ export default function TransportesPage() {
     }
     
     handleUpdateRecord({ ...record, [field]: checked });
+  };
+
+  const handleDeleteTransporte = async (transporte: TransporteRecord) => {
+    setDeleteConfirm(transporte);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('transportes')
+        .delete()
+        .eq('id', deleteConfirm.id);
+
+      if (error) {
+        console.error('Error eliminando transporte:', error);
+        throw error;
+      }
+
+      // Actualizar estado local
+      setRecords((prev) => prev.filter((r) => r.id !== deleteConfirm.id));
+      setDeleteConfirm(null);
+    } catch (error: any) {
+      console.error('Error eliminando transporte:', error);
+      alert(`Error al eliminar el transporte: ${error?.message || 'Error desconocido'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirm(null);
   };
 
   const handleToggleRowSelection = (recordId: string) => {
@@ -789,7 +827,7 @@ export default function TransportesPage() {
                     <tbody className={`divide-y ${
                       theme === 'dark'
                         ? 'divide-slate-800/60 bg-slate-950/50'
-                        : 'divide-gray-200 bg-gray-50'
+                        : 'divide-gray-200 bg-white'
                     }`}>
                       {isLoading ? (
                         <tr>
@@ -840,6 +878,14 @@ export default function TransportesPage() {
                         filteredRecords.map((item) => (
                           <tr
                             key={item.id}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              setContextMenu({
+                                x: e.clientX,
+                                y: e.clientY,
+                                record: item,
+                              });
+                            }}
                             className={`transition-colors ${
                               theme === 'dark'
                                 ? `hover:bg-slate-900/60 ${selectedRows.has(item.id) ? 'bg-slate-800/40' : ''}`
@@ -861,13 +907,13 @@ export default function TransportesPage() {
                             {transportesColumns.map((column) => {
                               // Checkbox especial para AT CONTROLADA
                               if (column.key === 'atmosfera_controlada') {
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap ${
-                                      theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
-                                    }`}
-                                  >
+                              return (
+                                <td
+                                  key={`${item.id}-${column.header}`}
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
+                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                  }`}
+                                >
                                     <input
                                       type="checkbox"
                                       checked={item.atmosfera_controlada || false}
@@ -884,13 +930,13 @@ export default function TransportesPage() {
                               
                               // Checkbox especial para LATE
                               if (column.key === 'late') {
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap ${
-                                      theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
-                                    }`}
-                                  >
+                              return (
+                                <td
+                                  key={`${item.id}-${column.header}`}
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
+                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                  }`}
+                                >
                                     <input
                                       type="checkbox"
                                       checked={item.late || false}
@@ -907,13 +953,13 @@ export default function TransportesPage() {
                               
                               // Checkbox especial para EXTRA LATE
                               if (column.key === 'extra_late') {
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap ${
-                                      theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
-                                    }`}
-                                  >
+                              return (
+                                <td
+                                  key={`${item.id}-${column.header}`}
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
+                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                  }`}
+                                >
                                     <input
                                       type="checkbox"
                                       checked={item.extra_late || false}
@@ -932,13 +978,13 @@ export default function TransportesPage() {
                               const booleanCheckboxes = ['porteo', 'ingresado_stacking', 'sobreestadia', 'scanner'];
                               if (booleanCheckboxes.includes(column.key)) {
                                 const checkboxValue = item[column.key] as boolean | null;
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap ${
-                                      theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
-                                    }`}
-                                  >
+                              return (
+                                <td
+                                  key={`${item.id}-${column.header}`}
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
+                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                  }`}
+                                >
                                     <input
                                       type="checkbox"
                                       checked={checkboxValue || false}
@@ -959,15 +1005,15 @@ export default function TransportesPage() {
                                 const bookingKey = bookingValue ? bookingValue.trim().toUpperCase().replace(/\s+/g, '') : '';
                                 const hasPdf = bookingKey && bookingDocuments.has(bookingKey);
                                 
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap ${
-                                      theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <span className="flex-1">{bookingValue || '—'}</span>
+                              return (
+                                <td
+                                  key={`${item.id}-${column.header}`}
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
+                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                  }`}
+                                >
+                                    <div className="flex items-center justify-center gap-2">
+                                      <span>{bookingValue || '—'}</span>
                                       {hasPdf && (
                                         <button
                                           onClick={(e) => {
@@ -1002,15 +1048,15 @@ export default function TransportesPage() {
                               return (
                                 <td
                                   key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900'
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
+                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
                                   }`}
                                 >
                                   {column.render ? (
                                     column.render(item)
                                   ) : isDisabled ? (
                                     <span className={`text-sm ${
-                                      theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                                      theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                                     }`}>
                                       {item[column.key] !== null && item[column.key] !== undefined ? item[column.key] : '—'}
                                     </span>
@@ -1058,6 +1104,137 @@ export default function TransportesPage() {
               setCurrentUser({ ...currentUser, ...updatedUser });
             }}
           />
+
+          {/* Menú contextual */}
+          {contextMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setContextMenu(null)}
+              />
+              <div
+                className={`fixed z-50 min-w-[200px] rounded-lg border shadow-xl ${
+                  theme === 'dark'
+                    ? 'border-slate-700 bg-slate-900'
+                    : 'border-gray-200 bg-white'
+                }`}
+                style={{
+                  left: `${contextMenu.x}px`,
+                  top: `${contextMenu.y}px`,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-1">
+                  <div className={`mb-1 border-b px-2 py-1.5 ${
+                    theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+                  }`}>
+                    <p className={`text-xs font-semibold ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      {contextMenu.record.booking || 'Transporte'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleDeleteTransporte(contextMenu.record);
+                      setContextMenu(null);
+                    }}
+                    disabled={isDeleting}
+                    className={`flex w-full items-center gap-2 rounded px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                      theme === 'dark'
+                        ? 'text-red-400 hover:bg-slate-800'
+                        : 'text-red-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span>{isDeleting ? 'Eliminando…' : 'Eliminar'}</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Modal de confirmación de eliminación */}
+          {deleteConfirm && (
+            <div
+              className="fixed inset-0 z-[1300] flex items-center justify-center px-4 py-6 backdrop-blur-sm"
+              onClick={handleCancelDelete}
+              role="presentation"
+              style={{
+                backgroundColor: theme === 'dark' ? 'rgba(2, 6, 23, 0.8)' : 'rgba(0, 0, 0, 0.5)',
+              }}
+            >
+              <div
+                className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${
+                  theme === 'dark'
+                    ? 'border-white/10 bg-slate-950/90'
+                    : 'border-gray-200 bg-white'
+                }`}
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-confirm-title"
+              >
+                <div className="flex items-start gap-4">
+                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+                    theme === 'dark'
+                      ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+                      : 'border-amber-400/60 bg-amber-50 text-amber-600'
+                  }`}>
+                    <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h3
+                      id="delete-confirm-title"
+                      className={`text-lg font-semibold ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}
+                    >
+                      Eliminar transporte
+                    </h3>
+                    <p className={`mt-2 text-sm ${
+                      theme === 'dark' ? 'text-slate-300' : 'text-gray-600'
+                    }`}>
+                      ¿Estás seguro de que quieres eliminar el transporte{' '}
+                      <strong>{deleteConfirm.booking || deleteConfirm.contenedor || 'este registro'}</strong>?
+                      Esta acción no se puede deshacer.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelDelete}
+                    disabled={isDeleting}
+                    className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 ${
+                      theme === 'dark'
+                        ? 'border-slate-700/70 text-slate-200 hover:border-slate-500 hover:text-white'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900'
+                    }`}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDelete}
+                    disabled={isDeleting}
+                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <RefreshCcw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                        Eliminando…
+                      </>
+                    ) : (
+                      'Eliminar'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </EditingCellProvider>

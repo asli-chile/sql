@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase-browser';
 
 export type TransporteRecord = {
   id: string;
+  ref_cliente: string | null;
   semana: number | null;
   exportacion: string | null;
   planta: string | null;

@@ -5,6 +5,10 @@
 -- Ejecutar en el SQL Editor de Supabase
 -- ============================================
 
+-- Agregar columna ref_cliente (referencia externa)
+ALTER TABLE public.transportes
+ADD COLUMN IF NOT EXISTS ref_cliente TEXT;
+
 -- Agregar columna atmosfera_controlada (boolean)
 ALTER TABLE public.transportes
 ADD COLUMN IF NOT EXISTS atmosfera_controlada BOOLEAN DEFAULT FALSE;
@@ -86,6 +90,7 @@ COMMENT ON COLUMN public.transportes.sobreestadia IS 'Indica si hay sobreestadí
 COMMENT ON COLUMN public.transportes.scanner IS 'Indica si pasó por scanner';
 COMMENT ON COLUMN public.transportes.lote_carga IS 'Lote de carga';
 COMMENT ON COLUMN public.transportes.observacion IS 'Observaciones adicionales';
+COMMENT ON COLUMN public.transportes.ref_cliente IS 'Referencia externa del cliente (refCliente del registro de embarque)';
 
 -- Verificar que las columnas se agregaron correctamente
 SELECT
@@ -97,6 +102,7 @@ FROM information_schema.columns
 WHERE table_schema = 'public'
   AND table_name = 'transportes'
   AND column_name IN (
+    'ref_cliente',
     'atmosfera_controlada', 'co2', 'o2', 'fin_stacking', 'extra_late',
     'horario_retiro', 'porteo', 'patente_rem',
     'ubicacion', 'dia_presentacion', 'hora_presentacion',
