@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2 } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -53,7 +53,7 @@ type DocumentMap = Map<string, Map<string, DocumentInfo>>; // Map<booking, Map<d
 export default function DocumentosPage() {
   const router = useRouter();
   const { theme } = useTheme();
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, setCurrentUser, canEdit, canDelete } = useUser();
   const supabase = useMemo(() => createClient(), []);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -63,6 +63,21 @@ export default function DocumentosPage() {
   const [documents, setDocuments] = useState<DocumentMap>(new Map());
   const [uploadingDoc, setUploadingDoc] = useState<{ booking: string; type: string } | null>(null);
   const [deletingDoc, setDeletingDoc] = useState<{ booking: string; type: string } | null>(null);
+  const [documentModal, setDocumentModal] = useState<{
+    isOpen: boolean;
+    booking: string;
+    docType: string;
+    hasDocument: boolean;
+    mode: 'view' | 'upload';
+    file: File | null;
+  }>({
+    isOpen: false,
+    booking: '',
+    docType: '',
+    hasDocument: false,
+    mode: 'view',
+    file: null,
+  });
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const dataLoadedRef = useRef(false);
   const { success, error: showError } = useToast();
@@ -195,6 +210,14 @@ export default function DocumentosPage() {
       setUploadingDoc(null);
     }
   }, [supabase, documents, loadDocuments, success, showError]);
+
+  // Confirmar subida desde modal
+  const handleConfirmUpload = useCallback(async () => {
+    if (!documentModal.file) return;
+    
+    await handleUploadDocument(documentModal.booking, documentModal.docType, documentModal.file);
+    setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null });
+  }, [documentModal, handleUploadDocument]);
 
   // Download documento
   const handleDownloadDocument = useCallback(async (booking: string, documentType: string) => {
@@ -404,6 +427,26 @@ export default function DocumentosPage() {
     return !!bookingDocs?.get(docTypeId);
   };
 
+  // Obtener información del documento
+  const getDocumentInfo = (booking: string, docType: string): DocumentInfo | null => {
+    const bookingKey = normalizeBooking(booking).replace(/\s+/g, '');
+    const bookingDocs = documents.get(bookingKey);
+    const docTypeId = DOCUMENT_TYPE_MAP[docType];
+    return bookingDocs?.get(docTypeId) || null;
+  };
+
+  // Abrir modal de documento
+  const handleOpenDocumentModal = (booking: string, docType: string, hasDocument: boolean) => {
+    setDocumentModal({
+      isOpen: true,
+      booking,
+      docType,
+      hasDocument,
+      mode: hasDocument ? 'view' : 'upload',
+      file: null,
+    });
+  };
+
   // Renderizar celda de documento interactiva
   const renderDocumentCell = (booking: string, docType: string, hasDocument: boolean) => {
     const cellKey = `${booking}-${docType}`;
@@ -413,14 +456,45 @@ export default function DocumentosPage() {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-        handleUploadDocument(booking, docType, file);
+        setDocumentModal({
+          isOpen: true,
+          booking,
+          docType,
+          hasDocument: false,
+          mode: 'upload',
+          file,
+        });
       }
       // Reset input
       e.target.value = '';
     };
 
+    // Verificar permisos
+    const canUpload = canEdit;
+    const canDeleteDoc = canDelete;
+
+    // Determinar texto del botón
+    let buttonText = 'Pendiente';
+    let buttonClass = '';
+    
+    if (hasDocument) {
+      buttonText = 'Ver docs';
+      buttonClass = theme === 'dark'
+        ? 'text-blue-400 hover:bg-slate-700 hover:text-blue-300'
+        : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700';
+    } else if (canUpload) {
+      buttonText = 'Subir';
+      buttonClass = theme === 'dark'
+        ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-200'
+        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
+    } else {
+      buttonClass = theme === 'dark'
+        ? 'text-slate-500 cursor-not-allowed'
+        : 'text-gray-400 cursor-not-allowed';
+    }
+
     return (
-      <div className="flex items-center justify-center gap-1">
+      <div className="flex items-center justify-center">
         <input
           ref={(el) => {
             if (el) {
@@ -433,60 +507,29 @@ export default function DocumentosPage() {
           accept=".pdf,.xlsx,.xls"
           onChange={handleFileChange}
           className="hidden"
-          disabled={isUploading || isDeleting}
+          disabled={isUploading || isDeleting || !canUpload}
         />
         {hasDocument ? (
-          <>
-            <button
-              onClick={() => handleDownloadDocument(booking, docType)}
-              disabled={isUploading || isDeleting}
-              className={`p-1.5 rounded transition-colors ${
-                theme === 'dark'
-                  ? 'text-green-400 hover:bg-slate-700 hover:text-green-300'
-                  : 'text-green-600 hover:bg-gray-100 hover:text-green-700'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              aria-label="Descargar documento"
-              title="Descargar"
-            >
-              <Download className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => handleDeleteDocument(booking, docType)}
-              disabled={isUploading || isDeleting}
-              className={`p-1.5 rounded transition-colors ${
-                theme === 'dark'
-                  ? 'text-red-400 hover:bg-slate-700 hover:text-red-300'
-                  : 'text-red-600 hover:bg-gray-100 hover:text-red-700'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              aria-label="Eliminar documento"
-              title="Eliminar"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </>
-        ) : (
+          <button
+            onClick={() => handleOpenDocumentModal(booking, docType, true)}
+            disabled={isUploading || isDeleting}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
+            aria-label="Ver documento"
+          >
+            {isUploading ? 'Subiendo...' : isDeleting ? 'Eliminando...' : buttonText}
+          </button>
+        ) : canUpload ? (
           <button
             onClick={() => fileInputRefs.current.get(cellKey)?.click()}
             disabled={isUploading || isDeleting}
-            className={`p-1.5 rounded transition-colors ${
-              theme === 'dark'
-                ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-300'
-                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
             aria-label="Subir documento"
-            title="Subir"
           >
-            <Upload className="h-4 w-4" />
+            {isUploading ? 'Subiendo...' : buttonText}
           </button>
-        )}
-        {isUploading && (
-          <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-            Subiendo...
-          </span>
-        )}
-        {isDeleting && (
-          <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-            Eliminando...
+        ) : (
+          <span className={`px-3 py-1.5 text-xs font-medium rounded-lg ${buttonClass}`}>
+            {buttonText}
           </span>
         )}
       </div>
@@ -864,6 +907,265 @@ export default function DocumentosPage() {
         userInfo={currentUser}
         onUserUpdate={(updatedUser) => setCurrentUser(updatedUser)}
       />
+
+      {/* Modal de detalle de documento */}
+      {documentModal.isOpen && (() => {
+        const docInfo = documentModal.hasDocument ? getDocumentInfo(documentModal.booking, documentModal.docType) : null;
+        const isUploading = uploadingDoc?.booking === documentModal.booking && uploadingDoc?.type === documentModal.docType;
+        const isDeleting = deletingDoc?.booking === documentModal.booking && deletingDoc?.type === documentModal.docType;
+        const canUpload = canEdit;
+        const canDeleteDoc = canDelete;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Overlay */}
+            <div
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
+            />
+            
+            {/* Modal */}
+            <div className={`relative z-10 w-full max-w-2xl rounded-2xl border shadow-2xl ${
+              theme === 'dark'
+                ? 'border-slate-700 bg-slate-800'
+                : 'border-gray-200 bg-white'
+            }`}>
+              {/* Header */}
+              <div className={`flex items-center justify-between border-b px-6 py-4 ${
+                theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
+                    theme === 'dark' ? 'bg-sky-500/20' : 'bg-blue-100'
+                  }`}>
+                    <FileText className={`h-5 w-5 ${
+                      theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                    }`} />
+                  </div>
+                  <div>
+                    <h2 className={`text-lg font-semibold ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {documentModal.hasDocument ? 'Detalles del documento' : 'Subir documento'}
+                    </h2>
+                    <p className={`text-sm ${
+                      theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                    }`}>
+                      {documentModal.hasDocument ? 'Información del archivo almacenado' : 'Revisa la información antes de subir'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
+                  className={`rounded-lg p-2 transition-colors ${
+                    theme === 'dark'
+                      ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
+                      : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                  }`}
+                  aria-label="Cerrar"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                {/* Información del documento */}
+                <div className={`rounded-xl border p-4 ${
+                  theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
+                }`}>
+                  <h3 className={`text-sm font-semibold mb-3 ${
+                    theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                  }`}>
+                    Información del documento
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className={`text-sm ${
+                        theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                      }`}>
+                        Booking:
+                      </span>
+                      <span className={`text-sm font-medium ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {documentModal.booking}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className={`text-sm ${
+                        theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                      }`}>
+                        Tipo de documento:
+                      </span>
+                      <span className={`text-sm font-medium ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {documentModal.docType.replace(/([A-Z])/g, ' $1').trim()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información del archivo - si existe o si se va a subir */}
+                {documentModal.hasDocument && docInfo ? (
+                  <div className={`rounded-xl border p-4 ${
+                    theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-lg flex-shrink-0 ${
+                        theme === 'dark' ? 'bg-slate-700' : 'bg-white'
+                      }`}>
+                        <File className={`h-6 w-6 ${
+                          theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div>
+                          <p className={`text-xs uppercase tracking-wider mb-1 ${
+                            theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                          }`}>
+                            Nombre del archivo
+                          </p>
+                          <p className={`font-medium ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {docInfo.name}
+                          </p>
+                        </div>
+                        <div>
+                          <p className={`text-xs uppercase tracking-wider mb-1 ${
+                            theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                          }`}>
+                            Ruta
+                          </p>
+                          <p className={`text-sm font-mono ${
+                            theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                          }`}>
+                            {docInfo.path}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : documentModal.file ? (
+                  <div className={`rounded-xl border p-4 ${
+                    theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`flex h-12 w-12 items-center justify-center rounded-lg flex-shrink-0 ${
+                        theme === 'dark' ? 'bg-slate-700' : 'bg-white'
+                      }`}>
+                        <File className={`h-6 w-6 ${
+                          theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-3">
+                        <div>
+                          <p className={`text-xs uppercase tracking-wider mb-1 ${
+                            theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                          }`}>
+                            Nombre del archivo
+                          </p>
+                          <p className={`font-medium truncate ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {documentModal.file.name}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className={`text-xs uppercase tracking-wider mb-1 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                            }`}>
+                              Tamaño
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <HardDrive className={`h-4 w-4 ${
+                                theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                              }`} />
+                              <p className={`text-sm ${
+                                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                              }`}>
+                                {(documentModal.file.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                            </div>
+                          </div>
+                          <div>
+                            <p className={`text-xs uppercase tracking-wider mb-1 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                            }`}>
+                              Tipo
+                            </p>
+                            <p className={`text-sm ${
+                              theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                            }`}>
+                              {documentModal.file.type || documentModal.file.name.split('.').pop()?.toUpperCase() || 'N/A'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {/* Footer */}
+              <div className={`flex items-center justify-between border-t px-6 py-4 ${
+                theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+              }`}>
+                <div>
+                  {documentModal.hasDocument && canDeleteDoc && (
+                    <button
+                      onClick={() => {
+                        handleDeleteDocument(documentModal.booking, documentModal.docType);
+                        setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null });
+                      }}
+                      disabled={isDeleting || isUploading}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        theme === 'dark'
+                          ? 'text-red-400 hover:bg-slate-700 hover:text-red-300'
+                          : 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      theme === 'dark'
+                        ? 'text-slate-300 hover:bg-slate-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    {documentModal.hasDocument ? 'Cerrar' : 'Cancelar'}
+                  </button>
+                  {documentModal.hasDocument ? (
+                    <button
+                      onClick={() => handleDownloadDocument(documentModal.booking, documentModal.docType)}
+                      disabled={isUploading || isDeleting}
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Descargar
+                    </button>
+                  ) : canUpload && documentModal.file ? (
+                    <button
+                      onClick={handleConfirmUpload}
+                      disabled={isUploading}
+                      className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isUploading ? 'Subiendo...' : 'Confirmar y subir'}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
