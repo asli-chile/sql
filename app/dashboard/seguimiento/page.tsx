@@ -8,7 +8,6 @@ import dynamic from 'next/dynamic';
 import { ArrowLeft, RefreshCcw, Search, X, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/layout/AppFooter';
 import { VesselDetailsModal } from '@/components/tracking/VesselDetailsModal';
 
 const ActiveVesselsMap = dynamic(

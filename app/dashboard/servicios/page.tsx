@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import { ArrowLeft, RefreshCcw, CheckCircle2, XCircle, AlertCircle, Clock } from 'lucide-react';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/layout/AppFooter';
 
 type UpdateResult = {
   message: string;
@@ -503,7 +502,6 @@ const ServiciosPage = () => {
             )}
           </section>
 
-          <AppFooter className="mt-4" />
         </main>
       </div>
     </div>

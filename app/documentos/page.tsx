@@ -13,7 +13,6 @@ import { FacturaCreator } from '@/components/facturas/FacturaCreator';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import { useToast } from '@/hooks/useToast';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/layout/AppFooter';
 import { DocumentFilters } from '@/components/documentos/DocumentFilters';
 import { DocumentList } from '@/components/documentos/DocumentList';
 import { DOCUMENT_TYPES } from '@/components/documentos/constants';
@@ -1060,7 +1059,6 @@ export default function DocumentosPage() {
 
       </div>
 
-      <AppFooter className="mx-auto mb-10 mt-4 w-full max-w-[95vw] xl:max-w-[98vw] px-4 sm:px-6 lg:px-6" />
 
       {isCreatorOpen && registroSeleccionado && (
         <FacturaCreator

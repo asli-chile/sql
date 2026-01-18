@@ -13,7 +13,6 @@ import { NewVoyageModal } from '@/components/itinerario/NewVoyageModal';
 import { fetchItinerarios } from '@/lib/itinerarios-service';
 import type { ItinerarioWithEscalas, ItinerarioFilters as FiltersType } from '@/types/itinerarios';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { AppFooter } from '@/components/layout/AppFooter';
 
 export default function ItinerarioPage() {
   const router = useRouter();
@@ -219,7 +218,6 @@ export default function ItinerarioPage() {
               </>
             )}
 
-            <AppFooter className="mt-6" />
           </div>
         </main>
 

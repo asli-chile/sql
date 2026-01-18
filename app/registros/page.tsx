@@ -2493,16 +2493,7 @@ export default function RegistrosPage() {
 
   return (
     <EditingCellProvider>
-      <div className="h-screen w-screen overflow-hidden">
-        <div
-          className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}
-          style={{
-            transform: 'scale(0.8)',
-            transformOrigin: 'top left',
-            width: '125%',
-            height: '125%',
-          }}
-        >
+      <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
         {/* Overlay para móvil */}
         {isMobileMenuOpen && (
           <div 
@@ -2512,7 +2503,7 @@ export default function RegistrosPage() {
         )}
 
         <aside
-          className={`fixed lg:relative left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
+          className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
             isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
           } ${
             isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
@@ -3026,7 +3017,6 @@ export default function RegistrosPage() {
 
         <ToastContainer toasts={toasts} onRemove={removeToast} />
         </div>
-      </div>
     </EditingCellProvider>
   );
 }
