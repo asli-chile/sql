@@ -5,11 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { AlertCircle, Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Lock, LogIn, Mail, User, UserPlus, Building2 } from 'lucide-react';
 import type { FormEvent } from 'react';
 import { useState, useEffect } from 'react';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'request-access';
 
 const AuthPage = () => {
   const router = useRouter();
@@ -27,11 +27,12 @@ const AuthPage = () => {
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [fullName, setFullName] = useState('');
+  const [nombreUsuario, setNombreUsuario] = useState('');
+  const [empresa, setEmpresa] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [resendingEmail, setResendingEmail] = useState(false);
 
   // Limpiar parámetros de URL si contienen credenciales (seguridad)
@@ -58,7 +59,7 @@ const AuthPage = () => {
   }, [searchParams]);
 
   const isLogin = authMode === 'login';
-  const passwordAutoComplete = isLogin ? 'current-password' : 'new-password';
+  const passwordAutoComplete = 'current-password';
 
   const handleToggleMode = (mode: AuthMode) => {
     if (loading || mode === authMode) {
@@ -67,7 +68,9 @@ const AuthPage = () => {
 
     setAuthMode(mode);
     setError('');
-    setConfirmPassword('');
+    setSuccess('');
+    setNombreUsuario('');
+    setEmpresa('');
   };
 
   const handleTogglePasswordVisibility = () => {
@@ -186,63 +189,63 @@ const AuthPage = () => {
         return;
       }
 
-      if (password !== confirmPassword) {
-        setError('Las contraseñas no coinciden');
+      // Modo solicitud de acceso
+      if (!nombreUsuario || !nombreUsuario.trim()) {
+        setError('El nombre de usuario es requerido');
+        setLoading(false);
         return;
       }
 
-      if (password.length < 6) {
-        setError('La contraseña debe tener al menos 6 caracteres');
+      if (!empresa || !empresa.trim()) {
+        setError('La empresa es requerida');
+        setLoading(false);
         return;
       }
 
-      // Normalizar email a minúsculas
-      const normalizedEmail = email.toLowerCase().trim();
-
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: {
-          data: {
-            full_name: fullName.trim(),
+      try {
+        const response = await fetch('/api/auth/request-access', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
-        },
-      });
+          body: JSON.stringify({
+            nombreUsuario: nombreUsuario.trim(),
+            empresa: empresa.trim(),
+          }),
+        });
 
-      if (signUpError) {
-        // Mejorar mensaje de error para el usuario
-        if (signUpError.message.includes('already registered') || signUpError.message.includes('already exists')) {
-          setError('Este email ya está registrado. Por favor, inicia sesión en su lugar.');
-        } else if (signUpError.message.includes('invalid')) {
-          setError('Email inválido. Por favor, verifica el formato.');
-        } else {
-          setError(signUpError.message || 'Error al crear la cuenta. Por favor, intenta nuevamente.');
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || 'Error al enviar la solicitud. Por favor, intenta nuevamente.');
+          return;
         }
-        return;
-      }
 
-      if (data.user && !data.user.email_confirmed_at) {
-        setError('Revisa tu email para confirmar tu cuenta');
-        return;
+        // Abrir el cliente de correo con el mailto
+        if (data.mailtoLink) {
+          window.location.href = data.mailtoLink;
+          setSuccess('✅ Solicitud enviada. Se ha abierto tu cliente de correo. Por favor, confirma el envío del email.');
+          // Limpiar formulario
+          setNombreUsuario('');
+          setEmpresa('');
+        } else {
+          setError('Error al preparar el email. Por favor, intenta nuevamente.');
+        }
+      } catch (authError: any) {
+        console.error('[Auth] Error inesperado:', authError);
+        setError(authError?.message ?? 'Error inesperado en la solicitud. Por favor, intenta nuevamente.');
+      } finally {
+        setLoading(false);
       }
-
-      // Usar window.location.replace para evitar bucles con middleware y rewrites
-      // Esto fuerza una navegación completa del navegador en lugar de una navegación del cliente
-      window.location.replace('/dashboard');
     } catch (authError: any) {
-      console.error('[Auth] Error inesperado:', authError);
-      // El error ya debería estar establecido en setError() dentro de los bloques try
-      // Este catch solo maneja errores inesperados
-      if (!error) {
-        setError(authError?.message ?? 'Error inesperado en la autenticación. Por favor, intenta nuevamente.');
-      }
-    } finally {
+      console.error('[Auth] Error inesperado general:', authError);
+      setError(authError?.message ?? 'Error inesperado en la autenticación. Por favor, intenta nuevamente.');
       setLoading(false);
     }
   };
 
   return (
-    <main className={`relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 ${
+    <main className={`relative flex h-screen items-center justify-center overflow-hidden px-4 py-4 ${
       isDark
         ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
         : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100'
@@ -275,20 +278,20 @@ const AuthPage = () => {
           : 'border-slate-200/80 bg-white/80'
       }`}>
         {/* Panel izquierdo - Información */}
-        <aside className="hidden flex-col justify-between rounded-l-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-10 text-white shadow-2xl md:flex">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-5 py-2 text-xs font-semibold uppercase tracking-wider text-white/95 shadow-lg">
+        <aside className="hidden flex-col justify-between rounded-l-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 text-white shadow-2xl md:flex overflow-y-auto">
+          <div className="space-y-5">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white/95 shadow-lg">
               Plataforma ASLI
             </div>
-            <div className="space-y-5">
-              <h2 className="text-4xl font-bold leading-tight text-white">
+            <div className="space-y-3">
+              <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-white">
                 Gestiona la logística con datos confiables y decisiones ágiles
               </h2>
-              <p className="text-base leading-relaxed text-blue-50/90">
+              <p className="text-sm leading-relaxed text-blue-50/90">
                 Centraliza la información de tu operación y accede a tableros inteligentes para planificar, ejecutar y medir en tiempo real.
               </p>
             </div>
-            <ul className="space-y-4 text-base text-blue-50/90">
+            <ul className="space-y-3 text-sm text-blue-50/90">
               <li className="flex items-start gap-4">
                 <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
                 <span>Monitoreo continuo de embarques y documentación</span>
@@ -303,17 +306,17 @@ const AuthPage = () => {
               </li>
             </ul>
           </div>
-          <div className="mt-12 space-y-2 rounded-xl bg-white/10 backdrop-blur-sm p-5 border border-white/20">
-            <p className="font-semibold text-white">Soporte dedicado</p>
-            <p className="text-sm text-blue-50/90">Escríbenos a rodrigo.caceres@asli.cl</p>
+          <div className="mt-6 space-y-1 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+            <p className="font-semibold text-sm text-white">Soporte dedicado</p>
+            <p className="text-xs text-blue-50/90">Escríbenos a rodrigo.caceres@asli.cl</p>
           </div>
         </aside>
 
         {/* Panel derecho - Formulario */}
-        <div className={`rounded-r-3xl p-8 shadow-xl sm:p-10 ${
+        <div className={`rounded-r-3xl p-6 shadow-xl sm:p-8 overflow-y-auto ${
           isDark ? 'bg-slate-800' : 'bg-white'
         }`}>
-          <div className="mb-10 flex flex-col items-center gap-5 text-center md:items-start md:text-left">
+          <div className="mb-6 flex flex-col items-center gap-3 text-center md:items-start md:text-left">
             <div
               className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ${
                 isDark
@@ -331,23 +334,23 @@ const AuthPage = () => {
                 priority
               />
             </div>
-            <div className="space-y-2">
-              <h1 className={`text-3xl font-bold ${
+            <div className="space-y-1">
+              <h1 className={`text-2xl sm:text-3xl font-bold ${
                 isDark ? 'text-white' : 'text-slate-900'
               }`}>
-                {isLogin ? 'Bienvenido de vuelta' : 'Crea tu acceso seguro'}
+                {isLogin ? 'Bienvenido de vuelta' : 'Solicita tu acceso'}
               </h1>
-              <p className={`text-base ${
+              <p className={`text-sm ${
                 isDark ? 'text-slate-300' : 'text-slate-600'
               }`}>
                 {isLogin
                   ? 'Ingresa tus credenciales para continuar gestionando tu operación.'
-                  : 'Completa los datos para habilitar tu cuenta y comienza a colaborar.'}
+                  : 'Completa los datos y te contactaremos para darte acceso.'}
               </p>
             </div>
           </div>
 
-          <div className={`mb-8 flex rounded-xl p-1.5 text-sm font-medium shadow-inner ${
+          <div className={`mb-6 flex rounded-xl p-1.5 text-sm font-medium shadow-inner ${
             isDark ? 'bg-slate-700/50' : 'bg-slate-100'
           }`}>
             <button
@@ -373,7 +376,7 @@ const AuthPage = () => {
             </button>
             <button
               type="button"
-              onClick={() => handleToggleMode('register')}
+              onClick={() => handleToggleMode('request-access')}
               aria-pressed={!isLogin}
               aria-controls="auth-form"
               disabled={loading}
@@ -389,16 +392,33 @@ const AuthPage = () => {
             >
               <span className="flex items-center justify-center gap-2">
                 <UserPlus className="h-4 w-4" aria-hidden="true" />
-                Registrarse
+                Solicita tu acceso
               </span>
             </button>
           </div>
+
+          {success && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${
+                isDark
+                  ? 'border-green-500/50 bg-green-900/30 text-green-300'
+                  : 'border-green-200 bg-green-50 text-green-800'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
+                <span className="flex-1">{success}</span>
+              </div>
+            </div>
+          )}
 
           {error && (
             <div
               role="alert"
               aria-live="assertive"
-              className={`mb-6 flex flex-col gap-2 rounded-xl border-2 px-5 py-4 text-sm shadow-sm ${
+              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${
                 error.startsWith('✅')
                   ? isDark
                     ? 'border-green-500/50 bg-green-900/30 text-green-300'
@@ -426,118 +446,120 @@ const AuthPage = () => {
           )}
 
           <form id="auth-form" onSubmit={handleAuth} className="space-y-4" noValidate>
-            {!isLogin && (
-              <div className="space-y-2">
-                <label htmlFor="fullName" className={`text-sm font-semibold ${
-                  isDark ? 'text-slate-200' : 'text-slate-700'
-                }`}>
-                  Nombre / Exportadora
-                </label>
-                <div className="relative">
-                  <User className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                    isDark ? 'text-slate-500' : 'text-slate-400'
-                  }`} aria-hidden="true" />
-                  <input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    autoComplete="name"
-                    value={fullName}
-                    onChange={(event) => setFullName(event.target.value)}
-                    className={inputClasses}
-                    placeholder="Ej: Ana Pérez"
-                    required
-                  />
+            {!isLogin ? (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="nombreUsuario" className={`text-sm font-semibold ${
+                    isDark ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    Nombre de usuario
+                  </label>
+                  <div className="relative">
+                    <User className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                      isDark ? 'text-slate-500' : 'text-slate-400'
+                    }`} aria-hidden="true" />
+                    <input
+                      id="nombreUsuario"
+                      name="nombreUsuario"
+                      type="text"
+                      autoComplete="name"
+                      value={nombreUsuario}
+                      onChange={(event) => setNombreUsuario(event.target.value)}
+                      className={inputClasses}
+                      placeholder="Ej: Ana Pérez"
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label htmlFor="email" className={`text-sm font-semibold ${
-                isDark ? 'text-slate-200' : 'text-slate-700'
-              }`}>
-                Email
-              </label>
-              <div className="relative">
-                <Mail className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                  isDark ? 'text-slate-500' : 'text-slate-400'
-                }`} aria-hidden="true" />
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  className={inputClasses}
-                  placeholder="tu@empresa.com"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className={`text-sm font-semibold ${
-                isDark ? 'text-slate-200' : 'text-slate-700'
-              }`}>
-                Contraseña
-              </label>
-              <div className="relative">
-                <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                  isDark ? 'text-slate-500' : 'text-slate-400'
-                }`} aria-hidden="true" />
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete={passwordAutoComplete}
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  className={inputClasses}
-                  placeholder={isLogin ? 'Ingresa tu contraseña' : 'Crea una contraseña segura'}
-                  required
-                  minLength={6}
-                />
-                <button
-                  type="button"
-                  onClick={handleTogglePasswordVisibility}
-                  className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition ${
-                    isDark
-                      ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
-                      : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                  }`}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
-                </button>
-              </div>
-            </div>
-
-            {!isLogin && (
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className={`text-sm font-semibold ${
-                  isDark ? 'text-slate-200' : 'text-slate-700'
-                }`}>
-                  Confirmar contraseña
-                </label>
-                <div className="relative">
-                  <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                    isDark ? 'text-slate-500' : 'text-slate-400'
-                  }`} aria-hidden="true" />
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    className={inputClasses}
-                    placeholder="Repite tu contraseña"
-                    required
-                    minLength={6}
-                  />
+                <div className="space-y-2">
+                  <label htmlFor="empresa" className={`text-sm font-semibold ${
+                    isDark ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    Empresa
+                  </label>
+                  <div className="relative">
+                    <Building2 className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                      isDark ? 'text-slate-500' : 'text-slate-400'
+                    }`} aria-hidden="true" />
+                    <input
+                      id="empresa"
+                      name="empresa"
+                      type="text"
+                      autoComplete="organization"
+                      value={empresa}
+                      onChange={(event) => setEmpresa(event.target.value)}
+                      className={inputClasses}
+                      placeholder="Ej: Empresa Exportadora S.A."
+                      required
+                    />
+                  </div>
                 </div>
-              </div>
+              </>
+            ) : null}
+
+            {isLogin && (
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="email" className={`text-sm font-semibold ${
+                    isDark ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                      isDark ? 'text-slate-500' : 'text-slate-400'
+                    }`} aria-hidden="true" />
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(event) => setEmail(event.target.value)}
+                      className={inputClasses}
+                      placeholder="tu@empresa.com"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="password" className={`text-sm font-semibold ${
+                    isDark ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    Contraseña
+                  </label>
+                  <div className="relative">
+                    <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
+                      isDark ? 'text-slate-500' : 'text-slate-400'
+                    }`} aria-hidden="true" />
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete={passwordAutoComplete}
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      className={inputClasses}
+                      placeholder="Ingresa tu contraseña"
+                      required
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTogglePasswordVisibility}
+                      className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition ${
+                        isDark
+                          ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
+                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                      }`}
+                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
 
             <button
@@ -555,18 +577,18 @@ const AuthPage = () => {
                   <span className="flex h-5 w-5 items-center justify-center">
                     <span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                   </span>
-                  {isLogin ? 'Iniciando sesión...' : 'Creando cuenta...'}
+                  {isLogin ? 'Iniciando sesión...' : 'Enviando solicitud...'}
                 </>
               ) : (
                 <>
-                  {isLogin ? <LogIn className="h-4 w-4" aria-hidden="true" /> : <UserPlus className="h-4 w-4" aria-hidden="true" />}
-                  {isLogin ? 'Ingresar' : 'Registrarme'}
+                  {isLogin ? <LogIn className="h-4 w-4" aria-hidden="true" /> : <Mail className="h-4 w-4" aria-hidden="true" />}
+                  {isLogin ? 'Ingresar' : 'Enviar solicitud'}
                 </>
               )}
             </button>
           </form>
 
-          <div className={`mt-8 text-center text-sm ${
+          <div className={`mt-6 text-center text-sm ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
             {isLogin ? (
@@ -574,14 +596,14 @@ const AuthPage = () => {
                 ¿No tienes cuenta?{' '}
                 <button
                   type="button"
-                  onClick={() => handleToggleMode('register')}
+                  onClick={() => handleToggleMode('request-access')}
                   className={`font-semibold underline-offset-4 transition hover:underline ${
                     isDark
                       ? 'text-blue-400 hover:text-blue-300'
                       : 'text-blue-600 hover:text-blue-700'
                   }`}
                 >
-                  Solicitar acceso
+                  Solicita tu acceso
                 </button>
               </p>
             ) : (
