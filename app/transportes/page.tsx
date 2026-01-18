@@ -828,7 +828,8 @@ export default function TransportesPage() {
                             type="checkbox"
                             checked={selectedRows.size === filteredRecords.length && filteredRecords.length > 0}
                             onChange={handleSelectAll}
-                            className={`h-4 w-4 rounded focus:ring-2 cursor-pointer ${
+                            disabled={!canEdit}
+                            className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
                               theme === 'dark'
                                 ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                                 : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
@@ -942,7 +943,8 @@ export default function TransportesPage() {
                                 type="checkbox"
                                 checked={selectedRows.has(item.id)}
                                 onChange={() => handleToggleRowSelection(item.id)}
-                                className={`h-4 w-4 rounded focus:ring-2 cursor-pointer ${
+                                disabled={!canEdit}
+                                className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
                                   theme === 'dark'
                                     ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                                     : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
@@ -963,7 +965,8 @@ export default function TransportesPage() {
                                       type="checkbox"
                                       checked={item.atmosfera_controlada || false}
                                       onChange={(e) => handleToggleAtmosferaControlada(item, e.target.checked)}
-                                      className={`h-4 w-4 rounded cursor-pointer ${
+                                      disabled={!canEdit}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
                                         theme === 'dark'
                                           ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                                           : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
@@ -986,7 +989,8 @@ export default function TransportesPage() {
                                       type="checkbox"
                                       checked={item.late || false}
                                       onChange={(e) => handleToggleLate(item, e.target.checked)}
-                                      className={`h-4 w-4 rounded cursor-pointer ${
+                                      disabled={!canEdit}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
                                         theme === 'dark'
                                           ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                                           : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
@@ -1009,7 +1013,8 @@ export default function TransportesPage() {
                                       type="checkbox"
                                       checked={item.extra_late || false}
                                       onChange={(e) => handleToggleExtraLate(item, e.target.checked)}
-                                      className={`h-4 w-4 rounded cursor-pointer ${
+                                      disabled={!canEdit}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
                                         theme === 'dark'
                                           ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                                           : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
@@ -1034,7 +1039,8 @@ export default function TransportesPage() {
                                       type="checkbox"
                                       checked={checkboxValue || false}
                                       onChange={(e) => handleToggleBoolean(item, column.key, e.target.checked)}
-                                      className={`h-4 w-4 rounded cursor-pointer ${
+                                      disabled={!canEdit}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
                                         theme === 'dark'
                                           ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                                           : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
@@ -1089,6 +1095,8 @@ export default function TransportesPage() {
                               
                               // CO2 y O2 solo editables si AT CONTROLADA está activo
                               const isDisabled = (column.key === 'co2' || column.key === 'o2') && !item.atmosfera_controlada;
+                              // Si no tiene permisos de edición, mostrar solo texto
+                              const shouldShowTextOnly = !canEdit || isDisabled;
                               
                               return (
                                 <td
@@ -1099,7 +1107,7 @@ export default function TransportesPage() {
                                 >
                                   {column.render ? (
                                     column.render(item)
-                                  ) : isDisabled ? (
+                                  ) : shouldShowTextOnly ? (
                                     <span className={`text-sm ${
                                       theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                                     }`}>
