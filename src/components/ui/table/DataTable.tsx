@@ -894,6 +894,32 @@ export function DataTable({
     };
   }, [stopAutoScroll]);
 
+  // Calcular estadísticas basadas en los datos filtrados de la tabla
+  const estadisticas = useMemo(() => {
+    if (!table) {
+      return { total: 0, confirmadas: 0, pendientes: 0, canceladas: 0 };
+    }
+    
+    const filteredRows = table.getFilteredRowModel().rows;
+    const total = filteredRows.length;
+    let confirmadas = 0;
+    let pendientes = 0;
+    let canceladas = 0;
+
+    filteredRows.forEach((row) => {
+      const estado = row.original.estado;
+      if (estado === 'CONFIRMADO') {
+        confirmadas++;
+      } else if (estado === 'PENDIENTE') {
+        pendientes++;
+      } else if (estado === 'CANCELADO') {
+        canceladas++;
+      }
+    });
+
+    return { total, confirmadas, pendientes, canceladas };
+  }, [table]);
+
   const renderToolbar = () => {
     return (
       <div className="flex flex-col gap-2 sm:gap-3">
@@ -991,10 +1017,73 @@ export function DataTable({
               </button>
             )}
           </div>
+          {/* Tarjetas de estadísticas */}
+          {viewMode === 'table' && (
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
+              {(() => {
+                const cardBaseClasses = isDark
+                  ? 'border border-slate-800/50 bg-slate-950/40 backdrop-blur-sm'
+                  : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm';
+                
+                return (
+                  <>
+                    {/* Tarjeta Total/Reservas */}
+                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Reservas
+                        </span>
+                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
+                          {estadisticas.total}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tarjeta Confirmadas */}
+                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
+                          Confirmadas
+                        </span>
+                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                          {estadisticas.confirmadas}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tarjeta Pendientes */}
+                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
+                          Pendientes
+                        </span>
+                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                          {estadisticas.pendientes}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Tarjeta Canceladas */}
+                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-rose-400/80' : 'text-rose-600'}`}>
+                          Canceladas
+                        </span>
+                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
+                          {estadisticas.canceladas}
+                        </span>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
     );
   };
+
 
   return (
     <div className="w-full h-full flex flex-col min-w-0" style={{ width: '100%', maxWidth: '100%', minWidth: 0, height: '100%', padding: 0, margin: 0 }}>
