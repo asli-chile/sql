@@ -16,7 +16,11 @@ const Footer = () => {
   }
 
   const handleContactanosClick = () => {
-    document.getElementById('contacto')?.scrollIntoView({ behavior: 'smooth' })
+    // Abrir Gmail con el email de contacto
+    const email = 'informaciones@asli.cl'
+    const subject = encodeURIComponent('Consulta desde el sitio web')
+    const body = encodeURIComponent('Hola, me gustaría obtener más información sobre sus servicios.')
+    window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${subject}&body=${body}`, '_blank')
   }
 
   return (

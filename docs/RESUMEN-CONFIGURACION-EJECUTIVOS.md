@@ -6,7 +6,7 @@
 2. **HANS VASQUEZ** - Admin, todos los clientes ✅
 3. **MARIO BAZAEZ** - Admin, todos los clientes ✅
 4. **NINA SCOTI** - Usuario, solo: HILLVILLA, BLOSSOM
-5. **POLIANA CISTERNA** - Usuario (puede crear), todos los clientes
+5. **POLIANA CISTERNAS** - Usuario (puede crear), todos los clientes
 6. **RICARDO LAZO** - Usuario, solo: BARON EXPORT, AISIEN, VIF, SIBARIT
 7. **ROCIO VILLARROEL** - Usuario, todos los clientes
 8. **RODRIGO CACERES** - Admin, todos los clientes ✅
@@ -23,7 +23,7 @@
 - **NINA SCOTI** → HILLVILLA, BLOSSOM
 - **RICARDO LAZO** → BARON EXPORT, AISIEN, VIF, SIBARIT
 - **ROCIO VILLARROEL** → TODOS
-- **POLIANA CISTERNA** → TODOS (puede crear para cualquier cliente)
+- **POLIANA CISTERNAS** → TODOS (puede crear para cualquier cliente)
 
 ### 🟢 Lector (Solo lectura)
 - **ALEX CARDENAS** → TODOS

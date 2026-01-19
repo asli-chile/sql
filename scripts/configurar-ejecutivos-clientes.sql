@@ -215,7 +215,7 @@ WHERE (nombre LIKE '%STEFANIE%CORDOVA%' OR nombre LIKE '%STEFANIA%CORDOVA%'
   AND email LIKE '%@asli.cl';
 
 
--- PASO 10: POLIANA CISTERNA - Acceso Total como LECTOR + puede CREAR registros
+-- PASO 10: POLIANA CISTERNAS - Acceso Total como LECTOR + puede CREAR registros
 -- =====================================================
 -- Nota: Como lector puede ver todo, pero necesita poder crear registros
 -- Esto requiere un rol especial. Por ahora la dejamos como 'usuario' para que pueda crear
@@ -229,13 +229,13 @@ CROSS JOIN LATERAL (
   FROM catalogos
   WHERE categoria = 'clientes'
 ) AS clientes_catalogo
-WHERE u.email LIKE '%poliana%cisterna%@asli.cl'
+WHERE u.email LIKE '%poliana%cisternas%@asli.cl'
   OR u.email LIKE '%poliana%@asli.cl'
 ON CONFLICT (ejecutivo_id, cliente_nombre) DO NOTHING;
 
 UPDATE usuarios
 SET rol = 'usuario'  -- 'usuario' permite crear registros
-WHERE (nombre LIKE '%POLIANA%CISTERNA%' OR email LIKE '%poliana%cisterna%@asli.cl')
+WHERE (nombre LIKE '%POLIANA%CISTERNAS%' OR email LIKE '%poliana%cisternas%@asli.cl')
   AND email LIKE '%@asli.cl';
 
 

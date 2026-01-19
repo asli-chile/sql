@@ -173,7 +173,7 @@ SET rol = 'lector'
 WHERE email = 'stefanie.cordova@asli.cl';  -- ⚠️ CAMBIAR EMAIL
 
 
--- POLIANA CISTERNA - Usuario (puede crear), todos los clientes
+-- POLIANA CISTERNAS - Usuario (puede crear), todos los clientes
 INSERT INTO ejecutivo_clientes (ejecutivo_id, cliente_nombre)
 SELECT 
   u.id,
@@ -184,12 +184,12 @@ CROSS JOIN LATERAL (
   FROM catalogos
   WHERE categoria = 'clientes'
 ) AS clientes_catalogo
-WHERE u.email = 'poliana.cisterna@asli.cl'  -- ⚠️ CAMBIAR EMAIL
+WHERE u.email = 'poliana.cisternas@asli.cl'  -- ⚠️ CAMBIAR EMAIL
 ON CONFLICT (ejecutivo_id, cliente_nombre) DO NOTHING;
 
 UPDATE usuarios
 SET rol = 'usuario'  -- 'usuario' permite crear registros
-WHERE email = 'poliana.cisterna@asli.cl';  -- ⚠️ CAMBIAR EMAIL
+WHERE email = 'poliana.cisternas@asli.cl';  -- ⚠️ CAMBIAR EMAIL
 
 
 -- =====================================================

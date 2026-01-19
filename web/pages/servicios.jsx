@@ -215,11 +215,11 @@ const ServiciosPage = () => {
                   <div className="flex flex-col items-center mb-6">
                     <img
                       src="/img/poli.jpg"
-                      alt="Poliana Cisterna - Subgerente Comercial"
+                      alt="Poliana Cisternas - Subgerente Comercial"
                       className="w-32 h-32 rounded-full object-cover border-4 border-asli-primary mb-4 shadow-lg"
                     />
                     <h3 className="text-lg font-bold text-white mb-2 text-center">
-                      Poliana Cisterna
+                      Poliana Cisternas
                     </h3>
                     <p className="text-asli-primary font-semibold mb-3 text-center text-sm">
                       Subgerente Comercial

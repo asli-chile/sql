@@ -16,7 +16,7 @@ const NuestroEquipo = () => {
       imagen: '/img/hansv.png',
     },
     {
-      nombre: 'Poliana Cisterna',
+      nombre: 'Poliana Cisternas',
       cargo: 'Subgerente Comercial',
       imagen: '/img/poli.jpg',
     },

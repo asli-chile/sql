@@ -55,7 +55,7 @@ El sistema tiene **4 niveles de roles** principales, más un sistema especial pa
 - Campo `puede_subir` controla si puede subir documentos
 
 **Ejemplo de usuarios:**
-- POLIANA CISTERNA (todos los clientes)
+- POLIANA CISTERNAS (todos los clientes)
 - NINA SCOTI (solo HILLVILLA, BLOSSOM)
 - RICARDO LAZO (solo BARON EXPORT, AISIEN, VIF, SIBARIT)
 
