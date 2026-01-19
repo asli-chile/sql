@@ -49,7 +49,7 @@ const PresentacionPage = () => {
                       Presentación ASLI
                     </h2>
                     <a
-                      href="https://asli.cl/presentaciones/presentacion-asli.pdf"
+                      href="/presentacion-asli.pdf"
                       download
                       target="_blank"
                       rel="noopener noreferrer"
@@ -63,10 +63,11 @@ const PresentacionPage = () => {
                   </div>
                   <div className="w-full bg-gray-100" style={{ minHeight: '800px' }}>
                     <iframe
-                      src={`https://docs.google.com/viewer?url=${encodeURIComponent('https://asli.cl/presentaciones/presentacion-asli.pdf')}&embedded=true`}
+                      src="/presentacion-asli.pdf#toolbar=1&navpanes=1&scrollbar=1"
                       className="w-full border-0"
                       style={{ minHeight: '800px', height: 'calc(100vh - 300px)' }}
                       title="Presentación ASLI"
+                      allow="fullscreen"
                     />
                   </div>
                 </div>
