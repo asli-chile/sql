@@ -64,7 +64,7 @@ const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
   usuario: { min: 173, max: 288 },
   ingresado: { min: 127, max: 173 },
   shipper: { min: 250, max: 250 },
-  booking: { min: 207, max: 345 },
+  booking: { min: 250, max: 355 },
   contenedor: { min: 150, max: 322 },
   naviera: { min: 184, max: 299 },
   naveInicial: { min: 250, max: 250 },
@@ -309,6 +309,7 @@ export const createRegistrosColumns = (
   {
     id: 'booking',
     accessorKey: 'booking',
+    size: COLUMN_WIDTHS.booking.min,
     minSize: COLUMN_WIDTHS.booking.min,
     maxSize: COLUMN_WIDTHS.booking.max,
     header: 'Booking',

@@ -430,6 +430,7 @@ export function DataTable({
     const fixedShipperWidth = 250;
     const fixedNaveWidth = 250;
     const fixedContratoWidth = 300;
+    const fixedBookingWidth = 230;
 
     // Si no hay columnas, retornar vacío
     if (totalColumns === 0) {
@@ -442,6 +443,7 @@ export function DataTable({
       if (column.id === 'shipper') return fixedShipperWidth;
       if (column.id === 'naveInicial') return fixedNaveWidth;
       if (column.id === 'contrato') return fixedContratoWidth;
+      if (column.id === 'booking') return fixedBookingWidth;
       return getDefaultWidth(column);
     };
 
@@ -466,6 +468,10 @@ export function DataTable({
         }
         if (column.id === 'contrato') {
           widths.set(column.id, fixedContratoWidth);
+          return;
+        }
+        if (column.id === 'booking') {
+          widths.set(column.id, fixedBookingWidth);
           return;
         }
         const customSize = columnSizing[column.id];

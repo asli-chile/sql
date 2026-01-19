@@ -922,6 +922,11 @@ export default function DashboardPage() {
                   <p className="text-xl sm:text-2xl font-bold text-amber-500">{displayedStats.pendientes}</p>
                   <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pendientes</p>
                 </div>
+                <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
+                <div className="text-center">
+                  <p className="text-xl sm:text-2xl font-bold text-red-500">{displayedStats.cancelados}</p>
+                  <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Cancelados</p>
+                </div>
               </div>
             </div>
           </section>
@@ -972,6 +977,10 @@ export default function DashboardPage() {
                             <div className="flex items-center gap-1.5">
                               <div className="h-2 w-2 rounded-full bg-amber-500"></div>
                               <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>{module.stats.pendientes} pendientes</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                              <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>{module.stats.cancelados} cancelados</span>
                             </div>
                           </div>
                         )}
