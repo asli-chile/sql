@@ -1760,7 +1760,7 @@ export default function RegistrosPage() {
     const filtersToClear: string[] = [];
 
     // Verificar cada filtro activo y determinar cuáles deben limpiarse
-    currentFilters.forEach((filter) => {
+    currentFilters.forEach((filter: { id: string; value: any }) => {
       const filterValue = filter.value;
       if (!filterValue || filterValue === '' || filterValue === null || filterValue === undefined) {
         return;
