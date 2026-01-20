@@ -168,11 +168,31 @@ export default function RegistrosPage() {
   const [deleteProcessing, setDeleteProcessing] = useState(false);
 
   const temporadaParam = searchParams.get('temporada');
+  const estadoParam = searchParams.get('estado');
 
   useEffect(() => {
     const normalized = normalizeTemporada(temporadaParam);
     setSelectedTemporada(normalized !== '' ? normalized : null);
   }, [temporadaParam]);
+
+  // Aplicar filtro de estado desde query params cuando el DataTable esté listo
+  useEffect(() => {
+    if (estadoParam && tableInstance && tableStates) {
+      const estadoValue = estadoParam.toUpperCase();
+      if (['PENDIENTE', 'CONFIRMADO', 'CANCELADO'].includes(estadoValue)) {
+        // Aplicar el filtro de estado
+        tableInstance.setColumnFilters((prev: any[]) => {
+          const filtered = prev.filter((f: any) => f.id !== 'estado');
+          return [...filtered, { id: 'estado', value: estadoValue }];
+        });
+      }
+    } else if (!estadoParam && tableInstance) {
+      // Si no hay parámetro, remover el filtro de estado
+      tableInstance.setColumnFilters((prev: any[]) => 
+        prev.filter((f: any) => f.id !== 'estado')
+      );
+    }
+  }, [estadoParam, tableInstance, tableStates]);
 
   useEffect(() => {
     lastSelectedRowIndex.current = null;

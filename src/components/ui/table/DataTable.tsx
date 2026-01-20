@@ -901,11 +901,13 @@ export function DataTable({
   }, [stopAutoScroll]);
 
   // Calcular estadísticas basadas en los datos filtrados de la tabla
+  // Usar el estado de la tabla para obtener las filas filtradas actualizadas
   const estadisticas = useMemo(() => {
     if (!table) {
       return { total: 0, confirmadas: 0, pendientes: 0, canceladas: 0 };
     }
     
+    // Obtener las filas filtradas actuales de la tabla
     const filteredRows = table.getFilteredRowModel().rows;
     const total = filteredRows.length;
     let confirmadas = 0;
@@ -924,7 +926,13 @@ export function DataTable({
     });
 
     return { total, confirmadas, pendientes, canceladas };
-  }, [table]);
+  }, [
+    table.getFilteredRowModel().rows.length,
+    columnFilters,
+    globalFilter,
+    executiveFilter,
+    data.length
+  ]);
 
   const renderToolbar = () => {
     return (
@@ -1024,67 +1032,124 @@ export function DataTable({
             )}
           </div>
           {/* Tarjetas de estadísticas */}
-          {viewMode === 'table' && (
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
-              {(() => {
-                const cardBaseClasses = isDark
-                  ? 'border border-slate-800/50 bg-slate-950/40 backdrop-blur-sm'
-                  : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm';
-                
-                return (
-                  <>
-                    {/* Tarjeta Total/Reservas */}
-                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                          Reservas
-                        </span>
-                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
-                          {estadisticas.total}
-                        </span>
-                      </div>
-                    </div>
+          {viewMode === 'table' && (() => {
+            const cardBaseClasses = isDark
+              ? 'border border-slate-800/50 bg-slate-950/40 backdrop-blur-sm'
+              : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm';
+            
+            // Detectar qué filtro de estado está activo
+            const estadoFilter = columnFilters.find(f => f.id === 'estado');
+            const estadoActivo = estadoFilter?.value as string | undefined;
+            
+            return (
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
+                {/* Tarjeta Total/Reservas */}
+                <button
+                  onClick={() => {
+                    setColumnFilters(prev => prev.filter(f => f.id !== 'estado'));
+                  }}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80 cursor-pointer active:scale-95 ${
+                    !estadoActivo
+                      ? isDark
+                        ? 'bg-slate-800/60 border-slate-600/50 shadow-lg shadow-slate-900/50'
+                        : 'bg-gray-100 border-gray-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Mostrar todos los registros"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                      Reservas
+                    </span>
+                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
+                      {estadisticas.total}
+                    </span>
+                  </div>
+                </button>
 
-                    {/* Tarjeta Confirmadas */}
-                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
-                          Confirmadas
-                        </span>
-                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                          {estadisticas.confirmadas}
-                        </span>
-                      </div>
-                    </div>
+                {/* Tarjeta Confirmadas */}
+                <button
+                  onClick={() => {
+                    setColumnFilters(prev => {
+                      const filtered = prev.filter(f => f.id !== 'estado');
+                      return [...filtered, { id: 'estado', value: 'CONFIRMADO' }];
+                    });
+                  }}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30 cursor-pointer active:scale-95 ${
+                    estadoActivo === 'CONFIRMADO'
+                      ? isDark
+                        ? 'bg-emerald-900/40 border-emerald-600/50 shadow-lg shadow-emerald-900/30'
+                        : 'bg-emerald-50 border-emerald-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Filtrar por confirmados"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
+                      Confirmadas
+                    </span>
+                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                      {estadisticas.confirmadas}
+                    </span>
+                  </div>
+                </button>
 
-                    {/* Tarjeta Pendientes */}
-                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
-                          Pendientes
-                        </span>
-                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                          {estadisticas.pendientes}
-                        </span>
-                      </div>
-                    </div>
+                {/* Tarjeta Pendientes */}
+                <button
+                  onClick={() => {
+                    setColumnFilters(prev => {
+                      const filtered = prev.filter(f => f.id !== 'estado');
+                      return [...filtered, { id: 'estado', value: 'PENDIENTE' }];
+                    });
+                  }}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30 cursor-pointer active:scale-95 ${
+                    estadoActivo === 'PENDIENTE'
+                      ? isDark
+                        ? 'bg-amber-900/40 border-amber-600/50 shadow-lg shadow-amber-900/30'
+                        : 'bg-amber-50 border-amber-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Filtrar por pendientes"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
+                      Pendientes
+                    </span>
+                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                      {estadisticas.pendientes}
+                    </span>
+                  </div>
+                </button>
 
-                    {/* Tarjeta Canceladas */}
-                    <div className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-rose-400/80' : 'text-rose-600'}`}>
-                          Canceladas
-                        </span>
-                        <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
-                          {estadisticas.canceladas}
-                        </span>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          )}
+                {/* Tarjeta Canceladas */}
+                <button
+                  onClick={() => {
+                    setColumnFilters(prev => {
+                      const filtered = prev.filter(f => f.id !== 'estado');
+                      return [...filtered, { id: 'estado', value: 'CANCELADO' }];
+                    });
+                  }}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30 cursor-pointer active:scale-95 ${
+                    estadoActivo === 'CANCELADO'
+                      ? isDark
+                        ? 'bg-rose-900/40 border-rose-600/50 shadow-lg shadow-rose-900/30'
+                        : 'bg-rose-50 border-rose-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Filtrar por cancelados"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-rose-400/80' : 'text-rose-600'}`}>
+                      Canceladas
+                    </span>
+                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
+                      {estadisticas.canceladas}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            );
+          })()}
         </div>
       </div>
     );

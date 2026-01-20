@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
@@ -198,7 +198,13 @@ export default function DashboardPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { theme } = useTheme();
+  
+  // Detectar si estamos en la página de registros y qué filtro está activo
+  const isRegistrosPage = pathname === '/registros';
+  const activeEstadoFilter = isRegistrosPage ? searchParams.get('estado') : null;
 
   const recordsForOptions = useMemo(() => {
     if (!selectedSeason) {
@@ -908,25 +914,65 @@ export default function DashboardPage() {
                 )}
               </div>
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="text-center">
+                <button
+                  onClick={() => router.push('/registros')}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
+                    isRegistrosPage && !activeEstadoFilter
+                      ? theme === 'dark'
+                        ? 'bg-slate-800/60 border border-slate-600/50 shadow-lg shadow-slate-900/50'
+                        : 'bg-gray-100 border border-gray-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Ver todos los embarques"
+                >
                   <p className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{displayedStats.total}</p>
                   <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Embarques</p>
-                </div>
+                </button>
                 <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
-                <div className="text-center">
+                <button
+                  onClick={() => router.push('/registros?estado=CONFIRMADO')}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
+                    activeEstadoFilter === 'CONFIRMADO'
+                      ? theme === 'dark'
+                        ? 'bg-emerald-900/40 border border-emerald-600/50 shadow-lg shadow-emerald-900/30'
+                        : 'bg-emerald-50 border border-emerald-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Ver confirmados"
+                >
                   <p className="text-xl sm:text-2xl font-bold text-emerald-500">{displayedStats.confirmados}</p>
                   <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Confirmados</p>
-                </div>
+                </button>
                 <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
-                <div className="text-center">
+                <button
+                  onClick={() => router.push('/registros?estado=PENDIENTE')}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
+                    activeEstadoFilter === 'PENDIENTE'
+                      ? theme === 'dark'
+                        ? 'bg-amber-900/40 border border-amber-600/50 shadow-lg shadow-amber-900/30'
+                        : 'bg-amber-50 border border-amber-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Ver pendientes"
+                >
                   <p className="text-xl sm:text-2xl font-bold text-amber-500">{displayedStats.pendientes}</p>
                   <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pendientes</p>
-                </div>
+                </button>
                 <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
-                <div className="text-center">
+                <button
+                  onClick={() => router.push('/registros?estado=CANCELADO')}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
+                    activeEstadoFilter === 'CANCELADO'
+                      ? theme === 'dark'
+                        ? 'bg-red-900/40 border border-red-600/50 shadow-lg shadow-red-900/30'
+                        : 'bg-red-50 border border-red-300 shadow-md'
+                      : ''
+                  }`}
+                  aria-label="Ver cancelados"
+                >
                   <p className="text-xl sm:text-2xl font-bold text-red-500">{displayedStats.cancelados}</p>
                   <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Cancelados</p>
-                </div>
+                </button>
               </div>
             </div>
           </section>
