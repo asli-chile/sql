@@ -173,7 +173,7 @@ const transformJsonRowToRegistro = (
       const emisionesValidas = ['TELEX RELEASE', 'BILL OF LADING', 'SEA WAY BILL', 'EXPRESS RELEASE'];
       
       // Mapeo de valores comunes a valores válidos
-      const emisionMapping: Record<string, string> = {
+      const emisionMapping: Record<string, string | null> = {
         'SWB': 'SEA WAY BILL',
         'BL': 'BILL OF LADING',
         'BILL': 'BILL OF LADING',
@@ -183,7 +183,7 @@ const transformJsonRowToRegistro = (
       };
       
       // Verificar si hay un mapeo directo
-      if (emisionMapping[emisionValue]) {
+      if (emisionMapping[emisionValue] !== undefined) {
         registro[fieldName] = emisionMapping[emisionValue];
         return;
       }
