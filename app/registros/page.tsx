@@ -31,7 +31,7 @@ import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { logHistoryEntry } from '@/lib/history';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2 } from 'lucide-react';
+import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import { FacturaCreator } from '@/components/facturas/FacturaCreator';
@@ -915,6 +915,65 @@ export default function RegistrosPage() {
       return;
     }
     setIsAddModalOpen(true);
+  };
+
+  const handleImportFromSheets = async () => {
+    if (isCliente) {
+      error('No tienes permisos para importar desde Google Sheets.');
+      return;
+    }
+
+    if (!confirm('¿Deseas importar datos desde Google Sheets?\n\nHoja: CONTROL\nFilas: 2-646\n\nEsto puede tardar varios minutos.')) {
+      return;
+    }
+
+    try {
+      success('Iniciando importación desde Google Sheets...');
+
+      const endpoint = '/api/google-sheets/import-json';
+      
+      const body = {
+        webAppUrl: 'https://script.google.com/macros/s/AKfycbwOkX2_StMpQrWwF2EbOH5tYpP0HQglP1GgU5UX5oRb0Y3D3d6TVWkzr2B4VSNXDEic/exec',
+        sheetName: 'CONTROL',
+        startRow: 1,
+        endRow: 646,
+        verificarDuplicados: true,
+        sobrescribirDuplicados: false
+      };
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        error(result.error || 'Error al importar desde Google Sheets');
+        return;
+      }
+
+      if (result.ok) {
+        const resumen = result.resumen;
+        success(
+          `✅ Importación completada: ${resumen.exitosos} insertados, ${resumen.fallidos} fallidos, ${resumen.duplicados} duplicados, ${resumen.transportes || 0} transportes`
+        );
+        
+        // Recargar registros
+        loadRegistros();
+        
+        // Mostrar detalles si hay errores
+        if (resumen.invalidos > 0 || result.detalles?.errores?.length > 0) {
+          console.warn('Detalles de errores:', result.detalles);
+        }
+      } else {
+        error('Error al importar desde Google Sheets');
+      }
+    } catch (error: any) {
+      console.error('Error en importación:', error);
+      error(`Error al importar: ${error?.message || 'Error desconocido'}`);
+    }
   };
 
   const handleEdit = (registro: Registro) => {
