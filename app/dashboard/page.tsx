@@ -190,7 +190,7 @@ export default function DashboardPage() {
   const [rawRegistros, setRawRegistros] = useState<RawRegistroStats[]>([]);
   const [registrosParaMapa, setRegistrosParaMapa] = useState<Registro[]>([]);
   const [activeVessels, setActiveVessels] = useState<ActiveVessel[]>([]);
-  const [selectedSeason, setSelectedSeason] = useState<string | null>('2025-2026');
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
   const [clienteOptions, setClienteOptions] = useState<string[]>([]);
   const [ejecutivoOptions, setEjecutivoOptions] = useState<string[]>([]);
   const [selectedCliente, setSelectedCliente] = useState<string | null>(null);

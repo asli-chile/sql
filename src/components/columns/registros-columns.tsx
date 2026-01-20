@@ -64,7 +64,7 @@ const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
   usuario: { min: 173, max: 288 },
   ingresado: { min: 127, max: 173 },
   shipper: { min: 250, max: 250 },
-  booking: { min: 250, max: 355 },
+  booking: { min: 230, max: 355 },
   contenedor: { min: 150, max: 322 },
   naviera: { min: 184, max: 299 },
   naveInicial: { min: 250, max: 250 },
@@ -467,16 +467,21 @@ export const createRegistrosColumns = (
       const naviera = row.getValue('naviera') as string;
       const nave = row.getValue('naveInicial') as string;
       
-      // Si no hay valor de filtro, mostrar todo
-      if (!value || value.length === 0) return true;
+      // Si no hay valor de filtro o es string vacío, mostrar todo
+      if (!value || value === '' || (typeof value === 'string' && value.trim() === '')) {
+        return true;
+      }
+      
+      // Normalizar el valor a string para comparación
+      const filterValue = typeof value === 'string' ? value : String(value);
       
       // Verificar si la naviera coincide directamente
-      if (value.includes(naviera)) return true;
+      if (naviera && filterValue === naviera) return true;
       
       // Verificar si la nave pertenece a alguna de las navieras seleccionadas
       if (nave && naveToNavierasMap.has(nave)) {
         const navierasDeLaNave = naveToNavierasMap.get(nave)!;
-        return navierasDeLaNave.some(n => value.includes(n));
+        return navierasDeLaNave.some(n => filterValue === n);
       }
       
       return false;

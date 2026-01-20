@@ -41,12 +41,6 @@ import { parseStoredDocumentName, formatFileDisplayName, sanitizeFileName } from
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
 
-const normalizeTemporada = (value?: string | null): string => {
-  if (!value) {
-    return '';
-  }
-  return value.toString().replace(/^Temporada\s+/i, '').trim();
-};
 
 interface User {
   id: string;
@@ -81,7 +75,7 @@ export default function RegistrosPage() {
     navesFiltrables: Array<[string, string]>;
   } | null>(null);
 
-  // Callback memorizado para evitar re-renders infinitos
+  // Callback para recibir la instancia de la tabla y sus estados
   const handleTableInstanceReady = useCallback((table: any, states: {
     executiveFilter: string;
     setExecutiveFilter: (value: string) => void;
@@ -92,11 +86,22 @@ export default function RegistrosPage() {
     navesFiltrables: Array<[string, string]>;
   }) => {
     setTableInstance(table);
-    setTableStates(states);
+    // Actualizar tableStates siempre para asegurar que tenga los valores más recientes
+    setTableStates((prevStates) => {
+      // Si la tabla cambió, usar los nuevos estados
+      if (prevStates === null || prevStates.executiveFilter !== states.executiveFilter) {
+        return states;
+      }
+      // Si solo cambió executiveFilter, actualizar solo ese campo
+      return {
+        ...prevStates,
+        executiveFilter: states.executiveFilter,
+        setExecutiveFilter: states.setExecutiveFilter,
+      };
+    });
   }, []);
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
-  const [selectedTemporada, setSelectedTemporada] = useState<string | null>(null);
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
   const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
   const [especiesUnicas, setEspeciesUnicas] = useState<string[]>([]);
@@ -167,13 +172,7 @@ export default function RegistrosPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
   const [deleteProcessing, setDeleteProcessing] = useState(false);
 
-  const temporadaParam = searchParams.get('temporada');
   const estadoParam = searchParams.get('estado');
-
-  useEffect(() => {
-    const normalized = normalizeTemporada(temporadaParam);
-    setSelectedTemporada(normalized !== '' ? normalized : null);
-  }, [temporadaParam]);
 
   // Aplicar filtro de estado desde query params cuando el DataTable esté listo
   useEffect(() => {
@@ -194,27 +193,9 @@ export default function RegistrosPage() {
     }
   }, [estadoParam, tableInstance, tableStates]);
 
-  useEffect(() => {
-    lastSelectedRowIndex.current = null;
-  }, [selectedTemporada]);
-
-  const temporadasDisponibles = useMemo(() => {
-    const temporadasSet = new Set<string>();
-    registros.forEach((registro) => {
-      const temp = normalizeTemporada(registro.temporada);
-      if (temp) {
-        temporadasSet.add(temp);
-      }
-    });
-    return Array.from(temporadasSet).sort((a, b) => b.localeCompare(a));
-  }, [registros]);
-
   const registrosVisibles = useMemo(() => {
-    if (!selectedTemporada) {
-      return registros;
-    }
-    return registros.filter((registro) => normalizeTemporada(registro.temporada) === selectedTemporada);
-  }, [registros, selectedTemporada]);
+    return registros;
+  }, [registros]);
 
   useEffect(() => {
     checkUser();
@@ -1747,6 +1728,98 @@ export default function RegistrosPage() {
   };
 
   // Memoizar mapeos y filtros para evitar recalcular en cada render
+  // Filtrar registros por ejecutivo si hay uno seleccionado
+  const registrosParaFiltros = useMemo(() => {
+    if (!tableStates || !tableStates.executiveFilter || tableStates.executiveFilter === '') {
+      return registrosVisibles;
+    }
+    return registrosVisibles.filter(r => r.ejecutivo === tableStates.executiveFilter);
+  }, [registrosVisibles, tableStates?.executiveFilter]);
+
+  // Limpiar filtros inválidos cuando cambia el ejecutivo
+  useEffect(() => {
+    if (!tableInstance || !tableStates) return;
+
+    const currentExecutiveFilter = tableStates.executiveFilter || '';
+    
+    // Generar arrays de opciones válidas basadas en el ejecutivo actual
+    const registrosFiltrados = currentExecutiveFilter 
+      ? registrosVisibles.filter(r => r.ejecutivo === currentExecutiveFilter)
+      : registrosVisibles;
+
+    const validNavieras = new Set(registrosFiltrados.map(r => r.naviera).filter(Boolean));
+    const validClientes = new Set(registrosFiltrados.map(r => r.shipper).filter(Boolean));
+    const validEspecies = new Set(registrosFiltrados.map(r => r.especie).filter(Boolean));
+    const validPols = new Set(registrosFiltrados.map(r => r.pol).filter(Boolean));
+    const validDestinos = new Set(registrosFiltrados.map(r => r.pod).filter(Boolean));
+    const validDepositos = new Set(registrosFiltrados.map(r => r.deposito).filter(Boolean));
+    const validNaves = new Set(registrosFiltrados.map(r => r.naveInicial).filter(Boolean));
+
+    // Obtener los filtros actuales del estado de la tabla
+    const currentFilters = tableInstance.getState().columnFilters;
+    const filtersToClear: string[] = [];
+
+    // Verificar cada filtro activo y determinar cuáles deben limpiarse
+    currentFilters.forEach((filter) => {
+      const filterValue = filter.value;
+      if (!filterValue || filterValue === '' || filterValue === null || filterValue === undefined) {
+        return;
+      }
+
+      const stringValue = typeof filterValue === 'string' 
+        ? filterValue.trim() 
+        : Array.isArray(filterValue) && filterValue.length > 0
+          ? String(filterValue[0]).trim()
+          : String(filterValue).trim();
+
+      if (stringValue === '') return;
+
+      let shouldClear = false;
+      switch (filter.id) {
+        case 'naviera':
+          shouldClear = !validNavieras.has(stringValue);
+          break;
+        case 'shipper':
+          shouldClear = !validClientes.has(stringValue);
+          break;
+        case 'especie':
+          shouldClear = !validEspecies.has(stringValue);
+          break;
+        case 'pol':
+          shouldClear = !validPols.has(stringValue);
+          break;
+        case 'pod':
+          shouldClear = !validDestinos.has(stringValue);
+          break;
+        case 'deposito':
+          shouldClear = !validDepositos.has(stringValue);
+          break;
+        case 'naveInicial':
+          shouldClear = !validNaves.has(stringValue);
+          break;
+      }
+
+      if (shouldClear) {
+        filtersToClear.push(filter.id);
+      }
+    });
+
+    // Limpiar los filtros inválidos usando setColumnFilters para actualizar el estado correctamente
+    if (filtersToClear.length > 0) {
+      tableInstance.setColumnFilters((prev: any[]) => 
+        prev.filter((f: any) => !filtersToClear.includes(f.id))
+      );
+      
+      // También limpiar individualmente cada columna para asegurar sincronización
+      filtersToClear.forEach((columnId) => {
+        const column = tableInstance.getColumn(columnId);
+        if (column) {
+          column.setFilterValue(undefined);
+        }
+      });
+    }
+  }, [tableInstance, tableStates?.executiveFilter, registrosVisibles]);
+
   const registrosLength = registrosVisibles.length;
   useEffect(() => {
     if (registrosLength > 0) {
@@ -1756,14 +1829,17 @@ export default function RegistrosPage() {
       setNavierasNavesMapping(navierasMapping);
       setConsorciosNavesMapping(consorciosMapping);
 
-      // Generar arrays de filtro basados en datos reales
-      const filterArrays = generateFilterArrays(registrosVisibles);
+      // Generar arrays de filtro basados en datos filtrados por ejecutivo (si hay uno seleccionado)
+      const filterArrays = generateFilterArrays(registrosParaFiltros);
       setNavierasFiltro(filterArrays.navierasFiltro);
       setEspeciesFiltro(filterArrays.especiesFiltro);
       setClientesFiltro(filterArrays.clientesFiltro);
       setPolsFiltro(filterArrays.polsFiltro);
       setDestinosFiltro(filterArrays.destinosFiltro);
-      setEjecutivosFiltro(filterArrays.ejecutivosFiltro);
+      setDepositosFiltro(filterArrays.depositosFiltro);
+      // Ejecutivos siempre muestran todos los disponibles
+      const allEjecutivos = [...new Set(registrosVisibles.map(r => r.ejecutivo).filter(Boolean))].sort();
+      setEjecutivosFiltro(allEjecutivos);
       setNavesFiltro(filterArrays.navesFiltro);
     } else {
       setNavierasNavesMapping({});
@@ -1773,10 +1849,11 @@ export default function RegistrosPage() {
       setClientesFiltro([]);
       setPolsFiltro([]);
       setDestinosFiltro([]);
+      setDepositosFiltro([]);
       setEjecutivosFiltro([]);
       setNavesFiltro([]);
     }
-  }, [registrosLength, registrosVisibles, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
+  }, [registrosLength, registrosVisibles, registrosParaFiltros, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
 
   // Crear mapeo de registroId a factura
   const facturasPorRegistro = useMemo(() => {
@@ -2841,49 +2918,14 @@ export default function RegistrosPage() {
               }
             }}
           >
-            {/* Sección de Temporada */}
-            {temporadasDisponibles.length > 0 && (
-              <div className="space-y-4">
-                <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Temporada</h3>
-                <div className="space-y-2">
-                  <select
-                    value={selectedTemporada ?? ''}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (!value) {
-                        router.push('/registros');
-                      } else {
-                        router.push(`/registros?temporada=${encodeURIComponent(value)}`);
-                      }
-                    }}
-                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 transition-colors ${theme === 'dark' ? 'border-slate-700/80 bg-slate-900/80 text-white focus:border-sky-500 focus:ring-sky-500/30 hover:border-slate-600' : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30 hover:border-gray-400'}`}
-                  >
-                    <option value="">Todas las temporadas</option>
-                    {temporadasDisponibles.map((temporada) => (
-                      <option key={temporada} value={temporada}>
-                        Temporada {temporada}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedTemporada && (
-                    <button
-                      onClick={() => router.push('/registros')}
-                      className={`w-full rounded-lg border px-3 py-1.5 text-xs font-medium transition ${theme === 'dark' ? 'border-sky-500/50 bg-sky-500/10 text-sky-200 hover:border-sky-500 hover:bg-sky-500/20' : 'border-blue-500 bg-blue-50 text-blue-600 hover:border-blue-600 hover:bg-blue-100'}`}
-                    >
-                      Quitar filtro
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
             {/* Sección de Filtros */}
             {tableInstance && tableStates && (
               <div className="space-y-4">
                 <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Filtros</h3>
                 <FiltersPanel
+                  key={`filters-${tableInstance.getState().columnFilters.length}-${JSON.stringify(tableInstance.getState().columnFilters)}-${tableStates.executiveFilter || ''}`}
                   table={tableInstance}
-                  executiveFilter={tableStates.executiveFilter}
+                  executiveFilter={tableStates.executiveFilter || ''}
                   setExecutiveFilter={tableStates.setExecutiveFilter}
                   navierasUnicas={navierasFiltro}
                   ejecutivosUnicos={ejecutivosFiltro}

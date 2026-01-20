@@ -568,7 +568,7 @@ export function DataTable({
     };
   }, [executiveFilter, columnToggleOptions, navesFiltrables, handleToggleColumn, handleToggleAllColumns, alwaysVisibleColumns, setExecutiveFilter]);
 
-  // Solo ejecutar cuando la tabla cambie (nueva instancia)
+  // Ejecutar cuando la tabla cambie (nueva instancia)
   // Usar useRef para rastrear la última tabla que se pasó al callback
   const lastTableRef = useRef<any>(null);
   useEffect(() => {
@@ -579,6 +579,14 @@ export function DataTable({
       onTableInstanceReadyRef.current(table, statesRef.current);
     }
   }, [table]); // Solo dependemos de table para evitar ejecuciones innecesarias
+  
+  // Actualizar el callback cuando cambien los estados importantes para que el padre tenga los valores actualizados
+  useEffect(() => {
+    if (onTableInstanceReadyRef.current && table && lastTableRef.current === table) {
+      // Actualizar solo los estados sin cambiar la referencia de la tabla
+      onTableInstanceReadyRef.current(table, statesRef.current);
+    }
+  }, [table, executiveFilter, columnToggleOptions, navesFiltrables]); // Actualizar cuando cambien estos estados
 
   const handleSelectAllClick = () => {
     if (!onSelectAll) return;
@@ -909,7 +917,15 @@ export function DataTable({
     
     // Obtener las filas filtradas actuales de la tabla
     const filteredRows = table.getFilteredRowModel().rows;
-    const total = filteredRows.length;
+    
+    // Detectar si hay filtros aplicados desde el panel de filtros
+    // (excluyendo el filtro de estado que puede venir de las tarjetas)
+    const filtrosPanel = columnFilters.filter(f => f.id !== 'estado');
+    const hayFiltrosPanel = filtrosPanel.length > 0 || globalFilter.trim() !== '' || executiveFilter.trim() !== '';
+    
+    // Calcular total: si hay filtros del panel, usar el filtrado; si no, usar todos los datos
+    const total = hayFiltrosPanel ? filteredRows.length : data.length;
+    
     let confirmadas = 0;
     let pendientes = 0;
     let canceladas = 0;
