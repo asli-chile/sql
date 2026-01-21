@@ -15,6 +15,97 @@ interface CostosModalProps {
     onSave: (costo: Partial<CostosEmbarque>) => Promise<void>;
 }
 
+// Sub-components moved outside to prevent re-renders and focus loss
+const InputField = ({
+    label,
+    field,
+    value,
+    onChange,
+    isDark,
+    type = 'number',
+    prefix = '$'
+}: {
+    label: string,
+    field: keyof CostosEmbarque,
+    value: any,
+    onChange: (field: keyof CostosEmbarque, value: any) => void,
+    isDark: boolean,
+    type?: string,
+    prefix?: string
+}) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = e.target.value;
+        if (type === 'number') {
+            onChange(field, val === '' ? null : parseFloat(val));
+        } else {
+            onChange(field, val);
+        }
+    };
+
+    return (
+        <div>
+            <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                {label}
+            </label>
+            <div className="relative">
+                {type === 'number' && prefix && (
+                    <div className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-xs ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
+                        {prefix}
+                    </div>
+                )}
+                <input
+                    type={type}
+                    value={value === null || value === undefined ? '' : value}
+                    onChange={handleInputChange}
+                    className={`w-full ${type === 'number' && prefix ? 'pl-7' : 'pl-3'} pr-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark
+                            ? 'border-slate-600 bg-slate-700 text-white placeholder-slate-400'
+                            : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
+                        }`}
+                    placeholder={type === 'number' ? '0' : ''}
+                />
+            </div>
+        </div>
+    );
+};
+
+const SectionTitle = ({ title, icon: Icon, isDark }: { title: string, icon: any, isDark: boolean }) => (
+    <div className={`flex items-center gap-2 pb-2 mb-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+        <Icon className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+        <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{title}</h3>
+    </div>
+);
+
+const TabButton = ({
+    id,
+    label,
+    icon: Icon,
+    activeTab,
+    setActiveTab,
+    isDark
+}: {
+    id: string,
+    label: string,
+    icon: any,
+    activeTab: string,
+    setActiveTab: (id: any) => void,
+    isDark: boolean
+}) => (
+    <button
+        onClick={() => setActiveTab(id)}
+        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === id
+                ? isDark
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-blue-600 text-blue-600'
+                : isDark
+                    ? 'border-transparent text-slate-400 hover:text-slate-200'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+    >
+        <Icon className="w-4 h-4" />
+        {label}
+    </button>
+);
+
 export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, onSave }: CostosModalProps) {
     const { theme } = useTheme();
     const isDark = theme === 'dark';
@@ -35,11 +126,6 @@ export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, on
         }));
     };
 
-    const handleNumberChange = (field: keyof CostosEmbarque, value: string) => {
-        const numValue = value === '' ? null : parseFloat(value);
-        handleChange(field, numValue);
-    };
-
     const handleSubmit = async () => {
         setLoading(true);
         try {
@@ -47,6 +133,7 @@ export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, on
             onClose();
         } catch (error) {
             console.error('Error saving:', error);
+            // Don't close modal on error so user can retry
         } finally {
             setLoading(false);
         }
@@ -55,55 +142,6 @@ export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, on
     if (!isOpen) return null;
 
     const totalCalculado = calcularCostoTotal(formData as CostosEmbarque);
-
-    const InputField = ({ label, field, type = 'number', prefix = '$' }: { label: string, field: keyof CostosEmbarque, type?: string, prefix?: string }) => (
-        <div>
-            <label className={`block text-xs font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                {label}
-            </label>
-            <div className="relative">
-                {type === 'number' && prefix && (
-                    <div className={`absolute left-3 top-1/2 transform -translate-y-1/2 text-xs ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>
-                        {prefix}
-                    </div>
-                )}
-                <input
-                    type={type}
-                    value={formData[field] as string | number || ''}
-                    onChange={(e) => type === 'number' ? handleNumberChange(field, e.target.value) : handleChange(field, e.target.value)}
-                    className={`w-full ${type === 'number' && prefix ? 'pl-7' : 'pl-3'} pr-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${isDark
-                            ? 'border-slate-600 bg-slate-700 text-white placeholder-slate-400'
-                            : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
-                        }`}
-                    placeholder={type === 'number' ? '0' : ''}
-                />
-            </div>
-        </div>
-    );
-
-    const SectionTitle = ({ title, icon: Icon }: { title: string, icon: any }) => (
-        <div className={`flex items-center gap-2 pb-2 mb-4 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-            <Icon className={`w-4 h-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{title}</h3>
-        </div>
-    );
-
-    const TabButton = ({ id, label, icon: Icon }: { id: typeof activeTab, label: string, icon: any }) => (
-        <button
-            onClick={() => setActiveTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === id
-                    ? isDark
-                        ? 'border-blue-500 text-blue-400'
-                        : 'border-blue-600 text-blue-600'
-                    : isDark
-                        ? 'border-transparent text-slate-400 hover:text-slate-200'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-        >
-            <Icon className="w-4 h-4" />
-            {label}
-        </button>
-    );
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -133,18 +171,18 @@ export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, on
 
                 {/* Tabs */}
                 <div className={`flex overflow-x-auto px-6 border-b ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <TabButton id="detalle" label="Detalle Reserva" icon={FileText} />
-                    <TabButton id="transporte" label="Transporte Terrestre" icon={Truck} />
-                    <TabButton id="coordinacion" label="Coordinación" icon={Users} />
-                    <TabButton id="navieros" label="Costos Navieros" icon={Anchor} />
-                    <TabButton id="otros" label="Otros" icon={DollarSign} />
+                    <TabButton id="detalle" label="Detalle Reserva" icon={FileText} activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
+                    <TabButton id="transporte" label="Transporte Terrestre" icon={Truck} activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
+                    <TabButton id="coordinacion" label="Coordinación" icon={Users} activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
+                    <TabButton id="navieros" label="Costos Navieros" icon={Anchor} activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
+                    <TabButton id="otros" label="Otros" icon={DollarSign} activeTab={activeTab} setActiveTab={setActiveTab} isDark={isDark} />
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6">
                     {activeTab === 'detalle' && (
                         <div className="space-y-6">
-                            <SectionTitle title="Información de Reserva" icon={FileText} />
+                            <SectionTitle title="Información de Reserva" icon={FileText} isDark={isDark} />
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {/* Read-only fields from Registro */}
                                 <div>
@@ -179,54 +217,54 @@ export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, on
                                 </div>
 
                                 {/* Editable SWB */}
-                                <InputField label="SWB" field="swb" type="text" prefix="" />
+                                <InputField label="SWB" field="swb" value={formData.swb} onChange={handleChange} isDark={isDark} type="text" prefix="" />
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'transporte' && (
                         <div className="space-y-6">
-                            <SectionTitle title="Transporte Terrestre" icon={Truck} />
+                            <SectionTitle title="Transporte Terrestre" icon={Truck} isDark={isDark} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <InputField label="Flete" field="tt_flete" />
-                                <InputField label="Sobre Estadía" field="tt_sobre_estadia" />
-                                <InputField label="Porteo" field="tt_porteo" />
-                                <InputField label="Almacenamiento" field="tt_almacenamiento" />
+                                <InputField label="Flete" field="tt_flete" value={formData.tt_flete} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Sobre Estadía" field="tt_sobre_estadia" value={formData.tt_sobre_estadia} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Porteo" field="tt_porteo" value={formData.tt_porteo} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Almacenamiento" field="tt_almacenamiento" value={formData.tt_almacenamiento} onChange={handleChange} isDark={isDark} />
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'coordinacion' && (
                         <div className="space-y-6">
-                            <SectionTitle title="Coordinación" icon={Users} />
+                            <SectionTitle title="Coordinación" icon={Users} isDark={isDark} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <InputField label="Adm. Espacio Naviero" field="coord_adm_espacio" />
-                                <InputField label="Comex" field="coord_comex" />
-                                <InputField label="AGA" field="coord_aga" />
+                                <InputField label="Adm. Espacio Naviero" field="coord_adm_espacio" value={formData.coord_adm_espacio} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Comex" field="coord_comex" value={formData.coord_comex} onChange={handleChange} isDark={isDark} />
+                                <InputField label="AGA" field="coord_aga" value={formData.coord_aga} onChange={handleChange} isDark={isDark} />
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'navieros' && (
                         <div className="space-y-6">
-                            <SectionTitle title="Costos Navieros" icon={Anchor} />
+                            <SectionTitle title="Costos Navieros" icon={Anchor} isDark={isDark} />
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <InputField label="Gate Out" field="nav_gate_out" />
-                                <InputField label="Seguridad Contenedor" field="nav_seguridad_contenedor" />
-                                <InputField label="Matriz Fuera de Plazo" field="nav_matriz_fuera_plazo" />
-                                <InputField label="Correcciones" field="nav_correcciones" />
-                                <InputField label="Extra Late" field="nav_extra_late" />
-                                <InputField label="Telex Release" field="nav_telex_release" />
-                                <InputField label="Courier" field="nav_courier" />
-                                <InputField label="Pago SAG - CF Extra" field="nav_pago_sag_cf_extra" />
-                                <InputField label="Pago UCCO - CO Extra" field="nav_pago_ucco_co_extra" />
+                                <InputField label="Gate Out" field="nav_gate_out" value={formData.nav_gate_out} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Seguridad Contenedor" field="nav_seguridad_contenedor" value={formData.nav_seguridad_contenedor} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Matriz Fuera de Plazo" field="nav_matriz_fuera_plazo" value={formData.nav_matriz_fuera_plazo} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Correcciones" field="nav_correcciones" value={formData.nav_correcciones} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Extra Late" field="nav_extra_late" value={formData.nav_extra_late} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Telex Release" field="nav_telex_release" value={formData.nav_telex_release} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Courier" field="nav_courier" value={formData.nav_courier} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Pago SAG - CF Extra" field="nav_pago_sag_cf_extra" value={formData.nav_pago_sag_cf_extra} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Pago UCCO - CO Extra" field="nav_pago_ucco_co_extra" value={formData.nav_pago_ucco_co_extra} onChange={handleChange} isDark={isDark} />
                             </div>
                         </div>
                     )}
 
                     {activeTab === 'otros' && (
                         <div className="space-y-6">
-                            <SectionTitle title="Otros Costos e Ingresos" icon={DollarSign} />
+                            <SectionTitle title="Otros Costos e Ingresos" icon={DollarSign} isDark={isDark} />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="col-span-full p-4 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
                                     <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-2">Resumen Financiero</h4>
@@ -244,9 +282,9 @@ export function CostosModal({ isOpen, onClose, costo: initialCosto, registro, on
                                     </div>
                                 </div>
 
-                                <InputField label="Ingresos Totales" field="ingresos" />
-                                <InputField label="Rebates" field="rebates" />
-                                <InputField label="Contrato Forwarder" field="contrato_forwarder" type="text" prefix="" />
+                                <InputField label="Ingresos Totales" field="ingresos" value={formData.ingresos} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Rebates" field="rebates" value={formData.rebates} onChange={handleChange} isDark={isDark} />
+                                <InputField label="Contrato Forwarder" field="contrato_forwarder" value={formData.contrato_forwarder} onChange={handleChange} isDark={isDark} type="text" prefix="" />
                             </div>
                         </div>
                     )}

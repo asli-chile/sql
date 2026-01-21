@@ -60,7 +60,19 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
       }
       console.log('[FinanzasSection] loadCostos: Costos cargados:', data?.length || 0);
       setTableExists(true);
-      setCostosEmbarques(data || []);
+
+      // Map snake_case from DB to camelCase for app
+      const mappedData = (data || []).map((item: any) => ({
+        ...item,
+        registroId: item.registro_id,
+        createdAt: item.created_at ? new Date(item.created_at) : undefined,
+        updatedAt: item.updated_at ? new Date(item.updated_at) : undefined,
+        createdBy: item.created_by,
+        updatedBy: item.updated_by,
+        fechaActualizacion: item.fecha_actualizacion ? new Date(item.fecha_actualizacion) : undefined,
+      }));
+
+      setCostosEmbarques(mappedData);
     } catch (err: any) {
       console.error('[FinanzasSection] loadCostos: Error en catch:', err);
       // No mostrar error si la tabla no existe, solo usar array vacío
@@ -144,12 +156,21 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
         return;
       }
 
-      const costoData: Partial<CostosEmbarque> = {
+      // Prepare data for DB (snake_case)
+      const dbData: any = {
         ...formData,
-        registroId: registro.id || '',
+        registro_id: registro.id || '',
         booking: editingCosto,
-        updatedAt: new Date(),
+        updated_at: new Date().toISOString(),
       };
+
+      // Remove camelCase fields that shouldn't be sent to DB
+      delete dbData.registroId;
+      delete dbData.createdAt;
+      delete dbData.updatedAt;
+      delete dbData.createdBy;
+      delete dbData.updatedBy;
+      delete dbData.fechaActualizacion;
 
       const existing = costosEmbarques.find(c => c.booking === editingCosto);
 
@@ -157,7 +178,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
         // Actualizar
         const { error } = await supabase
           .from('costos_embarques')
-          .update(costoData)
+          .update(dbData)
           .eq('id', existing.id);
 
         if (error) throw error;
@@ -165,7 +186,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
         // Crear
         const { error } = await supabase
           .from('costos_embarques')
-          .insert([costoData]);
+          .insert([dbData]);
 
         if (error) throw error;
       }
