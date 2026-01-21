@@ -434,15 +434,20 @@ export default function DocumentosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id]); // Solo depende del ID del usuario, no del objeto completo
 
-  if (!currentUser) {
-    return <LoadingScreen message="Cargando..." />;
-  }
-
-  // Verificar si es Rodrigo
-  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
-
   // Generar opciones para los filtros basadas en los filtros ya seleccionados (filtrado en cascada)
+  // IMPORTANTE: Los hooks deben estar antes de cualquier return condicional
   const filterOptions = useMemo(() => {
+    if (!allRegistros || allRegistros.length === 0) {
+      return {
+        clientes: [],
+        ejecutivos: [],
+        navieras: [],
+        especies: [],
+        temporadas: [],
+        naves: [],
+      };
+    }
+    
     let registrosFiltrados = [...allRegistros];
 
     // Aplicar filtros existentes para generar opciones relevantes
@@ -543,6 +548,10 @@ export default function DocumentosPage() {
 
   // Aplicar filtros a los registros
   const filteredRegistros = useMemo(() => {
+    if (!allRegistros || allRegistros.length === 0) {
+      return [];
+    }
+    
     let filtered = [...allRegistros];
 
     if (selectedSeason) {
@@ -645,6 +654,9 @@ export default function DocumentosPage() {
   };
 
   const handleSelectAllClientes = () => {
+    if (!filterOptions || !filterOptions.clientes || filterOptions.clientes.length === 0) {
+      return;
+    }
     if (selectedClientes.length === filterOptions.clientes.length) {
       setSelectedClientes([]);
     } else {
@@ -653,6 +665,14 @@ export default function DocumentosPage() {
   };
 
   const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta;
+
+  // IMPORTANTE: El return condicional debe estar DESPUÉS de todos los hooks
+  if (!currentUser) {
+    return <LoadingScreen message="Cargando..." />;
+  }
+
+  // Verificar si es Rodrigo (después del return condicional)
+  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   // Obtener información de documentos para cada registro
   const getDocumentStatus = (booking: string, docType: string): boolean => {
