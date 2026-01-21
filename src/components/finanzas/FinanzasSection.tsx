@@ -24,33 +24,6 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
   const [editingCosto, setEditingCosto] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<CostosEmbarque>>({});
   const [tableExists, setTableExists] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  
-  // Verificar acceso
-  useEffect(() => {
-    const checkAccess = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        setUserEmail(user.email.toLowerCase());
-      }
-    };
-    checkAccess();
-  }, [supabase]);
-  
-  // Verificar si es Rodrigo
-  const isRodrigo = userEmail === 'rodrigo.caceres@asli.cl';
-  
-  // Si no es Rodrigo, no mostrar nada
-  if (!isRodrigo) {
-    return (
-      <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-        <div className="text-center">
-          <p className="text-lg font-medium mb-2">Acceso Restringido</p>
-          <p className="text-sm">Solo el administrador puede acceder a esta sección.</p>
-        </div>
-      </div>
-    );
-  }
   
   // Debug
   useEffect(() => {
