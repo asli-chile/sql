@@ -2613,7 +2613,7 @@ export default function RegistrosPage() {
         { label: 'Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky', icon: Ship },
         { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        { label: 'Tracking', id: '/dashboard/seguimiento', icon: Globe },
+        { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         ...(isRodrigo
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
