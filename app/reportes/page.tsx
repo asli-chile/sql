@@ -21,6 +21,8 @@ import {
   LayoutDashboard,
   BarChart3,
   FileText,
+  DollarSign,
+  Users,
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
@@ -29,6 +31,8 @@ import { MetricCard } from '@/components/kpi/MetricCard';
 import { KPICharts } from '@/components/kpi/KPICharts';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/layout/AppFooter';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { SidebarSection } from '@/types/layout';
 import {
   TrendingUp,
   Clock,
@@ -47,21 +51,6 @@ const normalizeSeasonLabel = (value?: string | null): string => {
   return value.toString().replace(/^Temporada\s+/i, '').trim();
 };
 
-type SidebarNavItem =
-  | { label: string; id: string; isActive?: boolean; icon?: React.ComponentType<{ className?: string }> }
-  | { label: string; counter: number; tone: keyof typeof toneBadgeClasses; onClick?: () => void; isActive?: boolean; icon?: React.ComponentType<{ className?: string }> };
-
-type SidebarSection = {
-  title: string;
-  items: SidebarNavItem[];
-};
-
-const toneBadgeClasses = {
-  sky: 'bg-sky-500/20 text-sky-300',
-  rose: 'bg-rose-500/20 text-rose-300',
-  violet: 'bg-violet-500/20 text-violet-300',
-  lime: 'bg-lime-500/20 text-lime-300',
-} as const;
 
 export default function ReportesPage() {
   // Página de reportes y KPIs - Acceso restringido solo para Rodrigo
@@ -341,12 +330,12 @@ export default function ReportesPage() {
       // Normalizar el cliente para comparación
       const clienteNormalizado = cliente.trim();
       const clienteUpper = clienteNormalizado.toUpperCase();
-      
+
       // Verificar si ya existe (comparando normalizado)
       const exists = prev.some(c => c.trim().toUpperCase() === clienteUpper);
-      
+
       console.log('Toggle cliente:', cliente, 'exists:', exists, 'prev:', prev);
-      
+
       if (exists) {
         // Remover si ya existe
         const newList = prev.filter(c => c.trim().toUpperCase() !== clienteUpper);
@@ -382,26 +371,33 @@ export default function ReportesPage() {
     {
       title: 'Inicio',
       items: [
-        { label: 'Dashboard', id: 'dashboard', isActive: false, icon: LayoutDashboard },
+        { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
       ],
     },
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: 'registros', isActive: false, icon: Ship },
-        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false, icon: Globe },
-        { label: 'Transportes', id: 'transportes', isActive: false, icon: Truck },
-        { label: 'Documentos', id: 'documentos', isActive: false, icon: FileText },
-        { label: 'Reportes', id: 'reportes', isActive: true, icon: BarChart3 },
+        { label: 'Embarques', id: '/registros', icon: Ship },
+        { label: 'Transportes', id: '/transportes', icon: Truck },
+        { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Tracking', id: '/dashboard/seguimiento', icon: Globe },
+        ...(isRodrigo
+          ? [
+            { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', isActive: true, icon: BarChart3 },
+          ]
+          : []),
       ],
     },
-    ...(canAccessMaintenance
+    ...(userInfo?.rol === 'admin'
       ? [
-          {
-            title: 'Sistema',
-            items: [{ label: 'Mantenimiento', id: 'mantenimiento', isActive: false, icon: Settings }],
-          },
-        ]
+        {
+          title: 'Mantenimiento',
+          items: [
+            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+          ],
+        },
+      ]
       : []),
   ];
 
@@ -428,11 +424,10 @@ export default function ReportesPage() {
           </p>
           <button
             onClick={() => router.push('/dashboard')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              theme === 'dark'
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
+            className={`px-6 py-2 rounded-lg font-semibold transition-colors ${theme === 'dark'
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
           >
             Volver al Dashboard
           </button>
@@ -449,154 +444,22 @@ export default function ReportesPage() {
     <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Overlay para móvil */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <aside
-        className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${
-          isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
-        }`}
-      >
-        <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'} sticky top-0 z-10 overflow-hidden`}>
-          {/* Botón cerrar móvil */}
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'}`}
-            aria-label="Cerrar menú"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
-          {(!isSidebarCollapsed || isMobileMenuOpen) && (
-            <>
-              <div className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'} flex items-center justify-center`}>
-                <img
-                  src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                  alt="ASLI Gestión Logística"
-                  className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
-                  onError={(event) => {
-                    event.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>ASLI Gestión Logística</p>
-                <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Plataforma Operativa</p>
-              </div>
-            </>
-          )}
-          {!isSidebarCollapsed && !isMobileMenuOpen && (
-            <button
-              onClick={toggleSidebar}
-              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
-              aria-label="Contraer menú lateral"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          )}
-          {isSidebarCollapsed && !isMobileMenuOpen && (
-            <button
-              onClick={toggleSidebar}
-              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
-              aria-label="Expandir menú lateral"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {(!isSidebarCollapsed || isMobileMenuOpen) && (
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
-            {sidebarNav.map((section) => (
-              <div key={section.title} className="space-y-2 sm:space-y-3">
-                <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{section.title}</p>
-                <div className="space-y-1 sm:space-y-1.5 overflow-y-visible">
-                  {section.items.map((item) => {
-                    const isActive = ('id' in item && item.isActive) || ('counter' in item && item.isActive);
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          if ('id' in item) {
-                            if (item.id === 'reportes') {
-                              setIsMobileMenuOpen(false);
-                              return;
-                            }
-                            router.push(`/${item.id}`);
-                            setIsMobileMenuOpen(false);
-                          } else if ('onClick' in item && typeof item.onClick === 'function') {
-                            item.onClick();
-                            setIsMobileMenuOpen(false);
-                          }
-                        }}
-                        aria-pressed={'counter' in item ? item.isActive : undefined}
-                        className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${
-                          isActive
-                            ? 'bg-blue-600 text-white'
-                            : theme === 'dark'
-                              ? 'hover:bg-slate-700 text-slate-300'
-                              : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {'icon' in item && item.icon && (
-                            <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                          )}
-                          <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
-                            isActive
-                              ? '!text-white'
-                              : theme !== 'dark'
-                                ? '!text-blue-600'
-                                : ''
-                          }`}>{item.label}</span>
-                        </div>
-                        {'counter' in item && (
-                          <span
-                            className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${toneBadgeClasses[item.tone]} ${item.isActive ? 'ring-1 ring-sky-400/60' : ''
-                              }`}
-                          >
-                            {item.counter}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            <div className="space-y-2 sm:space-y-3">
-              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
-              <ThemeToggle variant="switch" label="Tema" />
-            </div>
-            
-            {/* Botón de usuario para móvil */}
-            <div className={`lg:hidden space-y-2 sm:space-y-3 pt-2 ${theme === 'dark' ? 'border-t border-slate-700/60' : 'border-t border-gray-200'}`}>
-              <button
-                onClick={() => {
-                  setShowProfileModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
-                  theme === 'dark'
-                    ? 'hover:bg-slate-700 text-slate-300'
-                    : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                }`}
-              >
-                <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
-                  {userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
-      </aside>
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        sections={sidebarNav}
+        currentUser={userInfo}
+        user={user}
+        setShowProfileModal={setShowProfileModal}
+      />
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
@@ -605,11 +468,10 @@ export default function ReportesPage() {
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                theme === 'dark' 
-                  ? 'text-slate-300 hover:bg-slate-700' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'text-slate-300 hover:bg-slate-700'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
               aria-label="Abrir menú"
             >
               <ChevronRight className="h-5 w-5" />
@@ -618,11 +480,10 @@ export default function ReportesPage() {
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                  theme === 'dark' 
-                    ? 'text-slate-300 hover:bg-slate-700 border border-slate-700' 
-                    : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
-                }`}
+                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
+                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                  }`}
                 aria-label="Expandir menú lateral"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -650,19 +511,18 @@ export default function ReportesPage() {
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
               <button
                 onClick={() => setShowFilters(prev => !prev)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${
-                  showFilters
-                    ? theme === 'dark'
-                      ? 'bg-sky-600 text-white border-sky-600'
-                      : 'bg-blue-600 text-white border-blue-600'
-                    : hasActiveFilters
+                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${showFilters
+                  ? theme === 'dark'
+                    ? 'bg-sky-600 text-white border-sky-600'
+                    : 'bg-blue-600 text-white border-blue-600'
+                  : hasActiveFilters
                     ? theme === 'dark'
                       ? 'bg-blue-600 text-white border-blue-600'
                       : 'bg-blue-600 text-white border-blue-600'
                     : theme === 'dark'
                       ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
                       : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
-                }`}
+                  }`}
                 type="button"
                 aria-label="Mostrar/Ocultar filtros"
                 aria-expanded={showFilters}
@@ -670,9 +530,8 @@ export default function ReportesPage() {
                 <Filter className="h-4 w-4" />
                 <span className="hidden sm:inline">Filtros</span>
                 {hasActiveFilters && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
-                  }`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
+                    }`}>
                     {[
                       selectedSeason,
                       selectedClientes.length > 0,
@@ -688,11 +547,10 @@ export default function ReportesPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${
-                  theme === 'dark'
-                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
-                }`}
+                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                  }`}
               >
                 <UserIcon className="h-4 w-4" />
                 {userInfo?.nombre || user.email}
@@ -713,22 +571,20 @@ export default function ReportesPage() {
                   {hasActiveFilters && (
                     <button
                       onClick={handleClearFilters}
-                      className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
-                        theme === 'dark'
-                          ? 'text-slate-300 hover:bg-slate-700'
-                          : 'text-gray-600 hover:bg-gray-100'
-                      }`}
+                      className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${theme === 'dark'
+                        ? 'text-slate-300 hover:bg-slate-700'
+                        : 'text-gray-600 hover:bg-gray-100'
+                        }`}
                     >
                       Limpiar filtros
                     </button>
                   )}
                   <button
                     onClick={() => setShowFilters(false)}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`p-1.5 rounded-lg transition-colors ${theme === 'dark'
+                      ? 'text-slate-300 hover:bg-slate-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                     aria-label="Cerrar filtros"
                   >
                     <XIcon className="h-4 w-4" />
@@ -751,11 +607,10 @@ export default function ReportesPage() {
                         // Si se limpia, no hacer nada más
                       }
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                   >
                     <option value="">Todas</option>
                     {filterOptions.temporadas.map((temp) => (
@@ -776,11 +631,10 @@ export default function ReportesPage() {
                       <button
                         type="button"
                         onClick={handleSelectAllClientes}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
-                          theme === 'dark'
-                            ? 'text-sky-400 hover:bg-slate-700'
-                            : 'text-blue-600 hover:bg-gray-100'
-                        }`}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${theme === 'dark'
+                          ? 'text-sky-400 hover:bg-slate-700'
+                          : 'text-blue-600 hover:bg-gray-100'
+                          }`}
                       >
                         {selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
                           ? 'Desmarcar todos'
@@ -790,37 +644,34 @@ export default function ReportesPage() {
                         <button
                           type="button"
                           onClick={() => setSelectedClientes([])}
-                          className={`text-xs px-2 py-1 rounded transition-colors ${
-                            theme === 'dark'
-                              ? 'text-slate-400 hover:bg-slate-700'
-                              : 'text-gray-600 hover:bg-gray-100'
-                          }`}
+                          className={`text-xs px-2 py-1 rounded transition-colors ${theme === 'dark'
+                            ? 'text-slate-400 hover:bg-slate-700'
+                            : 'text-gray-600 hover:bg-gray-100'
+                            }`}
                         >
                           Limpiar
                         </button>
                       )}
                     </div>
                   </div>
-                  <div className={`max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2 ${
-                    theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800'
-                      : 'border-gray-300 bg-white'
-                  }`}>
+                  <div className={`max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2 ${theme === 'dark'
+                    ? 'border-slate-700 bg-slate-800'
+                    : 'border-gray-300 bg-white'
+                    }`}>
                     {filterOptions.clientes.length > 0 ? (
                       filterOptions.clientes.map((cliente) => {
                         const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
                         return (
                           <label
                             key={cliente}
-                            className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
-                              isChecked
-                                ? theme === 'dark'
-                                  ? 'bg-sky-900/30 border border-sky-700/50'
-                                  : 'bg-blue-50 border border-blue-200'
-                                : theme === 'dark'
-                                  ? 'hover:bg-slate-700/50'
-                                  : 'hover:bg-gray-50'
-                            }`}
+                            className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${isChecked
+                              ? theme === 'dark'
+                                ? 'bg-sky-900/30 border border-sky-700/50'
+                                : 'bg-blue-50 border border-blue-200'
+                              : theme === 'dark'
+                                ? 'hover:bg-slate-700/50'
+                                : 'hover:bg-gray-50'
+                              }`}
                           >
                             <input
                               type="checkbox"
@@ -833,11 +684,10 @@ export default function ReportesPage() {
                               onClick={(e) => {
                                 e.stopPropagation();
                               }}
-                              className={`h-4 w-4 rounded cursor-pointer flex-shrink-0 ${
-                                theme === 'dark'
-                                  ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                  : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                              }`}
+                              className={`h-4 w-4 rounded cursor-pointer flex-shrink-0 ${theme === 'dark'
+                                ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                }`}
                             />
                             <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                               {cliente}
@@ -864,11 +714,10 @@ export default function ReportesPage() {
                       const newValue = e.target.value || null;
                       setSelectedEjecutivo(newValue);
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                     disabled={filterOptions.ejecutivos.length === 0}
                   >
                     <option value="">Todos</option>
@@ -892,11 +741,10 @@ export default function ReportesPage() {
                   <select
                     value={selectedEstado ?? ''}
                     onChange={(e) => setSelectedEstado(e.target.value || null)}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                   >
                     <option value="">Todos</option>
                     <option value="PENDIENTE">Pendiente</option>
@@ -916,11 +764,10 @@ export default function ReportesPage() {
                       const newValue = e.target.value || null;
                       setSelectedNaviera(newValue);
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                     disabled={filterOptions.navieras.length === 0}
                   >
                     <option value="">Todas</option>
@@ -947,11 +794,10 @@ export default function ReportesPage() {
                       const newValue = e.target.value || null;
                       setSelectedEspecie(newValue);
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                     disabled={filterOptions.especies.length === 0}
                   >
                     <option value="">Todas</option>
@@ -976,11 +822,10 @@ export default function ReportesPage() {
                     type="date"
                     value={fechaDesde}
                     onChange={(e) => setFechaDesde(e.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                   />
                 </div>
 
@@ -993,11 +838,10 @@ export default function ReportesPage() {
                     type="date"
                     value={fechaHasta}
                     onChange={(e) => setFechaHasta(e.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                    }`}
+                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
                   />
                 </div>
               </div>
@@ -1016,11 +860,10 @@ export default function ReportesPage() {
               </p>
               <button
                 onClick={handleClearFilters}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                  theme === 'dark'
-                    ? 'bg-amber-600 text-white hover:bg-amber-700'
-                    : 'bg-amber-500 text-white hover:bg-amber-600'
-                }`}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${theme === 'dark'
+                  ? 'bg-amber-600 text-white hover:bg-amber-700'
+                  : 'bg-amber-500 text-white hover:bg-amber-600'
+                  }`}
               >
                 Limpiar filtros
               </button>
@@ -1030,247 +873,243 @@ export default function ReportesPage() {
           {/* Métricas principales */}
           {registros.length > 0 && metrics && (
             <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <MetricCard
-              title="Total Reservas"
-              value={metrics.totalReservas}
-              subtitle={`${metrics.totalConfirmadas} confirmadas`}
-              icon={Package}
-              color="blue"
-            />
-            <MetricCard
-              title="Tasa de Confirmación"
-              value={`${metrics.porcentajeConfirmacion.toFixed(1)}%`}
-              subtitle={`${metrics.totalConfirmadas} de ${metrics.totalReservas}`}
-              icon={CheckCircle}
-              color="green"
-            />
-            <MetricCard
-              title="Ratio de Cancelación"
-              value={`${metrics.ratioCancelacion.toFixed(1)}%`}
-              subtitle={`${Math.round(metrics.totalReservas * metrics.ratioCancelacion / 100)} canceladas`}
-              icon={XCircle}
-              color="red"
-            />
-            <MetricCard
-              title="Tiempo Promedio"
-              value={`${metrics.tiempoPromedioReservaConfirmacion.toFixed(1)} días`}
-              subtitle="Reserva a confirmación"
-              icon={Clock}
-              color="amber"
-            />
-          </div>
-
-          {/* Métricas de tiempo y puntualidad */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <MetricCard
-              title="TT Real"
-              value={`${metrics.tiempoTransitoReal.toFixed(1)} días`}
-              subtitle="Tiempo de tránsito promedio"
-              icon={Ship}
-              color="sky"
-            />
-            <MetricCard
-              title="TT Planificado"
-              value={`${metrics.tiempoTransitoPlanificado.toFixed(1)} días`}
-              subtitle="Tiempo planificado promedio"
-              icon={Clock}
-              color="blue"
-            />
-            <MetricCard
-              title="Diferencia TT"
-              value={`${metrics.diferenciaTT > 0 ? '+' : ''}${metrics.diferenciaTT.toFixed(1)} días`}
-              subtitle={metrics.diferenciaTT > 0 ? 'Retraso promedio' : 'Adelanto promedio'}
-              icon={metrics.diferenciaTT > 0 ? AlertCircle : TrendingUp}
-              color={metrics.diferenciaTT > 0 ? 'red' : 'green'}
-            />
-            <MetricCard
-              title="Arribos a Tiempo"
-              value={`${metrics.porcentajeArribosATiempo.toFixed(1)}%`}
-              subtitle={`Retraso promedio: ${metrics.retrasosPromedio.toFixed(1)} días`}
-              icon={CheckCircle}
-              color="green"
-            />
-          </div>
-
-          {/* Métricas de capacidad */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
-            <MetricCard
-              title="Total Contenedores"
-              value={metrics.totalContenedores}
-              subtitle="Contenedores movilizados"
-              icon={Package}
-              color="blue"
-            />
-            <MetricCard
-              title="Total Embarques"
-              value={metrics.totalReservas}
-              subtitle="Embarques registrados"
-              icon={Ship}
-              color="purple"
-            />
-          </div>
-
-          {/* Gráficos */}
-          <div>
-            <h2 className={`text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Análisis Visual
-            </h2>
-            <KPICharts metrics={metrics} />
-          </div>
-
-          {/* Tablas de distribución */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Top Clientes */}
-            <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Top Clientes por Contenedores
-              </h3>
-              <div className="space-y-2">
-                {metrics.topClientes.map((cliente, index) => (
-                  <div
-                    key={cliente.cliente}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                        #{index + 1}
-                      </span>
-                      <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {cliente.cliente}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {cliente.contenedores} contenedores
-                      </p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                        {cliente.embarques} embarques
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <MetricCard
+                  title="Total Reservas"
+                  value={metrics.totalReservas}
+                  subtitle={`${metrics.totalConfirmadas} confirmadas`}
+                  icon={Package}
+                  color="blue"
+                />
+                <MetricCard
+                  title="Tasa de Confirmación"
+                  value={`${metrics.porcentajeConfirmacion.toFixed(1)}%`}
+                  subtitle={`${metrics.totalConfirmadas} de ${metrics.totalReservas}`}
+                  icon={CheckCircle}
+                  color="green"
+                />
+                <MetricCard
+                  title="Ratio de Cancelación"
+                  value={`${metrics.ratioCancelacion.toFixed(1)}%`}
+                  subtitle={`${Math.round(metrics.totalReservas * metrics.ratioCancelacion / 100)} canceladas`}
+                  icon={XCircle}
+                  color="red"
+                />
+                <MetricCard
+                  title="Tiempo Promedio"
+                  value={`${metrics.tiempoPromedioReservaConfirmacion.toFixed(1)} días`}
+                  subtitle="Reserva a confirmación"
+                  icon={Clock}
+                  color="amber"
+                />
               </div>
-            </div>
 
-            {/* Top Clientes Cancelados */}
-            <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-red-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-red-200 bg-white'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Top Clientes Cancelados
-              </h3>
-              <div className="space-y-2">
-                {metrics.topClientesCancelados.length > 0 ? (
-                  metrics.topClientesCancelados.map((cliente, index) => (
-                    <div
-                      key={cliente.cliente}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
-                        theme === 'dark' ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
-                          #{index + 1}
-                        </span>
-                        <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {cliente.cliente}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
-                          {cliente.cancelaciones} cancelaciones
-                        </p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                          {cliente.contenedores} contenedores
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                    <p className="text-sm">No hay cancelaciones registradas</p>
-                  </div>
-                )}
+              {/* Métricas de tiempo y puntualidad */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <MetricCard
+                  title="TT Real"
+                  value={`${metrics.tiempoTransitoReal.toFixed(1)} días`}
+                  subtitle="Tiempo de tránsito promedio"
+                  icon={Ship}
+                  color="sky"
+                />
+                <MetricCard
+                  title="TT Planificado"
+                  value={`${metrics.tiempoTransitoPlanificado.toFixed(1)} días`}
+                  subtitle="Tiempo planificado promedio"
+                  icon={Clock}
+                  color="blue"
+                />
+                <MetricCard
+                  title="Diferencia TT"
+                  value={`${metrics.diferenciaTT > 0 ? '+' : ''}${metrics.diferenciaTT.toFixed(1)} días`}
+                  subtitle={metrics.diferenciaTT > 0 ? 'Retraso promedio' : 'Adelanto promedio'}
+                  icon={metrics.diferenciaTT > 0 ? AlertCircle : TrendingUp}
+                  color={metrics.diferenciaTT > 0 ? 'red' : 'green'}
+                />
+                <MetricCard
+                  title="Arribos a Tiempo"
+                  value={`${metrics.porcentajeArribosATiempo.toFixed(1)}%`}
+                  subtitle={`Retraso promedio: ${metrics.retrasosPromedio.toFixed(1)} días`}
+                  icon={CheckCircle}
+                  color="green"
+                />
               </div>
-            </div>
 
-            {/* Top Ejecutivos */}
-            <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Top Ejecutivos
-              </h3>
-              <div className="space-y-2">
-                {metrics.topEjecutivos.map((ejecutivo, index) => (
-                  <div
-                    key={ejecutivo.ejecutivo}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                        #{index + 1}
-                      </span>
-                      <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {ejecutivo.ejecutivo}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {ejecutivo.embarques} embarques
-                      </p>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                        {ejecutivo.tasaConfirmacion.toFixed(1)}% confirmación
-                      </p>
-                    </div>
-                  </div>
-                ))}
+              {/* Métricas de capacidad */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 sm:gap-6">
+                <MetricCard
+                  title="Total Contenedores"
+                  value={metrics.totalContenedores}
+                  subtitle="Contenedores movilizados"
+                  icon={Package}
+                  color="blue"
+                />
+                <MetricCard
+                  title="Total Embarques"
+                  value={metrics.totalReservas}
+                  subtitle="Embarques registrados"
+                  icon={Ship}
+                  color="purple"
+                />
               </div>
-            </div>
 
-            {/* Top Ejecutivos Cancelados */}
-            <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-red-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-red-200 bg-white'}`}>
-              <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Top Ejecutivos Cancelados
-              </h3>
-              <div className="space-y-2">
-                {metrics.topEjecutivosCancelados.length > 0 ? (
-                  metrics.topEjecutivosCancelados.map((ejecutivo, index) => (
-                    <div
-                      key={ejecutivo.ejecutivo}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
-                        theme === 'dark' ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
-                          #{index + 1}
-                        </span>
-                        <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {ejecutivo.ejecutivo}
-                        </span>
-                      </div>
-                      <div className="text-right">
-                        <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
-                          {ejecutivo.cancelaciones} cancelaciones
-                        </p>
-                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                          {ejecutivo.contenedores} contenedores
-                        </p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                    <p className="text-sm">No hay cancelaciones registradas</p>
-                  </div>
-                )}
+              {/* Gráficos */}
+              <div>
+                <h2 className={`text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Análisis Visual
+                </h2>
+                <KPICharts metrics={metrics} />
               </div>
-            </div>
-          </div>
 
-          <AppFooter />
+              {/* Tablas de distribución */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Top Clientes */}
+                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Top Clientes por Contenedores
+                  </h3>
+                  <div className="space-y-2">
+                    {metrics.topClientes.map((cliente, index) => (
+                      <div
+                        key={cliente.cliente}
+                        className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            #{index + 1}
+                          </span>
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {cliente.cliente}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {cliente.contenedores} contenedores
+                          </p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {cliente.embarques} embarques
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Clientes Cancelados */}
+                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-red-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-red-200 bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Top Clientes Cancelados
+                  </h3>
+                  <div className="space-y-2">
+                    {metrics.topClientesCancelados.length > 0 ? (
+                      metrics.topClientesCancelados.map((cliente, index) => (
+                        <div
+                          key={cliente.cliente}
+                          className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200'
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                              #{index + 1}
+                            </span>
+                            <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {cliente.cliente}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
+                              {cliente.cancelaciones} cancelaciones
+                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {cliente.contenedores} contenedores
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        <p className="text-sm">No hay cancelaciones registradas</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Ejecutivos */}
+                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Top Ejecutivos
+                  </h3>
+                  <div className="space-y-2">
+                    {metrics.topEjecutivos.map((ejecutivo, index) => (
+                      <div
+                        key={ejecutivo.ejecutivo}
+                        className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
+                          }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            #{index + 1}
+                          </span>
+                          <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {ejecutivo.ejecutivo}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            {ejecutivo.embarques} embarques
+                          </p>
+                          <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {ejecutivo.tasaConfirmacion.toFixed(1)}% confirmación
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Ejecutivos Cancelados */}
+                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-red-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-red-200 bg-white'}`}>
+                  <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Top Ejecutivos Cancelados
+                  </h3>
+                  <div className="space-y-2">
+                    {metrics.topEjecutivosCancelados.length > 0 ? (
+                      metrics.topEjecutivosCancelados.map((ejecutivo, index) => (
+                        <div
+                          key={ejecutivo.ejecutivo}
+                          className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200'
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                              #{index + 1}
+                            </span>
+                            <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {ejecutivo.ejecutivo}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-300' : 'text-red-600'}`}>
+                              {ejecutivo.cancelaciones} cancelaciones
+                            </p>
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {ejecutivo.contenedores} contenedores
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={`text-center py-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        <p className="text-sm">No hay cancelaciones registradas</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <AppFooter />
             </>
           )}
         </main>

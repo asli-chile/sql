@@ -34,6 +34,8 @@ import type { ActiveVessel } from '@/types/vessels';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/layout/AppFooter';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { SidebarSection } from '@/types/layout';
 
 // Importar el mapa dinámicamente para evitar problemas con SSR
 const ShipmentsMap = dynamic(() => import('@/components/tracking/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
@@ -203,7 +205,7 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme } = useTheme();
-  
+
   // Detectar si estamos en la página de registros y qué filtro está activo
   const isRegistrosPage = pathname === '/registros';
   const activeEstadoFilter = isRegistrosPage ? searchParams.get('estado') : null;
@@ -586,27 +588,27 @@ export default function DashboardPage() {
     },
     ...(isRodrigo
       ? [
-          {
-            id: 'finanzas',
-            title: 'Finanzas',
-            description: 'Control de costos, ingresos y márgenes por embarque',
-            icon: DollarSign,
-            color: 'bg-green-500',
-            hoverColor: 'hover:bg-green-600',
-            available: true,
-            stats: null
-          },
-          {
-            id: 'reportes',
-            title: 'Reportes y KPIs',
-            description: 'Indicadores clave de rendimiento y análisis de operaciones',
-            icon: BarChart3,
-            color: 'bg-indigo-500',
-            hoverColor: 'hover:bg-indigo-600',
-            available: true,
-            stats: null
-          }
-        ]
+        {
+          id: 'finanzas',
+          title: 'Finanzas',
+          description: 'Control de costos, ingresos y márgenes por embarque',
+          icon: DollarSign,
+          color: 'bg-green-500',
+          hoverColor: 'hover:bg-green-600',
+          available: true,
+          stats: null
+        },
+        {
+          id: 'reportes',
+          title: 'Reportes y KPIs',
+          description: 'Indicadores clave de rendimiento y análisis de operaciones',
+          icon: BarChart3,
+          color: 'bg-indigo-500',
+          hoverColor: 'hover:bg-indigo-600',
+          available: true,
+          stats: null
+        }
+      ]
       : [])
   ];
 
@@ -654,31 +656,33 @@ export default function DashboardPage() {
     {
       title: 'Inicio',
       items: [
-        { label: 'Dashboard', id: 'dashboard', isActive: true, icon: LayoutDashboard },
+        { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
       ],
     },
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: 'registros', isActive: false, icon: Ship },
-        { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false, icon: Globe },
-        { label: 'Transportes', id: 'transportes', isActive: false, icon: Truck },
-        { label: 'Documentos', id: 'documentos', isActive: false, icon: FileText },
+        { label: 'Embarques', id: '/registros', icon: Ship },
+        { label: 'Transportes', id: '/transportes', icon: Truck },
+        { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Tracking', id: '/dashboard/seguimiento', icon: Globe },
         ...(isRodrigo
           ? [
-              { label: 'Finanzas', id: 'finanzas', isActive: false, icon: DollarSign },
-              { label: 'Reportes', id: 'reportes', isActive: false, icon: BarChart3 }
-            ]
+            { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', icon: BarChart3 },
+          ]
           : []),
       ],
     },
-    ...(canAccessMaintenance
+    ...(isAdmin
       ? [
-          {
-            title: 'Sistema',
-            items: [{ label: 'Mantenimiento', id: 'mantenimiento', isActive: false, icon: Settings }],
-          },
-        ]
+        {
+          title: 'Mantenimiento',
+          items: [
+            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+          ],
+        },
+      ]
       : []),
   ];
 
@@ -686,155 +690,23 @@ export default function DashboardPage() {
     <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Overlay para móvil */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <aside
-        className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
-          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-        } ${
-          isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
-        }`}
-      >
-        <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'} sticky top-0 z-10 overflow-hidden`}>
-          {/* Botón cerrar móvil */}
-          <button
-            onClick={() => setIsMobileMenuOpen(false)}
-            className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'}`}
-            aria-label="Cerrar menú"
-          >
-            <X className="h-5 w-5" />
-          </button>
-
-          {(!isSidebarCollapsed || isMobileMenuOpen) && (
-            <>
-              <div className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'} flex items-center justify-center`}>
-                <img
-                  src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                  alt="ASLI Gestión Logística"
-                  className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
-                  onError={(event) => {
-                    event.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <p className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>ASLI Gestión Logística</p>
-                <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Plataforma Operativa</p>
-              </div>
-            </>
-          )}
-          {!isSidebarCollapsed && !isMobileMenuOpen && (
-            <button
-              onClick={toggleSidebar}
-              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
-              aria-label="Contraer menú lateral"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-          )}
-          {isSidebarCollapsed && !isMobileMenuOpen && (
-            <button
-              onClick={toggleSidebar}
-              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
-              aria-label="Expandir menú lateral"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-
-        {(!isSidebarCollapsed || isMobileMenuOpen) && (
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
-            {sidebarNav.map((section) => (
-              <div key={section.title} className="space-y-2 sm:space-y-3">
-                <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{section.title}</p>
-                <div className="space-y-1 sm:space-y-1.5 overflow-y-visible">
-                  {section.items.map((item) => {
-                    const isActive = ('id' in item && item.isActive) || ('counter' in item && item.isActive);
-                    return (
-                      <button
-                        key={item.label}
-                        onClick={() => {
-                          if ('id' in item) {
-                            if (item.id === 'dashboard') {
-                              // Si ya estamos en dashboard, no hacer nada
-                              setIsMobileMenuOpen(false);
-                              return;
-                            }
-                            router.push(`/${item.id}`);
-                            setIsMobileMenuOpen(false);
-                          } else if ('onClick' in item && typeof item.onClick === 'function') {
-                            item.onClick();
-                            setIsMobileMenuOpen(false);
-                          }
-                        }}
-                        aria-pressed={'counter' in item ? item.isActive : undefined}
-                        className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${
-                          isActive
-                            ? 'bg-blue-600 text-white'
-                            : theme === 'dark'
-                              ? 'hover:bg-slate-700 text-slate-300'
-                              : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {'icon' in item && item.icon && (
-                            <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                          )}
-                          <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
-                            isActive
-                              ? '!text-white'
-                              : theme !== 'dark'
-                                ? '!text-blue-600'
-                                : ''
-                          }`}>{item.label}</span>
-                        </div>
-                        {'counter' in item && (
-                          <span
-                            className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${toneBadgeClasses[item.tone]} ${item.isActive ? 'ring-1 ring-sky-400/60' : ''
-                              }`}
-                          >
-                            {item.counter}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            <div className="space-y-2 sm:space-y-3">
-              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
-              <ThemeToggle variant="switch" label="Tema" />
-            </div>
-            
-            {/* Botón de usuario para móvil */}
-            <div className={`lg:hidden space-y-2 sm:space-y-3 pt-2 ${theme === 'dark' ? 'border-t border-slate-700/60' : 'border-t border-gray-200'}`}>
-              <button
-                onClick={() => {
-                  setShowProfileModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
-                  theme === 'dark'
-                    ? 'hover:bg-slate-700 text-slate-300'
-                    : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                }`}
-              >
-                <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
-                  {userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
-      </aside>
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        sections={sidebarNav}
+        currentUser={userInfo}
+        user={user}
+        setShowProfileModal={setShowProfileModal}
+      />
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
@@ -843,11 +715,10 @@ export default function DashboardPage() {
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                theme === 'dark' 
-                  ? 'text-slate-300 hover:bg-slate-700' 
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'text-slate-300 hover:bg-slate-700'
+                : 'text-gray-600 hover:bg-gray-100'
+                }`}
               aria-label="Abrir menú"
             >
               <ChevronRight className="h-5 w-5" />
@@ -856,11 +727,10 @@ export default function DashboardPage() {
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                  theme === 'dark' 
-                    ? 'text-slate-300 hover:bg-slate-700 border border-slate-700' 
-                    : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
-                }`}
+                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
+                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                  }`}
                 aria-label="Expandir menú lateral"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -889,11 +759,10 @@ export default function DashboardPage() {
               <select
                 value={selectedSeason ?? ''}
                 onChange={(event) => setSelectedSeason(event.target.value || null)}
-                className={`min-w-[180px] sm:min-w-[200px] rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
-                  theme === 'dark'
-                    ? 'border-slate-800 bg-slate-900/80 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                    : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30 shadow-sm'
-                }`}
+                className={`min-w-[180px] sm:min-w-[200px] rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                  ? 'border-slate-800 bg-slate-900/80 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                  : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30 shadow-sm'
+                  }`}
               >
                 <option value="">Todas las temporadas</option>
                 {Array.from(new Set([...DEFAULT_SEASON_ORDER, ...Object.keys(seasonStats)])).map((seasonKey) => (
@@ -904,11 +773,10 @@ export default function DashboardPage() {
               </select>
               <button
                 onClick={() => router.push('/registros')}
-                className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 ${
-                  theme === 'dark'
-                    ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20 focus:ring-sky-500/50'
-                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 focus:ring-blue-500/50'
-                }`}
+                className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 ${theme === 'dark'
+                  ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20 focus:ring-sky-500/50'
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 focus:ring-blue-500/50'
+                  }`}
               >
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Agregar registro</span>
@@ -916,11 +784,10 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${
-                  theme === 'dark'
-                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
-                }`}
+                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                  }`}
               >
                 <UserIcon className="h-4 w-4" />
                 {userInfo?.nombre || user.email}
@@ -931,11 +798,10 @@ export default function DashboardPage() {
 
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
           {/* Sección de bienvenida simplificada */}
-          <section className={`rounded-2xl border p-4 sm:p-6 shadow-xl ${
-            theme === 'dark'
-              ? 'border-slate-800/60 bg-gradient-to-br from-slate-950/80 to-slate-900/60'
-              : 'border-gray-200 bg-white shadow-md'
-          }`}>
+          <section className={`rounded-2xl border p-4 sm:p-6 shadow-xl ${theme === 'dark'
+            ? 'border-slate-800/60 bg-gradient-to-br from-slate-950/80 to-slate-900/60'
+            : 'border-gray-200 bg-white shadow-md'
+            }`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
                 <p className={`text-xs sm:text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Bienvenido</p>
@@ -951,13 +817,12 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3 sm:gap-4">
                 <button
                   onClick={() => router.push('/registros')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
-                    isRegistrosPage && !activeEstadoFilter
-                      ? theme === 'dark'
-                        ? 'bg-slate-800/60 border border-slate-600/50 shadow-lg shadow-slate-900/50'
-                        : 'bg-gray-100 border border-gray-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${isRegistrosPage && !activeEstadoFilter
+                    ? theme === 'dark'
+                      ? 'bg-slate-800/60 border border-slate-600/50 shadow-lg shadow-slate-900/50'
+                      : 'bg-gray-100 border border-gray-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Ver todos los embarques"
                 >
                   <p className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{displayedStats.total}</p>
@@ -966,13 +831,12 @@ export default function DashboardPage() {
                 <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
                 <button
                   onClick={() => router.push('/registros?estado=CONFIRMADO')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
-                    activeEstadoFilter === 'CONFIRMADO'
-                      ? theme === 'dark'
-                        ? 'bg-emerald-900/40 border border-emerald-600/50 shadow-lg shadow-emerald-900/30'
-                        : 'bg-emerald-50 border border-emerald-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${activeEstadoFilter === 'CONFIRMADO'
+                    ? theme === 'dark'
+                      ? 'bg-emerald-900/40 border border-emerald-600/50 shadow-lg shadow-emerald-900/30'
+                      : 'bg-emerald-50 border border-emerald-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Ver confirmados"
                 >
                   <p className="text-xl sm:text-2xl font-bold text-emerald-500">{displayedStats.confirmados}</p>
@@ -981,13 +845,12 @@ export default function DashboardPage() {
                 <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
                 <button
                   onClick={() => router.push('/registros?estado=PENDIENTE')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
-                    activeEstadoFilter === 'PENDIENTE'
-                      ? theme === 'dark'
-                        ? 'bg-amber-900/40 border border-amber-600/50 shadow-lg shadow-amber-900/30'
-                        : 'bg-amber-50 border border-amber-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${activeEstadoFilter === 'PENDIENTE'
+                    ? theme === 'dark'
+                      ? 'bg-amber-900/40 border border-amber-600/50 shadow-lg shadow-amber-900/30'
+                      : 'bg-amber-50 border border-amber-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Ver pendientes"
                 >
                   <p className="text-xl sm:text-2xl font-bold text-amber-500">{displayedStats.pendientes}</p>
@@ -996,13 +859,12 @@ export default function DashboardPage() {
                 <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
                 <button
                   onClick={() => router.push('/registros?estado=CANCELADO')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${
-                    activeEstadoFilter === 'CANCELADO'
-                      ? theme === 'dark'
-                        ? 'bg-red-900/40 border border-red-600/50 shadow-lg shadow-red-900/30'
-                        : 'bg-red-50 border border-red-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${activeEstadoFilter === 'CANCELADO'
+                    ? theme === 'dark'
+                      ? 'bg-red-900/40 border border-red-600/50 shadow-lg shadow-red-900/30'
+                      : 'bg-red-50 border border-red-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Ver cancelados"
                 >
                   <p className="text-xl sm:text-2xl font-bold text-red-500">{displayedStats.cancelados}</p>
@@ -1032,18 +894,16 @@ export default function DashboardPage() {
                       }
                     }}
                     disabled={isDisabled}
-                    className={`group relative overflow-hidden rounded-xl border-2 p-4 sm:p-6 text-left transition-all ${
-                      theme === 'dark'
-                        ? `border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60 ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-sky-500/60 hover:shadow-xl hover:shadow-sky-900/30 hover:scale-[1.02] active:scale-[0.98]'}`
-                        : `border-gray-200 bg-white shadow-md ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'}`
-                    }`}
+                    className={`group relative overflow-hidden rounded-xl border-2 p-4 sm:p-6 text-left transition-all ${theme === 'dark'
+                      ? `border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60 ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-sky-500/60 hover:shadow-xl hover:shadow-sky-900/30 hover:scale-[1.02] active:scale-[0.98]'}`
+                      : `border-gray-200 bg-white shadow-md ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'}`
+                      }`}
                   >
                     <div className="flex items-start gap-3 sm:gap-4">
-                      <div className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border flex-shrink-0 ${
-                        theme === 'dark'
-                          ? 'bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border-sky-500/30'
-                          : 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-200'
-                      }`}>
+                      <div className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border flex-shrink-0 ${theme === 'dark'
+                        ? 'bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border-sky-500/30'
+                        : 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-200'
+                        }`}>
                         <IconComponent className={`h-6 w-6 sm:h-7 sm:w-7 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1080,11 +940,10 @@ export default function DashboardPage() {
               <h3 className={`text-base sm:text-lg font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ubicación de embarques</h3>
               <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Visualiza el estado de tus embarques en tiempo real</p>
             </div>
-            <div className={`rounded-2xl border p-4 shadow-lg ${
-              theme === 'dark'
-                ? 'border-slate-800/70 bg-slate-950/60'
-                : 'border-gray-200 bg-white'
-            }`}>
+            <div className={`rounded-2xl border p-4 shadow-lg ${theme === 'dark'
+              ? 'border-slate-800/70 bg-slate-950/60'
+              : 'border-gray-200 bg-white'
+              }`}>
               <ShipmentsMap registros={filteredRegistrosParaMapa} activeVessels={filteredActiveVessels} />
             </div>
           </section>

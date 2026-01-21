@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 // Importar todos los componentes existentes
@@ -25,13 +25,14 @@ import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/hooks/useToast';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
 import { ToastContainer } from '@/components/layout/Toast';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { SidebarSection } from '@/types/layout';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { logHistoryEntry } from '@/lib/history';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package, CheckCircle, Container, Trash2, FileText, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import { FacturaCreator } from '@/components/facturas/FacturaCreator';
@@ -62,7 +63,7 @@ export default function RegistrosPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  
+
   // Estados para filtros y columnas del DataTable
   const [tableInstance, setTableInstance] = useState<any>(null);
   const [tableStates, setTableStates] = useState<{
@@ -187,7 +188,7 @@ export default function RegistrosPage() {
       }
     } else if (!estadoParam && tableInstance) {
       // Si no hay parámetro, remover el filtro de estado
-      tableInstance.setColumnFilters((prev: any[]) => 
+      tableInstance.setColumnFilters((prev: any[]) =>
         prev.filter((f: any) => f.id !== 'estado')
       );
     }
@@ -596,13 +597,13 @@ export default function RegistrosPage() {
         const navesConNaviera = navesData.filter((n: any) => n.naviera_nombre && n.naviera_nombre.trim() !== '' && n.nombre && n.nombre.trim() !== '');
         const todasLasNaves = navesConNaviera.map((n: any) => n.nombre.trim()).filter(Boolean);
         setNavesUnicas(todasLasNaves);
-        
+
         // Crear mapping de naviera -> naves desde catalogos_naves
         const navesMapping: Record<string, string[]> = {};
         navesConNaviera.forEach((nave: any) => {
           const navieraNombre = nave.naviera_nombre.trim();
           const nombreNave = nave.nombre.trim();
-          
+
           if (!navesMapping[navieraNombre]) {
             navesMapping[navieraNombre] = [];
           }
@@ -610,12 +611,12 @@ export default function RegistrosPage() {
             navesMapping[navieraNombre].push(nombreNave);
           }
         });
-        
+
         // Ordenar naves dentro de cada naviera
         Object.keys(navesMapping).forEach(naviera => {
           navesMapping[naviera].sort();
         });
-        
+
         setNavierasNavesMappingCatalog(navesMapping);
       }
 
@@ -932,7 +933,7 @@ export default function RegistrosPage() {
       success('Iniciando importación desde Google Sheets...');
 
       const endpoint = '/api/google-sheets/import-json';
-      
+
       const body = {
         webAppUrl: 'https://script.google.com/macros/s/AKfycbwOkX2_StMpQrWwF2EbOH5tYpP0HQglP1GgU5UX5oRb0Y3D3d6TVWkzr2B4VSNXDEic/exec',
         sheetName: 'CONTROL',
@@ -960,10 +961,10 @@ export default function RegistrosPage() {
         success(
           `✅ Importación completada: ${resumen.exitosos} insertados, ${resumen.fallidos} fallidos, ${resumen.duplicados} duplicados, ${resumen.transportes || 0} transportes`
         );
-        
+
         // Recargar registros
         loadRegistros();
-        
+
         // Mostrar detalles si hay errores
         if (resumen.invalidos > 0 || result.detalles?.errores?.length > 0) {
           console.warn('Detalles de errores:', result.detalles);
@@ -1031,11 +1032,11 @@ export default function RegistrosPage() {
     }
     const registros = Array.isArray(registroOrRegistros) ? registroOrRegistros : [registroOrRegistros];
     const supabase = createClient();
-    
+
     let exitosos = 0;
     let fallidos = 0;
     const errores: string[] = [];
-    
+
     for (const registro of registros) {
       try {
         // Verificar campos requeridos
@@ -1044,14 +1045,14 @@ export default function RegistrosPage() {
           fallidos++;
           continue;
         }
-        
+
         // Verificar que tenga PDF de booking cargado
         if (!registro.bookingPdf || registro.bookingPdf.trim() === '') {
           errores.push(`${registro.refAsli || registro.booking}: No tiene PDF de booking cargado`);
           fallidos++;
           continue;
         }
-        
+
         // Verificar si ya existe un transporte para esta ref externa
         // Solo verificar si el registro tiene refCliente
         if (registro.refCliente && registro.refCliente.trim() !== '') {
@@ -1060,26 +1061,26 @@ export default function RegistrosPage() {
             .select('*')
             .eq('ref_cliente', registro.refCliente.trim())
             .maybeSingle();
-          
+
           if (checkErrorByRef) {
             console.error('Error al verificar transporte existente por ref externa:', checkErrorByRef);
             errores.push(`${registro.refAsli || registro.booking}: Error al verificar ref externa`);
             fallidos++;
             continue;
           }
-          
+
           if (existingTransporteByRef) {
             errores.push(`${registro.refAsli || registro.booking}: Ya existe un transporte con la ref externa ${registro.refCliente}`);
             fallidos++;
             continue;
           }
         }
-        
+
         // Extraer contenedor (puede ser array o string)
         const contenedorValue = Array.isArray(registro.contenedor)
           ? registro.contenedor[0] || ''
           : registro.contenedor || '';
-        
+
         // Crear nuevo registro de transporte con los datos del registro de embarque
         const transporteData = {
           ref_cliente: registro.refCliente && registro.refCliente.trim() !== '' ? registro.refCliente.trim() : null,
@@ -1099,12 +1100,12 @@ export default function RegistrosPage() {
           exportacion: registro.shipper || null,
           created_by: currentUser?.id || null,
         };
-        
+
         const { data, error: insertError } = await supabase
           .from('transportes')
           .insert([transporteData])
           .select();
-        
+
         if (insertError) {
           console.error('Error de inserción:', insertError);
           const errorMessage = insertError.message || insertError.details || JSON.stringify(insertError);
@@ -1112,22 +1113,22 @@ export default function RegistrosPage() {
           fallidos++;
           continue;
         }
-        
+
         if (!data || data.length === 0) {
           errores.push(`${registro.refAsli || registro.booking}: No se recibió confirmación`);
           fallidos++;
           continue;
         }
-        
+
         exitosos++;
-        
+
       } catch (err) {
         console.error('Error al enviar a transportes:', err);
         errores.push(`${registro.refAsli || registro.booking}: ${err instanceof Error ? err.message : 'Error desconocido'}`);
         fallidos++;
       }
     }
-    
+
     // Mostrar resultado
     if (exitosos > 0 && fallidos === 0) {
       success(`${exitosos} registro${exitosos > 1 ? 's' : ''} enviado${exitosos > 1 ? 's' : ''} a Transportes exitosamente`);
@@ -1137,7 +1138,7 @@ export default function RegistrosPage() {
       error(`No se pudo enviar ningún registro. Errores: ${errores.join('; ')}`);
       return; // No abrir correo si no se envió ninguno
     }
-    
+
     // Se eliminó el envío automático de correo al enviar a Transportes
   };
 
@@ -1741,9 +1742,9 @@ export default function RegistrosPage() {
     if (!tableInstance || !tableStates) return;
 
     const currentExecutiveFilter = tableStates.executiveFilter || '';
-    
+
     // Generar arrays de opciones válidas basadas en el ejecutivo actual
-    const registrosFiltrados = currentExecutiveFilter 
+    const registrosFiltrados = currentExecutiveFilter
       ? registrosVisibles.filter(r => r.ejecutivo === currentExecutiveFilter)
       : registrosVisibles;
 
@@ -1766,8 +1767,8 @@ export default function RegistrosPage() {
         return;
       }
 
-      const stringValue = typeof filterValue === 'string' 
-        ? filterValue.trim() 
+      const stringValue = typeof filterValue === 'string'
+        ? filterValue.trim()
         : Array.isArray(filterValue) && filterValue.length > 0
           ? String(filterValue[0]).trim()
           : String(filterValue).trim();
@@ -1806,10 +1807,10 @@ export default function RegistrosPage() {
 
     // Limpiar los filtros inválidos usando setColumnFilters para actualizar el estado correctamente
     if (filtersToClear.length > 0) {
-      tableInstance.setColumnFilters((prev: any[]) => 
+      tableInstance.setColumnFilters((prev: any[]) =>
         prev.filter((f: any) => !filtersToClear.includes(f.id))
       );
-      
+
       // También limpiar individualmente cada columna para asegurar sincronización
       filtersToClear.forEach((columnId) => {
         const column = tableInstance.getColumn(columnId);
@@ -1868,7 +1869,7 @@ export default function RegistrosPage() {
 
   // Cargar documentos proforma desde storage y crear Map de bookings con información del documento
   const [bookingsConProforma, setBookingsConProforma] = useState<Map<string, { nombre: string; fecha: string }>>(new Map());
-  
+
   const loadProformaDocuments = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -1887,7 +1888,7 @@ export default function RegistrosPage() {
 
       // Extraer bookings de los nombres de archivo y guardar información del documento
       const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-      
+
       data?.forEach((file) => {
         const separatorIndex = file.name.indexOf('__');
         if (separatorIndex !== -1) {
@@ -1898,7 +1899,7 @@ export default function RegistrosPage() {
               // Parsear nombre del archivo
               const { originalName } = parseStoredDocumentName(file.name);
               const nombreFormateado = formatFileDisplayName(originalName);
-              
+
               // Formatear fecha en formato DD-MM-YYYY
               const fechaArchivo = file.updated_at || file.created_at;
               let fechaFormateada = '-';
@@ -1909,7 +1910,7 @@ export default function RegistrosPage() {
                 const año = fecha.getFullYear();
                 fechaFormateada = `${dia}-${mes}-${año}`;
               }
-              
+
               // Si ya existe un documento para este booking, mantener el más reciente
               const existente = bookingsMap.get(booking);
               if (!existente) {
@@ -1967,7 +1968,7 @@ export default function RegistrosPage() {
 
   // Cargar documentos booking desde storage
   const [bookingDocuments, setBookingDocuments] = useState<Map<string, { nombre: string; fecha: string }>>(new Map());
-  
+
   useEffect(() => {
     const loadBookingDocuments = async () => {
       try {
@@ -1986,7 +1987,7 @@ export default function RegistrosPage() {
         }
 
         const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-        
+
         data?.forEach((file) => {
           const separatorIndex = file.name.indexOf('__');
           if (separatorIndex !== -1) {
@@ -1997,7 +1998,7 @@ export default function RegistrosPage() {
                 const { originalName } = parseStoredDocumentName(file.name);
                 // Usar el nombre original sin formatear para mostrar el nombre que el usuario le dio
                 const nombreOriginal = originalName;
-                
+
                 const fechaArchivo = file.updated_at || file.created_at;
                 let fechaFormateada = '-';
                 if (fechaArchivo) {
@@ -2007,7 +2008,7 @@ export default function RegistrosPage() {
                   const año = fecha.getFullYear();
                   fechaFormateada = `${dia}-${mes}-${año}`;
                 }
-                
+
                 const existente = bookingsMap.get(booking);
                 if (!existente) {
                   bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
@@ -2165,7 +2166,7 @@ export default function RegistrosPage() {
       const supabase = createClient();
       const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
       const bookingSegment = encodeURIComponent(normalizedBooking);
-      
+
       // Validar extensión del archivo
       const extension = file.name.split('.').pop()?.toLowerCase();
       const allowedExtensions = ['pdf', 'xls', 'xlsx'];
@@ -2197,7 +2198,7 @@ export default function RegistrosPage() {
       }
 
       success('Proforma subida correctamente.');
-      
+
       // Recargar documentos proforma
       const { data, error: listError } = await supabase.storage
         .from('documentos')
@@ -2209,7 +2210,7 @@ export default function RegistrosPage() {
 
       if (!listError && data) {
         const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-        
+
         data.forEach((file) => {
           const separatorIndex = file.name.indexOf('__');
           if (separatorIndex !== -1) {
@@ -2219,7 +2220,7 @@ export default function RegistrosPage() {
               if (bookingKey) {
                 const { originalName } = parseStoredDocumentName(file.name);
                 const nombreFormateado = formatFileDisplayName(originalName);
-                
+
                 const fechaArchivo = file.updated_at || file.created_at;
                 let fechaFormateada = '-';
                 if (fechaArchivo) {
@@ -2229,7 +2230,7 @@ export default function RegistrosPage() {
                   const año = fecha.getFullYear();
                   fechaFormateada = `${dia}-${mes}-${año}`;
                 }
-                
+
                 const existente = bookingsMap.get(bookingKey);
                 if (!existente) {
                   bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
@@ -2321,7 +2322,7 @@ export default function RegistrosPage() {
       // Si hay un archivo, subirlo a storage
       if (file) {
         const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
-        
+
         // Validar extensión del archivo
         const extension = file.name.split('.').pop()?.toLowerCase();
         if (extension !== 'pdf') {
@@ -2330,16 +2331,16 @@ export default function RegistrosPage() {
         }
 
         // Usar el nombre personalizado que el usuario proporcionó
-        const fileNameToUse = customFileName && customFileName.trim() 
+        const fileNameToUse = customFileName && customFileName.trim()
           ? `${customFileName.trim()}.pdf`
           : file.name.replace(/\.pdf$/i, '') + '.pdf';
-        
+
         // Sanitizar nombre del archivo (mantener caracteres normales)
         const safeName = sanitizeFileName(fileNameToUse);
-        
+
         // Formato simple: bookingSegment__nombrePersonalizado.pdf (sin timestamp)
         const filePath = `booking/${normalizedBooking}__${safeName}`;
-        
+
         // Intentar eliminar archivos anteriores para este booking
         try {
           const { data: existingFiles, error: listError } = await supabase.storage
@@ -2347,7 +2348,7 @@ export default function RegistrosPage() {
             .list('booking', {
               limit: 1000,
             });
-          
+
           if (listError) {
             console.warn('Error al listar archivos existentes:', listError);
           } else if (existingFiles && existingFiles.length > 0) {
@@ -2362,12 +2363,12 @@ export default function RegistrosPage() {
                 }
               })
               .map(f => `booking/${f.name}`);
-            
+
             if (filesToDelete.length > 0) {
               const { error: deleteError } = await supabase.storage
                 .from('documentos')
                 .remove(filesToDelete);
-              
+
               if (deleteError) {
                 console.warn('Error al eliminar archivos anteriores:', deleteError);
               }
@@ -2408,7 +2409,7 @@ export default function RegistrosPage() {
             const updatedRecord = { ...record, booking: booking.trim().toUpperCase() };
             if (file) {
               const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
-              const fileNameToUse = customFileName && customFileName.trim() 
+              const fileNameToUse = customFileName && customFileName.trim()
                 ? `${customFileName.trim()}.pdf`
                 : file.name.replace(/\.pdf$/i, '') + '.pdf';
               const safeName = sanitizeFileName(fileNameToUse);
@@ -2433,7 +2434,7 @@ export default function RegistrosPage() {
 
         if (!error && data) {
           const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-          
+
           data.forEach((file) => {
             const separatorIndex = file.name.indexOf('__');
             if (separatorIndex !== -1) {
@@ -2443,7 +2444,7 @@ export default function RegistrosPage() {
                 if (booking) {
                   const { originalName } = parseStoredDocumentName(file.name);
                   const nombreFormateado = formatFileDisplayName(originalName);
-                  
+
                   const fechaArchivo = file.updated_at || file.created_at;
                   let fechaFormateada = '-';
                   if (fechaArchivo) {
@@ -2453,7 +2454,7 @@ export default function RegistrosPage() {
                     const año = fecha.getFullYear();
                     fechaFormateada = `${dia}-${mes}-${año}`;
                   }
-                  
+
                   const existente = bookingsMap.get(booking);
                   if (!existente) {
                     bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
@@ -2580,7 +2581,7 @@ export default function RegistrosPage() {
     handleOpenBookingModal,
     bookingDocuments,
     currentUser?.rol
-  ]); 
+  ]);
 
   if (loading) {
     return <LoadingScreen message="Cargando registros..." />;
@@ -2599,49 +2600,43 @@ export default function RegistrosPage() {
     emerald: 'bg-emerald-500/20 text-emerald-300',
   } as const;
 
-  type SidebarNavItem = {
-    label: string;
-    id?: string;
-    counter?: number;
-    tone?: keyof typeof toneBadgeClasses;
-    isActive?: boolean;
-    onClick?: () => void;
-  };
-
-  type SidebarSection = {
-    title: string;
-    items: SidebarNavItem[];
-  };
-
   const sidebarSections: SidebarSection[] = [
     {
       title: 'Inicio',
       items: [
-        { label: 'Inicio', id: '/dashboard' },
+        { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
       ],
     },
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky' },
-        { label: 'Transportes', id: '/transportes' },
-        { label: 'Documentos', id: '/documentos' },
-        { label: 'Tracking', id: '/dashboard/seguimiento' },
+        { label: 'Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky', icon: Ship },
+        { label: 'Transportes', id: '/transportes', icon: Truck },
+        { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Tracking', id: '/dashboard/seguimiento', icon: Globe },
+        ...(isRodrigo
+          ? [
+            { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', icon: BarChart3 },
+          ]
+          : []),
       ],
     },
     {
       title: 'Sistema',
       items: [
-        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet' },
+        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet', icon: Trash2 },
       ],
     },
-    ...(isRodrigo
+    ...(currentUser?.rol === 'admin'
       ? [
-          {
-            title: 'Mantenimiento',
-            items: [{ label: 'Usuarios', id: '/mantenimiento' }],
-          },
-        ]
+        {
+          title: 'Mantenimiento',
+          items: [
+            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+          ],
+        },
+      ]
       : []),
   ];
 
@@ -2652,124 +2647,22 @@ export default function RegistrosPage() {
       <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
         {/* Overlay para móvil */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
 
-        <aside
-          className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          } ${
-            isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
-          }`}
-        >
-          <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'} sticky top-0 z-10 overflow-hidden`}>
-            {/* Botón cerrar móvil */}
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'}`}
-              aria-label="Cerrar menú"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {(!isSidebarCollapsed || isMobileMenuOpen) && (
-              <>
-                <div className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'} flex items-center justify-center`}>
-                  <img
-                    src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                    alt="ASLI Gestión Logística"
-                    className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
-                    onError={(event) => {
-                      event.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>ASLI Gestión Logística</p>
-                  <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Plataforma Operativa</p>
-                </div>
-              </>
-            )}
-            {!isSidebarCollapsed && !isMobileMenuOpen && (
-              <button
-                onClick={toggleSidebar}
-                className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
-                aria-label="Contraer menú lateral"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-          {(!isSidebarCollapsed || isMobileMenuOpen) && (
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
-            {sidebarSections.map((section) => (
-              <div key={section.title} className="space-y-2 sm:space-y-3">
-                <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{section.title}</p>
-                <div className="space-y-1 sm:space-y-1.5 overflow-y-visible">
-                  {section.items.map((item) => (
-                    <button
-                      key={item.label}
-                      onClick={() => {
-                        if (item.onClick) {
-                          item.onClick();
-                          setIsMobileMenuOpen(false);
-                        } else if (item.id) {
-                          router.push(item.id);
-                          setIsMobileMenuOpen(false);
-                        }
-                      }}
-                      className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${item.isActive
-                        ? `${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}`
-                        : `${theme === 'dark' ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-blue-50 text-blue-600 font-semibold'}`
-                        }`}
-                    >
-                      <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
-                        item.isActive
-                          ? '!text-white'
-                          : theme !== 'dark'
-                            ? '!text-blue-600'
-                            : ''
-                      }`}>{item.label}</span>
-                      {item.counter !== undefined && item.tone && (
-                        <span className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${toneBadgeClasses[item.tone]}`}>
-                          {item.counter}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <div className="space-y-2 sm:space-y-3">
-              <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
-              <ThemeToggle variant="switch" label="Tema" />
-            </div>
-            
-            {/* Botón de usuario para móvil */}
-            <div className={`lg:hidden space-y-2 sm:space-y-3 pt-2 ${theme === 'dark' ? 'border-t border-slate-700/60' : 'border-t border-gray-200'}`}>
-              <button
-                onClick={() => {
-                  setShowProfileModal(true);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
-                  theme === 'dark'
-                    ? 'hover:bg-slate-700 text-slate-300'
-                    : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                }`}
-              >
-                <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
-                  {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                </span>
-              </button>
-            </div>
-          </div>
-          )}
-        </aside>
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          sections={sidebarSections}
+          currentUser={currentUser}
+          user={user}
+          setShowProfileModal={setShowProfileModal}
+        />
 
         <div
           className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all"
@@ -2782,11 +2675,10 @@ export default function RegistrosPage() {
                   {/* Botón hamburguesa para móvil */}
                   <button
                     onClick={() => setIsMobileMenuOpen(true)}
-                    className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                      theme === 'dark' 
-                        ? 'text-slate-300 hover:bg-slate-700' 
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                      ? 'text-slate-300 hover:bg-slate-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                     aria-label="Abrir menú"
                   >
                     <Menu className="h-5 w-5" />
@@ -2809,11 +2701,10 @@ export default function RegistrosPage() {
                 <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0">
                   <button
                     onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-                    className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border transition flex-shrink-0 ${
-                      isRightSidebarOpen
-                        ? `${theme === 'dark' ? 'border-sky-500/60 bg-sky-500/10 text-sky-200' : 'border-blue-500 bg-blue-50 text-blue-600'}`
-                        : `${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-700'}`
-                    }`}
+                    className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border transition flex-shrink-0 ${isRightSidebarOpen
+                      ? `${theme === 'dark' ? 'border-sky-500/60 bg-sky-500/10 text-sky-200' : 'border-blue-500 bg-blue-50 text-blue-600'}`
+                      : `${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-700'}`
+                      }`}
                     aria-label={isRightSidebarOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros"}
                   >
                     <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -2839,39 +2730,39 @@ export default function RegistrosPage() {
 
           <main className="flex-1 min-w-0 min-h-0 w-full flex flex-col overflow-hidden">
             <section className={`border-0 w-full h-full flex flex-col min-h-0 min-w-0 overflow-hidden ${theme === 'dark' ? 'bg-slate-950/60' : 'bg-white'}`}>
-                <DataTable
-                      data={registrosVisibles}
-                      columns={columns}
-                      navierasUnicas={navierasFiltro}
-                      ejecutivosUnicos={ejecutivosFiltro}
-                      especiesUnicas={especiesFiltro}
-                      clientesUnicos={clientesFiltro}
-                      polsUnicos={polsFiltro}
-                      destinosUnicos={destinosFiltro}
-                      depositosUnicos={depositosFiltro}
-                      onAdd={handleAdd}
-                      onEdit={handleEdit}
-                      onEditNaveViaje={handleEditNaveViaje}
-                      onBulkEditNaveViaje={handleBulkEditNaveViaje}
-                      onDelete={handleDelete}
-                      selectedRows={selectedRows}
-                      onToggleRowSelection={handleToggleRowSelection}
-                      onSelectAll={handleSelectAll}
-                      onClearSelection={handleClearSelection}
-                      onBulkDelete={handleBulkDelete}
-                      preserveFilters={true}
-                      onTableInstanceReady={handleTableInstanceReady}
-                      onShowHistorial={handleShowHistorial}
-                      onSendToTransportes={handleSendToTransportes}
-                      bookingDocuments={bookingDocuments}
-                    />
-              </section>
+              <DataTable
+                data={registrosVisibles}
+                columns={columns}
+                navierasUnicas={navierasFiltro}
+                ejecutivosUnicos={ejecutivosFiltro}
+                especiesUnicas={especiesFiltro}
+                clientesUnicos={clientesFiltro}
+                polsUnicos={polsFiltro}
+                destinosUnicos={destinosFiltro}
+                depositosUnicos={depositosFiltro}
+                onAdd={handleAdd}
+                onEdit={handleEdit}
+                onEditNaveViaje={handleEditNaveViaje}
+                onBulkEditNaveViaje={handleBulkEditNaveViaje}
+                onDelete={handleDelete}
+                selectedRows={selectedRows}
+                onToggleRowSelection={handleToggleRowSelection}
+                onSelectAll={handleSelectAll}
+                onClearSelection={handleClearSelection}
+                onBulkDelete={handleBulkDelete}
+                preserveFilters={true}
+                onTableInstanceReady={handleTableInstanceReady}
+                onShowHistorial={handleShowHistorial}
+                onSendToTransportes={handleSendToTransportes}
+                bookingDocuments={bookingDocuments}
+              />
+            </section>
           </main>
         </div>
 
         {/* Overlay para sidebar de filtros en móvil */}
         {isRightSidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setIsRightSidebarOpen(false)}
           />
@@ -2879,10 +2770,9 @@ export default function RegistrosPage() {
 
         {/* Sidebar derecho para filtros y configuración de columnas */}
         <aside
-          className={`fixed lg:relative right-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-800/60 bg-slate-950/60' : 'border-l border-gray-200 bg-white'} backdrop-blur-xl ${
-            isRightSidebarOpen 
-              ? 'translate-x-0 lg:w-80 lg:opacity-100 lg:pointer-events-auto' 
-              : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none'
+          className={`fixed lg:relative right-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-800/60 bg-slate-950/60' : 'border-l border-gray-200 bg-white'} backdrop-blur-xl ${isRightSidebarOpen
+            ? 'translate-x-0 lg:w-80 lg:opacity-100 lg:pointer-events-auto'
+            : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none'
             } w-80`}
         >
           <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'}`}>
@@ -2895,21 +2785,21 @@ export default function RegistrosPage() {
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div 
+          <div
             className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
             onWheel={(e) => {
               const element = e.currentTarget;
               const { scrollTop, scrollHeight, clientHeight } = element;
               const isScrollingUp = e.deltaY < 0;
               const isScrollingDown = e.deltaY > 0;
-              
+
               // Si está en el top y hace scroll hacia arriba, prevenir
               if (isScrollingUp && scrollTop === 0) {
                 e.stopPropagation();
                 e.preventDefault();
                 return;
               }
-              
+
               // Si está en el bottom y hace scroll hacia abajo, prevenir
               if (isScrollingDown && scrollTop + clientHeight >= scrollHeight - 1) {
                 e.stopPropagation();
@@ -2955,210 +2845,210 @@ export default function RegistrosPage() {
           </div>
         </aside>
 
-      {/* Modals */}
-      <AddModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={() => {
-          loadRegistros();
-          loadCatalogos();
-          setIsAddModalOpen(false);
-        }}
-        createdByName={
-          currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'
-        }
-        navierasUnicas={navierasUnicas}
-        ejecutivosUnicos={ejecutivosUnicos}
-        especiesUnicas={especiesUnicas}
-        clientesUnicos={clientesUnicos}
-        refExternasUnicas={refExternasUnicas}
-        polsUnicos={polsUnicos}
-        destinosUnicos={destinosUnicos}
-        depositosUnicos={depositosUnicos}
-        navesUnicas={navesUnicas}
-        navierasNavesMapping={navierasNavesMappingCatalog}
-        consorciosNavesMapping={consorciosNavesMappingCatalog}
-        cbmUnicos={cbmUnicos}
-        fletesUnicos={fletesUnicos}
-        contratosUnicos={contratosUnicos}
-        co2sUnicos={co2sUnicos}
-        o2sUnicos={o2sUnicos}
-        tratamientosDeFrioOpciones={tratamientosFrioUnicos}
-        clienteFijadoPorCoincidencia={
-          !isEjecutivo && clientesAsignados.length === 1
-            ? clientesAsignados[0]
-            : undefined
-        }
-      />
-
-      <EditModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSuccess={() => {
-          loadRegistros();
-          loadCatalogos();
-          setIsEditModalOpen(false);
-        }}
-        record={selectedRecord}
-        navierasUnicas={navierasUnicas}
-        navesUnicas={navesUnicas}
-        navierasNavesMapping={navierasNavesMappingCatalog}
-        consorciosNavesMapping={consorciosNavesMappingCatalog}
-        refExternasUnicas={refExternasUnicas}
-        tratamientosDeFrioOpciones={tratamientosFrioUnicos}
-      />
-
-      <TrashModal
-        isOpen={isTrashModalOpen}
-        onClose={() => setIsTrashModalOpen(false)}
-        onRestore={() => {
-          loadRegistros();
-          loadTrashCount();
-          setIsTrashModalOpen(false);
-        }}
-        onSuccess={success}
-        onError={error}
-      />
-
-      {selectedRegistroForHistorial && (
-        <HistorialModal
-          isOpen={isHistorialModalOpen}
-          onClose={handleCloseHistorial}
-          registroId={selectedRegistroForHistorial.id || ''}
-          registroRefAsli={selectedRegistroForHistorial.refAsli}
-        />
-      )}
-
-      <BookingModal
-        isOpen={isBookingModalOpen}
-        onClose={() => {
-          setIsBookingModalOpen(false);
-          setSelectedRegistroForBooking(null);
-        }}
-        onSave={handleSaveBooking}
-        currentBooking={selectedRegistroForBooking?.booking || ''}
-        registroId={selectedRegistroForBooking?.id || ''}
-        existingDocument={
-          (() => {
-            if (!selectedRegistroForBooking?.booking) return null;
-            const bookingKey = selectedRegistroForBooking.booking.trim().toUpperCase().replace(/\s+/g, '');
-            const doc = bookingDocuments.get(bookingKey);
-            console.log('🔍 Buscando documento para booking:', bookingKey);
-            console.log('📊 Total documentos cargados:', bookingDocuments.size);
-            console.log('📋 Claves disponibles:', Array.from(bookingDocuments.keys()).slice(0, 10));
-            console.log('✅ Documento encontrado:', doc);
-            return doc || null;
-          })()
-        }
-      />
-
-      {isProformaCreatorOpen && registroSeleccionadoProforma && (
-        <FacturaCreator
-          registro={registroSeleccionadoProforma}
-          isOpen={isProformaCreatorOpen}
-          onClose={handleCloseProformaCreator}
-          onSave={handleCloseProformaCreator}
-          mode="proforma"
-          onGenerateProforma={handleGenerateProforma}
-        />
-      )}
-
-
-      <UserProfileModal
-        isOpen={showProfileModal}
-        onClose={() => setShowProfileModal(false)}
-        userInfo={currentUser}
-        onUserUpdate={(updatedUser) => {
-          setCurrentUser({ ...currentUser, ...updatedUser });
-        }}
-      />
-
-      {facturaSeleccionada && (
-        <FacturaViewer
-          factura={facturaSeleccionada}
-          isOpen={isFacturaViewerOpen}
-          onClose={() => {
-            setIsFacturaViewerOpen(false);
-            setFacturaSeleccionada(null);
+        {/* Modals */}
+        <AddModal
+          isOpen={isAddModalOpen}
+          onClose={() => setIsAddModalOpen(false)}
+          onSuccess={() => {
+            loadRegistros();
+            loadCatalogos();
+            setIsAddModalOpen(false);
           }}
-          onUpdate={loadFacturas}
-        />
-      )}
-
-      {deleteConfirm && (
-        <div
-          className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
-          onClick={handleCancelDelete}
-          role="presentation"
-        >
-          <div
-            className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delete-confirm-title"
-          >
-            <div className="flex items-start gap-4">
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-200">
-                <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-              </span>
-              <div>
-                <h3 id="delete-confirm-title" className="text-lg font-semibold text-white">
-                  {deleteConfirm.mode === 'bulk' ? 'Eliminar registros' : 'Eliminar registro'}
-                </h3>
-                <p className="mt-2 text-sm text-slate-300">
-                  {deleteConfirm.mode === 'bulk'
-                    ? `¿Quieres enviar ${deleteConfirm.registros.length} registro(s) a la papelera?`
-                    : `¿Quieres enviar el registro ${deleteConfirm.registros[0]?.refAsli ?? ''} a la papelera?`}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={handleCancelDelete}
-                disabled={deleteProcessing}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmDelete}
-                disabled={deleteProcessing}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deleteProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                    Procesando…
-                  </>
-                ) : (
-                  'Enviar a papelera'
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {(selectedRegistroForNaveViaje || selectedRecordsForNaveViaje.length > 0) && (
-        <EditNaveViajeModal
-          isOpen={isEditNaveViajeModalOpen}
-          onClose={handleCloseNaveViajeModal}
-          record={selectedRegistroForNaveViaje}
-          records={selectedRecordsForNaveViaje.length > 0 ? selectedRecordsForNaveViaje : undefined}
+          createdByName={
+            currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'
+          }
+          navierasUnicas={navierasUnicas}
+          ejecutivosUnicos={ejecutivosUnicos}
+          especiesUnicas={especiesUnicas}
+          clientesUnicos={clientesUnicos}
+          refExternasUnicas={refExternasUnicas}
+          polsUnicos={polsUnicos}
+          destinosUnicos={destinosUnicos}
+          depositosUnicos={depositosUnicos}
           navesUnicas={navesUnicas}
           navierasNavesMapping={navierasNavesMappingCatalog}
           consorciosNavesMapping={consorciosNavesMappingCatalog}
-          onSave={handleSaveNaveViaje}
-          onBulkSave={handleBulkSaveNaveViaje}
+          cbmUnicos={cbmUnicos}
+          fletesUnicos={fletesUnicos}
+          contratosUnicos={contratosUnicos}
+          co2sUnicos={co2sUnicos}
+          o2sUnicos={o2sUnicos}
+          tratamientosDeFrioOpciones={tratamientosFrioUnicos}
+          clienteFijadoPorCoincidencia={
+            !isEjecutivo && clientesAsignados.length === 1
+              ? clientesAsignados[0]
+              : undefined
+          }
         />
-      )}
+
+        <EditModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={() => {
+            loadRegistros();
+            loadCatalogos();
+            setIsEditModalOpen(false);
+          }}
+          record={selectedRecord}
+          navierasUnicas={navierasUnicas}
+          navesUnicas={navesUnicas}
+          navierasNavesMapping={navierasNavesMappingCatalog}
+          consorciosNavesMapping={consorciosNavesMappingCatalog}
+          refExternasUnicas={refExternasUnicas}
+          tratamientosDeFrioOpciones={tratamientosFrioUnicos}
+        />
+
+        <TrashModal
+          isOpen={isTrashModalOpen}
+          onClose={() => setIsTrashModalOpen(false)}
+          onRestore={() => {
+            loadRegistros();
+            loadTrashCount();
+            setIsTrashModalOpen(false);
+          }}
+          onSuccess={success}
+          onError={error}
+        />
+
+        {selectedRegistroForHistorial && (
+          <HistorialModal
+            isOpen={isHistorialModalOpen}
+            onClose={handleCloseHistorial}
+            registroId={selectedRegistroForHistorial.id || ''}
+            registroRefAsli={selectedRegistroForHistorial.refAsli}
+          />
+        )}
+
+        <BookingModal
+          isOpen={isBookingModalOpen}
+          onClose={() => {
+            setIsBookingModalOpen(false);
+            setSelectedRegistroForBooking(null);
+          }}
+          onSave={handleSaveBooking}
+          currentBooking={selectedRegistroForBooking?.booking || ''}
+          registroId={selectedRegistroForBooking?.id || ''}
+          existingDocument={
+            (() => {
+              if (!selectedRegistroForBooking?.booking) return null;
+              const bookingKey = selectedRegistroForBooking.booking.trim().toUpperCase().replace(/\s+/g, '');
+              const doc = bookingDocuments.get(bookingKey);
+              console.log('🔍 Buscando documento para booking:', bookingKey);
+              console.log('📊 Total documentos cargados:', bookingDocuments.size);
+              console.log('📋 Claves disponibles:', Array.from(bookingDocuments.keys()).slice(0, 10));
+              console.log('✅ Documento encontrado:', doc);
+              return doc || null;
+            })()
+          }
+        />
+
+        {isProformaCreatorOpen && registroSeleccionadoProforma && (
+          <FacturaCreator
+            registro={registroSeleccionadoProforma}
+            isOpen={isProformaCreatorOpen}
+            onClose={handleCloseProformaCreator}
+            onSave={handleCloseProformaCreator}
+            mode="proforma"
+            onGenerateProforma={handleGenerateProforma}
+          />
+        )}
+
+
+        <UserProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          userInfo={currentUser}
+          onUserUpdate={(updatedUser) => {
+            setCurrentUser({ ...currentUser, ...updatedUser });
+          }}
+        />
+
+        {facturaSeleccionada && (
+          <FacturaViewer
+            factura={facturaSeleccionada}
+            isOpen={isFacturaViewerOpen}
+            onClose={() => {
+              setIsFacturaViewerOpen(false);
+              setFacturaSeleccionada(null);
+            }}
+            onUpdate={loadFacturas}
+          />
+        )}
+
+        {deleteConfirm && (
+          <div
+            className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
+            onClick={handleCancelDelete}
+            role="presentation"
+          >
+            <div
+              className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-confirm-title"
+            >
+              <div className="flex items-start gap-4">
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-200">
+                  <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 id="delete-confirm-title" className="text-lg font-semibold text-white">
+                    {deleteConfirm.mode === 'bulk' ? 'Eliminar registros' : 'Eliminar registro'}
+                  </h3>
+                  <p className="mt-2 text-sm text-slate-300">
+                    {deleteConfirm.mode === 'bulk'
+                      ? `¿Quieres enviar ${deleteConfirm.registros.length} registro(s) a la papelera?`
+                      : `¿Quieres enviar el registro ${deleteConfirm.registros[0]?.refAsli ?? ''} a la papelera?`}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelDelete}
+                  disabled={deleteProcessing}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  disabled={deleteProcessing}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {deleteProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      Procesando…
+                    </>
+                  ) : (
+                    'Enviar a papelera'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(selectedRegistroForNaveViaje || selectedRecordsForNaveViaje.length > 0) && (
+          <EditNaveViajeModal
+            isOpen={isEditNaveViajeModalOpen}
+            onClose={handleCloseNaveViajeModal}
+            record={selectedRegistroForNaveViaje}
+            records={selectedRecordsForNaveViaje.length > 0 ? selectedRecordsForNaveViaje : undefined}
+            navesUnicas={navesUnicas}
+            navierasNavesMapping={navierasNavesMappingCatalog}
+            consorciosNavesMapping={consorciosNavesMappingCatalog}
+            onSave={handleSaveNaveViaje}
+            onBulkSave={handleBulkSaveNaveViaje}
+          />
+        )}
 
         <ToastContainer toasts={toasts} onRemove={removeToast} />
-        </div>
+      </div>
     </EditingCellProvider>
   );
 }

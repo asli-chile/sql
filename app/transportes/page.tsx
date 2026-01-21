@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3 } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
@@ -14,6 +14,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { SidebarSection } from '@/types/layout';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { InlineEditCell } from '@/components/transportes/InlineEditCell';
 import { TrashModalTransportes } from '@/components/transportes/TrashModalTransportes';
@@ -146,7 +148,7 @@ export default function TransportesPage() {
       }
 
       const bookingsMap = new Map<string, { nombre: string; fecha: string; path: string }>();
-      
+
       data?.forEach((file) => {
         const separatorIndex = file.name.indexOf('__');
         if (separatorIndex !== -1) {
@@ -157,7 +159,7 @@ export default function TransportesPage() {
               const { originalName } = parseStoredDocumentName(file.name);
               const nombreFormateado = formatFileDisplayName(originalName);
               const filePath = `booking/${file.name}`;
-              
+
               const fechaArchivo = file.updated_at || file.created_at;
               let fechaFormateada = '-';
               if (fechaArchivo) {
@@ -167,7 +169,7 @@ export default function TransportesPage() {
                 const año = fecha.getFullYear();
                 fechaFormateada = `${dia}-${mes}-${año}`;
               }
-              
+
               const existente = bookingsMap.get(booking);
               if (!existente) {
                 bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath });
@@ -258,16 +260,16 @@ export default function TransportesPage() {
   // Función para descargar el PDF de booking
   const handleDownloadBooking = async (booking: string | null) => {
     if (!booking) return;
-    
+
     // Validar permisos: solo ejecutivos y admin pueden descargar
     if (!canEdit) {
       console.warn('No tienes permisos para descargar bookings');
       return;
     }
-    
+
     const bookingKey = booking.trim().toUpperCase().replace(/\s+/g, '');
     const document = bookingDocuments.get(bookingKey);
-    
+
     if (!document) {
       console.warn('No se encontró PDF para el booking:', booking);
       return;
@@ -315,7 +317,7 @@ export default function TransportesPage() {
       updatedRecord.co2 = null;
       updatedRecord.o2 = null;
     }
-    
+
     setRecords((prev) =>
       prev.map((r) => (r.id === updatedRecord.id ? updatedRecord : r))
     );
@@ -326,23 +328,23 @@ export default function TransportesPage() {
     const updateData: Partial<TransporteRecord> = {
       atmosfera_controlada: checked,
     };
-    
+
     // Si se desactiva, limpiar CO2 y O2
     if (!checked) {
       updateData.co2 = null;
       updateData.o2 = null;
     }
-    
+
     const { error } = await supabase
       .from('transportes')
       .update(updateData)
       .eq('id', record.id);
-    
+
     if (error) {
       console.error('Error actualizando atmosfera controlada:', error);
       return;
     }
-    
+
     handleUpdateRecord({ ...record, ...updateData });
   };
 
@@ -352,12 +354,12 @@ export default function TransportesPage() {
       .from('transportes')
       .update({ late: checked })
       .eq('id', record.id);
-    
+
     if (error) {
       console.error('Error actualizando late:', error);
       return;
     }
-    
+
     handleUpdateRecord({ ...record, late: checked });
   };
 
@@ -367,12 +369,12 @@ export default function TransportesPage() {
       .from('transportes')
       .update({ extra_late: checked })
       .eq('id', record.id);
-    
+
     if (error) {
       console.error('Error actualizando extra_late:', error);
       return;
     }
-    
+
     handleUpdateRecord({ ...record, extra_late: checked });
   };
 
@@ -382,12 +384,12 @@ export default function TransportesPage() {
       .from('transportes')
       .update({ [field]: checked })
       .eq('id', record.id);
-    
+
     if (error) {
       console.error(`Error actualizando ${String(field)}:`, error);
       return;
     }
-    
+
     handleUpdateRecord({ ...record, [field]: checked });
   };
 
@@ -497,30 +499,9 @@ export default function TransportesPage() {
     });
   }, [records, searchTerm]);
 
-  const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
-
-  const toneBadgeClasses = {
-    sky: 'bg-sky-500/20 text-sky-300',
-    violet: 'bg-violet-500/20 text-violet-300',
-    emerald: 'bg-emerald-500/20 text-emerald-300',
-  } as const;
-
-  type SidebarNavItem = {
-    label: string;
-    id?: string;
-    counter?: number;
-    tone?: keyof typeof toneBadgeClasses;
-    isActive?: boolean;
-    onClick?: () => void;
-    icon?: React.ComponentType<{ className?: string }>;
-  };
-
-  type SidebarSection = {
-    title: string;
-    items: SidebarNavItem[];
-  };
-
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+
+  const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
 
   const sidebarSections: SidebarSection[] = [
     {
@@ -536,21 +517,29 @@ export default function TransportesPage() {
         { label: 'Transportes', id: '/transportes', isActive: true, icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         { label: 'Tracking', id: '/dashboard/seguimiento', icon: Globe },
+        ...(isRodrigo
+          ? [
+            { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', icon: BarChart3 },
+          ]
+          : []),
       ],
     },
     {
       title: 'Sistema',
       items: [
-        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet' },
+        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet', icon: Trash2 },
       ],
     },
-    ...(isRodrigo
+    ...(currentUser?.rol === 'admin'
       ? [
-          {
-            title: 'Mantenimiento',
-            items: [{ label: 'Usuarios', id: '/mantenimiento', icon: Settings }],
-          },
-        ]
+        {
+          title: 'Mantenimiento',
+          items: [
+            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+          ],
+        },
+      ]
       : []),
   ];
 
@@ -567,137 +556,22 @@ export default function TransportesPage() {
       <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
         {/* Overlay para móvil */}
         {isMobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
 
-        {/* Sidebar */}
-        <aside
-          className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'} ${
-            isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-          } ${
-            isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
-          }`}
-        >
-          <div className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'} sticky top-0 z-10 overflow-hidden`}>
-            {/* Botón cerrar móvil */}
-            <button
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'}`}
-              aria-label="Cerrar menú"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {(!isSidebarCollapsed || isMobileMenuOpen) && (
-              <>
-                <div className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'} flex items-center justify-center`}>
-                  <img
-                    src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                    alt="ASLI Gestión Logística"
-                    className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
-                    onError={(event) => {
-                      event.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>ASLI Gestión Logística</p>
-                  <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Plataforma Operativa</p>
-                </div>
-              </>
-            )}
-            {!isSidebarCollapsed && !isMobileMenuOpen && (
-              <button
-                onClick={toggleSidebar}
-                className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
-                aria-label="Contraer menú lateral"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {(!isSidebarCollapsed || isMobileMenuOpen) && (
-            <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 py-4 sm:py-6 space-y-6 sm:space-y-8">
-              {sidebarSections.map((section) => (
-                <div key={section.title} className="space-y-2 sm:space-y-3">
-                  <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{section.title}</p>
-                  <div className="space-y-1 sm:space-y-1.5 overflow-y-visible">
-                    {section.items.map((item) => {
-                      const isActive = item.isActive || false;
-                      return (
-                        <button
-                          key={item.label}
-                          onClick={() => {
-                            if (item.onClick) {
-                              item.onClick();
-                              setIsMobileMenuOpen(false);
-                            } else if (item.id) {
-                              router.push(item.id);
-                              setIsMobileMenuOpen(false);
-                            }
-                          }}
-                          className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${
-                            isActive
-                              ? 'bg-blue-600 text-white'
-                              : theme === 'dark'
-                                ? 'hover:bg-slate-700 text-slate-300'
-                                : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            {item.icon && (
-                              <item.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                            )}
-                            <span className={`text-xs sm:text-sm font-semibold truncate flex-1 min-w-0 ${
-                              isActive
-                                ? '!text-white'
-                                : theme !== 'dark'
-                                  ? '!text-blue-600'
-                                  : ''
-                            }`}>{item.label}</span>
-                          </div>
-                          {item.counter !== undefined && item.tone && (
-                            <span className={`text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full flex-shrink-0 ml-1.5 ${toneBadgeClasses[item.tone]}`}>
-                              {item.counter}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-              <div className="space-y-2 sm:space-y-3">
-                <p className={`text-[10px] sm:text-xs uppercase tracking-[0.25em] sm:tracking-[0.3em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Preferencias</p>
-                <ThemeToggle variant="switch" label="Tema" />
-              </div>
-              
-              {/* Botón de usuario para móvil */}
-              <div className="lg:hidden space-y-2 sm:space-y-3 pt-2 border-t border-slate-700/60">
-                <button
-                  onClick={() => {
-                    setShowProfileModal(true);
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className={`w-full text-left flex items-center gap-2 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors ${
-                    theme === 'dark'
-                      ? 'hover:bg-slate-700 text-slate-300'
-                      : 'hover:bg-blue-50 text-blue-600 font-semibold'
-                  }`}
-                >
-                  <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                  <span className="text-xs sm:text-sm font-semibold truncate flex-1 min-w-0">
-                    {currentUser?.nombre || user?.email}
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-        </aside>
+        <Sidebar
+          isSidebarCollapsed={isSidebarCollapsed}
+          setIsSidebarCollapsed={setIsSidebarCollapsed}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
+          sections={sidebarSections}
+          currentUser={currentUser}
+          user={user}
+          setShowProfileModal={setShowProfileModal}
+        />
 
         {/* Content */}
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
@@ -706,11 +580,10 @@ export default function TransportesPage() {
               {/* Botón hamburguesa para móvil */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                  theme === 'dark' 
-                    ? 'text-slate-300 hover:bg-slate-700' 
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
+                className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700'
+                  : 'text-gray-600 hover:bg-gray-100'
+                  }`}
                 aria-label="Abrir menú"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -719,11 +592,10 @@ export default function TransportesPage() {
               {isSidebarCollapsed && (
                 <button
                   onClick={toggleSidebar}
-                  className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${
-                    theme === 'dark' 
-                      ? 'text-slate-300 hover:bg-slate-700 border border-slate-700' 
-                      : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
-                  }`}
+                  className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
+                    ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
+                    : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                    }`}
                   aria-label="Expandir menú lateral"
                 >
                   <ChevronRight className="h-5 w-5" />
@@ -746,11 +618,10 @@ export default function TransportesPage() {
                   type="button"
                   onClick={reload}
                   disabled={isLoading}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    theme === 'dark'
-                      ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
-                  }`}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
+                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
+                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                    }`}
                 >
                   <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">Actualizar</span>
@@ -759,11 +630,10 @@ export default function TransportesPage() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(true)}
-                    className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20 focus:ring-sky-500/50'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 focus:ring-blue-500/50'
-                    }`}
+                    className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20 focus:ring-sky-500/50'
+                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 focus:ring-blue-500/50'
+                      }`}
                   >
                     <Plus className="h-4 w-4" />
                     <span className="hidden sm:inline">Nuevo Transporte</span>
@@ -772,11 +642,10 @@ export default function TransportesPage() {
                 )}
                 <button
                   onClick={() => setShowProfileModal(true)}
-                  className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${
-                    theme === 'dark'
-                      ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
-                  }`}
+                  className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
+                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                    }`}
                   title={currentUser?.nombre || user?.email}
                 >
                   <UserIcon className="h-4 w-4" />
@@ -789,11 +658,10 @@ export default function TransportesPage() {
           <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
             <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
               {/* Búsqueda */}
-              <section className={`rounded-3xl border shadow-xl backdrop-blur-xl p-5 ${
-                theme === 'dark'
-                  ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-                  : 'border-gray-200 bg-white shadow-md'
-              }`}>
+              <section className={`rounded-3xl border shadow-xl backdrop-blur-xl p-5 ${theme === 'dark'
+                ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
+                : 'border-gray-200 bg-white shadow-md'
+                }`}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className={`text-[11px] uppercase tracking-[0.25em] mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Búsqueda y Filtros</p>
@@ -811,50 +679,44 @@ export default function TransportesPage() {
                       value={searchTerm}
                       onChange={(event) => setSearchTerm(event.target.value)}
                       placeholder="Buscar por booking, contenedor, conductor, patentes..."
-                      className={`w-full rounded-xl border px-10 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${
-                        theme === 'dark'
-                          ? 'border-slate-800/70 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:ring-sky-500/30'
-                          : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500/30 shadow-sm'
-                      }`}
+                      className={`w-full rounded-xl border px-10 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${theme === 'dark'
+                        ? 'border-slate-800/70 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:ring-sky-500/30'
+                        : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500/30 shadow-sm'
+                        }`}
                     />
                   </div>
                 </div>
               </section>
 
               {/* Tabla principal */}
-              <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden w-full ${
-                theme === 'dark'
-                  ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-                  : 'border-gray-200 bg-white shadow-md'
-              }`}>
+              <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden w-full ${theme === 'dark'
+                ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
+                : 'border-gray-200 bg-white shadow-md'
+                }`}>
                 <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
-                  <table className={`min-w-full divide-y ${
-                    theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
-                  }`}>
-                    <thead className={`sticky top-0 z-10 backdrop-blur-sm border-b ${
-                      theme === 'dark'
-                        ? 'bg-slate-900/95 border-slate-800/60'
-                        : 'bg-white border-gray-200'
+                  <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                     }`}>
+                    <thead className={`sticky top-0 z-10 backdrop-blur-sm border-b ${theme === 'dark'
+                      ? 'bg-slate-900/95 border-slate-800/60'
+                      : 'bg-white border-gray-200'
+                      }`}>
                       {/* Primera fila: Títulos de sección */}
                       <tr>
                         <th
                           rowSpan={2}
                           scope="col"
-                          className={`px-4 py-4 text-left border-r ${
-                            theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'
-                          }`}
+                          className={`px-4 py-4 text-left border-r ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'
+                            }`}
                         >
                           <input
                             type="checkbox"
                             checked={selectedRows.size === filteredRecords.length && filteredRecords.length > 0}
                             onChange={handleSelectAll}
                             disabled={!canEdit}
-                            className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
-                              theme === 'dark'
-                                ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                            }`}
+                            className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                              }`}
                           />
                         </th>
                         {transportesSections.map((section) => (
@@ -862,11 +724,10 @@ export default function TransportesPage() {
                             key={section.name}
                             colSpan={section.columns.length}
                             scope="colgroup"
-                            className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-r ${
-                              theme === 'dark'
-                                ? 'text-slate-300 bg-slate-800/80 border-slate-800/60'
-                                : 'text-gray-800 bg-gray-100 border-gray-200'
-                            }`}
+                            className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-r ${theme === 'dark'
+                              ? 'text-slate-300 bg-slate-800/80 border-slate-800/60'
+                              : 'text-gray-800 bg-gray-100 border-gray-200'
+                              }`}
                           >
                             {section.name}
                           </th>
@@ -879,11 +740,10 @@ export default function TransportesPage() {
                             <th
                               key={`${section.name}-${column.header}`}
                               scope="col"
-                              className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-r ${
-                                theme === 'dark'
-                                  ? 'text-slate-400 bg-slate-900/60 border-slate-800/60'
-                                  : 'text-gray-600 bg-gray-50 border-gray-200'
-                              }`}
+                              className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-r ${theme === 'dark'
+                                ? 'text-slate-400 bg-slate-900/60 border-slate-800/60'
+                                : 'text-gray-600 bg-gray-50 border-gray-200'
+                                }`}
                             >
                               {column.header}
                             </th>
@@ -891,23 +751,20 @@ export default function TransportesPage() {
                         )}
                       </tr>
                     </thead>
-                    <tbody className={`divide-y ${
-                      theme === 'dark'
-                        ? 'divide-slate-800/60 bg-slate-950/50'
-                        : 'divide-gray-200 bg-white'
-                    }`}>
+                    <tbody className={`divide-y ${theme === 'dark'
+                      ? 'divide-slate-800/60 bg-slate-950/50'
+                      : 'divide-gray-200 bg-white'
+                      }`}>
                       {isLoading ? (
                         <tr>
                           <td
                             colSpan={transportesColumns.length + 1}
-                            className={`px-4 py-12 text-center text-sm ${
-                              theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                            }`}
+                            className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                              }`}
                           >
                             <div className="flex items-center justify-center gap-3">
-                              <RefreshCcw className={`h-5 w-5 animate-spin ${
-                                theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
-                              }`} />
+                              <RefreshCcw className={`h-5 w-5 animate-spin ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                                }`} />
                               <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>Cargando transportes...</span>
                             </div>
                           </td>
@@ -916,9 +773,8 @@ export default function TransportesPage() {
                         <tr>
                           <td
                             colSpan={transportesColumns.length + 1}
-                            className={`px-4 py-12 text-center text-sm ${
-                              theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                            }`}
+                            className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                              }`}
                           >
                             <div className="flex flex-col items-center gap-2">
                               <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
@@ -929,11 +785,10 @@ export default function TransportesPage() {
                               {searchTerm && (
                                 <button
                                   onClick={() => setSearchTerm('')}
-                                  className={`text-xs underline ${
-                                    theme === 'dark'
-                                      ? 'text-sky-400 hover:text-sky-300'
-                                      : 'text-blue-600 hover:text-blue-700'
-                                  }`}
+                                  className={`text-xs underline ${theme === 'dark'
+                                    ? 'text-sky-400 hover:text-sky-300'
+                                    : 'text-blue-600 hover:text-blue-700'
+                                    }`}
                                 >
                                   Limpiar búsqueda
                                 </button>
@@ -953,11 +808,10 @@ export default function TransportesPage() {
                                 record: item,
                               });
                             }}
-                            className={`transition-colors ${
-                              theme === 'dark'
-                                ? `hover:bg-slate-900/60 ${selectedRows.has(item.id) ? 'bg-slate-800/40' : ''}`
-                                : `hover:bg-gray-100 ${selectedRows.has(item.id) ? 'bg-blue-50' : ''}`
-                            }`}
+                            className={`transition-colors ${theme === 'dark'
+                              ? `hover:bg-slate-900/60 ${selectedRows.has(item.id) ? 'bg-slate-800/40' : ''}`
+                              : `hover:bg-gray-100 ${selectedRows.has(item.id) ? 'bg-blue-50' : ''}`
+                              }`}
                           >
                             <td className="px-4 py-4">
                               <input
@@ -965,125 +819,115 @@ export default function TransportesPage() {
                                 checked={selectedRows.has(item.id)}
                                 onChange={() => handleToggleRowSelection(item.id)}
                                 disabled={!canEdit}
-                                className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
-                                  theme === 'dark'
-                                    ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                    : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                }`}
+                                className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                  ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                  : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                  }`}
                               />
                             </td>
                             {transportesColumns.map((column) => {
                               // Checkbox especial para AT CONTROLADA
                               if (column.key === 'atmosfera_controlada') {
-                              return (
-                                <td
-                                  key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                  }`}
-                                >
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                      }`}
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={item.atmosfera_controlada || false}
                                       onChange={(e) => handleToggleAtmosferaControlada(item, e.target.checked)}
                                       disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
-                                        theme === 'dark'
-                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                      }`}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                        }`}
                                     />
                                   </td>
                                 );
                               }
-                              
+
                               // Checkbox especial para LATE
                               if (column.key === 'late') {
-                              return (
-                                <td
-                                  key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                  }`}
-                                >
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                      }`}
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={item.late || false}
                                       onChange={(e) => handleToggleLate(item, e.target.checked)}
                                       disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
-                                        theme === 'dark'
-                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                      }`}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                        }`}
                                     />
                                   </td>
                                 );
                               }
-                              
+
                               // Checkbox especial para EXTRA LATE
                               if (column.key === 'extra_late') {
-                              return (
-                                <td
-                                  key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                  }`}
-                                >
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                      }`}
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={item.extra_late || false}
                                       onChange={(e) => handleToggleExtraLate(item, e.target.checked)}
                                       disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
-                                        theme === 'dark'
-                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                      }`}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                        }`}
                                     />
                                   </td>
                                 );
                               }
-                              
+
                               // Checkboxes booleanos adicionales
                               const booleanCheckboxes = ['porteo', 'ingresado_stacking', 'sobreestadia', 'scanner'];
                               if (booleanCheckboxes.includes(column.key)) {
                                 const checkboxValue = item[column.key] as boolean | null;
-                              return (
-                                <td
-                                  key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                  }`}
-                                >
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                      }`}
+                                  >
                                     <input
                                       type="checkbox"
                                       checked={checkboxValue || false}
                                       onChange={(e) => handleToggleBoolean(item, column.key, e.target.checked)}
                                       disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${
-                                        theme === 'dark'
-                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                      }`}
+                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                        }`}
                                     />
                                   </td>
                                 );
                               }
-                              
+
                               // Renderizado especial para BOOKING con botón de descarga
                               if (column.key === 'booking') {
                                 const bookingValue = item.booking;
                                 const bookingKey = bookingValue ? bookingValue.trim().toUpperCase().replace(/\s+/g, '') : '';
                                 const hasPdf = bookingKey && bookingDocuments.has(bookingKey);
-                                
-                              return (
-                                <td
-                                  key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                  }`}
-                                >
+
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                      }`}
+                                  >
                                     <div className="flex items-center justify-center gap-2">
                                       <span>{bookingValue || '—'}</span>
                                       {hasPdf && canEdit && (
@@ -1093,13 +937,12 @@ export default function TransportesPage() {
                                             handleDownloadBooking(bookingValue);
                                           }}
                                           disabled={downloadingBooking === bookingKey}
-                                          className={`p-1.5 rounded transition-colors flex-shrink-0 ${
-                                            downloadingBooking === bookingKey
-                                              ? 'opacity-50 cursor-not-allowed'
-                                              : theme === 'dark'
-                                                ? 'hover:bg-slate-700 text-slate-300 hover:text-sky-200'
-                                                : 'hover:bg-gray-200 text-gray-600 hover:text-blue-600'
-                                          }`}
+                                          className={`p-1.5 rounded transition-colors flex-shrink-0 ${downloadingBooking === bookingKey
+                                            ? 'opacity-50 cursor-not-allowed'
+                                            : theme === 'dark'
+                                              ? 'hover:bg-slate-700 text-slate-300 hover:text-sky-200'
+                                              : 'hover:bg-gray-200 text-gray-600 hover:text-blue-600'
+                                            }`}
                                           title="Descargar PDF de booking"
                                         >
                                           {downloadingBooking === bookingKey ? (
@@ -1113,25 +956,23 @@ export default function TransportesPage() {
                                   </td>
                                 );
                               }
-                              
+
                               // CO2 y O2 solo editables si AT CONTROLADA está activo
                               const isDisabled = (column.key === 'co2' || column.key === 'o2') && !item.atmosfera_controlada;
                               // Si no tiene permisos de edición, mostrar solo texto
                               const shouldShowTextOnly = !canEdit || isDisabled;
-                              
+
                               return (
                                 <td
                                   key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${
-                                    theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                  }`}
+                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                    }`}
                                 >
                                   {column.render ? (
                                     column.render(item)
                                   ) : shouldShowTextOnly ? (
-                                    <span className={`text-sm ${
-                                      theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                                    }`}>
+                                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                      }`}>
                                       {item[column.key] !== null && item[column.key] !== undefined ? item[column.key] : '—'}
                                     </span>
                                   ) : (
@@ -1197,137 +1038,132 @@ export default function TransportesPage() {
           />
 
           {/* Menú contextual */}
-          {contextMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setContextMenu(null)}
-              />
-              <div
-                className={`fixed z-50 min-w-[200px] rounded-lg border shadow-xl ${
-                  theme === 'dark'
+          {
+            contextMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setContextMenu(null)}
+                />
+                <div
+                  className={`fixed z-50 min-w-[200px] rounded-lg border shadow-xl ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-900'
                     : 'border-gray-200 bg-white'
-                }`}
-                style={{
-                  left: `${contextMenu.x}px`,
-                  top: `${contextMenu.y}px`,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="p-1">
-                  <div className={`mb-1 border-b px-2 py-1.5 ${
-                    theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
-                  }`}>
-                    <p className={`text-xs font-semibold ${
-                      theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-                    }`}>
-                      {contextMenu.record.booking || 'Transporte'}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleDeleteTransporte(contextMenu.record);
-                      setContextMenu(null);
-                    }}
-                    disabled={isDeleting}
-                    className={`flex w-full items-center gap-2 rounded px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
-                      theme === 'dark'
+                    }`}
+                  style={{
+                    left: `${contextMenu.x}px`,
+                    top: `${contextMenu.y}px`,
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-1">
+                    <div className={`mb-1 border-b px-2 py-1.5 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+                      }`}>
+                      <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                        }`}>
+                        {contextMenu.record.booking || 'Transporte'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDeleteTransporte(contextMenu.record);
+                        setContextMenu(null);
+                      }}
+                      disabled={isDeleting}
+                      className={`flex w-full items-center gap-2 rounded px-3 py-2 text-sm transition-colors disabled:opacity-50 ${theme === 'dark'
                         ? 'text-red-400 hover:bg-slate-800'
                         : 'text-red-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span>{isDeleting ? 'Eliminando…' : 'Eliminar'}</span>
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Modal de confirmación de eliminación */}
-          {deleteConfirm && (
-            <div
-              className="fixed inset-0 z-[1300] flex items-center justify-center px-4 py-6 backdrop-blur-sm"
-              onClick={handleCancelDelete}
-              role="presentation"
-              style={{
-                backgroundColor: theme === 'dark' ? 'rgba(2, 6, 23, 0.8)' : 'rgba(0, 0, 0, 0.5)',
-              }}
-            >
-              <div
-                className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${
-                  theme === 'dark'
-                    ? 'border-white/10 bg-slate-950/90'
-                    : 'border-gray-200 bg-white'
-                }`}
-                onClick={(event) => event.stopPropagation()}
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="delete-confirm-title"
-              >
-                <div className="flex items-start gap-4">
-                  <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
-                    theme === 'dark'
-                      ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
-                      : 'border-amber-400/60 bg-amber-50 text-amber-600'
-                  }`}>
-                    <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-                  </span>
-                  <div>
-                    <h3
-                      id="delete-confirm-title"
-                      className={`text-lg font-semibold ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}
+                        }`}
                     >
-                      Enviar a papelera
-                    </h3>
-                    <p className={`mt-2 text-sm ${
-                      theme === 'dark' ? 'text-slate-300' : 'text-gray-600'
-                    }`}>
-                      ¿Quieres enviar el transporte{' '}
-                      <strong>{deleteConfirm.booking || deleteConfirm.contenedor || 'este registro'}</strong> a la papelera?
-                      Podrás restaurarlo más tarde desde la papelera.
-                    </p>
+                      <Trash2 className="h-4 w-4" />
+                      <span>{isDeleting ? 'Eliminando…' : 'Eliminar'}</span>
+                    </button>
                   </div>
                 </div>
+              </>
+            )
+          }
 
-                <div className="mt-6 flex items-center justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCancelDelete}
-                    disabled={isDeleting}
-                    className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 ${
-                      theme === 'dark'
+          {/* Modal de confirmación de eliminación */}
+          {
+            deleteConfirm && (
+              <div
+                className="fixed inset-0 z-[1300] flex items-center justify-center px-4 py-6 backdrop-blur-sm"
+                onClick={handleCancelDelete}
+                role="presentation"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(2, 6, 23, 0.8)' : 'rgba(0, 0, 0, 0.5)',
+                }}
+              >
+                <div
+                  className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${theme === 'dark'
+                    ? 'border-white/10 bg-slate-950/90'
+                    : 'border-gray-200 bg-white'
+                    }`}
+                  onClick={(event) => event.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="delete-confirm-title"
+                >
+                  <div className="flex items-start gap-4">
+                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${theme === 'dark'
+                      ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
+                      : 'border-amber-400/60 bg-amber-50 text-amber-600'
+                      }`}>
+                      <AlertTriangle className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h3
+                        id="delete-confirm-title"
+                        className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}
+                      >
+                        Enviar a papelera
+                      </h3>
+                      <p className={`mt-2 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'
+                        }`}>
+                        ¿Quieres enviar el transporte{' '}
+                        <strong>{deleteConfirm.booking || deleteConfirm.contenedor || 'este registro'}</strong> a la papelera?
+                        Podrás restaurarlo más tarde desde la papelera.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelDelete}
+                      disabled={isDeleting}
+                      className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 ${theme === 'dark'
                         ? 'border-slate-700/70 text-slate-200 hover:border-slate-500 hover:text-white'
                         : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmDelete}
-                    disabled={isDeleting}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isDeleting ? (
-                      <>
-                        <RefreshCcw className="h-4 w-4 animate-spin" aria-hidden="true" />
-                        Eliminando…
-                      </>
-                    ) : (
-                      'Enviar a papelera'
-                    )}
-                  </button>
+                        }`}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmDelete}
+                      disabled={isDeleting}
+                      className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isDeleting ? (
+                        <>
+                          <RefreshCcw className="h-4 w-4 animate-spin" aria-hidden="true" />
+                          Eliminando…
+                        </>
+                      ) : (
+                        'Enviar a papelera'
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </EditingCellProvider>
+            )
+          }
+        </div >
+      </div >
+    </EditingCellProvider >
   );
 }
