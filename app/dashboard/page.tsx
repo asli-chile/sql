@@ -27,6 +27,7 @@ import {
   X,
   LayoutDashboard,
   BarChart3,
+  DollarSign,
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
@@ -586,6 +587,16 @@ export default function DashboardPage() {
     ...(isRodrigo
       ? [
           {
+            id: 'finanzas',
+            title: 'Finanzas',
+            description: 'Control de costos, ingresos y márgenes por embarque',
+            icon: DollarSign,
+            color: 'bg-green-500',
+            hoverColor: 'hover:bg-green-600',
+            available: true,
+            stats: null
+          },
+          {
             id: 'reportes',
             title: 'Reportes y KPIs',
             description: 'Indicadores clave de rendimiento y análisis de operaciones',
@@ -654,7 +665,10 @@ export default function DashboardPage() {
         { label: 'Transportes', id: 'transportes', isActive: false, icon: Truck },
         { label: 'Documentos', id: 'documentos', isActive: false, icon: FileText },
         ...(isRodrigo
-          ? [{ label: 'Reportes', id: 'reportes', isActive: false, icon: BarChart3 }]
+          ? [
+              { label: 'Finanzas', id: 'finanzas', isActive: false, icon: DollarSign },
+              { label: 'Reportes', id: 'reportes', isActive: false, icon: BarChart3 }
+            ]
           : []),
       ],
     },

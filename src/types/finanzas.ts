@@ -4,25 +4,52 @@ export interface CostosEmbarque {
   id?: string;
   registroId: string;
   booking: string;
-  
-  // Costos principales
-  flete: number | null; // Costo del flete
-  deposito: number | null; // Costo del depósito
-  tarifasExtra: number | null; // Tarifas adicionales (demoras, almacenaje, etc.)
-  
-  // Desglose de tarifas extra (opcional)
+
+  // Detalle Reserva
+  swb?: string;
+
+  // Transporte Terrestre
+  tt_flete: number | null;
+  tt_sobre_estadia: number | null;
+  tt_porteo: number | null;
+  tt_almacenamiento: number | null;
+
+  // Coordinación
+  coord_adm_espacio: number | null;
+  coord_comex: number | null;
+  coord_aga: number | null;
+
+  // Costos Navieros
+  nav_gate_out: number | null;
+  nav_seguridad_contenedor: number | null;
+  nav_matriz_fuera_plazo: number | null;
+  nav_correcciones: number | null;
+  nav_extra_late: number | null;
+  nav_telex_release: number | null;
+  nav_courier: number | null;
+  nav_pago_sag_cf_extra: number | null;
+  nav_pago_ucco_co_extra: number | null;
+
+  // Otros
+  rebates: number | null;
+  contrato_forwarder?: string;
+
+  // Campos legacy (mantener por compatibilidad si es necesario, o marcar como opcionales/deprecated)
+  flete?: number | null;
+  deposito?: number | null;
+  tarifasExtra?: number | null;
   demoras?: number | null;
   almacenaje?: number | null;
   otros?: number | null;
-  
+
   // Ingresos
   ingresos: number | null; // Ingresos totales del embarque
-  
+
   // Metadatos
   moneda?: string; // Por defecto USD o CLP
   fechaActualizacion?: Date;
   notas?: string;
-  
+
   createdAt?: Date;
   updatedAt?: Date;
   createdBy?: string;
@@ -37,7 +64,7 @@ export interface ReporteFinanciero {
     ingresos: number;
     embarques: number;
   }>;
-  
+
   // Costos
   costosTotales: number;
   costosPorNaviera: Array<{
@@ -46,11 +73,12 @@ export interface ReporteFinanciero {
     embarques: number;
   }>;
   costosPorTipo: {
-    flete: number;
-    deposito: number;
-    tarifasExtra: number;
+    transporteTerrestre: number;
+    coordinacion: number;
+    costosNavieros: number;
+    otros: number;
   };
-  
+
   // Margen
   margenTotal: number;
   margenPorcentaje: number;
@@ -59,7 +87,7 @@ export interface ReporteFinanciero {
     margen: number;
     margenPorcentaje: number;
   }>;
-  
+
   // Estadísticas
   totalEmbarques: number;
   promedioIngresoPorEmbarque: number;

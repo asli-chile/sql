@@ -5,10 +5,36 @@ import { CostosEmbarque, ReporteFinanciero } from '@/types/finanzas';
  * Calcula el costo total de un embarque
  */
 export function calcularCostoTotal(costos: CostosEmbarque): number {
-  const flete = costos.flete || 0;
-  const deposito = costos.deposito || 0;
-  const tarifasExtra = costos.tarifasExtra || 0;
-  return flete + deposito + tarifasExtra;
+  // Transporte Terrestre
+  const tt = (costos.tt_flete || 0) +
+    (costos.tt_sobre_estadia || 0) +
+    (costos.tt_porteo || 0) +
+    (costos.tt_almacenamiento || 0);
+
+  // Coordinación
+  const coord = (costos.coord_adm_espacio || 0) +
+    (costos.coord_comex || 0) +
+    (costos.coord_aga || 0);
+
+  // Costos Navieros
+  const nav = (costos.nav_gate_out || 0) +
+    (costos.nav_seguridad_contenedor || 0) +
+    (costos.nav_matriz_fuera_plazo || 0) +
+    (costos.nav_correcciones || 0) +
+    (costos.nav_extra_late || 0) +
+    (costos.nav_telex_release || 0) +
+    (costos.nav_courier || 0) +
+    (costos.nav_pago_sag_cf_extra || 0) +
+    (costos.nav_pago_ucco_co_extra || 0);
+
+  // Legacy (mantener por si acaso hay datos antiguos)
+  const legacy = (costos.flete || 0) + (costos.deposito || 0) + (costos.tarifasExtra || 0);
+
+  // Rebates (se restan del costo total? Por ahora lo dejamos fuera del total de costos directos o lo restamos?
+  // Generalmente rebates reduce el costo. Asumiremos que reduce el costo.)
+  const rebates = costos.rebates || 0;
+
+  return tt + coord + nav + legacy - rebates;
 }
 
 /**
@@ -42,9 +68,10 @@ export function generarReporteFinanciero(
   const ingresosPorCliente: Record<string, { ingresos: number; embarques: number }> = {};
   const costosPorNaviera: Record<string, { costos: number; embarques: number }> = {};
   const costosPorTipo = {
-    flete: 0,
-    deposito: 0,
-    tarifasExtra: 0,
+    transporteTerrestre: 0,
+    coordinacion: 0,
+    costosNavieros: 0,
+    otros: 0,
   };
   const margenPorCliente: Record<string, { ingresos: number; costos: number }> = {};
 
@@ -76,10 +103,32 @@ export function generarReporteFinanciero(
     costosPorNaviera[naviera].embarques += 1;
 
     // Por tipo de costo
+    // Por tipo de costo
     if (costo) {
-      costosPorTipo.flete += costo.flete || 0;
-      costosPorTipo.deposito += costo.deposito || 0;
-      costosPorTipo.tarifasExtra += costo.tarifasExtra || 0;
+      // Transporte Terrestre
+      costosPorTipo.transporteTerrestre += (costo.tt_flete || 0) +
+        (costo.tt_sobre_estadia || 0) +
+        (costo.tt_porteo || 0) +
+        (costo.tt_almacenamiento || 0);
+
+      // Coordinación
+      costosPorTipo.coordinacion += (costo.coord_adm_espacio || 0) +
+        (costo.coord_comex || 0) +
+        (costo.coord_aga || 0);
+
+      // Costos Navieros
+      costosPorTipo.costosNavieros += (costo.nav_gate_out || 0) +
+        (costo.nav_seguridad_contenedor || 0) +
+        (costo.nav_matriz_fuera_plazo || 0) +
+        (costo.nav_correcciones || 0) +
+        (costo.nav_extra_late || 0) +
+        (costo.nav_telex_release || 0) +
+        (costo.nav_courier || 0) +
+        (costo.nav_pago_sag_cf_extra || 0) +
+        (costo.nav_pago_ucco_co_extra || 0);
+
+      // Otros/Legacy
+      costosPorTipo.otros += (costo.flete || 0) + (costo.deposito || 0) + (costo.tarifasExtra || 0) - (costo.rebates || 0);
     }
   });
 

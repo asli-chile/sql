@@ -8,6 +8,7 @@ import { generarReporteFinanciero, calcularCostoTotal, calcularMargen } from '@/
 import { DollarSign, TrendingUp, TrendingDown, Package, Building2, Users, BarChart3, Edit2, Save, X } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
+import { CostosModal } from './CostosModal';
 
 interface FinanzasSectionProps {
   registros: Registro[];
@@ -15,28 +16,29 @@ interface FinanzasSectionProps {
 }
 
 export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
+  console.log('[FinanzasSection] Componente montado con', registros?.length || 0, 'registros');
+
   const { theme } = useTheme();
   const { success, error: showError } = useToast();
   const supabase = useMemo(() => createClient(), []);
-  
+
   const [costosEmbarques, setCostosEmbarques] = useState<CostosEmbarque[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingCosto, setEditingCosto] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<CostosEmbarque>>({});
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [tableExists, setTableExists] = useState(true);
-  
+  const [error, setError] = useState<string | null>(null);
+
   // Debug
   useEffect(() => {
-    console.log('FinanzasSection renderizado con', registros.length, 'registros');
-  }, [registros.length]);
-  
-  // Cargar costos desde la base de datos
-  useEffect(() => {
-    loadCostos();
-  }, []);
+    console.log('[FinanzasSection] Renderizado con', registros.length, 'registros');
+    console.log('[FinanzasSection] Estado loading:', loading);
+  }, [registros.length, loading]);
 
   const loadCostos = async () => {
     try {
+      console.log('[FinanzasSection] loadCostos: Iniciando...');
       setLoading(true);
       const { data, error } = await supabase
         .from('costos_embarques')
@@ -44,32 +46,72 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
         .order('created_at', { ascending: false });
 
       if (error) {
+        console.log('[FinanzasSection] loadCostos: Error encontrado:', error.code, error.message);
         // Si la tabla no existe, simplemente usar array vacío
         if (error.code === 'PGRST116' || error.message?.includes('does not exist') || error.message?.includes('relation') || error.code === '42P01') {
-          console.warn('Tabla costos_embarques no existe aún. Ejecuta el script SQL para crearla.');
+          console.warn('[FinanzasSection] Tabla costos_embarques no existe aún. Ejecuta el script SQL para crearla.');
           setTableExists(false);
           setCostosEmbarques([]);
+          setLoading(false);
+          console.log('[FinanzasSection] loadCostos: Loading establecido en false (tabla no existe)');
           return;
         }
         throw error;
       }
+      console.log('[FinanzasSection] loadCostos: Costos cargados:', data?.length || 0);
       setTableExists(true);
       setCostosEmbarques(data || []);
     } catch (err: any) {
-      console.error('Error cargando costos:', err);
+      console.error('[FinanzasSection] loadCostos: Error en catch:', err);
       // No mostrar error si la tabla no existe, solo usar array vacío
       if (err.code !== 'PGRST116' && !err.message?.includes('does not exist')) {
         showError('Error al cargar información financiera');
       }
       setCostosEmbarques([]);
     } finally {
+      console.log('[FinanzasSection] loadCostos: Finally - estableciendo loading en false');
       setLoading(false);
     }
   };
 
+  // useEffect para cargar costos al montar el componente
+  useEffect(() => {
+    console.log('[FinanzasSection] Iniciando carga de costos...');
+    loadCostos();
+
+    // Timeout de seguridad: si después de 5 segundos sigue en loading, forzar a false
+    const timeoutId = setTimeout(() => {
+      console.warn('[FinanzasSection] Timeout: forzando loading a false después de 5 segundos');
+      setLoading(false);
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Generar reporte financiero
   const reporte = useMemo(() => {
-    return generarReporteFinanciero(registros, costosEmbarques);
+    try {
+      console.log('[FinanzasSection] Generando reporte con', registros.length, 'registros y', costosEmbarques.length, 'costos');
+      return generarReporteFinanciero(registros, costosEmbarques);
+    } catch (error) {
+      console.error('[FinanzasSection] Error generando reporte:', error);
+      // Retornar reporte vacío en caso de error
+      return {
+        ingresosTotales: 0,
+        ingresosPorCliente: [],
+        costosTotales: 0,
+        costosPorNaviera: [],
+        costosPorTipo: { transporteTerrestre: 0, coordinacion: 0, costosNavieros: 0, otros: 0 },
+        margenTotal: 0,
+        margenPorcentaje: 0,
+        margenPorCliente: [],
+        totalEmbarques: 0,
+        promedioIngresoPorEmbarque: 0,
+        promedioCostoPorEmbarque: 0,
+        promedioMargenPorEmbarque: 0,
+      };
+    }
   }, [registros, costosEmbarques]);
 
   // Iniciar edición
@@ -84,18 +126,15 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
       setEditForm({
         booking,
         registroId: registro?.id || '',
-        flete: null,
-        deposito: null,
-        tarifasExtra: null,
-        ingresos: null,
         moneda: 'USD',
       });
       setEditingCosto(booking);
     }
+    setIsModalOpen(true);
   };
 
-  // Guardar cambios
-  const handleSave = async () => {
+  // Guardar cambios desde el modal
+  const handleSave = async (formData: Partial<CostosEmbarque>) => {
     if (!editingCosto) return;
 
     try {
@@ -106,14 +145,14 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
       }
 
       const costoData: Partial<CostosEmbarque> = {
-        ...editForm,
+        ...formData,
         registroId: registro.id || '',
         booking: editingCosto,
         updatedAt: new Date(),
       };
 
       const existing = costosEmbarques.find(c => c.booking === editingCosto);
-      
+
       if (existing?.id) {
         // Actualizar
         const { error } = await supabase
@@ -132,22 +171,29 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
       }
 
       await loadCostos();
-      setEditingCosto(null);
-      setEditForm({});
       success('Información financiera guardada correctamente');
     } catch (err: any) {
       console.error('Error guardando costo:', err);
       showError('Error al guardar información financiera');
+      throw err; // Re-lanzar para que el modal sepa que hubo error
     }
   };
 
-  // Cancelar edición
-  const handleCancel = () => {
-    setEditingCosto(null);
-    setEditForm({});
-  };
+  // Si hay un error, mostrarlo
+  if (error) {
+    console.log('[FinanzasSection] Renderizando error:', error);
+    return (
+      <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+        <div className="text-center">
+          <p className="text-lg font-medium mb-2">Error al cargar información financiera</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
+    console.log('[FinanzasSection] Renderizando estado de loading...');
     return (
       <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
         <div className="text-center">
@@ -159,15 +205,30 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
   }
 
   // Verificar si hay registros
+  if (!registros || registros.length === 0) {
+    console.log('[FinanzasSection] No hay registros');
+    return (
+      <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+        <div className="text-center">
+          <Package className="h-16 w-16 mx-auto mb-4 opacity-50" />
+          <p className="text-lg font-medium mb-2">No hay registros disponibles</p>
+          <p className="text-sm">No se encontraron embarques para mostrar información financiera.</p>
+        </div>
+      </div>
+    );
+  }
+
   const registrosValidos = registros.filter(r => r.estado !== 'CANCELADO');
-  
+
   if (registrosValidos.length === 0) {
+    console.log('[FinanzasSection] No hay registros válidos (todos cancelados)');
     return (
       <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
         <div className="text-center">
           <Package className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg font-medium mb-2">No hay embarques disponibles</p>
           <p className="text-sm">No se encontraron embarques confirmados para mostrar información financiera.</p>
+          <p className="text-xs mt-2 opacity-75">Total de registros: {registros.length} (todos cancelados)</p>
         </div>
       </div>
     );
@@ -175,6 +236,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
 
   return (
     <div className="space-y-6">
+
       {/* Resumen de KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
@@ -244,16 +306,16 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
                   Booking
                 </th>
                 <th className={`px-4 py-3 text-right text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                  Flete
+                  Transp. Terrestre
                 </th>
                 <th className={`px-4 py-3 text-right text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                  Depósito
+                  Coordinación
                 </th>
                 <th className={`px-4 py-3 text-right text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                  Tarifas Extra
+                  Costos Navieros
                 </th>
                 <th className={`px-4 py-3 text-right text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                  Costo Total
+                  Total Costos
                 </th>
                 <th className={`px-4 py-3 text-right text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
                   Ingresos
@@ -273,113 +335,50 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
                 .filter(r => r.estado !== 'CANCELADO')
                 .map((registro) => {
                   const costo = costosEmbarques.find(c => c.booking === registro.booking);
-                  const isEditing = editingCosto === registro.booking;
                   const costoTotal = costo ? calcularCostoTotal(costo) : 0;
                   const ingresos = costo?.ingresos || 0;
                   const { margen, porcentaje } = calcularMargen(ingresos, costoTotal);
+
+                  // Calcular subtotales para mostrar en tabla
+                  const tt = (costo?.tt_flete || 0) + (costo?.tt_sobre_estadia || 0) + (costo?.tt_porteo || 0) + (costo?.tt_almacenamiento || 0);
+                  const coord = (costo?.coord_adm_espacio || 0) + (costo?.coord_comex || 0) + (costo?.coord_aga || 0);
+                  const nav = (costo?.nav_gate_out || 0) + (costo?.nav_seguridad_contenedor || 0) + (costo?.nav_matriz_fuera_plazo || 0) +
+                    (costo?.nav_correcciones || 0) + (costo?.nav_extra_late || 0) + (costo?.nav_telex_release || 0) +
+                    (costo?.nav_courier || 0) + (costo?.nav_pago_sag_cf_extra || 0) + (costo?.nav_pago_ucco_co_extra || 0);
 
                   return (
                     <tr key={registro.id} className={theme === 'dark' ? 'hover:bg-slate-800' : 'hover:bg-gray-50'}>
                       <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                         {registro.booking}
                       </td>
-                      {isEditing ? (
-                        <>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              value={editForm.flete || ''}
-                              onChange={(e) => setEditForm({ ...editForm, flete: e.target.value ? parseFloat(e.target.value) : null })}
-                              className={`w-full px-2 py-1 text-sm rounded border ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              value={editForm.deposito || ''}
-                              onChange={(e) => setEditForm({ ...editForm, deposito: e.target.value ? parseFloat(e.target.value) : null })}
-                              className={`w-full px-2 py-1 text-sm rounded border ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              value={editForm.tarifasExtra || ''}
-                              onChange={(e) => setEditForm({ ...editForm, tarifasExtra: e.target.value ? parseFloat(e.target.value) : null })}
-                              className={`w-full px-2 py-1 text-sm rounded border ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-                            ${calcularCostoTotal(editForm as CostosEmbarque).toLocaleString('es-CL')}
-                          </td>
-                          <td className="px-4 py-3">
-                            <input
-                              type="number"
-                              value={editForm.ingresos || ''}
-                              onChange={(e) => setEditForm({ ...editForm, ingresos: e.target.value ? parseFloat(e.target.value) : null })}
-                              className={`w-full px-2 py-1 text-sm rounded border ${theme === 'dark' ? 'bg-slate-800 border-slate-600 text-white' : 'bg-white border-gray-300'}`}
-                              placeholder="0"
-                            />
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? calcularMargen(editForm.ingresos || 0, calcularCostoTotal(editForm as CostosEmbarque)).margen >= 0 ? 'text-green-400' : 'text-red-400' : calcularMargen(editForm.ingresos || 0, calcularCostoTotal(editForm as CostosEmbarque)).margen >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            ${calcularMargen(editForm.ingresos || 0, calcularCostoTotal(editForm as CostosEmbarque)).margen.toLocaleString('es-CL')}
-                          </td>
-                          {canEdit && (
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={handleSave}
-                                  className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
-                                  title="Guardar"
-                                >
-                                  <Save className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={handleCancel}
-                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                                  title="Cancelar"
-                                >
-                                  <X className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </td>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-                            ${(costo?.flete || 0).toLocaleString('es-CL')}
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-                            ${(costo?.deposito || 0).toLocaleString('es-CL')}
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-                            ${(costo?.tarifasExtra || 0).toLocaleString('es-CL')}
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}`}>
-                            ${costoTotal.toLocaleString('es-CL')}
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}`}>
-                            ${ingresos.toLocaleString('es-CL')}
-                          </td>
-                          <td className={`px-4 py-3 text-sm text-right font-medium ${margen >= 0 ? theme === 'dark' ? 'text-green-400' : 'text-green-600' : theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
-                            ${margen.toLocaleString('es-CL')} ({porcentaje.toFixed(1)}%)
-                          </td>
-                          {canEdit && (
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() => handleStartEdit(registro.booking)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                title="Editar"
-                              >
-                                <Edit2 className="h-4 w-4" />
-                              </button>
-                            </td>
-                          )}
-                        </>
+                      <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                        ${tt.toLocaleString('es-CL')}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                        ${coord.toLocaleString('es-CL')}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                        ${nav.toLocaleString('es-CL')}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}`}>
+                        ${costoTotal.toLocaleString('es-CL')}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}`}>
+                        ${ingresos.toLocaleString('es-CL')}
+                      </td>
+                      <td className={`px-4 py-3 text-sm text-right font-medium ${margen >= 0 ? theme === 'dark' ? 'text-green-400' : 'text-green-600' : theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                        ${margen.toLocaleString('es-CL')} ({porcentaje.toFixed(1)}%)
+                      </td>
+                      {canEdit && (
+                        <td className="px-4 py-3 text-center">
+                          <button
+                            onClick={() => handleStartEdit(registro.booking)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        </td>
                       )}
                     </tr>
                   );
@@ -475,6 +474,20 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
           </div>
         </div>
       </div>
+
+      {/* Modal de edición */}
+      {isModalOpen && editingCosto && (
+        <CostosModal
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setEditingCosto(null);
+          }}
+          costo={editForm}
+          registro={registros.find(r => r.booking === editingCosto)!}
+          onSave={handleSave}
+        />
+      )}
     </div>
   );
 }

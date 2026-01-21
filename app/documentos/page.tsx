@@ -12,7 +12,6 @@ import { createClient } from '@/lib/supabase-browser';
 import { Registro } from '@/types/registros';
 import { normalizeBooking, sanitizeFileName, parseStoredDocumentName } from '@/utils/documentUtils';
 import { useToast } from '@/hooks/useToast';
-import { FinanzasSection } from '@/components/finanzas/FinanzasSection';
 
 const normalizeSeasonLabel = (value?: string | null): string => {
   if (!value) {
@@ -86,7 +85,6 @@ export default function DocumentosPage() {
     mode: 'view',
     file: null,
   });
-  const [activeTab, setActiveTab] = useState<'documentos' | 'finanzas'>('documentos');
   const [showFilters, setShowFilters] = useState(false);
   const [allRegistros, setAllRegistros] = useState<Registro[]>([]);
   // Estados de filtros
@@ -670,9 +668,6 @@ export default function DocumentosPage() {
   if (!currentUser) {
     return <LoadingScreen message="Cargando..." />;
   }
-
-  // Verificar si es Rodrigo (después del return condicional)
-  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   // Obtener información de documentos para cada registro
   const getDocumentStatus = (booking: string, docType: string): boolean => {
@@ -1363,43 +1358,6 @@ export default function DocumentosPage() {
               </div>
             )}
 
-            {/* Pestañas */}
-            <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-              <button
-                onClick={() => setActiveTab('documentos')}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                  activeTab === 'documentos'
-                    ? theme === 'dark'
-                      ? 'border-blue-400 text-blue-400'
-                      : 'border-blue-600 text-blue-600'
-                    : theme === 'dark'
-                      ? 'border-transparent text-slate-400 hover:text-slate-300'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Documentos
-              </button>
-              {isRodrigo && (
-                <button
-                  onClick={() => setActiveTab('finanzas')}
-                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === 'finanzas'
-                      ? theme === 'dark'
-                        ? 'border-blue-400 text-blue-400'
-                        : 'border-blue-600 text-blue-600'
-                      : theme === 'dark'
-                        ? 'border-transparent text-slate-400 hover:text-slate-300'
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  Finanzas
-                </button>
-              )}
-            </div>
-
-            {/* Contenido según pestaña activa */}
-            {activeTab === 'documentos' ? (
-              <>
             {/* Tabla de Documentos */}
             <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden ${
               theme === 'dark'
@@ -1545,17 +1503,6 @@ export default function DocumentosPage() {
                 </table>
               </div>
             </section>
-            </>
-            ) : isRodrigo ? (
-              <FinanzasSection registros={registros} canEdit={canEdit} />
-            ) : (
-              <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                <div className="text-center">
-                  <p className="text-lg font-medium mb-2">Acceso Restringido</p>
-                  <p className="text-sm">No tienes permisos para acceder a esta sección.</p>
-                </div>
-              </div>
-            )}
           </div>
         </main>
       </div>
