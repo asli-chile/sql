@@ -532,7 +532,7 @@ export default function FinanzasPage() {
                       <button
                         key={item.label}
                         onClick={() => {
-                          if (item.id) {
+                          if ('id' in item && item.id) {
                             router.push(item.id);
                             setIsMobileMenuOpen(false);
                           }
