@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive } from 'lucide-react';
+import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -13,6 +13,13 @@ import { Registro } from '@/types/registros';
 import { normalizeBooking, sanitizeFileName, parseStoredDocumentName } from '@/utils/documentUtils';
 import { useToast } from '@/hooks/useToast';
 import { FinanzasSection } from '@/components/finanzas/FinanzasSection';
+
+const normalizeSeasonLabel = (value?: string | null): string => {
+  if (!value) {
+    return '';
+  }
+  return value.toString().replace(/^Temporada\s+/i, '').trim();
+};
 
 interface DocumentoRow {
   id: string;
@@ -80,6 +87,18 @@ export default function DocumentosPage() {
     file: null,
   });
   const [activeTab, setActiveTab] = useState<'documentos' | 'finanzas'>('documentos');
+  const [showFilters, setShowFilters] = useState(false);
+  const [allRegistros, setAllRegistros] = useState<Registro[]>([]);
+  // Estados de filtros
+  const [selectedSeason, setSelectedSeason] = useState<string | null>(null);
+  const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
+  const [selectedEjecutivo, setSelectedEjecutivo] = useState<string | null>(null);
+  const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [selectedNaviera, setSelectedNaviera] = useState<string | null>(null);
+  const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
+  const [selectedNave, setSelectedNave] = useState<string | null>(null);
+  const [fechaDesde, setFechaDesde] = useState<string>('');
+  const [fechaHasta, setFechaHasta] = useState<string>('');
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const dataLoadedRef = useRef(false);
   const { success, error: showError } = useToast();
@@ -298,8 +317,9 @@ export default function DocumentosPage() {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('registros')
-        .select('id, nave_inicial, booking, contenedor, ref_cliente')
+        .select('*')
         .is('deleted_at', null)
+        .not('ref_asli', 'is', null)
         .order('ref_asli', { ascending: false });
 
       if (error) {
@@ -307,19 +327,16 @@ export default function DocumentosPage() {
         throw error;
       }
 
-      const registrosData = (data || []).map((r: any) => ({
-        id: r.id,
-        naveInicial: r.nave_inicial || '',
-        booking: r.booking || '',
-        contenedor: Array.isArray(r.contenedor) ? r.contenedor.join(', ') : (r.contenedor || ''),
-        refCliente: r.ref_cliente || '',
-      }));
-
-      setRegistros(registrosData as any);
+      const { convertSupabaseToApp } = await import('@/lib/migration-utils');
+      const registrosList = (data || []).map((registro: any) => convertSupabaseToApp(registro));
+      
+      setAllRegistros(registrosList);
+      setRegistros(registrosList);
     } catch (err: any) {
       console.error('Error cargando registros:', err);
       showError('Error al cargar los registros. Por favor, recarga la página.');
       setRegistros([]);
+      setAllRegistros([]);
     } finally {
       setIsLoading(false);
     }
@@ -423,6 +440,219 @@ export default function DocumentosPage() {
 
   // Verificar si es Rodrigo
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+
+  // Generar opciones para los filtros basadas en los filtros ya seleccionados (filtrado en cascada)
+  const filterOptions = useMemo(() => {
+    let registrosFiltrados = [...allRegistros];
+
+    // Aplicar filtros existentes para generar opciones relevantes
+    if (selectedSeason) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const season = normalizeSeasonLabel(r.temporada);
+        return season === selectedSeason;
+      });
+    }
+
+    if (selectedClientes.length > 0) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const cliente = (r.shipper || '').trim().toUpperCase();
+        return selectedClientes.some(selected => selected.toUpperCase() === cliente);
+      });
+    }
+
+    if (selectedEjecutivo) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const ejecutivo = (r.ejecutivo || '').trim().toUpperCase();
+        return ejecutivo === selectedEjecutivo.toUpperCase();
+      });
+    }
+
+    if (selectedEstado) {
+      registrosFiltrados = registrosFiltrados.filter((r) => r.estado === selectedEstado);
+    }
+
+    if (selectedNaviera) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const naviera = (r.naviera || '').trim().toUpperCase();
+        return naviera === selectedNaviera.toUpperCase();
+      });
+    }
+
+    if (selectedEspecie) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const especie = (r.especie || '').trim().toUpperCase();
+        return especie === selectedEspecie.toUpperCase();
+      });
+    }
+
+    if (selectedNave) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const nave = (r.naveInicial || '').trim().toUpperCase();
+        return nave === selectedNave.toUpperCase();
+      });
+    }
+
+    if (fechaDesde) {
+      const desde = new Date(fechaDesde);
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        if (!r.etd) return false;
+        const etd = r.etd instanceof Date ? r.etd : new Date(r.etd);
+        return etd >= desde;
+      });
+    }
+
+    if (fechaHasta) {
+      const hasta = new Date(fechaHasta);
+      hasta.setHours(23, 59, 59, 999);
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        if (!r.etd) return false;
+        const etd = r.etd instanceof Date ? r.etd : new Date(r.etd);
+        return etd <= hasta;
+      });
+    }
+
+    // Generar opciones desde los registros filtrados
+    const clientes = new Set<string>();
+    const ejecutivos = new Set<string>();
+    const navieras = new Set<string>();
+    const especies = new Set<string>();
+    const temporadas = new Set<string>();
+    const naves = new Set<string>();
+
+    registrosFiltrados.forEach((r) => {
+      if (r.shipper) clientes.add(r.shipper.trim());
+      if (r.ejecutivo) ejecutivos.add(r.ejecutivo.trim());
+      if (r.naviera) navieras.add(r.naviera.trim());
+      if (r.especie) especies.add(r.especie.trim());
+      if (r.naveInicial) naves.add(r.naveInicial.trim());
+      if (r.temporada) {
+        const season = normalizeSeasonLabel(r.temporada);
+        if (season) temporadas.add(season);
+      }
+    });
+
+    return {
+      clientes: Array.from(clientes).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+      ejecutivos: Array.from(ejecutivos).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+      navieras: Array.from(navieras).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+      especies: Array.from(especies).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+      temporadas: Array.from(temporadas).sort().reverse(),
+      naves: Array.from(naves).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+    };
+  }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
+
+  // Aplicar filtros a los registros
+  const filteredRegistros = useMemo(() => {
+    let filtered = [...allRegistros];
+
+    if (selectedSeason) {
+      filtered = filtered.filter((r) => {
+        const season = normalizeSeasonLabel(r.temporada);
+        return season === selectedSeason;
+      });
+    }
+
+    if (selectedClientes.length > 0) {
+      filtered = filtered.filter((r) => {
+        const cliente = (r.shipper || '').trim().toUpperCase();
+        return selectedClientes.some(selected => selected.toUpperCase() === cliente);
+      });
+    }
+
+    if (selectedEjecutivo) {
+      filtered = filtered.filter((r) => {
+        const ejecutivo = (r.ejecutivo || '').trim().toUpperCase();
+        return ejecutivo === selectedEjecutivo.toUpperCase();
+      });
+    }
+
+    if (selectedEstado) {
+      filtered = filtered.filter((r) => r.estado === selectedEstado);
+    }
+
+    if (selectedNaviera) {
+      filtered = filtered.filter((r) => {
+        const naviera = (r.naviera || '').trim().toUpperCase();
+        return naviera === selectedNaviera.toUpperCase();
+      });
+    }
+
+    if (selectedEspecie) {
+      filtered = filtered.filter((r) => {
+        const especie = (r.especie || '').trim().toUpperCase();
+        return especie === selectedEspecie.toUpperCase();
+      });
+    }
+
+    if (selectedNave) {
+      filtered = filtered.filter((r) => {
+        const nave = (r.naveInicial || '').trim().toUpperCase();
+        return nave === selectedNave.toUpperCase();
+      });
+    }
+
+    if (fechaDesde) {
+      const desde = new Date(fechaDesde);
+      filtered = filtered.filter((r) => {
+        if (!r.etd) return false;
+        const etd = r.etd instanceof Date ? r.etd : new Date(r.etd);
+        return etd >= desde;
+      });
+    }
+
+    if (fechaHasta) {
+      const hasta = new Date(fechaHasta);
+      hasta.setHours(23, 59, 59, 999);
+      filtered = filtered.filter((r) => {
+        if (!r.etd) return false;
+        const etd = r.etd instanceof Date ? r.etd : new Date(r.etd);
+        return etd <= hasta;
+      });
+    }
+
+    return filtered;
+  }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
+
+  // Actualizar registros cuando cambian los filtros
+  useEffect(() => {
+    setRegistros(filteredRegistros);
+  }, [filteredRegistros]);
+
+  const handleClearFilters = () => {
+    setSelectedSeason(null);
+    setSelectedClientes([]);
+    setSelectedEjecutivo(null);
+    setSelectedEstado(null);
+    setSelectedNaviera(null);
+    setSelectedEspecie(null);
+    setSelectedNave(null);
+    setFechaDesde('');
+    setFechaHasta('');
+  };
+
+  const handleToggleCliente = (cliente: string) => {
+    setSelectedClientes((prev) => {
+      const clienteNormalizado = cliente.trim();
+      const clienteUpper = clienteNormalizado.toUpperCase();
+      const exists = prev.some(c => c.trim().toUpperCase() === clienteUpper);
+      
+      if (exists) {
+        return prev.filter(c => c.trim().toUpperCase() !== clienteUpper);
+      } else {
+        return [...prev, clienteNormalizado];
+      }
+    });
+  };
+
+  const handleSelectAllClientes = () => {
+    if (selectedClientes.length === filterOptions.clientes.length) {
+      setSelectedClientes([]);
+    } else {
+      setSelectedClientes([...filterOptions.clientes]);
+    }
+  };
+
+  const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta;
 
   // Obtener información de documentos para cada registro
   const getDocumentStatus = (booking: string, docType: string): boolean => {
@@ -760,6 +990,45 @@ export default function DocumentosPage() {
 
             <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
               <button
+                onClick={() => setShowFilters(prev => !prev)}
+                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${
+                  showFilters
+                    ? theme === 'dark'
+                      ? 'bg-sky-600 text-white border-sky-600'
+                      : 'bg-blue-600 text-white border-blue-600'
+                    : hasActiveFilters
+                    ? theme === 'dark'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-blue-600 text-white border-blue-600'
+                    : theme === 'dark'
+                      ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
+                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                }`}
+                type="button"
+                aria-label="Mostrar/Ocultar filtros"
+                aria-expanded={showFilters}
+              >
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filtros</span>
+                {hasActiveFilters && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
+                  }`}>
+                    {[
+                      selectedSeason,
+                      selectedClientes.length > 0,
+                      selectedEjecutivo,
+                      selectedEstado,
+                      selectedNaviera,
+                      selectedEspecie,
+                      selectedNave,
+                      fechaDesde,
+                      fechaHasta,
+                    ].filter(Boolean).length}
+                  </span>
+                )}
+              </button>
+              <button
                 onClick={() => setShowProfileModal(true)}
                 className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${
                   theme === 'dark'
@@ -777,6 +1046,303 @@ export default function DocumentosPage() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
           <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
+            {/* Panel de Filtros */}
+            {showFilters && (
+              <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Filtros
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    {hasActiveFilters && (
+                      <button
+                        onClick={handleClearFilters}
+                        className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${
+                          theme === 'dark'
+                            ? 'text-slate-300 hover:bg-slate-700'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        Limpiar filtros
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        theme === 'dark'
+                          ? 'text-slate-300 hover:bg-slate-700'
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                      aria-label="Cerrar filtros"
+                    >
+                      <XIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Filtro Temporada */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Temporada
+                    </label>
+                    <select
+                      value={selectedSeason ?? ''}
+                      onChange={(e) => setSelectedSeason(e.target.value || null)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    >
+                      <option value="">Todas</option>
+                      {filterOptions.temporadas.map((temp) => (
+                        <option key={temp} value={temp}>
+                          Temporada {temp}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Cliente - Lista de Checkboxes */}
+                  <div className="lg:col-span-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className={`block text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Clientes {selectedClientes.length > 0 && `(${selectedClientes.length} seleccionados)`}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSelectAllClientes}
+                          className={`text-xs px-2 py-1 rounded transition-colors ${
+                            theme === 'dark'
+                              ? 'text-sky-400 hover:bg-slate-700'
+                              : 'text-blue-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          {selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
+                            ? 'Desmarcar todos'
+                            : 'Seleccionar todos'}
+                        </button>
+                        {selectedClientes.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedClientes([])}
+                            className={`text-xs px-2 py-1 rounded transition-colors ${
+                              theme === 'dark'
+                                ? 'text-slate-400 hover:bg-slate-700'
+                                : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            Limpiar
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className={`max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2 ${
+                      theme === 'dark'
+                        ? 'border-slate-700 bg-slate-800'
+                        : 'border-gray-300 bg-white'
+                    }`}>
+                      {filterOptions.clientes.length > 0 ? (
+                        filterOptions.clientes.map((cliente) => {
+                          const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
+                          return (
+                            <label
+                              key={cliente}
+                              className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${
+                                isChecked
+                                  ? theme === 'dark'
+                                    ? 'bg-sky-900/30 border border-sky-700/50'
+                                    : 'bg-blue-50 border border-blue-200'
+                                  : theme === 'dark'
+                                    ? 'hover:bg-slate-700/50'
+                                    : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleCliente(cliente);
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                className={`h-4 w-4 rounded cursor-pointer flex-shrink-0 ${
+                                  theme === 'dark'
+                                    ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                    : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                }`}
+                              />
+                              <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                                {cliente}
+                              </span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <p className={`text-xs text-center py-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                          No hay clientes disponibles
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filtro Ejecutivo */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Ejecutivo
+                    </label>
+                    <select
+                      value={selectedEjecutivo ?? ''}
+                      onChange={(e) => setSelectedEjecutivo(e.target.value || null)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                      disabled={filterOptions.ejecutivos.length === 0}
+                    >
+                      <option value="">Todos</option>
+                      {filterOptions.ejecutivos.map((ejecutivo) => (
+                        <option key={ejecutivo} value={ejecutivo}>
+                          {ejecutivo}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Estado */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Estado
+                    </label>
+                    <select
+                      value={selectedEstado ?? ''}
+                      onChange={(e) => setSelectedEstado(e.target.value || null)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    >
+                      <option value="">Todos</option>
+                      <option value="PENDIENTE">Pendiente</option>
+                      <option value="CONFIRMADO">Confirmado</option>
+                      <option value="CANCELADO">Cancelado</option>
+                    </select>
+                  </div>
+
+                  {/* Filtro Naviera */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Naviera
+                    </label>
+                    <select
+                      value={selectedNaviera ?? ''}
+                      onChange={(e) => setSelectedNaviera(e.target.value || null)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                      disabled={filterOptions.navieras.length === 0}
+                    >
+                      <option value="">Todas</option>
+                      {filterOptions.navieras.map((naviera) => (
+                        <option key={naviera} value={naviera}>
+                          {naviera}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Especie */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Especie
+                    </label>
+                    <select
+                      value={selectedEspecie ?? ''}
+                      onChange={(e) => setSelectedEspecie(e.target.value || null)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                      disabled={filterOptions.especies.length === 0}
+                    >
+                      <option value="">Todas</option>
+                      {filterOptions.especies.map((especie) => (
+                        <option key={especie} value={especie}>
+                          {especie}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Nave */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Nave
+                    </label>
+                    <select
+                      value={selectedNave ?? ''}
+                      onChange={(e) => setSelectedNave(e.target.value || null)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                      disabled={filterOptions.naves.length === 0}
+                    >
+                      <option value="">Todas</option>
+                      {filterOptions.naves.map((nave) => (
+                        <option key={nave} value={nave}>
+                          {nave}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Fecha Desde */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Fecha Desde
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaDesde}
+                      onChange={(e) => setFechaDesde(e.target.value)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Filtro Fecha Hasta */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Fecha Hasta
+                    </label>
+                    <input
+                      type="date"
+                      value={fechaHasta}
+                      onChange={(e) => setFechaHasta(e.target.value)}
+                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${
+                        theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                          : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Pestañas */}
             <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
               <button
