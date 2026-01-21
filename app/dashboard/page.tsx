@@ -26,6 +26,7 @@ import {
   Users,
   X,
   LayoutDashboard,
+  BarChart3,
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
@@ -538,6 +539,9 @@ export default function DashboardPage() {
 
   const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
 
+  // Definir isRodrigo antes de usarlo en modules
+  const isRodrigo = userInfo?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+
   const modules = [
     {
       id: 'registros',
@@ -578,7 +582,21 @@ export default function DashboardPage() {
       hoverColor: 'hover:bg-purple-600',
       available: true,
       stats: null
-    }
+    },
+    ...(isRodrigo
+      ? [
+          {
+            id: 'reportes',
+            title: 'Reportes y KPIs',
+            description: 'Indicadores clave de rendimiento y análisis de operaciones',
+            icon: BarChart3,
+            color: 'bg-indigo-500',
+            hoverColor: 'hover:bg-indigo-600',
+            available: true,
+            stats: null
+          }
+        ]
+      : [])
   ];
 
   if (loading) {
@@ -618,7 +636,7 @@ export default function DashboardPage() {
   const isAdmin = userInfo?.rol === 'admin';
   const isEjecutivo = userInfo?.email?.endsWith('@asli.cl') || user?.email?.endsWith('@asli.cl');
 
-  const isRodrigo = userInfo?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+  // isRodrigo ya está definido más arriba (antes del array modules)
   const canAccessMaintenance = isAdmin || isRodrigo;
 
   const sidebarNav: SidebarSection[] = [
@@ -635,6 +653,9 @@ export default function DashboardPage() {
         { label: 'Seguimiento', id: 'dashboard/seguimiento', isActive: false, icon: Globe },
         { label: 'Transportes', id: 'transportes', isActive: false, icon: Truck },
         { label: 'Documentos', id: 'documentos', isActive: false, icon: FileText },
+        ...(isRodrigo
+          ? [{ label: 'Reportes', id: 'reportes', isActive: false, icon: BarChart3 }]
+          : []),
       ],
     },
     ...(canAccessMaintenance
