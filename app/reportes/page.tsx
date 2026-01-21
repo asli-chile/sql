@@ -64,6 +64,7 @@ const toneBadgeClasses = {
 } as const;
 
 export default function ReportesPage() {
+  // Página de reportes y KPIs - Acceso restringido solo para Rodrigo
   const [user, setUser] = useState<User | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
