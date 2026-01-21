@@ -116,6 +116,14 @@
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/registros/:path*"
     },
     {
+      "source": "/reportes",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/reportes"
+    },
+    {
+      "source": "/reportes/:path*",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/reportes/:path*"
+    },
+    {
       "source": "/tablas-personalizadas",
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/tablas-personalizadas"
     },
