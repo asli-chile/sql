@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { Registro } from '@/types/registros';
 import { normalizeBooking, sanitizeFileName, parseStoredDocumentName } from '@/utils/documentUtils';
 import { useToast } from '@/hooks/useToast';
+import { FinanzasSection } from '@/components/finanzas/FinanzasSection';
 
 interface DocumentoRow {
   id: string;
@@ -78,6 +79,7 @@ export default function DocumentosPage() {
     mode: 'view',
     file: null,
   });
+  const [activeTab, setActiveTab] = useState<'documentos' | 'finanzas'>('documentos');
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const dataLoadedRef = useRef(false);
   const { success, error: showError } = useToast();
@@ -418,6 +420,9 @@ export default function DocumentosPage() {
   if (!currentUser) {
     return <LoadingScreen message="Cargando..." />;
   }
+
+  // Verificar si es Rodrigo
+  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   // Obtener información de documentos para cada registro
   const getDocumentStatus = (booking: string, docType: string): boolean => {
@@ -772,6 +777,43 @@ export default function DocumentosPage() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
           <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
+            {/* Pestañas */}
+            <div className={`flex gap-2 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <button
+                onClick={() => setActiveTab('documentos')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                  activeTab === 'documentos'
+                    ? theme === 'dark'
+                      ? 'border-blue-400 text-blue-400'
+                      : 'border-blue-600 text-blue-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-300'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Documentos
+              </button>
+              {isRodrigo && (
+                <button
+                  onClick={() => setActiveTab('finanzas')}
+                  className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                    activeTab === 'finanzas'
+                      ? theme === 'dark'
+                        ? 'border-blue-400 text-blue-400'
+                        : 'border-blue-600 text-blue-600'
+                      : theme === 'dark'
+                        ? 'border-transparent text-slate-400 hover:text-slate-300'
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Finanzas
+                </button>
+              )}
+            </div>
+
+            {/* Contenido según pestaña activa */}
+            {activeTab === 'documentos' ? (
+              <>
             {/* Tabla de Documentos */}
             <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden ${
               theme === 'dark'
@@ -917,6 +959,17 @@ export default function DocumentosPage() {
                 </table>
               </div>
             </section>
+            </>
+            ) : isRodrigo ? (
+              <FinanzasSection registros={registros} canEdit={canEdit} />
+            ) : (
+              <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                <div className="text-center">
+                  <p className="text-lg font-medium mb-2">Acceso Restringido</p>
+                  <p className="text-sm">No tienes permisos para acceder a esta sección.</p>
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>
