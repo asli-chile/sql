@@ -18,11 +18,10 @@ const AuthPage = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const inputClasses = `w-full rounded-xl border px-12 py-3.5 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:shadow-md ${
-    isDark
-      ? 'border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
-      : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
-  }`;
+  const inputClasses = `w-full rounded-xl border px-12 py-3.5 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:shadow-md ${isDark
+    ? 'border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
+    : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
+    }`;
 
   const [authMode, setAuthMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
@@ -87,9 +86,12 @@ const AuthPage = () => {
 
     try {
       const normalizedEmail = email.toLowerCase().trim();
-      
+
       // Verificar si el email es secundario y obtener el email principal
-      const checkEmailResponse = await fetch(`/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const fetchUrl = `${apiUrl}/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`;
+      console.log('[Resend] Fetching:', fetchUrl);
+      const checkEmailResponse = await fetch(fetchUrl);
       let emailToUse = normalizedEmail;
 
       if (checkEmailResponse.ok) {
@@ -131,17 +133,20 @@ const AuthPage = () => {
       if (isLogin) {
         // Normalizar email a minúsculas para evitar problemas
         const normalizedEmail = email.toLowerCase().trim();
-        
+
         console.log('[Login] Iniciando login con email:', normalizedEmail);
 
         // 1. Primero, verificar si el email es secundario y obtener el email principal
-        const checkEmailResponse = await fetch(`/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`);
-        
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        const fetchUrl = `${apiUrl}/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`;
+        console.log('[Login] Fetching:', fetchUrl);
+        const checkEmailResponse = await fetch(fetchUrl);
+
         if (!checkEmailResponse.ok) {
           console.error('[Login] Error al verificar email:', checkEmailResponse.statusText);
           // Continuar con login normal si falla la verificación
         }
-        
+
         const checkEmailData = await checkEmailResponse.json();
         console.log('[Login] Respuesta de check-email:', checkEmailData);
 
@@ -164,7 +169,7 @@ const AuthPage = () => {
 
         if (signInError) {
           console.error('[Login] Error de Supabase:', signInError);
-          
+
           // Mejorar mensaje de error para el usuario
           if (signInError.message === 'Invalid login credentials' || signInError.message.includes('credentials')) {
             setError('Credenciales inválidas. Verifica tu email y contraseña.');
@@ -173,7 +178,7 @@ const AuthPage = () => {
           } else {
             setError(signInError.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.');
           }
-          
+
           return;
         }
 
@@ -203,7 +208,8 @@ const AuthPage = () => {
       }
 
       try {
-        const response = await fetch('/api/auth/request-access', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        const response = await fetch(`${apiUrl}/api/auth/request-access`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -239,17 +245,17 @@ const AuthPage = () => {
       }
     } catch (authError: any) {
       console.error('[Auth] Error inesperado general:', authError);
-      setError(authError?.message ?? 'Error inesperado en la autenticación. Por favor, intenta nuevamente.');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'EMPTY';
+      setError(`${authError?.message || 'Error'} (API: ${apiUrl})`);
       setLoading(false);
     }
   };
 
   return (
-    <main className={`relative flex h-screen items-center justify-center overflow-hidden px-4 py-4 ${
-      isDark
-        ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
-        : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100'
-    }`}>
+    <main className={`relative flex h-screen items-center justify-center overflow-hidden px-4 py-4 ${isDark
+      ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950'
+      : 'bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100'
+      }`}>
       {/* Botón de cambio de tema - Esquina superior derecha */}
       <div className="absolute top-4 right-4 z-20">
         <ThemeToggle variant="icon" />
@@ -272,11 +278,10 @@ const AuthPage = () => {
         )}
       </div>
 
-      <section className={`relative z-10 grid w-full max-w-6xl gap-0 rounded-3xl border shadow-2xl backdrop-blur-xl md:grid-cols-[1.2fr_1fr] overflow-hidden ${
-        isDark
-          ? 'border-slate-700/80 bg-slate-800/80'
-          : 'border-slate-200/80 bg-white/80'
-      }`}>
+      <section className={`relative z-10 grid w-full max-w-6xl gap-0 rounded-3xl border shadow-2xl backdrop-blur-xl md:grid-cols-[1.2fr_1fr] overflow-hidden ${isDark
+        ? 'border-slate-700/80 bg-slate-800/80'
+        : 'border-slate-200/80 bg-white/80'
+        }`}>
         {/* Panel izquierdo - Información */}
         <aside className="hidden flex-col justify-between rounded-l-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 text-white shadow-2xl md:flex overflow-y-auto">
           <div className="space-y-5">
@@ -313,16 +318,14 @@ const AuthPage = () => {
         </aside>
 
         {/* Panel derecho - Formulario */}
-        <div className={`rounded-r-3xl p-6 shadow-xl sm:p-8 overflow-y-auto ${
-          isDark ? 'bg-slate-800' : 'bg-white'
-        }`}>
+        <div className={`rounded-r-3xl p-6 shadow-xl sm:p-8 overflow-y-auto ${isDark ? 'bg-slate-800' : 'bg-white'
+          }`}>
           <div className="mb-6 flex flex-col items-center gap-3 text-center md:items-start md:text-left">
             <div
-              className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ${
-                isDark
-                  ? 'from-blue-600 to-indigo-700 shadow-blue-500/30'
-                  : 'from-blue-500 to-indigo-600 shadow-blue-500/30'
-              }`}
+              className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ${isDark
+                ? 'from-blue-600 to-indigo-700 shadow-blue-500/30'
+                : 'from-blue-500 to-indigo-600 shadow-blue-500/30'
+                }`}
               data-preserve-bg
             >
               <Image
@@ -335,14 +338,12 @@ const AuthPage = () => {
               />
             </div>
             <div className="space-y-1">
-              <h1 className={`text-2xl sm:text-3xl font-bold ${
-                isDark ? 'text-white' : 'text-slate-900'
-              }`}>
+              <h1 className={`text-2xl sm:text-3xl font-bold ${isDark ? 'text-white' : 'text-slate-900'
+                }`}>
                 {isLogin ? 'Bienvenido de vuelta' : 'Solicita tu acceso'}
               </h1>
-              <p className={`text-sm ${
-                isDark ? 'text-slate-300' : 'text-slate-600'
-              }`}>
+              <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'
+                }`}>
                 {isLogin
                   ? 'Ingresa tus credenciales para continuar gestionando tu operación.'
                   : 'Completa los datos y te contactaremos para darte acceso.'}
@@ -350,24 +351,22 @@ const AuthPage = () => {
             </div>
           </div>
 
-          <div className={`mb-6 flex rounded-xl p-1.5 text-sm font-medium shadow-inner ${
-            isDark ? 'bg-slate-700/50' : 'bg-slate-100'
-          }`}>
+          <div className={`mb-6 flex rounded-xl p-1.5 text-sm font-medium shadow-inner ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'
+            }`}>
             <button
               type="button"
               onClick={() => handleToggleMode('login')}
               aria-pressed={isLogin}
               aria-controls="auth-form"
               disabled={loading}
-              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${
-                isLogin
-                  ? isDark
-                    ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
-                    : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
-                  : isDark
-                    ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${isLogin
+                ? isDark
+                  ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
+                  : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
+                : isDark
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
             >
               <span className="flex items-center justify-center gap-2">
                 <LogIn className="h-4 w-4" aria-hidden="true" />
@@ -380,15 +379,14 @@ const AuthPage = () => {
               aria-pressed={!isLogin}
               aria-controls="auth-form"
               disabled={loading}
-              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${
-                !isLogin
-                  ? isDark
-                    ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
-                    : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
-                  : isDark
-                    ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
+              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${!isLogin
+                ? isDark
+                  ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
+                  : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
+                : isDark
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                }`}
             >
               <span className="flex items-center justify-center gap-2">
                 <UserPlus className="h-4 w-4" aria-hidden="true" />
@@ -401,11 +399,10 @@ const AuthPage = () => {
             <div
               role="alert"
               aria-live="assertive"
-              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${
-                isDark
-                  ? 'border-green-500/50 bg-green-900/30 text-green-300'
-                  : 'border-green-200 bg-green-50 text-green-800'
-              }`}
+              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${isDark
+                ? 'border-green-500/50 bg-green-900/30 text-green-300'
+                : 'border-green-200 bg-green-50 text-green-800'
+                }`}
             >
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
@@ -418,15 +415,14 @@ const AuthPage = () => {
             <div
               role="alert"
               aria-live="assertive"
-              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${
-                error.startsWith('✅')
-                  ? isDark
-                    ? 'border-green-500/50 bg-green-900/30 text-green-300'
-                    : 'border-green-200 bg-green-50 text-green-800'
-                  : isDark
-                    ? 'border-red-500/50 bg-red-900/30 text-red-300'
-                    : 'border-red-200 bg-red-50 text-red-800'
-              }`}
+              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${error.startsWith('✅')
+                ? isDark
+                  ? 'border-green-500/50 bg-green-900/30 text-green-300'
+                  : 'border-green-200 bg-green-50 text-green-800'
+                : isDark
+                  ? 'border-red-500/50 bg-red-900/30 text-red-300'
+                  : 'border-red-200 bg-red-50 text-red-800'
+                }`}
             >
               <div className="flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 flex-shrink-0" aria-hidden="true" />
@@ -449,15 +445,13 @@ const AuthPage = () => {
             {!isLogin ? (
               <>
                 <div className="space-y-2">
-                  <label htmlFor="nombreUsuario" className={`text-sm font-semibold ${
-                    isDark ? 'text-slate-200' : 'text-slate-700'
-                  }`}>
+                  <label htmlFor="nombreUsuario" className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'
+                    }`}>
                     Nombre de usuario
                   </label>
                   <div className="relative">
-                    <User className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                      isDark ? 'text-slate-500' : 'text-slate-400'
-                    }`} aria-hidden="true" />
+                    <User className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'
+                      }`} aria-hidden="true" />
                     <input
                       id="nombreUsuario"
                       name="nombreUsuario"
@@ -472,15 +466,13 @@ const AuthPage = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="empresa" className={`text-sm font-semibold ${
-                    isDark ? 'text-slate-200' : 'text-slate-700'
-                  }`}>
+                  <label htmlFor="empresa" className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'
+                    }`}>
                     Empresa
                   </label>
                   <div className="relative">
-                    <Building2 className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                      isDark ? 'text-slate-500' : 'text-slate-400'
-                    }`} aria-hidden="true" />
+                    <Building2 className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'
+                      }`} aria-hidden="true" />
                     <input
                       id="empresa"
                       name="empresa"
@@ -500,15 +492,13 @@ const AuthPage = () => {
             {isLogin && (
               <>
                 <div className="space-y-2">
-                  <label htmlFor="email" className={`text-sm font-semibold ${
-                    isDark ? 'text-slate-200' : 'text-slate-700'
-                  }`}>
+                  <label htmlFor="email" className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'
+                    }`}>
                     Email
                   </label>
                   <div className="relative">
-                    <Mail className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                      isDark ? 'text-slate-500' : 'text-slate-400'
-                    }`} aria-hidden="true" />
+                    <Mail className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'
+                      }`} aria-hidden="true" />
                     <input
                       id="email"
                       name="email"
@@ -524,15 +514,13 @@ const AuthPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="password" className={`text-sm font-semibold ${
-                    isDark ? 'text-slate-200' : 'text-slate-700'
-                  }`}>
+                  <label htmlFor="password" className={`text-sm font-semibold ${isDark ? 'text-slate-200' : 'text-slate-700'
+                    }`}>
                     Contraseña
                   </label>
                   <div className="relative">
-                    <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${
-                      isDark ? 'text-slate-500' : 'text-slate-400'
-                    }`} aria-hidden="true" />
+                    <Lock className={`absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${isDark ? 'text-slate-500' : 'text-slate-400'
+                      }`} aria-hidden="true" />
                     <input
                       id="password"
                       name="password"
@@ -548,11 +536,10 @@ const AuthPage = () => {
                     <button
                       type="button"
                       onClick={handleTogglePasswordVisibility}
-                      className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition ${
-                        isDark
-                          ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
-                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
-                      }`}
+                      className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition ${isDark
+                        ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
+                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                        }`}
                       aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
@@ -566,11 +553,10 @@ const AuthPage = () => {
               type="submit"
               disabled={loading}
               aria-busy={loading}
-              className={`group relative flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r py-4 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:shadow-lg ${
-                isDark
-                  ? 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-500 hover:to-indigo-600 hover:shadow-blue-500/40 focus:ring-offset-slate-800'
-                  : 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-500/40 focus:ring-offset-white'
-              }`}
+              className={`group relative flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r py-4 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:shadow-lg ${isDark
+                ? 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-500 hover:to-indigo-600 hover:shadow-blue-500/40 focus:ring-offset-slate-800'
+                : 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-500/40 focus:ring-offset-white'
+                }`}
             >
               {loading ? (
                 <>
@@ -588,20 +574,18 @@ const AuthPage = () => {
             </button>
           </form>
 
-          <div className={`mt-6 text-center text-sm ${
-            isDark ? 'text-slate-300' : 'text-slate-600'
-          }`}>
+          <div className={`mt-6 text-center text-sm ${isDark ? 'text-slate-300' : 'text-slate-600'
+            }`}>
             {isLogin ? (
               <p>
                 ¿No tienes cuenta?{' '}
                 <button
                   type="button"
                   onClick={() => handleToggleMode('request-access')}
-                  className={`font-semibold underline-offset-4 transition hover:underline ${
-                    isDark
-                      ? 'text-blue-400 hover:text-blue-300'
-                      : 'text-blue-600 hover:text-blue-700'
-                  }`}
+                  className={`font-semibold underline-offset-4 transition hover:underline ${isDark
+                    ? 'text-blue-400 hover:text-blue-300'
+                    : 'text-blue-600 hover:text-blue-700'
+                    }`}
                 >
                   Solicita tu acceso
                 </button>
@@ -612,11 +596,10 @@ const AuthPage = () => {
                 <button
                   type="button"
                   onClick={() => handleToggleMode('login')}
-                  className={`font-semibold underline-offset-4 transition hover:underline ${
-                    isDark
-                      ? 'text-blue-400 hover:text-blue-300'
-                      : 'text-blue-600 hover:text-blue-700'
-                  }`}
+                  className={`font-semibold underline-offset-4 transition hover:underline ${isDark
+                    ? 'text-blue-400 hover:text-blue-300'
+                    : 'text-blue-600 hover:text-blue-700'
+                    }`}
                 >
                   Inicia sesión aquí
                 </button>

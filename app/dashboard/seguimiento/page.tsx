@@ -103,7 +103,8 @@ const SeguimientoPage = () => {
       setFetchState('loading');
       setErrorMessage(null);
 
-      const url = `/api/vessels/active?t=${Date.now()}`;
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const url = `${apiUrl}/api/vessels/active?t=${Date.now()}`;
       console.log('[Seguimiento] Cargando buques desde:', url);
 
       let response: Response;
@@ -159,7 +160,8 @@ const SeguimientoPage = () => {
 
   const handleRefreshPositions = async () => {
     try {
-      const response = await fetch('/api/vessels/update-positions', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/vessels/update-positions`, {
         method: 'POST',
       });
 

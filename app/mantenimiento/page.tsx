@@ -98,7 +98,8 @@ export default function MantenimientoPage() {
   const loadUsuarios = useCallback(async () => {
     try {
       setLoadingUsuarios(true);
-      const response = await fetch('/api/admin/users', { method: 'GET' });
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/admin/users`, { method: 'GET' });
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result?.error || 'No se pudo cargar usuarios.');
@@ -158,7 +159,8 @@ export default function MantenimientoPage() {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/admin/create-user', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/admin/create-user`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -188,7 +190,8 @@ export default function MantenimientoPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      const response = await fetch('/api/admin/users', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/admin/users`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -223,7 +226,8 @@ export default function MantenimientoPage() {
     setErrorMessage(null);
     setSuccessMessage(null);
     try {
-      const response = await fetch('/api/admin/users/reset-password', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/admin/users/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ authUserId: user.auth_user_id, password: newPassword }),
@@ -444,11 +448,11 @@ export default function MantenimientoPage() {
                               setUsuarios((prev) => prev.map((item) => (
                                 item.id === user.id
                                   ? {
-                                      ...item,
-                                      rol: nextRol,
-                                      cliente_nombre: nextRol === 'cliente' ? item.cliente_nombre : null,
-                                      clientes_asignados: nextRol === 'ejecutivo' ? item.clientes_asignados : [],
-                                    }
+                                    ...item,
+                                    rol: nextRol,
+                                    cliente_nombre: nextRol === 'cliente' ? item.cliente_nombre : null,
+                                    clientes_asignados: nextRol === 'ejecutivo' ? item.clientes_asignados : [],
+                                  }
                                   : item
                               )));
                             }}

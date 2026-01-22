@@ -112,7 +112,8 @@ const ServiciosPage = () => {
   const loadBalanceInfo = async () => {
     try {
       setLoadingBalance(true);
-      const response = await fetch('/api/vessels/check-balance');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/vessels/check-balance`);
       if (!response.ok) {
         throw new Error('Error al consultar saldo');
       }
@@ -134,7 +135,8 @@ const ServiciosPage = () => {
   const loadActiveVessels = async () => {
     try {
       setLoadingVessels(true);
-      const response = await fetch('/api/vessels/active');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/vessels/active`);
       if (!response.ok) {
         throw new Error('Error al cargar buques activos');
       }
@@ -145,7 +147,7 @@ const ServiciosPage = () => {
       // Obtener información detallada de posiciones
       const supabase = createClient();
       const vesselNames = vessels.map((v) => v.vessel_name);
-      
+
       if (vesselNames.length === 0) {
         setActiveVessels([]);
         return;
@@ -203,7 +205,8 @@ const ServiciosPage = () => {
       setUpdateResult(null);
       setUpdateError(null);
 
-      const response = await fetch('/api/vessels/update-positions', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/vessels/update-positions`, {
         method: 'POST',
       });
 
@@ -315,11 +318,10 @@ const ServiciosPage = () => {
                     <p className="text-[10px] text-slate-400">
                       Saldo después de actualizar:{' '}
                       <span
-                        className={`font-semibold ${
-                          balanceInfo.apiBalance - balanceInfo.estimatedCost >= 0
+                        className={`font-semibold ${balanceInfo.apiBalance - balanceInfo.estimatedCost >= 0
                             ? 'text-green-400'
                             : 'text-red-400'
-                        }`}
+                          }`}
                       >
                         {Math.max(0, balanceInfo.apiBalance - balanceInfo.estimatedCost).toLocaleString()}{' '}
                         créditos

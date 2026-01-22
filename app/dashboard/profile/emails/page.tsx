@@ -29,7 +29,8 @@ export default function ManageEmailsPage() {
     const loadEmails = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/user/emails');
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const response = await fetch(`${apiUrl}/api/user/emails`);
             const data = await response.json();
 
             if (response.ok) {
@@ -58,7 +59,8 @@ export default function ManageEmailsPage() {
         setAdding(true);
 
         try {
-            const response = await fetch('/api/user/emails', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const response = await fetch(`${apiUrl}/api/user/emails`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: newEmail }),
@@ -86,7 +88,8 @@ export default function ManageEmailsPage() {
         setDeleting(emailId);
 
         try {
-            const response = await fetch(`/api/user/emails?id=${emailId}`, {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const response = await fetch(`${apiUrl}/api/user/emails?id=${emailId}`, {
                 method: 'DELETE',
             });
 

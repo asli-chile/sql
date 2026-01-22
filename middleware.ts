@@ -3,29 +3,54 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  // Detectar PRIMERO si viene desde asli.cl ANTES de hacer cualquier otra cosa
-  // Esto evita crear el cliente de Supabase innecesariamente
+  const { pathname } = req.nextUrl;
+  const origin = req.headers.get('origin') || '';
+
+  // 1. Manejo de CORS para la App Móvil (Capacitor)
+  // Permitir localhost (Android) y capacitor://localhost (iOS)
+  const isAllowedOrigin = origin.includes('localhost') || origin.includes('capacitor://');
+
+  if (pathname.startsWith('/api/') && isAllowedOrigin) {
+    // Si es una solicitud OPTIONS (preflight), responder inmediatamente
+    if (req.method === 'OPTIONS') {
+      return new NextResponse(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+          'Access-Control-Allow-Credentials': 'true',
+        },
+      });
+    }
+  }
+
+  // Detectar si viene desde asli.cl
   const forwardedHost = req.headers.get('x-forwarded-host') || '';
   const host = req.headers.get('host') || '';
   const referer = req.headers.get('referer') || '';
-  const origin = req.headers.get('origin') || '';
-  const isFromAsliCl = 
-    forwardedHost.includes('asli.cl') || 
-    host.includes('asli.cl') || 
-    referer.includes('asli.cl') || 
+  const isFromAsliCl =
+    forwardedHost.includes('asli.cl') ||
+    host.includes('asli.cl') ||
+    referer.includes('asli.cl') ||
     origin.includes('asli.cl');
 
-  // SOLUCIÓN RADICAL: Deshabilitar completamente el middleware cuando viene desde asli.cl
-  // El middleware está causando bucles infinitos con los rewrites de Vercel
-  // El código del cliente y las páginas manejarán la autenticación y redirecciones
+  // Si viene desde asli.cl, retornar con headers de CORS si es necesario
   if (isFromAsliCl) {
-    // Retornar inmediatamente sin crear el cliente de Supabase ni hacer ninguna lógica
-    // Esto evita completamente cualquier interferencia del middleware
-    return NextResponse.next({
+    const res = NextResponse.next({
       request: {
         headers: req.headers,
       },
     });
+
+    if (pathname.startsWith('/api/') && isAllowedOrigin) {
+      res.headers.set('Access-Control-Allow-Origin', origin);
+      res.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+      res.headers.set('Access-Control-Allow-Credentials', 'true');
+    }
+
+    return res;
   }
 
   // Solo continuar con la lógica del middleware si NO viene desde asli.cl
@@ -97,10 +122,8 @@ export async function middleware(req: NextRequest) {
   const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas', '/tablas-personalizadas', '/reportes', '/finanzas'];
   const authRoutes = ['/auth'];
 
-  const { pathname } = req.nextUrl;
-
   // Comportamiento normal cuando NO viene desde asli.cl (acceso directo al dominio de Vercel)
-  
+
   // Si está en una ruta protegida y no tiene sesión, redirigir a auth
   if (protectedRoutes.some(route => pathname.startsWith(route)) && !session) {
     const authUrl = new URL('/auth', req.url);

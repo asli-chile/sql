@@ -18,7 +18,8 @@ export default function VesselDiagnosePage() {
         setSyncing(true);
         setSyncResult(null);
         try {
-            const response = await fetch('/api/vessels/sync-missing-vessels', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const response = await fetch(`${apiUrl}/api/vessels/sync-missing-vessels`, {
                 method: 'POST',
             });
             const result = await response.json();
@@ -37,7 +38,8 @@ export default function VesselDiagnosePage() {
         setTestUpdating(true);
         setTestUpdateResult(null);
         try {
-            const response = await fetch('/api/vessels/update-positions-test', {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+            const response = await fetch(`${apiUrl}/api/vessels/update-positions-test`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -57,7 +59,8 @@ export default function VesselDiagnosePage() {
     };
 
     useEffect(() => {
-        fetch(`/api/vessels/diagnose?name=${encodeURIComponent(vesselName)}`)
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        fetch(`${apiUrl}/api/vessels/diagnose?name=${encodeURIComponent(vesselName)}`)
             .then(r => r.json())
             .then(data => {
                 setData(data);

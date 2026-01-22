@@ -12,20 +12,23 @@ export default function HomePage() {
   useEffect(() => {
     // Verificar si hay sesión activa
     const checkSession = async () => {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session) {
-        // Usar window.location.replace para evitar bucles con rewrites
-        window.location.replace('/dashboard');
-      } else {
-        // Usar window.location.replace para evitar bucles con rewrites
-        window.location.replace('/auth');
+      try {
+        const supabase = createClient();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session) {
+          router.replace('/dashboard');
+        } else {
+          router.replace('/auth');
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+        router.replace('/auth');
       }
     };
 
     checkSession();
-  }, []);
+  }, [router]);
 
   return <LoadingScreen message="Redirigiendo a tu experiencia personalizada..." />;
 }

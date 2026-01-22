@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "build:mobile": "node scripts/mobile-build.js",
+    "cap:sync": "npx cap sync",
+    "mobile:build": "npm run build:mobile && npm run cap:sync",
     "download-logo": "node scripts/descargar-logo-azul.js",
     "create-user": "node scripts/create-user.js",
     "test": "jest",
@@ -14,6 +17,9 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@capacitor/android": "^8.0.1",
+    "@capacitor/cli": "^8.0.1",
+    "@capacitor/core": "^8.0.1",
     "@deck.gl/core": "^9.2.2",
     "@deck.gl/layers": "^9.2.2",
     "@deck.gl/react": "^9.2.2",
