@@ -179,11 +179,13 @@ const AuthPage = () => {
             setError(signInError.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.');
           }
 
+          setLoading(false); // ✅ Limpiar estado de carga en error
           return;
         }
 
         if (!signInData.session) {
           setError('No se pudo crear la sesión. Por favor, intenta nuevamente.');
+          setLoading(false); // ✅ Limpiar estado de carga en error
           return;
         }
 
