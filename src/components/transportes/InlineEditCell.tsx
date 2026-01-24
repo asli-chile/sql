@@ -480,7 +480,7 @@ export function InlineEditCell({
           <>
             <input
               type="text"
-              placeholder="HHMM"
+              placeholder="HH:MM"
               value={editValue}
               onChange={(e) => {
                 let value = e.target.value.replace(/\D/g, ''); // Solo números
@@ -490,23 +490,30 @@ export function InlineEditCell({
                   value = value.slice(0, 4);
                 }
                 
-                // Mantener siempre HHMM (sin dos puntos)
+                // Agregar dos puntos automáticamente después de 2 dígitos
+                if (value.length === 2) {
+                  value = value + ':';
+                } else if (value.length > 2 && !value.includes(':')) {
+                  // Si somehow no tiene :, agregarlo
+                  value = value.slice(0, 2) + ':' + value.slice(2);
+                }
+                
                 setEditValue(value);
               }}
               onBlur={(e) => {
-                // Al perder foco, convertir HHMM a HH:MM solo para guardar
-                let value = e.target.value.replace(/\D/g, '');
+                // Limpiar valor: quitar dos puntos y solo dejar números
+                let cleanValue = e.target.value.replace(/\D/g, '');
                 
-                if (value.length === 4) {
-                  const hours = value.slice(0, 2);
-                  const minutes = value.slice(2, 4);
+                if (cleanValue.length === 4) {
+                  const hours = cleanValue.slice(0, 2);
+                  const minutes = cleanValue.slice(2, 4);
                   
                   // Validar rango
                   const hourNum = parseInt(hours);
                   const minuteNum = parseInt(minutes);
                   
                   if (hourNum <= 23 && minuteNum <= 59) {
-                    // Convertir a HH:MM solo para guardar
+                    // Formatear como HH:MM para guardar
                     const formattedValue = `${hours}:${minutes}`;
                     
                     // Guardar directamente con el valor formateado
@@ -519,7 +526,7 @@ export function InlineEditCell({
                       .single()
                       .then(({ data, error }) => {
                         if (!error) {
-                          const updatedRecord = { ...record, [field]: value }; // Mantener HHMM para display
+                          const updatedRecord = { ...record, [field]: formattedValue };
                           onSave(updatedRecord);
                           clearEditing();
                         } else {
@@ -528,13 +535,32 @@ export function InlineEditCell({
                       });
                   } else {
                     // Si es inválido, mostrar error o dejar como está
-                    console.log('Hora inválida:', value);
+                    console.log('Hora inválida:', cleanValue);
                   }
+                } else if (cleanValue.length === 2) {
+                  // Si solo tiene horas, guardar como HH:00
+                  const formattedValue = `${cleanValue}:00`;
+                  const supabase = createClient();
+                  supabase
+                    .from('transportes')
+                    .update({ [field]: formattedValue })
+                    .eq('id', record.id)
+                    .select('*')
+                    .single()
+                    .then(({ data, error }) => {
+                      if (!error) {
+                        const updatedRecord = { ...record, [field]: formattedValue };
+                        onSave(updatedRecord);
+                        clearEditing();
+                      } else {
+                        console.error('Error guardando hora:', error);
+                      }
+                    });
                 }
               }}
               onKeyDown={handleKeyDown}
               autoFocus
-              maxLength={4} // HHMM = 4 caracteres
+              maxLength={5} // HH:MM = 5 caracteres
               className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
                 theme === 'dark'
                   ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
@@ -543,7 +569,7 @@ export function InlineEditCell({
               disabled={loading}
             />
             <div className="text-xs text-gray-500 mt-1">
-              🕐 Hora (24h) - Formato HHMM
+              🕐 Hora (24h) - Formato HH:MM
             </div>
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
