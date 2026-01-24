@@ -22,10 +22,17 @@ const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
   'fin_stacking',
   'cut_off',
+  'cut_off_documental',
   'fecha_planta',
   'dia_presentacion',
   'created_at',
   'updated_at',
+]);
+
+const timeKeys = new Set<keyof TransporteRecord>([
+  'hora_presentacion',
+  'hora_planta',
+  'horario_retiro',
 ]);
 
 // Columnas que no se deben editar en transportes
@@ -104,7 +111,7 @@ export function InlineEditCell({
   const isEditable = isFieldEditable();
   const isEditing = isEditingInContext(record.id, field);
   const isDateField = dateKeys.has(field);
-  const isTimeField = type === 'time';
+  const isTimeField = timeKeys.has(field) || type === 'time';
   const isDateTimeField = type === 'datetime';
 
   // Usar plantasOptions si el campo es planta, sino usar options
