@@ -467,19 +467,38 @@ export function InlineEditCell({
           <>
             <input
               type="text"
-              placeholder="HH:MM"
+              placeholder="HHMM"
               value={editValue}
               onChange={(e) => {
-                // Solo permitir formato HH:MM
-                const value = e.target.value;
-                if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value) || value === '') {
+                let value = e.target.value.replace(/\D/g, ''); // Solo números
+                
+                // Limitar a 4 dígitos máximo (HHMM)
+                if (value.length > 4) {
+                  value = value.slice(0, 4);
+                }
+                
+                // Formatear automáticamente HH:MM
+                if (value.length >= 3) {
+                  const hours = value.slice(0, 2);
+                  const minutes = value.slice(2, 4);
+                  
+                  // Validar rango
+                  const hourNum = parseInt(hours);
+                  const minuteNum = parseInt(minutes);
+                  
+                  if (hourNum <= 23 && minuteNum <= 59) {
+                    setEditValue(`${hours}:${minutes}`);
+                  } else if (hourNum <= 23) {
+                    setEditValue(`${hours}:${minutes.padEnd(2, '0')}`);
+                  }
+                } else {
                   setEditValue(value);
                 }
               }}
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
               autoFocus
-              maxLength={5} // HH:MM = 5 caracteres
+              maxLength={4} // HHMM = 4 caracteres
               className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
                 theme === 'dark'
                   ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
@@ -488,7 +507,7 @@ export function InlineEditCell({
               disabled={loading}
             />
             <div className="text-xs text-gray-500 mt-1">
-              🕐 Hora (24h) - Formato HH:MM
+              🕐 Hora (24h) - Solo números HHMM
             </div>
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
