@@ -392,6 +392,33 @@ export function TransporteCard({
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                   {formatValue(transporte.dia_presentacion)}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1 text-center">
+              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Sello
+              </span>
+              {canEdit ? (
+                <InlineEditCell
+                  value={transporte.sello}
+                  field="sello"
+                  record={transporte}
+                  onSave={onUpdate}
+                  type="text"
+                />
+              ) : (
+                <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                  {formatValue(transporte.sello)}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1 text-center">
+              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Tara
+              </span>
+              {canEdit ? (
+                <InlineEditCell
                   value={transporte.tara}
                   field="tara"
                   record={transporte}
@@ -401,24 +428,6 @@ export function TransporteCard({
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                   {formatValue(transporte.tara)}
-                </span>
-              )}
-            </div>
-            <div className="space-y-1 text-center">
-              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                SPS
-              </span>
-              {canEdit ? (
-                <InlineEditCell
-                  value={transporte.sps}
-                  field="sps"
-                  record={transporte}
-                  onSave={onUpdate}
-                  type="text"
-                />
-              ) : (
-                <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.sps)}
                 </span>
               )}
             </div>
