@@ -551,7 +551,7 @@ ${transporte.atmosfera_controlada ? '🌡️ AT CONTROLADA' : ''}
 ${transporte.late ? '⏰ LATE' : ''}
 ${transporte.extra_late ? '⏰ EXTRA LATE' : ''}
 ${transporte.porteo ? '🚚 PORTEO' : ''}
-${transporte.ingresado_stacking ? '📦 INGRESADO STACKING' : ''}
+${transporte.ingreso_stacking ? '📦 INGRESADO STACKING' : ''}
               `.trim();
 
               // Copiar al portapapeles
