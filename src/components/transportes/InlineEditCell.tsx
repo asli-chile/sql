@@ -249,10 +249,25 @@ export function InlineEditCell({
         processedValue = editValue === '' ? null : String(editValue).trim();
       }
 
-      const { error: updateError } = await supabase
+      console.log('Intentando guardar:', {
+  field,
+  processedValue,
+  recordId: record.id,
+  fieldType: typeof processedValue
+    });
+
+      const { data, error: updateError } = await supabase
         .from('transportes')
         .update({ [field]: processedValue })
-        .eq('id', record.id);
+        .eq('id', record.id)
+        .select();
+
+      console.log('Respuesta de Supabase:', {
+        data,
+        updateError,
+        hasError: !!updateError,
+        errorType: typeof updateError
+      });
 
       if (updateError) {
         console.error('Error updating record:', {
