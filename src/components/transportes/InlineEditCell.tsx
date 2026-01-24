@@ -255,7 +255,16 @@ export function InlineEditCell({
         .eq('id', record.id);
 
       if (updateError) {
-        console.error('Error updating record:', updateError);
+        console.error('Error updating record:', {
+          error: updateError,
+          details: updateError.details,
+          message: updateError.message,
+          hint: updateError.hint,
+          code: updateError.code,
+          field: field,
+          processedValue: processedValue,
+          recordId: record.id
+        });
         setError('Error al guardar');
         return;
       }
