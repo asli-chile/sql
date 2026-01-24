@@ -456,7 +456,7 @@ export function InlineEditCell({
               </div>
             </div>
           </>
-        ) : isTimeField || type === 'time' ? (
+        ) : isTimeField || (type as string) === 'time' ? (
           <>
             <input
               type="time"
