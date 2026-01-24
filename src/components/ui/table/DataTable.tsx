@@ -1573,7 +1573,9 @@ export function DataTable({
             style={{ overscrollBehavior: 'contain', overflowAnchor: 'none' }}
           >
           <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {filteredData.map((record, index) => {
+            {table.getFilteredRowModel().rows.map((row) => {
+              const record = row.original;
+              const index = row.index;
               const key = record.id ?? `registro-${record.refAsli ?? index}`;
               const estado = record.estado ?? 'SIN ESTADO';
               const estadoColor = estado === 'CONFIRMADO'

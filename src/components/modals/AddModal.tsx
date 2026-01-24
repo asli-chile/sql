@@ -4,14 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, ChevronRight, ChevronLeft, Check, Calendar } from 'lucide-react';
 import { Combobox } from '@/components/ui/Combobox';
 import { generateUniqueRefAsli } from '@/lib/ref-asli-utils';
-import { supabase } from '@/lib/supabase-mobile';
+import { createClient } from '@/lib/supabase-browser';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   generateRefAsliMobile,
   generateRefExternaMobile,
   createRegistrosMobile,
   upsertCatalogValueMobile,
-  upsertNaveMappingMobile
+  upsertNaveMappingMobile,
+  setSupabaseClient
 } from '@/lib/mobile-api-utils';
 import { parseDateString, formatDateForInput } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
@@ -69,6 +70,40 @@ export function AddModal({
   
   const { theme } = useTheme();
   const MAX_COPIES = 50;
+  
+  // Crear cliente Supabase para versión web
+  const supabase = createClient();
+  
+  // Establecer el cliente para las funciones mobile-api-utils
+  setSupabaseClient(supabase);
+  
+  // Verificar estado de autenticación al montar el modal
+  const [authStatus, setAuthStatus] = useState<string>('');
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Error de autenticación:', error);
+          setAuthStatus(`Error: ${error.message}`);
+        } else if (user) {
+          console.log('✅ Usuario autenticado:', user.email);
+          setAuthStatus(`Autenticado como: ${user.email}`);
+        } else {
+          console.warn('⚠️ No hay usuario autenticado');
+          setAuthStatus('No autenticado');
+        }
+      } catch (err) {
+        console.error('Error verificando autenticación:', err);
+        setAuthStatus('Error verificando autenticación');
+      }
+    };
+    
+    if (isOpen) {
+      checkAuth();
+    }
+  }, [isOpen, supabase]);
   
   // Helper para obtener estilos de select según el tema
   const getSelectStyles = () => {
@@ -202,13 +237,31 @@ export function AddModal({
     const generateRefExterna = async () => {
       if (formData.shipper && formData.especie) {
         try {
+          console.log('🔄 Generando REF EXTERNA para:', formData.shipper, formData.especie);
           const refExterna = await generateRefExternaMobile(formData.shipper, formData.especie, 1) as string;
+          
           if (!refExterna) {
-            throw new Error('No se recibió la referencia externa.');
+            console.warn('⚠️ REF EXTERNA vacía, generando fallback local');
+            // Generar fallback local si todo falla
+            const clienteLetras = formData.shipper.substring(0, 3).toUpperCase();
+            const especieLetras = formData.especie.substring(0, 3).toUpperCase();
+            const timestamp = Date.now().toString().slice(-4);
+            const fallbackRef = `${clienteLetras}2526${especieLetras}${timestamp}`;
+            setFormData(prev => ({ ...prev, refCliente: fallbackRef }));
+            return;
           }
+          
+          console.log('✅ REF EXTERNA generada:', refExterna);
           setFormData(prev => ({ ...prev, refCliente: refExterna }));
         } catch (error) {
-          console.error('Error al generar referencia externa:', error);
+          console.error('❌ Error al generar referencia externa:', error);
+          // No mostrar error al usuario, solo generar fallback
+          const clienteLetras = formData.shipper.substring(0, 3).toUpperCase();
+          const especieLetras = formData.especie.substring(0, 3).toUpperCase();
+          const timestamp = Date.now().toString().slice(-4);
+          const fallbackRef = `${clienteLetras}2526${especieLetras}${timestamp}`;
+          console.log('🔄 Usando REF EXTERNA fallback:', fallbackRef);
+          setFormData(prev => ({ ...prev, refCliente: fallbackRef }));
         }
       } else {
         // Si no hay cliente o especie, limpiar la referencia
@@ -416,7 +469,7 @@ Saludos cordiales.`;
           ? normalizeDateForStorage(formData.ingresado)
           : todayString,
         ejecutivo: formData.ejecutivo,
-        usuario: createdByName,
+        created_by: createdByName,
         shipper: formData.shipper,
         naviera: formData.naviera,
         nave_inicial: naveCompleta,
@@ -429,22 +482,18 @@ Saludos cordiales.`;
         estado: formData.estado,
         tipo_ingreso: formData.tipoIngreso,
         flete: formData.flete,
-        comentario: formData.comentario,
-        contenedor: '',
+        comentario: formData.comentario || 'SIN COMENTARIO',
+        contenedor: 'POR ASIGNAR',
         co2: formData.co2 ? parseFloat(formData.co2) : null,
         o2: formData.o2 ? parseFloat(formData.o2) : null,
-        ['tratamiento de frio']: formData.tratamientoFrio || 'NO APLICA',
-        // Calcular tipo de atmósfera automáticamente según la naviera
-        tipo_atmosfera: formData.naviera?.includes('CMA') ? 'DAIKIN' : formData.naviera?.includes('MSC') ? 'STARCOOL' : '',
         tt: null,
-        roleada_desde: '',
-        numero_bl: '',
-        estado_bl: '',
-        contrato: formData.contrato || '',
-        facturacion: '',
-        booking_pdf: '',
-        observacion: '',
-        temporada: '2025-2026',
+        roleada_desde: 'POR DEFINIR',
+        numero_bl: 'POR ASIGNAR',
+        estado_bl: 'PENDIENTE',
+        contrato: formData.contrato || 'SIN CONTRATO',
+        facturacion: 'PENDIENTE',
+        booking_pdf: 'SIN DOCUMENTO',
+        observacion: 'SIN OBSERVACION',
         semana_ingreso: null,
         mes_ingreso: null,
         semana_zarpe: null,
@@ -454,16 +503,16 @@ Saludos cordiales.`;
         etd: formData.etd ? normalizeDateForStorage(formData.etd) : null,
         eta: formData.eta ? normalizeDateForStorage(formData.eta) : null,
         ingreso_stacking: null,
-        booking: '',
+        booking: 'POR ASIGNAR',
+        'tratamiento de frio': formData.tratamientoFrio || 'NO APLICA',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
 
-      // Agregar múltiples documentos con REF ASLI y REF EXTERNA únicos y correlativos
-      const recordsToInsert = refAsliList.map((refAsli, index) => ({
+      // Agregar múltiples documentos con REF ASLI únicos y correlativos
+      const recordsToInsert = refAsliList.map((refAsli) => ({
         ...baseRegistroData,
         ref_asli: refAsli,
-        ref_cliente: refExternaList[index] || null,
       }));
 
       const ensureCatalogUpdate = (
@@ -1627,7 +1676,35 @@ Saludos cordiales.`;
               ? 'border-slate-800/60 bg-slate-900/40 text-slate-400' 
               : 'border-gray-200 bg-gray-50 text-gray-600'
           }`}>
-            <div className="flex flex-wrap items-center gap-2">
+            
+            {/* Indicador de estado de autenticación */}
+            {currentStep === 5 && (
+              <div className={`mb-4 p-3 rounded-lg ${
+                authStatus.includes('Autenticado') 
+                  ? theme === 'dark' ? 'bg-green-900/30 border border-green-500/50' : 'bg-green-50 border border-green-200'
+                  : theme === 'dark' ? 'bg-red-900/30 border border-red-500/50' : 'bg-red-50 border border-red-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
+                  }`} />
+                  <span className={`text-sm ${
+                    authStatus.includes('Autenticado') 
+                      ? theme === 'dark' ? 'text-green-300' : 'text-green-700'
+                      : theme === 'dark' ? 'text-red-300' : 'text-red-700'
+                  }`}>
+                    {authStatus}
+                  </span>
+                </div>
+                {!authStatus.includes('Autenticado') && (
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                    Por favor cierra sesión y vuelve a iniciarla para poder guardar registros.
+                  </p>
+                )}
+              </div>
+            )}
+            
+            <div className="flex justify-between items-center gap-2">
               <AlertCircle className={`h-4 w-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
               <span>Todos los campos marcados con (*) son obligatorios.</span>
             </div>

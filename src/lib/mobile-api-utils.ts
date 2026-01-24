@@ -6,6 +6,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * Estas funciones hacen lo mismo que las APIs pero funcionan directamente en el cliente
  */
 
+// Cliente Supabase que se puede sobreescribir (para versión web)
+let supabaseClient: SupabaseClient = supabase;
+
+/**
+ * Establece el cliente Supabase a usar (para compatibilidad web/móvil)
+ */
+export function setSupabaseClient(client: SupabaseClient) {
+  supabaseClient = client;
+}
+
 /**
  * Genera REF ASLI único (versión móvil)
  * @param count - Número de referencias a generar (default: 1)
@@ -14,7 +24,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const generateRefAsliMobile = async (count: number = 1): Promise<string | string[]> => {
   try {
     // Llamar a la función SQL que ve TODOS los registros (ignora RLS)
-    const { data, error } = await supabase.rpc('get_next_ref_asli');
+    const { data, error } = await supabaseClient.rpc('get_next_ref_asli');
 
     if (error) {
       console.error('❌ Error generando REF ASLI:', error);
@@ -129,6 +139,8 @@ export const generateRefExternaMobile = async (
       throw new Error('Cliente y especie son obligatorios');
     }
 
+    console.log('🔍 Intentando generar REF EXTERNA:', { cliente, especie, count });
+
     // Llamar a la función SQL personalizada
     const { data, error } = await supabase.rpc('generate_ref_externa', {
       cliente_input: cliente.trim(),
@@ -136,8 +148,16 @@ export const generateRefExternaMobile = async (
       count_input: count
     });
 
+    console.log('📊 Resultado RPC:', { data, error });
+
     if (error) {
-      console.error('❌ Error generando REF EXTERNA:', error);
+      // Silenciar error de REF EXTERNA ya que el fallback maneja el caso
+      console.log('🔄 RPC no disponible, usando fallback para REF EXTERNA...');
+      return generateRefExternaFallback(cliente, especie, count);
+    }
+
+    if (!data) {
+      console.log('⚠️ RPC devolvió data vacía, usando fallback');
       return generateRefExternaFallback(cliente, especie, count);
     }
 
@@ -149,6 +169,7 @@ export const generateRefExternaMobile = async (
 
   } catch (error) {
     console.error('💥 Error generando REF EXTERNA móvil:', error);
+    console.log('🔄 Usando fallback por excepción...');
     return generateRefExternaFallback(cliente, especie, count);
   }
 };
@@ -162,25 +183,6 @@ const generateRefExternaFallback = async (
   count: number
 ): Promise<string | string[]> => {
   try {
-    // Obtener registros existentes para este cliente y especie
-    const { data: registros, error } = await supabase
-      .from('registros')
-      .select('ref_cliente')
-      .ilike('shipper', `%${cliente}%`)
-      .ilike('especie', `%${especie}%`)
-      .not('ref_cliente', 'is', null);
-
-    if (error) throw error;
-
-    const refsExistentes = new Set<string>();
-    if (registros && registros.length > 0) {
-      registros.forEach(registro => {
-        if (registro.ref_cliente) {
-          refsExistentes.add(registro.ref_cliente.toLowerCase());
-        }
-      });
-    }
-
     // Generar 3 letras del cliente
     const clienteLetras = cliente.substring(0, 3).toUpperCase();
 
@@ -190,54 +192,96 @@ const generateRefExternaFallback = async (
     // Base: 2526 (año actual)
     const base = '2526';
 
+    // Generar prefijo base
+    const prefix = `${clienteLetras}${base}${especieLetras}`;
+
+    // Buscar referencias existentes para este cliente y especie
+    const { data: registros, error } = await supabaseClient
+      .from('registros')
+      .select('*')
+      .ilike('shipper', `%${cliente}%`)
+      .ilike('especie', `%${especie}%`)
+      .limit(10); // Solo obtener algunos registros para depurar
+
+    if (error) {
+      console.error('Error buscando referencias existentes:', error);
+      // Si hay error, usar timestamp como último recurso
+      return generateTimestampFallback(cliente, especie, count);
+    }
+
+    const numerosExistentes = new Set<number>();
+    if (registros && registros.length > 0) {
+      registros.forEach(registro => {
+        if (registro.ref_cliente) {
+          // Extraer el número correlativo del final
+          const ref = registro.ref_cliente.trim();
+          const match = ref.match(new RegExp(`^${prefix}(\\d+)$`));
+          if (match) {
+            numerosExistentes.add(parseInt(match[1], 10));
+          }
+        }
+      });
+    }
+
     if (count === 1) {
-      let numero = 1;
-      let refExterna: string;
-
-      do {
-        refExterna = `${clienteLetras}${base}${especieLetras}${numero.toString().padStart(3, '0')}`;
-        numero++;
-      } while (refsExistentes.has(refExterna.toLowerCase()) && numero < 1000);
-
-      return refExterna;
+      // Si no hay referencias existentes, empezar desde 001
+      if (numerosExistentes.size === 0) {
+        return `${prefix}001`;
+      }
+      
+      let siguienteNumero = 1;
+      while (numerosExistentes.has(siguienteNumero)) {
+        siguienteNumero++;
+      }
+      return `${prefix}${siguienteNumero.toString().padStart(3, '0')}`;
     }
 
     const refExternaList: string[] = [];
-    let numero = 1;
+    let siguienteNumero = 1;
 
     for (let i = 0; i < count; i++) {
-      let refExterna: string;
+      while (numerosExistentes.has(siguienteNumero)) {
+        siguienteNumero++;
+      }
 
-      do {
-        refExterna = `${clienteLetras}${base}${especieLetras}${numero.toString().padStart(3, '0')}`;
-        numero++;
-      } while (refsExistentes.has(refExterna.toLowerCase()) && numero < 1000);
-
+      const refExterna = `${prefix}${siguienteNumero.toString().padStart(3, '0')}`;
       refExternaList.push(refExterna);
-      refsExistentes.add(refExterna.toLowerCase());
+      numerosExistentes.add(siguienteNumero);
+      siguienteNumero++;
     }
 
     return refExternaList;
 
   } catch (error) {
     console.error('💥 Error en fallback REF EXTERNA:', error);
-    // Último fallback
-    const clienteLetras = cliente.substring(0, 3).toUpperCase();
-    const especieLetras = especie.substring(0, 3).toUpperCase();
-    const timestamp = Date.now() % 1000;
-
-    if (count === 1) {
-      return `${clienteLetras}2526${especieLetras}${timestamp.toString().padStart(3, '0')}`;
-    }
-
-    const refExternaList: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const refExterna = `${clienteLetras}2526${especieLetras}${(timestamp + i).toString().padStart(3, '0')}`;
-      refExternaList.push(refExterna);
-    }
-
-    return refExternaList;
+    // Último recurso: usar timestamp
+    return generateTimestampFallback(cliente, especie, count);
   }
+};
+
+/**
+ * Último recurso: generar con timestamp
+ */
+const generateTimestampFallback = (
+  cliente: string,
+  especie: string,
+  count: number
+): string | string[] => {
+  const clienteLetras = cliente.substring(0, 3).toUpperCase();
+  const especieLetras = especie.substring(0, 3).toUpperCase();
+  const base = '2526';
+  const timestamp = Date.now() % 1000;
+
+  if (count === 1) {
+    return `${clienteLetras}${base}${especieLetras}${timestamp.toString().padStart(3, '0')}`;
+  }
+
+  const refExternaList: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const refExterna = `${clienteLetras}${base}${especieLetras}${(timestamp + i).toString().padStart(3, '0')}`;
+    refExternaList.push(refExterna);
+  }
+  return refExternaList;
 };
 
 /**
@@ -251,10 +295,21 @@ export const createRegistrosMobile = async (records: Record<string, unknown>[]):
       throw new Error('No hay registros para crear');
     }
 
-    const { data, error } = await supabase
+    // Verificar si el usuario está autenticado
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      throw new Error('Usuario no autenticado. Por favor inicia sesión nuevamente.');
+    }
+
+    console.log('🔍 Usuario autenticado:', user.email);
+    console.log('🔍 Intentando insertar registros:', JSON.stringify(records, null, 2));
+
+    const { data, error } = await supabaseClient
       .from('registros')
       .insert(records)
       .select();
+
+    console.log('📊 Resultado inserción:', { data, error });
 
     if (error) {
       console.error('❌ Error creando registros:', error);
