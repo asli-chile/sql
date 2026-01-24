@@ -31,6 +31,8 @@ const dateKeys = new Set<keyof TransporteRecord>([
 
 const timeKeys = new Set<keyof TransporteRecord>([
   'hora_presentacion',
+  'llegada_planta',
+  'salida_planta',
   'hora_planta',
   'horario_retiro',
 ]);

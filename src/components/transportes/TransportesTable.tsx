@@ -262,6 +262,8 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                               column.key === 'planta' ? 'select' :
                               column.key === 'dia_presentacion' ? 'date' :
                               column.key === 'hora_presentacion' ? 'time' :
+                              column.key === 'llegada_planta' ? 'time' :
+                              column.key === 'salida_planta' ? 'time' :
                               'text'
                             }
                             options={column.key === 'planta' ? [] : undefined}
@@ -275,6 +277,8 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                               column.key === 'planta' ? 'select' :
                               column.key === 'dia_presentacion' ? 'date' :
                               column.key === 'hora_presentacion' ? 'time' :
+                              column.key === 'llegada_planta' ? 'time' :
+                              column.key === 'salida_planta' ? 'time' :
                               'text'
                             }
                           </div>
