@@ -203,8 +203,32 @@ export function InlineEditCell({
           processedValue = null;
         }
       } else if (isTimeField && editValue) {
-        // Para hora, guardar el string directamente
-        processedValue = editValue.trim() || null;
+        // Para hora, limpiar y formatear correctamente
+        let cleanValue = editValue.trim();
+        
+        // Si está en formato HHMM, convertir a HH:MM
+        if (/^\d{4}$/.test(cleanValue)) {
+          const hours = cleanValue.slice(0, 2);
+          const minutes = cleanValue.slice(2, 4);
+          cleanValue = `${hours}:${minutes}`;
+        }
+        
+        // Validar formato HH:MM
+        if (/^\d{2}:\d{2}$/.test(cleanValue)) {
+          const [hours, minutes] = cleanValue.split(':');
+          const hourNum = parseInt(hours);
+          const minuteNum = parseInt(minutes);
+          
+          if (hourNum <= 23 && minuteNum <= 59) {
+            processedValue = cleanValue;
+          } else {
+            console.error('Hora inválida:', cleanValue);
+            processedValue = null;
+          }
+        } else {
+          console.error('Formato de hora inválido:', cleanValue);
+          processedValue = null;
+        }
       } else if (isDateTimeField && editValue) {
         // Para datetime, convertir a formato ISO
         const dateStr = editValue.trim();
@@ -503,62 +527,8 @@ export function InlineEditCell({
                 setEditValue(value);
               }}
               onBlur={(e) => {
-                // Limpiar valor: quitar dos puntos y solo dejar números
-                let cleanValue = e.target.value.replace(/\D/g, '');
-                
-                if (cleanValue.length === 4) {
-                  const hours = cleanValue.slice(0, 2);
-                  const minutes = cleanValue.slice(2, 4);
-                  
-                  // Validar rango
-                  const hourNum = parseInt(hours);
-                  const minuteNum = parseInt(minutes);
-                  
-                  if (hourNum <= 23 && minuteNum <= 59) {
-                    // Formatear como HH:MM para guardar
-                    const formattedValue = `${hours}:${minutes}`;
-                    
-                    // Guardar directamente con el valor formateado
-                    const supabase = createClient();
-                    supabase
-                      .from('transportes')
-                      .update({ [field]: formattedValue })
-                      .eq('id', record.id)
-                      .select('*')
-                      .single()
-                      .then(({ data, error }) => {
-                        if (!error) {
-                          const updatedRecord = { ...record, [field]: formattedValue };
-                          onSave(updatedRecord);
-                          clearEditing();
-                        } else {
-                          console.error('Error guardando hora:', error);
-                        }
-                      });
-                  } else {
-                    // Si es inválido, mostrar error o dejar como está
-                    console.log('Hora inválida:', cleanValue);
-                  }
-                } else if (cleanValue.length === 2) {
-                  // Si solo tiene horas, guardar como HH:00
-                  const formattedValue = `${cleanValue}:00`;
-                  const supabase = createClient();
-                  supabase
-                    .from('transportes')
-                    .update({ [field]: formattedValue })
-                    .eq('id', record.id)
-                    .select('*')
-                    .single()
-                    .then(({ data, error }) => {
-                      if (!error) {
-                        const updatedRecord = { ...record, [field]: formattedValue };
-                        onSave(updatedRecord);
-                        clearEditing();
-                      } else {
-                        console.error('Error guardando hora:', error);
-                      }
-                    });
-                }
+                // Usar el mismo handleSave para consistencia
+                handleSave();
               }}
               onKeyDown={handleKeyDown}
               autoFocus
