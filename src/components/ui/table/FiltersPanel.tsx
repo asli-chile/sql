@@ -42,6 +42,24 @@ export function FiltersPanel({
 }: FiltersPanelProps) {
   const { theme } = useTheme();
 
+  // Estado local para forzar re-renders cuando cambian los filtros
+  const [filterUpdateTrigger, setFilterUpdateTrigger] = useState(0);
+
+  // Suscribirse a cambios en el estado de la tabla para forzar actualizaciones
+  useEffect(() => {
+    // Forzar actualización cuando cambian los filtros de columna
+    const checkForChanges = () => {
+      setFilterUpdateTrigger(prev => prev + 1);
+    };
+
+    // Crear un intervalo para verificar cambios (fallback)
+    const interval = setInterval(checkForChanges, 100);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [table]);
+
   // Normalizar executiveFilter para asegurar que siempre sea string
   const normalizedExecutiveFilter = executiveFilter || '';
   
@@ -105,7 +123,8 @@ export function FiltersPanel({
   };
 
   // Obtener todos los filtros activos para mostrar en el resumen
-  const getActiveFiltersSummary = () => {
+  // Usar filterUpdateTrigger para forzar recálculo cuando cambien los filtros
+  const getActiveFiltersSummary = useMemo(() => {
     const activeFilters: Array<{ label: string; value: string; onClear: () => void }> = [];
     
     if (normalizedExecutiveFilter) {
@@ -161,9 +180,9 @@ export function FiltersPanel({
     });
 
     return activeFilters;
-  };
+  }, [normalizedExecutiveFilter, setExecutiveFilter, table, filterUpdateTrigger]);
 
-  const activeFiltersSummary = getActiveFiltersSummary();
+  const activeFiltersSummary = getActiveFiltersSummary;
 
   const handleClearAll = () => {
     // Limpiar el filtro de ejecutivo primero
@@ -223,7 +242,7 @@ export function FiltersPanel({
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {activeFiltersSummary.map((filter, index) => (
+            {activeFiltersSummary.map((filter: { label: string; value: string; onClear: () => void }, index: number) => (
               <div
                 key={index}
                 className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${

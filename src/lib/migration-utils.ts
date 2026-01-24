@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase-mobile';
 import { Registro } from '@/types/registros';
 import { parseDateString, formatDateForInput } from '@/lib/date-utils';
 

@@ -2813,7 +2813,7 @@ export default function RegistrosPage() {
               <div className="space-y-4">
                 <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Filtros</h3>
                 <FiltersPanel
-                  key={`filters-${tableInstance.getState().columnFilters.length}-${JSON.stringify(tableInstance.getState().columnFilters)}-${tableStates.executiveFilter || ''}`}
+                  key={`filters-${tableInstance.getState().columnFilters.length}-${JSON.stringify(tableInstance.getState().columnFilters)}-${tableStates.executiveFilter || ''}-${Date.now()}`}
                   table={tableInstance}
                   executiveFilter={tableStates.executiveFilter || ''}
                   setExecutiveFilter={tableStates.setExecutiveFilter}
@@ -2821,9 +2821,9 @@ export default function RegistrosPage() {
                   ejecutivosUnicos={ejecutivosFiltro}
                   especiesUnicas={especiesFiltro}
                   clientesUnicos={clientesFiltro}
-                  polsUnicos={polsUnicos}
-                  destinosUnicos={destinosUnicos}
-                  depositosUnicos={depositosUnicos}
+                  polsUnicos={polsFiltro}
+                  destinosUnicos={destinosFiltro}
+                  depositosUnicos={depositosFiltro}
                   navesFiltrables={tableStates.navesFiltrables}
                   compact={true}
                 />

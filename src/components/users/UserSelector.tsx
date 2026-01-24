@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { User, LogIn, LogOut, Users } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-mobile';
 
 interface Usuario {
   id: string;

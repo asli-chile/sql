@@ -48,3 +48,24 @@ next-env.d.ts
 
 # credenciales y archivos sensibles
 asli-gmail-erp-*.json
+
+# --- Android/Android Studio ---
+android/.idea/
+android/.gradle/
+android/local.properties
+**/*.iml
+
+# --- Keystores (NUNCA subir) ---
+*.keystore
+*.jks
+
+# --- APK / builds ---
+*.apk
+android/app/build/
+android/app/release/
+
+# --- Logs / temp ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store

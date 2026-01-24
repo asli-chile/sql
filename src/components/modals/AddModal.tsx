@@ -4,7 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, ChevronRight, ChevronLeft, Check, Calendar } from 'lucide-react';
 import { Combobox } from '@/components/ui/Combobox';
 import { generateUniqueRefAsli } from '@/lib/ref-asli-utils';
-import { createClient } from '@/lib/supabase-browser';
+import { supabase } from '@/lib/supabase-mobile';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import {
+  generateRefAsliMobile,
+  generateRefExternaMobile,
+  createRegistrosMobile,
+  upsertCatalogValueMobile,
+  upsertNaveMappingMobile
+} from '@/lib/mobile-api-utils';
 import { parseDateString, formatDateForInput } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -125,84 +133,20 @@ export function AddModal({
       : Math.max(parseInt(numberOfCopies, 10) || 1, 1);
 
   const requestRefAsliList = async (count: number): Promise<string[]> => {
-    const response = await fetch('/api/ref-asli', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count }),
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      throw new Error(result?.error || 'No se pudo generar el REF ASLI.');
-    }
-    const list = (result?.refAsliList as string[] | undefined) ?? [];
-    if (count === 1) {
-      const single = (result?.refAsli as string | undefined) ?? list[0];
-      if (!single) {
-        throw new Error('No se recibió el REF ASLI.');
-      }
-      return [single];
-    }
-    if (list.length !== count) {
-      throw new Error('No se recibió la cantidad esperada de REF ASLI.');
-    }
-    return list;
-  };
-
-  const upsertCatalogValue = async (
-    supabaseClient: ReturnType<typeof createClient>,
-    categoria: string,
-    valor: string | null | undefined
-  ) => {
-    const trimmed = (valor || '').trim();
-    if (!trimmed) return;
-
     try {
-      const { data, error } = await supabaseClient
-        .from('catalogos')
-        .select('id, valores')
-        .eq('categoria', categoria)
-        .maybeSingle();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error(`Error leyendo catálogo ${categoria}:`, error);
-        return;
+      const result = await generateRefAsliMobile(count);
+      const list = Array.isArray(result) ? result : [result];
+      if (list.length !== count) {
+        throw new Error('No se recibió la cantidad esperada de REF ASLI.');
       }
-
-      let valores: string[] = [];
-      let recordId: string | undefined;
-
-      if (data) {
-        recordId = (data as any).id;
-        valores = Array.isArray(data.valores) ? data.valores : [];
-      }
-
-      const exists = valores.some(
-        (entry) => entry.trim().toLowerCase() === trimmed.toLowerCase()
-      );
-
-      if (!exists) {
-        const nuevosValores = [...valores, trimmed];
-        const payload = {
-          categoria,
-          valores: nuevosValores,
-          updated_at: new Date().toISOString(),
-        };
-
-        if (recordId) {
-          await supabaseClient
-            .from('catalogos')
-            .update(payload)
-            .eq('id', recordId);
-        } else {
-          await supabaseClient
-            .from('catalogos')
-            .insert({ ...payload, created_at: new Date().toISOString() });
-        }
-      }
-    } catch (catalogError) {
-      console.error(`Error actualizando catálogo ${categoria}:`, catalogError);
+      return list;
+    } catch (error) {
+      console.error('Error generando REF ASLI móvil:', error);
+      throw new Error('No se pudo generar el REF ASLI.');
     }
   };
+
+  // upsertCatalogValue ahora usa la función móvil
 
   // Bloquear scroll del body cuando el modal está abierto
   useEffect(() => {
@@ -258,20 +202,7 @@ export function AddModal({
     const generateRefExterna = async () => {
       if (formData.shipper && formData.especie) {
         try {
-          const response = await fetch('/api/ref-externa', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              cliente: formData.shipper,
-              especie: formData.especie,
-              count: 1,
-            }),
-          });
-          const result = await response.json();
-          if (!response.ok) {
-            throw new Error(result?.error || 'No se pudo generar la referencia externa.');
-          }
-          const refExterna = result?.refExterna as string | undefined;
+          const refExterna = await generateRefExternaMobile(formData.shipper, formData.especie, 1) as string;
           if (!refExterna) {
             throw new Error('No se recibió la referencia externa.');
           }
@@ -473,24 +404,11 @@ Saludos cordiales.`;
       // Generar REF ASLI únicos para todas las copias
       const refAsliList = await requestRefAsliList(resolvedCopies);
 
-      // Crear cliente Supabase
-      const supabase = createClient();
+      // Usar cliente Supabase importado
 
       // Generar REF EXTERNA correlativas únicas para todas las copias
-      const refExternaResponse = await fetch('/api/ref-externa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cliente: formData.shipper,
-          especie: formData.especie,
-          count: resolvedCopies,
-        }),
-      });
-      const refExternaResult = await refExternaResponse.json();
-      if (!refExternaResponse.ok) {
-        throw new Error(refExternaResult?.error || 'No se pudo generar la referencia externa.');
-      }
-      const refExternaList = (refExternaResult?.refExternas as string[] | undefined) ?? [];
+      const refExternaResult = await generateRefExternaMobile(formData.shipper, formData.especie, resolvedCopies);
+      const refExternaList = Array.isArray(refExternaResult) ? refExternaResult : [refExternaResult];
 
       // Crear múltiples copias
       const baseRegistroData = {
@@ -559,7 +477,7 @@ Saludos cordiales.`;
           (entry) => entry.toString().trim().toLowerCase() === trimmed.toLowerCase()
         );
         if (exists) return null;
-        return upsertCatalogValue(supabase, categoria, trimmed);
+        return upsertCatalogValueMobile(categoria, trimmed);
       };
 
       const upsertNaveMappingEntry = async (): Promise<void> => {
@@ -570,96 +488,22 @@ Saludos cordiales.`;
         const sanitizedNave = nave.replace(/\s*\[.*\]$/, '').trim();
         if (!sanitizedNave) return;
 
-        const isConsorcio = naviera.includes('/');
-        const categoria = isConsorcio ? 'consorciosNavesMapping' : 'navierasNavesMapping';
-        const existingMapping = isConsorcio ? consorciosNavesMapping : navierasNavesMapping;
-
-        const existingList = (existingMapping[naviera] || []).map(item => item.trim().toLowerCase());
-        if (existingList.includes(sanitizedNave.toLowerCase())) {
-          return;
-        }
-
-        try {
-          const { data, error } = await supabase
-            .from('catalogos')
-            .select('id, mapping')
-            .eq('categoria', categoria)
-            .maybeSingle();
-
-          if (error && error.code !== 'PGRST116') {
-            console.error(`Error leyendo mapeo ${categoria}:`, error);
-            return;
-          }
-
-          const currentMapping: Record<string, string[]> =
-            data?.mapping && typeof data.mapping === 'object' ? data.mapping : {};
-
-          const updatedList = Array.from(
-            new Set([...(currentMapping[naviera] || []), sanitizedNave].map(item => item.trim()))
-          );
-
-          const updatedMapping = {
-            ...currentMapping,
-            [naviera]: updatedList,
-          };
-
-          const timestamp = new Date().toISOString();
-
-          if (data?.id) {
-            await supabase
-              .from('catalogos')
-              .update({
-                mapping: updatedMapping,
-                updated_at: timestamp,
-              })
-              .eq('id', data.id);
-          } else {
-            await supabase
-              .from('catalogos')
-              .insert({
-                categoria,
-                valores: [],
-                mapping: updatedMapping,
-                created_at: timestamp,
-                updated_at: timestamp,
-              });
-          }
-        } catch (mappingError) {
-          console.error(`Error actualizando mapeo ${categoria}:`, mappingError);
-        }
+        await upsertNaveMappingMobile(naviera, sanitizedNave);
       };
       
-      const createResponse = await fetch('/api/registros/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ records: recordsToInsert }),
-      });
-      const createResult = await createResponse.json();
+      const createResult = await createRegistrosMobile(recordsToInsert);
 
-      if (!createResponse.ok) {
-        console.error('❌ Error insertando registros:', createResult?.details || createResult?.error);
-        console.error('📋 Detalles del error:', JSON.stringify(createResult?.details || createResult, null, 2));
+      if (!createResult || !createResult.records) {
+        console.error('❌ Error insertando registros:', createResult);
         console.error('📋 Datos que causaron el error:', JSON.stringify(recordsToInsert, null, 2));
 
-        let errorMessage = createResult?.error || 'Error desconocido';
+        let errorMessage = 'Error desconocido al crear registros';
 
-        if (typeof errorMessage === 'string' && errorMessage.includes('read-only transaction')) {
-          errorMessage = `Error de base de datos: El trigger está intentando hacer una operación no permitida.\n\n` +
-            `Esto puede ser causado por:\n` +
-            `- Un trigger que intenta hacer UPDATE en otra tabla\n` +
-            `- Políticas RLS que bloquean la operación\n` +
-            `- Problemas de permisos en la base de datos\n\n` +
-            `Por favor, contacta al administrador de la base de datos.\n\n` +
-            `Error técnico: ${errorMessage}`;
+        if (createResult?.error) {
+          errorMessage = createResult.error;
         }
 
-        if (createResult?.details?.code === '23505') {
-          setError(
-            'No se pudo crear el registro porque el REF ASLI ya existe. Se regeneró la referencia, intenta nuevamente.',
-          );
-        } else {
-          setError(`Error al crear los registros: ${errorMessage}`);
-        }
+        setError(`Error al crear los registros: ${errorMessage}`);
         return;
       }
 

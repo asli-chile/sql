@@ -11,6 +11,7 @@ import { getCountryFromPort, getCountryCoordinates } from '@/lib/country-coordin
 import { Registro } from '@/types/registros';
 import type { ActiveVessel } from '@/types/vessels';
 import { VesselDetailsModal } from './VesselDetailsModal';
+import { Plus, Minus } from 'lucide-react';
 
 interface CountryStats {
   country: string;
@@ -127,6 +128,21 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
   const [webglSupported, setWebglSupported] = useState(false);
   const [deckGlReady, setDeckGlReady] = useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Funciones para controlar el zoom
+  const handleZoomIn = () => {
+    setViewState(prev => ({
+      ...prev,
+      zoom: Math.min(MAX_ZOOM, prev.zoom + 1)
+    }));
+  };
+
+  const handleZoomOut = () => {
+    setViewState(prev => ({
+      ...prev,
+      zoom: Math.max(MIN_ZOOM, prev.zoom - 1)
+    }));
+  };
 
   // Asegurar que solo se renderice en el cliente y verificar WebGL
   React.useEffect(() => {
@@ -567,7 +583,7 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             initialViewState={INITIAL_VIEW_STATE}
             viewState={viewState}
             controller={{
-              scrollZoom: true,
+              scrollZoom: false, // Deshabilitar zoom con scroll
               dragPan: true,
               dragRotate: false,
               keyboard: true,
@@ -630,7 +646,7 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
               mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
               style={{ width: '100%', height: '100%' }}
               reuseMaps={true}
-              scrollZoom={true}
+              scrollZoom={false} // Deshabilitar zoom con scroll
               minZoom={MIN_ZOOM}
               maxZoom={MAX_ZOOM}
               onError={(error) => {
@@ -648,6 +664,26 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
             </div>
           </div>
         )}
+
+        {/* Barra de controles de zoom */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+          <button
+            onClick={handleZoomIn}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-950/90 text-slate-100 shadow-lg transition-all hover:bg-slate-800/80 hover:border-slate-600/60 active:scale-95"
+            title="Acercar zoom"
+            aria-label="Acercar zoom"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+          <button
+            onClick={handleZoomOut}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700/60 bg-slate-950/90 text-slate-100 shadow-lg transition-all hover:bg-slate-800/80 hover:border-slate-600/60 active:scale-95"
+            title="Alejar zoom"
+            aria-label="Alejar zoom"
+          >
+            <Minus className="h-5 w-5" />
+          </button>
+        </div>
 
         {/* Tooltips */}
         {hoveredOriginPort && !hoveredVessel && (

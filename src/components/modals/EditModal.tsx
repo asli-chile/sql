@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
 import { Registro } from '@/types/registros';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase-mobile';
 import { parseDateString, formatDateForDisplay, formatDateForInput } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
