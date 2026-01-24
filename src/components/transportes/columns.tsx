@@ -98,7 +98,7 @@ export const transportesSections: TransporteSection[] = [
   {
     name: 'ADICIONAL',
     columns: [
-      { key: 'ingresado_stacking', header: 'INGRESADO STACKING', section: 'ADICIONAL' },
+      { key: 'ingreso_stacking', header: 'INGRESADO STACKING', section: 'ADICIONAL' },
       { key: 'sobreestadia', header: 'SOBREESTADIA', section: 'ADICIONAL' },
       { key: 'scanner', header: 'SCANNER', section: 'ADICIONAL' },
       { key: 'lote_carga', header: 'LOTE CARGA', section: 'ADICIONAL' },
