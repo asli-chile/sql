@@ -472,6 +472,7 @@ export function InlineEditCell({
               onBlur={handleSave}
               onKeyDown={handleKeyDown}
               autoFocus
+              step="60" // Permitir selección por minutos (formato 24 horas)
               className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
                 theme === 'dark'
                   ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
