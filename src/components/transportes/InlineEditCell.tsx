@@ -33,6 +33,7 @@ const timeKeys = new Set<keyof TransporteRecord>([
   'hora_presentacion',
   'llegada_planta',
   'salida_planta',
+  'llegada_puerto',
   'hora_planta',
   'horario_retiro',
 ]);
@@ -182,13 +183,7 @@ export function InlineEditCell({
   }, [value, isDateField, isTimeField, isDateTimeField]);
 
   const handleSave = async () => {
-    console.log('=== handleSave INICIADO ===');
-    console.log('Campo:', field, 'Valor:', editValue, 'ID:', record.id);
-    
-    if (!canEdit) {
-      console.log('Sin permisos para editar');
-      return;
-    }
+    if (!canEdit) return;
 
     try {
       setLoading(true);
@@ -255,37 +250,13 @@ export function InlineEditCell({
         processedValue = editValue === '' ? null : String(editValue).trim();
       }
 
-      console.log('Intentando guardar:', {
-  field,
-  processedValue,
-  recordId: record.id,
-  fieldType: typeof processedValue
-    });
-
-      const { data, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('transportes')
         .update({ [field]: processedValue })
-        .eq('id', record.id)
-        .select();
-
-      console.log('Respuesta de Supabase:', {
-        data,
-        updateError,
-        hasError: !!updateError,
-        errorType: typeof updateError
-      });
+        .eq('id', record.id);
 
       if (updateError) {
-        console.error('Error updating record:', {
-          error: updateError,
-          details: updateError.details,
-          message: updateError.message,
-          hint: updateError.hint,
-          code: updateError.code,
-          field: field,
-          processedValue: processedValue,
-          recordId: record.id
-        });
+        console.error('Error updating record:', updateError);
         setError('Error al guardar');
         return;
       }
@@ -300,11 +271,7 @@ export function InlineEditCell({
       onSave(updatedRecord);
       clearEditing();
     } catch (err) {
-      console.error('=== ERROR EN handleSave ===');
-      console.error('Error completo:', err);
-      console.error('Tipo de error:', typeof err);
-      console.error('Mensaje:', (err as any)?.message || 'Sin mensaje');
-      console.error('Stack:', (err as any)?.stack || 'Sin stack');
+      console.error('Error in handleSave:', err);
       setError('Error al guardar');
     } finally {
       setLoading(false);

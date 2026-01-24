@@ -264,6 +264,7 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                               column.key === 'hora_presentacion' ? 'time' :
                               column.key === 'llegada_planta' ? 'time' :
                               column.key === 'salida_planta' ? 'time' :
+                              column.key === 'llegada_puerto' ? 'time' :
                               'text'
                             }
                             options={column.key === 'planta' ? [] : undefined}
@@ -279,6 +280,7 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                               column.key === 'hora_presentacion' ? 'time' :
                               column.key === 'llegada_planta' ? 'time' :
                               column.key === 'salida_planta' ? 'time' :
+                              column.key === 'llegada_puerto' ? 'time' :
                               'text'
                             }
                           </div>

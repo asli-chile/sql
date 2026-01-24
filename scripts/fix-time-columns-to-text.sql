@@ -48,9 +48,33 @@ BEGIN
     END IF;
 END $$;
 
+-- Convertir llegada_puerto a TIME WITHOUT TIME ZONE si es DATE
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'transportes' AND column_name = 'llegada_puerto'
+        AND data_type = 'date'
+    ) THEN
+        -- Crear columna temporal como TIME WITHOUT TIME ZONE
+        ALTER TABLE transportes ADD COLUMN llegada_puerto_new TIME WITHOUT TIME ZONE;
+        
+        -- Mover datos (convertir DATE a TIME si hay datos)
+        UPDATE transportes SET llegada_puerto_new = NULL WHERE llegada_puerto IS NOT NULL;
+        
+        -- Eliminar columna original
+        ALTER TABLE transportes DROP COLUMN llegada_puerto;
+        
+        -- Renombrar nueva columna
+        ALTER TABLE transportes RENAME COLUMN llegada_puerto_new TO llegada_puerto;
+        
+        RAISE NOTICE 'Columna llegada_puerto convertida a TIME WITHOUT TIME ZONE';
+    END IF;
+END $$;
+
 -- Verificar el tipo final de las columnas
 SELECT column_name, data_type 
 FROM information_schema.columns 
 WHERE table_name = 'transportes' 
-AND column_name IN ('llegada_planta', 'salida_planta', 'hora_presentacion')
+AND column_name IN ('llegada_planta', 'salida_planta', 'llegada_puerto', 'hora_presentacion')
 ORDER BY column_name;
