@@ -4,9 +4,11 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/useUser';
 import { createClient } from '@/lib/supabase-browser';
-import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
+import { TransporteRecord, fetchTransportes, deleteMultipleTransportes } from '@/lib/transportes-service';
 import { transportesColumns } from './columns';
 import { AddTransporteModal } from './AddTransporteModal';
+import { Trash2, CheckSquare, Square } from 'lucide-react';
+import { useToast } from '@/hooks/useToast';
 
 interface TransportesTableProps {
   transportes: TransporteRecord[];
@@ -44,8 +46,11 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
   const [records, setRecords] = useState<TransporteRecord[]>(transportes);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRefreshing, startTransition] = useTransition();
+  const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const { canAdd, setCurrentUser } = useUser();
+  const { success, error } = useToast();
 
   useEffect(() => {
     setRecords(transportes);
@@ -78,8 +83,53 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
     startTransition(async () => {
       const data = await fetchTransportes();
       setRecords(data);
+      setSelectedRecords(new Set());
       router.refresh();
     });
+  };
+
+  const handleSelectRecord = (id: string) => {
+    console.log('📝 Seleccionando registro:', id);
+    setSelectedRecords(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+        console.log('❌ Deseleccionado:', id);
+      } else {
+        newSet.add(id);
+        console.log('✅ Seleccionado:', id);
+      }
+      console.log('📋 Selección actual:', Array.from(newSet));
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedRecords.size === records.length) {
+      setSelectedRecords(new Set());
+    } else {
+      setSelectedRecords(new Set(records.map(r => r.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedRecords.size === 0) return;
+
+    console.log('🗑️ Iniciando eliminación múltiple');
+    console.log('📋 Registros seleccionados:', Array.from(selectedRecords));
+    
+    setIsDeleting(true);
+    try {
+      await deleteMultipleTransportes(Array.from(selectedRecords));
+      console.log('✅ Eliminación completada');
+      success(`${selectedRecords.size} transporte(s) eliminado(s) correctamente`);
+      reload();
+    } catch (err: any) {
+      console.error('❌ Error deleting transportes:', err);
+      error('Error al eliminar los transportes seleccionados');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -95,10 +145,50 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
           {isRefreshing && (
             <span className="text-xs text-blue-500 font-medium">Actualizando…</span>
           )}
+          {selectedRecords.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                {selectedRecords.size} seleccionado(s)
+              </span>
+              <button
+                onClick={handleDeleteSelected}
+                disabled={isDeleting}
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="h-4 w-4" />
+                {isDeleting ? 'Eliminando...' : 'Eliminar'}
+              </button>
+              <button
+                onClick={() => setSelectedRecords(new Set())}
+                className="inline-flex items-center gap-2 rounded-lg bg-gray-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
+              >
+                <Square className="h-4 w-4" />
+                Deseleccionar todo
+              </button>
+            </div>
+          )}
+          {records.length > 0 && (
+            <button
+              onClick={handleSelectAll}
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {selectedRecords.size === records.length ? (
+                <>
+                  <Square className="h-4 w-4" />
+                  Deseleccionar todo
+                </>
+              ) : (
+                <>
+                  <CheckSquare className="h-4 w-4" />
+                  Seleccionar todo
+                </>
+              )}
+            </button>
+          )}
           {canAdd && (
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-green-500 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
               + Nuevo Transporte
             </button>
@@ -111,6 +201,14 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-100 dark:bg-gray-800">
               <tr>
+                <th scope="col" className="px-3 py-2 text-left">
+                  <input
+                    type="checkbox"
+                    checked={selectedRecords.size === records.length && records.length > 0}
+                    onChange={handleSelectAll}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
                 {transportesColumns.map((column) => (
                   <th
                     key={column.header}
@@ -126,7 +224,7 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
               {records.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={transportesColumns.length}
+                    colSpan={transportesColumns.length + 1}
                     className="px-3 py-6 text-center text-gray-500 dark:text-gray-400"
                   >
                     {isRefreshing ? 'Actualizando…' : 'No hay registros de transporte disponibles.'}
@@ -134,7 +232,15 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                 </tr>
               ) : (
                 records.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} className={selectedRecords.has(item.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}>
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedRecords.has(item.id)}
+                        onChange={() => handleSelectRecord(item.id)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                    </td>
                     {transportesColumns.map((column) => (
                       <td
                         key={`${item.id}-${column.header}`}

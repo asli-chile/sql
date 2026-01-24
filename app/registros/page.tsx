@@ -1099,6 +1099,8 @@ export default function RegistrosPage() {
           semana: registro.semanaIngreso ?? registro.semanaZarpe ?? null,
           exportacion: registro.shipper || null,
           created_by: currentUser?.id || null,
+          // Marcar que viene de registros para bloquear edición de campos con datos
+          from_registros: true,
         };
 
         const { data, error: insertError } = await supabase

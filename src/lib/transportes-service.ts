@@ -48,6 +48,8 @@ export type TransporteRecord = {
   scanner: boolean | null;
   lote_carga: string | null;
   observacion: string | null;
+  // Campo para identificar si viene de registros
+  from_registros: boolean | null;
   created_at: string;
   updated_at: string;
   created_by: string | null;
@@ -141,5 +143,45 @@ export async function createTransporte(payload: Partial<TransporteRecord>): Prom
     console.error('Error creating transporte:', error);
     throw error;
   }
+}
+
+export async function deleteTransporte(id: string): Promise<void> {
+  const supabase = createClient();
+  
+  const { error } = await supabase
+    .from('transportes')
+    .update({ 
+      deleted_at: new Date().toISOString(),
+      deleted_by: (await supabase.auth.getUser()).data.user?.id || null
+    })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting transporte:', error);
+    throw error;
+  }
+}
+
+export async function deleteMultipleTransportes(ids: string[]): Promise<void> {
+  const supabase = createClient();
+  
+  console.log('🗑️ Servicio: Eliminando múltiples transportes');
+  console.log('📋 IDs recibidos:', ids);
+  console.log('📊 Cantidad de IDs:', ids.length);
+  
+  const { error } = await supabase
+    .from('transportes')
+    .update({ 
+      deleted_at: new Date().toISOString(),
+      deleted_by: (await supabase.auth.getUser()).data.user?.id || null
+    })
+    .in('id', ids);
+
+  if (error) {
+    console.error('❌ Error deleting multiple transportes:', error);
+    throw error;
+  }
+  
+  console.log('✅ Eliminación múltiple completada en BD');
 }
 

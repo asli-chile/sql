@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3 } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
@@ -59,6 +59,25 @@ export default function TransportesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  
+  // Estados para filtros
+  const [filters, setFilters] = useState({
+    booking: '',
+    contenedor: '',
+    nave: '',
+    naviera: '',
+    especie: '',
+    deposito: '',
+    conductor: '',
+    transportista: '',
+    semana: '',
+    atControlada: '',
+    late: '',
+    extraLate: '',
+    porteo: '',
+    ingresadoStacking: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
   const { canAdd, canEdit, setCurrentUser, currentUser } = useUser();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -226,27 +245,16 @@ export default function TransportesPage() {
 
     const loadTransportes = async () => {
       if (!user) {
-        if (isMounted) {
-          setIsLoading(false);
-        }
         return;
       }
-
-      try {
-        if (isMounted) {
-          setIsLoading(true);
-        }
-        const data = await fetchTransportes();
-        if (isMounted) {
-          setRecords(data || []);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('[Transportes] Error cargando transportes:', error);
-        if (isMounted) {
-          setRecords([]);
-          setIsLoading(false);
-        }
+      
+      if (isMounted) {
+        setIsLoading(true);
+      }
+      const data = await fetchTransportes();
+      if (isMounted) {
+        setRecords(data || []);
+        setIsLoading(false);
       }
     };
 
@@ -458,6 +466,38 @@ export default function TransportesPage() {
     setDeleteConfirm(null);
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedRows.size === 0 || !currentUser?.id) return;
+
+    setIsDeleting(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('transportes')
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: currentUser.id,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', Array.from(selectedRows));
+
+      if (error) {
+        console.error('Error eliminando transportes seleccionados:', error);
+        throw error;
+      }
+
+      // Actualizar estado local
+      setRecords((prev) => prev.filter((r) => !selectedRows.has(r.id)));
+      setSelectedRows(new Set());
+      await loadTrashCount();
+    } catch (error: any) {
+      console.error('Error eliminando transportes seleccionados:', error);
+      alert(`Error al eliminar los transportes seleccionados: ${error?.message || 'Error desconocido'}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const handleToggleRowSelection = (recordId: string) => {
     setSelectedRows((prev) => {
       const newSet = new Set(prev);
@@ -479,25 +519,67 @@ export default function TransportesPage() {
   };
 
   const filteredRecords = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return records;
-    }
-
-    const term = searchTerm.toLowerCase().trim();
     return records.filter((record) => {
-      return (
-        record.booking?.toLowerCase().includes(term) ||
-        record.contenedor?.toLowerCase().includes(term) ||
-        record.conductor?.toLowerCase().includes(term) ||
-        record.transportes?.toLowerCase().includes(term) ||
-        record.patentes?.toLowerCase().includes(term) ||
-        record.nave?.toLowerCase().includes(term) ||
-        record.planta?.toLowerCase().includes(term) ||
-        record.deposito?.toLowerCase().includes(term) ||
-        record.guia_despacho?.toLowerCase().includes(term)
-      );
+      // Búsqueda general
+      const searchMatch = !searchTerm || 
+        Object.values(record).some(value => 
+          value !== null && value !== undefined && 
+          String(value).toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+      // Filtros específicos
+      const bookingMatch = !filters.booking || 
+        (record.booking && record.booking.toLowerCase().includes(filters.booking.toLowerCase()));
+      
+      const contenedorMatch = !filters.contenedor || 
+        (record.contenedor && record.contenedor.toLowerCase().includes(filters.contenedor.toLowerCase()));
+      
+      const naveMatch = !filters.nave || 
+        (record.nave && record.nave.toLowerCase().includes(filters.nave.toLowerCase()));
+      
+      const navieraMatch = !filters.naviera || 
+        (record.naviera && record.naviera.toLowerCase().includes(filters.naviera.toLowerCase()));
+      
+      const especieMatch = !filters.especie || 
+        (record.especie && record.especie.toLowerCase().includes(filters.especie.toLowerCase()));
+      
+      const depositoMatch = !filters.deposito || 
+        (record.deposito && record.deposito.toLowerCase().includes(filters.deposito.toLowerCase()));
+      
+      const conductorMatch = !filters.conductor || 
+        (record.conductor && record.conductor.toLowerCase().includes(filters.conductor.toLowerCase()));
+      
+      const transportistaMatch = !filters.transportista || 
+        (record.transportes && record.transportes.toLowerCase().includes(filters.transportista.toLowerCase()));
+      
+      const semanaMatch = !filters.semana || 
+        (record.semana && String(record.semana).includes(filters.semana));
+      
+      const atControladaMatch = filters.atControlada === '' || 
+        (filters.atControlada === 'true' && record.atmosfera_controlada) ||
+        (filters.atControlada === 'false' && !record.atmosfera_controlada);
+      
+      const lateMatch = filters.late === '' || 
+        (filters.late === 'true' && record.late) ||
+        (filters.late === 'false' && !record.late);
+      
+      const extraLateMatch = filters.extraLate === '' || 
+        (filters.extraLate === 'true' && record.extra_late) ||
+        (filters.extraLate === 'false' && !record.extra_late);
+      
+      const porteoMatch = filters.porteo === '' || 
+        (filters.porteo === 'true' && record.porteo) ||
+        (filters.porteo === 'false' && !record.porteo);
+      
+      const ingresadoStackingMatch = filters.ingresadoStacking === '' || 
+        (filters.ingresadoStacking === 'true' && record.ingresado_stacking) ||
+        (filters.ingresadoStacking === 'false' && !record.ingresado_stacking);
+
+      return searchMatch && bookingMatch && contenedorMatch && naveMatch && navieraMatch && 
+             especieMatch && depositoMatch && conductorMatch && transportistaMatch && semanaMatch &&
+             atControladaMatch && lateMatch && extraLateMatch && porteoMatch && ingresadoStackingMatch;
     });
-  }, [records, searchTerm]);
+  }, [records, searchTerm, filters]);
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
@@ -663,29 +745,358 @@ export default function TransportesPage() {
                 : 'border-gray-200 bg-white shadow-md'
                 }`}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
+                  <div className="flex-1">
                     <p className={`text-[11px] uppercase tracking-[0.25em] mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Búsqueda y Filtros</p>
-                    <p className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      {filteredRecords.length} de {records.length} registros
-                    </p>
-                    <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Busca por booking, contenedor, conductor, patentes o cualquier campo
-                    </p>
+                    <div className="relative">
+                      <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                      <input
+                        type="text"
+                        placeholder="Buscar por booking, contenedor, nave, naviera..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors ${theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800/50 text-slate-100 placeholder-slate-400 focus:ring-sky-500/50 focus:border-sky-500'
+                          : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:ring-blue-500/50 focus:border-blue-500'
+                          }`}
+                      />
+                    </div>
                   </div>
-                  <div className="relative w-full sm:max-w-md">
-                    <Search className={`pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                    <input
-                      type="search"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                      placeholder="Buscar por booking, contenedor, conductor, patentes..."
-                      className={`w-full rounded-xl border px-10 py-2.5 text-sm focus:outline-none focus:ring-2 transition-colors ${theme === 'dark'
-                        ? 'border-slate-800/70 bg-slate-900/80 text-slate-100 placeholder:text-slate-500 focus:border-sky-500/70 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:ring-blue-500/30 shadow-sm'
+                  
+                  {/* Botones de acción */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        showFilters
+                          ? theme === 'dark'
+                            ? 'bg-sky-600 text-white hover:bg-sky-500'
+                            : 'bg-blue-600 text-white hover:bg-blue-500'
+                          : theme === 'dark'
+                            ? 'border-slate-700 text-slate-300 hover:border-sky-500 hover:text-sky-200'
+                            : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
+                      }`}
+                    >
+                      <Filter className="h-4 w-4" />
+                      <span className="hidden sm:inline">Filtros</span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {selectedRows.size > 0 && (
+                      <>
+                        <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                          {selectedRows.size} seleccionado(s)
+                        </span>
+                        <button
+                          onClick={handleDeleteSelected}
+                          disabled={isDeleting}
+                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            theme === 'dark'
+                              ? 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
+                              : 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
+                          }`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                        </button>
+                        <button
+                          onClick={() => setSelectedRows(new Set())}
+                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${
+                            theme === 'dark'
+                              ? 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
+                              : 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
+                          }`}
+                        >
+                          <X className="h-4 w-4" />
+                          Deseleccionar
+                        </button>
+                      </>
+                    )}
+                    
+                    {filteredRecords.length > 0 && (
+                      <button
+                        onClick={handleSelectAll}
+                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${
+                          theme === 'dark'
+                            ? 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
+                            : 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
                         }`}
-                    />
+                      >
+                        {selectedRows.size === filteredRecords.length ? (
+                          <>
+                            <X className="h-4 w-4" />
+                            Deseleccionar todo
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" />
+                            Seleccionar todo
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
+                
+                {/* Panel de filtros */}
+                {showFilters && (
+                  <div className={`mt-4 p-4 rounded-xl border ${theme === 'dark'
+                    ? 'border-slate-700 bg-slate-900/50'
+                    : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {/* Filtros de texto */}
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Booking</label>
+                        <input
+                          type="text"
+                          value={filters.booking}
+                          onChange={(e) => setFilters(prev => ({ ...prev, booking: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar booking..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Contenedor</label>
+                        <input
+                          type="text"
+                          value={filters.contenedor}
+                          onChange={(e) => setFilters(prev => ({ ...prev, contenedor: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar contenedor..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Nave</label>
+                        <input
+                          type="text"
+                          value={filters.nave}
+                          onChange={(e) => setFilters(prev => ({ ...prev, nave: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar nave..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Naviera</label>
+                        <input
+                          type="text"
+                          value={filters.naviera}
+                          onChange={(e) => setFilters(prev => ({ ...prev, naviera: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar naviera..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Especie</label>
+                        <input
+                          type="text"
+                          value={filters.especie}
+                          onChange={(e) => setFilters(prev => ({ ...prev, especie: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar especie..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Depósito</label>
+                        <input
+                          type="text"
+                          value={filters.deposito}
+                          onChange={(e) => setFilters(prev => ({ ...prev, deposito: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar depósito..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Conductor</label>
+                        <input
+                          type="text"
+                          value={filters.conductor}
+                          onChange={(e) => setFilters(prev => ({ ...prev, conductor: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar conductor..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Transportista</label>
+                        <input
+                          type="text"
+                          value={filters.transportista}
+                          onChange={(e) => setFilters(prev => ({ ...prev, transportista: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar transportista..."
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Semana</label>
+                        <input
+                          type="text"
+                          value={filters.semana}
+                          onChange={(e) => setFilters(prev => ({ ...prev, semana: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                          placeholder="Filtrar semana..."
+                        />
+                      </div>
+                      
+                      {/* Filtros booleanos */}
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>AT Controlada</label>
+                        <select
+                          value={filters.atControlada}
+                          onChange={(e) => setFilters(prev => ({ ...prev, atControlada: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                        >
+                          <option value="">Todos</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Late</label>
+                        <select
+                          value={filters.late}
+                          onChange={(e) => setFilters(prev => ({ ...prev, late: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                        >
+                          <option value="">Todos</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Extra Late</label>
+                        <select
+                          value={filters.extraLate}
+                          onChange={(e) => setFilters(prev => ({ ...prev, extraLate: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                        >
+                          <option value="">Todos</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Porteo</label>
+                        <select
+                          value={filters.porteo}
+                          onChange={(e) => setFilters(prev => ({ ...prev, porteo: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                        >
+                          <option value="">Todos</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Ingresado Stacking</label>
+                        <select
+                          value={filters.ingresadoStacking}
+                          onChange={(e) => setFilters(prev => ({ ...prev, ingresadoStacking: e.target.value }))}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
+                            theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                          }`}
+                        >
+                          <option value="">Todos</option>
+                          <option value="true">Sí</option>
+                          <option value="false">No</option>
+                        </select>
+                      </div>
+                      
+                      {/* Botón para limpiar filtros */}
+                      <div className="flex items-end">
+                        <button
+                          onClick={() => setFilters({
+                            booking: '',
+                            contenedor: '',
+                            nave: '',
+                            naviera: '',
+                            especie: '',
+                            deposito: '',
+                            conductor: '',
+                            transportista: '',
+                            semana: '',
+                            atControlada: '',
+                            late: '',
+                            extraLate: '',
+                            porteo: '',
+                            ingresadoStacking: ''
+                          })}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                            theme === 'dark'
+                              ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                              : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          Limpiar filtros
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </section>
 
               {/* Tabla principal */}
@@ -705,7 +1116,7 @@ export default function TransportesPage() {
                         <th
                           rowSpan={2}
                           scope="col"
-                          className={`px-4 py-4 text-left border-r ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'
+                          className={`px-4 py-4 text-center border-r ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'
                             }`}
                         >
                           <input
@@ -716,22 +1127,9 @@ export default function TransportesPage() {
                             className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
                               ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
                               : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                              }`}
+                            }`}
                           />
                         </th>
-                        {transportesSections.map((section) => (
-                          <th
-                            key={section.name}
-                            colSpan={section.columns.length}
-                            scope="colgroup"
-                            className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider border-r ${theme === 'dark'
-                              ? 'text-slate-300 bg-slate-800/80 border-slate-800/60'
-                              : 'text-gray-800 bg-gray-100 border-gray-200'
-                              }`}
-                          >
-                            {section.name}
-                          </th>
-                        ))}
                       </tr>
                       {/* Segunda fila: Nombres de columnas individuales */}
                       <tr>
@@ -740,7 +1138,7 @@ export default function TransportesPage() {
                             <th
                               key={`${section.name}-${column.header}`}
                               scope="col"
-                              className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-r ${theme === 'dark'
+                              className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-r ${theme === 'dark'
                                 ? 'text-slate-400 bg-slate-900/60 border-slate-800/60'
                                 : 'text-gray-600 bg-gray-50 border-gray-200'
                                 }`}

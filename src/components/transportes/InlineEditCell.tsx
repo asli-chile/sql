@@ -27,6 +27,23 @@ const dateKeys = new Set<keyof TransporteRecord>([
   'updated_at',
 ]);
 
+// Columnas que no se deben editar en transportes
+const READONLY_FIELDS = [
+  'semana',        // wk
+  'exportacion',   // export
+  'booking',       // booking
+  'nave',          // nave
+  'naviera',       // naviera
+  'especie',       // especie
+  'at_controlada', // at controlada
+  'co2',           // co2
+  'o2',            // 02
+  'temperatura',   // temperatura
+  'vent',          // ventilacion cbm
+  'pol',           // pol
+  'pod'            // pod
+];
+
 export function InlineEditCell({
   value,
   field,
@@ -44,6 +61,19 @@ export function InlineEditCell({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Determinar si el campo es editable
+  const isFieldEditable = () => {
+    if (!canEdit) return false;
+    
+    // Bloquear columnas específicas que no se deben editar
+    if (READONLY_FIELDS.includes(field)) {
+      return false;
+    }
+    
+    return true; // Permitir editar las demás columnas
+  };
+
+  const isEditable = isFieldEditable();
   const isEditing = isEditingInContext(record.id, field);
   const isDateField = dateKeys.has(field);
 
@@ -137,6 +167,12 @@ export function InlineEditCell({
 
   const handleCellClick = () => {
     if (!canEdit) return;
+    
+    // Usar la misma lógica de isFieldEditable para mantener consistencia
+    if (!isFieldEditable()) {
+      return;
+    }
+    
     setEditingCell(record.id, field);
   };
 
@@ -171,7 +207,7 @@ export function InlineEditCell({
 
   if (!canEdit) {
     return (
-      <span className={`text-sm ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'} ${className}`}>
+      <span className={`text-sm text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'} ${className}`}>
         {formatDisplayValue(value)}
       </span>
     );
@@ -187,7 +223,7 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
               theme === 'dark'
                 ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
                 : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
@@ -209,7 +245,7 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
               theme === 'dark'
                 ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
                 : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
@@ -224,7 +260,7 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
               theme === 'dark'
                 ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
                 : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
@@ -239,7 +275,7 @@ export function InlineEditCell({
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
             autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
               theme === 'dark'
                 ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
                 : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
@@ -264,20 +300,31 @@ export function InlineEditCell({
   return (
     <div
       onClick={handleCellClick}
-      className={`group flex items-center gap-1 cursor-pointer rounded px-1 py-0.5 -mx-1 -my-0.5 transition-colors ${
-        theme === 'dark'
-          ? 'hover:bg-slate-800/50'
-          : 'hover:bg-gray-100'
+      className={`group flex items-center gap-1 rounded px-1 py-0.5 -mx-1 -my-0.5 transition-colors ${
+        isEditable
+          ? theme === 'dark'
+            ? 'hover:bg-slate-800/50 cursor-pointer'
+            : 'hover:bg-gray-100 cursor-pointer'
+          : 'cursor-not-allowed opacity-75'
       } ${className}`}
+      title={
+        !isEditable && READONLY_FIELDS.includes(field)
+          ? `Campo bloqueado: ${field} no se puede editar`
+          : isEditable
+            ? 'Click para editar'
+            : 'Campo no editable'
+      }
     >
-      <span className={`text-sm flex-1 ${
+      <span className={`text-sm flex-1 text-center ${
         theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
       }`}>
         {formatDisplayValue(value)}
       </span>
-      <Edit3 className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
-        theme === 'dark' ? 'text-slate-500' : 'text-gray-500'
-      }`} />
+      {isEditable ? (
+        <Edit3 className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+          theme === 'dark' ? 'text-slate-500' : 'text-gray-500'
+        }`} />
+      ) : null}
     </div>
   );
 }

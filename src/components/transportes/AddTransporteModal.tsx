@@ -33,6 +33,7 @@ type FormState = Partial<Pick<
   | 'rut'
   | 'fono'
   | 'patentes'
+  | 'from_registros'
 >>;
 
 interface AddTransporteModalProps {
@@ -67,6 +68,7 @@ const initialState: FormState = {
   rut: '',
   fono: '',
   patentes: '',
+  from_registros: false,
 };
 
 export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporteModalProps) {
@@ -185,6 +187,8 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
         rut: form.rut,
         fono: form.fono,
         patentes: form.patentes,
+        // Marcar que viene de registros
+        from_registros: true,
       });
 
       success(`Datos cargados desde registro ${registro.ref_asli || 'encontrado'}`);
