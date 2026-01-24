@@ -250,10 +250,14 @@ export function InlineEditCell({
         processedValue = editValue === '' ? null : String(editValue).trim();
       }
 
+      console.log('Guardando:', { field, processedValue, type: typeof processedValue });
+
       const { error: updateError } = await supabase
         .from('transportes')
         .update({ [field]: processedValue })
         .eq('id', record.id);
+
+      console.log('Respuesta:', { updateError, hasError: !!updateError });
 
       if (updateError) {
         console.error('Error updating record:', updateError);
