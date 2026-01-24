@@ -63,7 +63,7 @@ const initialState: FormState = {
   pod: '',
   fecha_planta: '',
   guia_despacho: '',
-  transport: '',
+  transporte: '',
   conductor: '',
   rut: '',
   telefono: '',
