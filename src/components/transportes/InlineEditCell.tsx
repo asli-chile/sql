@@ -465,114 +465,30 @@ export function InlineEditCell({
           </>
         ) : isTimeField || (type as string) === 'time' ? (
           <>
-            <div className="relative">
-              <div className="flex gap-1">
-                {/* Hora */}
-                <div className="flex-1">
-                  <input
-                    type="number"
-                    min="1"
-                    max="12"
-                    placeholder="HH"
-                    value={(() => {
-                      if (editValue && /^\d{2}:\d{2}$/.test(editValue)) {
-                        const [hours] = editValue.split(':');
-                        const hour24 = parseInt(hours);
-                        if (hour24 === 0) return '12';
-                        if (hour24 > 12) return (hour24 - 12).toString();
-                        return hour24.toString();
-                      }
-                      return '';
-                    })()}
-                    onChange={(e) => {
-                      const hour = e.target.value;
-                      const currentMinutes = editValue && /^\d{2}:\d{2}$/.test(editValue) 
-                        ? editValue.split(':')[1] 
-                        : '00';
-                      
-                      // Convertir a 24 horas
-                      let hour24 = parseInt(hour) || 0;
-                      if (hour24 < 1 || hour24 > 12) hour24 = 0;
-                      if (hour24 === 12) hour24 = 12;
-                      else if (hour24 > 12) hour24 -= 12;
-                      
-                      setEditValue(`${hour24.toString().padStart(2, '0')}:${currentMinutes}`);
-                    }}
-                    className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                        : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-                    }`}
-                    disabled={loading}
-                  />
-                </div>
-                
-                {/* Minutos */}
-                <div className="flex-1">
-                  <input
-                    type="number"
-                    min="0"
-                    max="59"
-                    placeholder="MM"
-                    value={editValue && /^\d{2}:\d{2}$/.test(editValue) ? editValue.split(':')[1] : ''}
-                    onChange={(e) => {
-                      const minutes = e.target.value.padStart(2, '0');
-                      const currentHour = editValue && /^\d{2}:\d{2}$/.test(editValue) 
-                        ? editValue.split(':')[0] 
-                        : '00';
-                      setEditValue(`${currentHour}:${minutes}`);
-                    }}
-                    className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                        : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-                    }`}
-                    disabled={loading}
-                  />
-                </div>
-                
-                {/* AM/PM */}
-                <div className="flex-1">
-                  <select
-                    value={(() => {
-                      if (editValue && /^\d{2}:\d{2}$/.test(editValue)) {
-                        const [hours] = editValue.split(':');
-                        const hour24 = parseInt(hours);
-                        return hour24 >= 12 ? 'PM' : 'AM';
-                      }
-                      return 'AM';
-                    })()}
-                    onChange={(e) => {
-                      const period = e.target.value;
-                      const currentHour = editValue && /^\d{2}:\d{2}$/.test(editValue) 
-                        ? parseInt(editValue.split(':')[0]) 
-                        : 0;
-                      const currentMinutes = editValue && /^\d{2}:\d{2}$/.test(editValue) 
-                        ? editValue.split(':')[1] 
-                        : '00';
-                      
-                      // Convertir a 24 horas
-                      let hour24 = currentHour;
-                      if (period === 'PM' && currentHour < 12) hour24 += 12;
-                      if (period === 'AM' && currentHour === 12) hour24 = 0;
-                      
-                      setEditValue(`${hour24.toString().padStart(2, '0')}:${currentMinutes}`);
-                    }}
-                    className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-                      theme === 'dark'
-                        ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                        : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-                    }`}
-                    disabled={loading}
-                  >
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                  </select>
-                </div>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">
-                🕐 Hora (HH:MM AM/PM)
-              </div>
+            <input
+              type="text"
+              placeholder="HH:MM"
+              value={editValue}
+              onChange={(e) => {
+                // Solo permitir formato HH:MM
+                const value = e.target.value;
+                if (/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(value) || value === '') {
+                  setEditValue(value);
+                }
+              }}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              maxLength={5} // HH:MM = 5 caracteres
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                  : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+              }`}
+              disabled={loading}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              🕐 Hora (24h) - Formato HH:MM
             </div>
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
