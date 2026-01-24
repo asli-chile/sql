@@ -258,10 +258,26 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                               // Actualizar el registro en el estado local
                               setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
                             }}
-                            type={column.key === 'planta' ? 'select' : 'text'}
+                            type={
+                              column.key === 'planta' ? 'select' :
+                              column.key === 'dia_presentacion' ? 'date' :
+                              column.key === 'hora_presentacion' ? 'time' :
+                              'text'
+                            }
                             options={column.key === 'planta' ? [] : undefined}
                             className="w-full"
                           />
+                        )}
+                        {/* Debug info */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <div className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                            {column.key}: {
+                              column.key === 'planta' ? 'select' :
+                              column.key === 'dia_presentacion' ? 'date' :
+                              column.key === 'hora_presentacion' ? 'time' :
+                              'text'
+                            }
+                          </div>
                         )}
                       </td>
                     ))}

@@ -13,7 +13,7 @@ interface InlineEditCellProps {
   field: keyof TransporteRecord;
   record: TransporteRecord;
   onSave: (updatedRecord: TransporteRecord) => void;
-  type?: 'text' | 'number' | 'date' | 'select';
+  type?: 'text' | 'number' | 'date' | 'datetime' | 'time' | 'select';
   options?: string[];
   className?: string;
 }
@@ -23,6 +23,7 @@ const dateKeys = new Set<keyof TransporteRecord>([
   'fin_stacking',
   'cut_off',
   'fecha_planta',
+  'dia_presentacion',
   'created_at',
   'updated_at',
 ]);
@@ -61,6 +62,7 @@ export function InlineEditCell({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [plantasOptions, setPlantasOptions] = useState<string[]>([]);
+  const [showCalendar, setShowCalendar] = useState(false);
 
   // Cargar catálogo de plantas si el campo es 'planta'
   useEffect(() => {
@@ -102,6 +104,8 @@ export function InlineEditCell({
   const isEditable = isFieldEditable();
   const isEditing = isEditingInContext(record.id, field);
   const isDateField = dateKeys.has(field);
+  const isTimeField = type === 'time';
+  const isDateTimeField = type === 'datetime';
 
   // Usar plantasOptions si el campo es planta, sino usar options
   const selectOptions = field === 'planta' ? plantasOptions : options;
@@ -120,22 +124,45 @@ export function InlineEditCell({
 
   useEffect(() => {
     if (isDateField && value) {
-      // Manejar fechas sin conversión de zona horaria
+      // Para fechas, manejar conversión entre formatos
+      console.log('🗓️ Cargando fecha:', { value, field });
       if (typeof value === 'string') {
-        // Si ya es un string en formato YYYY-MM-DD, usarlo directamente
+        // Si viene de BD en formato YYYY-MM-DD, convertir a DD-MM-YYYY para mostrar
         if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          const [year, month, day] = value.split('-');
+          const displayDate = `${day}-${month}-${year}`;
+          setEditValue(displayDate); // Guardar en formato DD-MM-YYYY
+        } 
+        // Si ya está en formato DD-MM-YYYY, usarlo directamente
+        else if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
           setEditValue(value);
         } else {
-          // Si es una fecha ISO, extraer solo la parte de fecha
-          const date = new Date(value + 'T00:00:00');
-          if (!Number.isNaN(date.getTime())) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            setEditValue(`${year}-${month}-${day}`);
-          } else {
-            setEditValue('');
-          }
+          setEditValue('');
+        }
+      } else {
+        setEditValue('');
+      }
+    } else if (isTimeField && value) {
+      // Para hora, usar el valor directamente si es un string de hora
+      if (typeof value === 'string') {
+        setEditValue(value);
+      } else {
+        setEditValue('');
+      }
+    } else if (isDateTimeField && value) {
+      // Para datetime, formatear para input datetime-local
+      if (typeof value === 'string') {
+        // Si es un string de fecha/hora, formatearlo para datetime-local
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          setEditValue(`${year}-${month}-${day}T${hours}:${minutes}`);
+        } else {
+          setEditValue('');
         }
       } else {
         setEditValue('');
@@ -143,7 +170,7 @@ export function InlineEditCell({
     } else {
       setEditValue(value || '');
     }
-  }, [value, isDateField]);
+  }, [value, isDateField, isTimeField, isDateTimeField]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -159,16 +186,26 @@ export function InlineEditCell({
       if (type === 'number') {
         processedValue = editValue === '' ? null : Number(editValue);
       } else if (isDateField && editValue) {
-        // Para fechas, usar el string directamente (ya está en formato YYYY-MM-DD)
-        // No convertir a Date para evitar problemas de zona horaria
+        // Para fechas, convertir DD-MM-YYYY a YYYY-MM-DD para BD
+        if (/^\d{2}-\d{2}-\d{4}$/.test(editValue)) {
+          const [day, month, year] = editValue.split('-');
+          processedValue = `${year}-${month}-${day}`; // YYYY-MM-DD para BD
+        } else {
+          processedValue = null;
+        }
+      } else if (isTimeField && editValue) {
+        // Para hora, guardar el string directamente
+        processedValue = editValue.trim() || null;
+      } else if (isDateTimeField && editValue) {
+        // Para datetime, convertir a formato ISO
         const dateStr = editValue.trim();
         if (dateStr === '') {
           processedValue = null;
         } else {
-          // Validar que sea un formato de fecha válido YYYY-MM-DD
-          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            // Usar el string directamente sin conversión de zona horaria
-            processedValue = dateStr;
+          // Convertir datetime-local a ISO string
+          const date = new Date(dateStr);
+          if (!Number.isNaN(date.getTime())) {
+            processedValue = date.toISOString();
           } else {
             processedValue = null;
           }
@@ -185,22 +222,56 @@ export function InlineEditCell({
         .eq('id', record.id);
 
       if (updateError) {
-        throw updateError;
+        console.error('Error updating record:', updateError);
+        setError('Error al guardar');
+        return;
       }
 
-      const updatedRecord: TransporteRecord = {
-        ...record,
-        [field]: processedValue,
-      };
+      // Para fechas, mantener formato DD-MM-YYYY en el registro actualizado
+      let updatedRecord = { ...record, [field]: processedValue };
+      if (isDateField && processedValue && /^\d{4}-\d{2}-\d{2}$/.test(processedValue)) {
+        const [year, month, day] = processedValue.split('-');
+        updatedRecord = { ...record, [field]: `${day}-${month}-${year}` };
+      }
 
       onSave(updatedRecord);
       clearEditing();
-    } catch (err: any) {
-      setError(err.message || 'Error al guardar');
+    } catch (err) {
+      console.error('Error in handleSave:', err);
+      setError('Error al guardar');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleDateSelect = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const formattedDate = `${day}-${month}-${year}`;
+    setEditValue(formattedDate);
+    setShowCalendar(false);
+    // Pequeño delay antes de guardar para asegurar que el valor se actualice
+    setTimeout(() => {
+      handleSave();
+    }, 100);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showCalendar) {
+        const target = event.target as Element;
+        if (!target.closest('.calendar-container')) {
+          setShowCalendar(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCalendar]);
 
   const handleCancel = () => {
     setEditValue(value || '');
@@ -235,9 +306,14 @@ export function InlineEditCell({
     }
 
     if (isDateField && typeof val === 'string') {
-      const date = new Date(val);
-      if (!Number.isNaN(date.getTime())) {
-        return date.toLocaleDateString('es-CL');
+      // Si está en formato YYYY-MM-DD, convertir a DD-MM-YYYY
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        const [year, month, day] = val.split('-');
+        return `${day}-${month}-${year}`;
+      }
+      // Si ya está en formato DD-MM-YYYY, mostrarlo directamente
+      if (/^\d{2}-\d{2}-\d{4}$/.test(val)) {
+        return val;
       }
     }
 
@@ -261,6 +337,9 @@ export function InlineEditCell({
       field,
       type,
       isEditing,
+      isDateField,
+      isTimeField,
+      isDateTimeField,
       selectOptionsLength: selectOptions.length,
       hasSelectOptions: selectOptions.length > 0,
       shouldRenderSelect: field === 'planta' || (type === 'select' && selectOptions.length > 0)
@@ -319,21 +398,104 @@ export function InlineEditCell({
               {selectOptions.length} opciones disponibles
             </div>
           </>
-        ) : isDateField ? (
-          <input
-            type="date"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-              theme === 'dark'
-                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-            }`}
-            disabled={loading}
-          />
+        ) : isDateField || type === 'date' ? (
+          <>
+            <div className="relative">
+              <input
+                type="date"
+                value={(() => {
+                  // Convertir DD-MM-YYYY a YYYY-MM-DD para el input
+                  if (editValue && /^\d{2}-\d{2}-\d{4}$/.test(editValue)) {
+                    const [day, month, year] = editValue.split('-');
+                    return `${year}-${month}-${day}`;
+                  }
+                  return editValue;
+                })()}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    // Convertir YYYY-MM-DD a DD-MM-YYYY para display
+                    const [year, month, day] = e.target.value.split('-');
+                    const displayDate = `${day}-${month}-${year}`;
+                    setEditValue(displayDate);
+                  }
+                }}
+                onBlur={(e) => {
+                  if (e.target.value) {
+                    // Guardar en BD en formato YYYY-MM-DD
+                    const supabase = createClient();
+                    supabase
+                      .from('transportes')
+                      .update({ [field]: e.target.value }) // YYYY-MM-DD para BD
+                      .eq('id', record.id)
+                      .select('*')
+                      .single()
+                      .then(({ data, error }) => {
+                        if (!error) {
+                          const [year, month, day] = e.target.value.split('-');
+                          const displayDate = `${day}-${month}-${year}`;
+                          const updatedRecord = { ...record, [field]: displayDate };
+                          onSave(updatedRecord);
+                          clearEditing();
+                        } else {
+                          console.error('Error guardando fecha:', error);
+                        }
+                      });
+                  }
+                }}
+                onKeyDown={handleKeyDown}
+                autoFocus
+                className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                  theme === 'dark'
+                    ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                    : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+                }`}
+                disabled={loading}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                📅 Calendario (DD-MM-AAAA)
+              </div>
+            </div>
+          </>
+        ) : isTimeField || type === 'time' ? (
+          <>
+            <input
+              type="time"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                  : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+              }`}
+              disabled={loading}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              🕐 Reloj
+            </div>
+          </>
+        ) : isDateTimeField || type === 'datetime' ? (
+          <>
+            <input
+              type="datetime-local"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                  : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+              }`}
+              disabled={loading}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              📅🕐 Calendario + Reloj
+            </div>
+          </>
         ) : type === 'number' ? (
           <input
             type="number"

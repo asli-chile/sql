@@ -70,10 +70,10 @@ export const transportesSections: TransporteSection[] = [
     columns: [
       { key: 'conductor', header: 'CONDUCTOR', section: 'DATOS CONDUCTOR' },
       { key: 'rut', header: 'RUT', section: 'DATOS CONDUCTOR' },
-      { key: 'fono', header: 'TELEFONO', section: 'DATOS CONDUCTOR' },
-      { key: 'patentes', header: 'PATENTE', section: 'DATOS CONDUCTOR' },
+      { key: 'telefono', header: 'TELEFONO', section: 'DATOS CONDUCTOR' },
+      { key: 'patente', header: 'PATENTE', section: 'DATOS CONDUCTOR' },
       { key: 'patente_rem', header: 'PATENTE REM.', section: 'DATOS CONDUCTOR' },
-      { key: 'transportes', header: 'TRANSPORTISTA', section: 'DATOS CONDUCTOR' },
+      { key: 'transporte', header: 'TRANSPORTISTA', section: 'DATOS CONDUCTOR' },
     ],
   },
   {
