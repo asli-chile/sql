@@ -477,11 +477,11 @@ export function InlineEditCell({
                   value = value.slice(0, 4);
                 }
                 
-                // Guardar como HHMM (sin dos puntos) para que el usuario pueda seguir escribiendo
+                // Mantener siempre HHMM (sin dos puntos)
                 setEditValue(value);
               }}
               onBlur={(e) => {
-                // Al perder foco, convertir HHMM a HH:MM para guardar
+                // Al perder foco, convertir HHMM a HH:MM solo para guardar
                 let value = e.target.value.replace(/\D/g, '');
                 
                 if (value.length === 4) {
@@ -493,18 +493,30 @@ export function InlineEditCell({
                   const minuteNum = parseInt(minutes);
                   
                   if (hourNum <= 23 && minuteNum <= 59) {
+                    // Convertir a HH:MM solo para guardar
                     const formattedValue = `${hours}:${minutes}`;
-                    setEditValue(formattedValue);
                     
-                    // Guardar con handleSave
-                    handleSave();
+                    // Guardar directamente con el valor formateado
+                    const supabase = createClient();
+                    supabase
+                      .from('transportes')
+                      .update({ [field]: formattedValue })
+                      .eq('id', record.id)
+                      .select('*')
+                      .single()
+                      .then(({ data, error }) => {
+                        if (!error) {
+                          const updatedRecord = { ...record, [field]: value }; // Mantener HHMM para display
+                          onSave(updatedRecord);
+                          clearEditing();
+                        } else {
+                          console.error('Error guardando hora:', error);
+                        }
+                      });
                   } else {
-                    // Si es inválido, dejar el valor original
-                    setEditValue(value);
+                    // Si es inválido, mostrar error o dejar como está
+                    console.log('Hora inválida:', value);
                   }
-                } else {
-                  // Si no tiene 4 dígitos, guardar como está
-                  handleSave();
                 }
               }}
               onKeyDown={handleKeyDown}
@@ -518,7 +530,7 @@ export function InlineEditCell({
               disabled={loading}
             />
             <div className="text-xs text-gray-500 mt-1">
-              🕐 Hora (24h) - Escribir HHMM
+              🕐 Hora (24h) - Formato HHMM
             </div>
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
