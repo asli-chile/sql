@@ -554,7 +554,7 @@ export default function TransportesPage() {
         (record.conductor && record.conductor.toLowerCase().includes(filters.conductor.toLowerCase()));
       
       const transportistaMatch = !filters.transportista || 
-        (record.transportes && record.transportes.toLowerCase().includes(filters.transportista.toLowerCase()));
+        (record.transporte && record.transporte.toLowerCase().includes(filters.transportista.toLowerCase()));
       
       const semanaMatch = !filters.semana || 
         (record.semana && String(record.semana).includes(filters.semana));
