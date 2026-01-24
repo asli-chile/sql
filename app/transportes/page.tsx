@@ -4,11 +4,12 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
 import { AddTransporteModal } from '@/components/transportes/AddTransporteModal';
+import { TransporteCard } from '@/components/transportes/TransporteCard';
 import { useUser } from '@/hooks/useUser';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -78,6 +79,7 @@ export default function TransportesPage() {
     ingresadoStacking: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const { canAdd, canEdit, setCurrentUser, currentUser } = useUser();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -764,6 +766,40 @@ export default function TransportesPage() {
                   
                   {/* Botones de acción */}
                   <div className="flex items-center gap-2">
+                    {/* Botones de vista */}
+                    <div className={`flex items-center rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                      <button
+                        onClick={() => setViewMode('table')}
+                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-l-lg ${
+                          viewMode === 'table'
+                            ? theme === 'dark'
+                              ? 'bg-sky-600 text-white'
+                              : 'bg-blue-600 text-white'
+                            : theme === 'dark'
+                              ? 'text-slate-300 hover:bg-slate-800'
+                              : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        title="Vista de tabla"
+                      >
+                        <List className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('cards')}
+                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-r-lg ${
+                          viewMode === 'cards'
+                            ? theme === 'dark'
+                              ? 'bg-sky-600 text-white'
+                              : 'bg-blue-600 text-white'
+                            : theme === 'dark'
+                              ? 'text-slate-300 hover:bg-slate-800'
+                              : 'text-gray-700 hover:bg-gray-100'
+                        }`}
+                        title="Vista de tarjetas"
+                      >
+                        <Grid className="h-4 w-4" />
+                      </button>
+                    </div>
+                    
                     <button
                       onClick={() => setShowFilters(!showFilters)}
                       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
@@ -1100,304 +1136,365 @@ export default function TransportesPage() {
               </section>
 
               {/* Tabla principal */}
-              <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden w-full ${theme === 'dark'
-                ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-                : 'border-gray-200 bg-white shadow-md'
-                }`}>
-                <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
-                  <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
-                    }`}>
-                    <thead className={`sticky top-0 z-10 backdrop-blur-sm border-b ${theme === 'dark'
-                      ? 'bg-slate-900/95 border-slate-800/60'
-                      : 'bg-white border-gray-200'
+              {viewMode === 'table' ? (
+                <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden w-full ${theme === 'dark'
+                  ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
+                  : 'border-gray-200 bg-white shadow-md'
+                  }`}>
+                  <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
+                    <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                       }`}>
-                      {/* Primera fila: Títulos de sección */}
-                      <tr>
-                        <th
-                          rowSpan={2}
-                          scope="col"
-                          className={`px-4 py-4 text-center border-r ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'
-                            }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedRows.size === filteredRecords.length && filteredRecords.length > 0}
-                            onChange={handleSelectAll}
-                            disabled={!canEdit}
-                            className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                            }`}
-                          />
-                        </th>
-                      </tr>
-                      {/* Segunda fila: Nombres de columnas individuales */}
-                      <tr>
-                        {transportesSections.map((section) =>
-                          section.columns.map((column) => (
-                            <th
-                              key={`${section.name}-${column.header}`}
-                              scope="col"
-                              className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-r ${theme === 'dark'
-                                ? 'text-slate-400 bg-slate-900/60 border-slate-800/60'
-                                : 'text-gray-600 bg-gray-50 border-gray-200'
+                      <thead className={`sticky top-0 z-10 backdrop-blur-sm border-b ${theme === 'dark'
+                        ? 'bg-slate-900/95 border-slate-800/60'
+                        : 'bg-white border-gray-200'
+                        }`}>
+                        {/* Primera fila: Títulos de sección */}
+                        <tr>
+                          <th
+                            rowSpan={2}
+                            scope="col"
+                            className={`px-4 py-4 text-center border-r ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'
+                              }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.size === filteredRecords.length && filteredRecords.length > 0}
+                              onChange={handleSelectAll}
+                              disabled={!canEdit}
+                              className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                }`}
+                            />
+                          </th>
+                        </tr>
+                        {/* Segunda fila: Nombres de columnas individuales */}
+                        <tr>
+                          {transportesSections.map((section) =>
+                            section.columns.map((column) => (
+                              <th
+                                key={`${section.name}-${column.header}`}
+                                scope="col"
+                                className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider whitespace-nowrap border-r ${theme === 'dark'
+                                  ? 'text-slate-400 bg-slate-900/60 border-slate-800/60'
+                                  : 'text-gray-600 bg-gray-50 border-gray-200'
+                                  }`}
+                              >
+                                {column.header}
+                              </th>
+                            ))
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className={`divide-y ${theme === 'dark'
+                        ? 'divide-slate-800/60 bg-slate-950/50'
+                        : 'divide-gray-200 bg-white'
+                        }`}>
+                        {isLoading ? (
+                          <tr>
+                            <td
+                              colSpan={transportesColumns.length + 1}
+                              className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
                                 }`}
                             >
-                              {column.header}
-                            </th>
+                              <div className="flex items-center justify-center gap-3">
+                                <RefreshCcw className={`h-5 w-5 animate-spin ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                                  }`} />
+                                <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>Cargando transportes...</span>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : filteredRecords.length === 0 ? (
+                          <tr>
+                            <td
+                              colSpan={transportesColumns.length + 1}
+                              className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                }`}
+                            >
+                              <div className="flex flex-col items-center gap-2">
+                                <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
+                                  {searchTerm
+                                    ? 'No se encontraron registros que coincidan con la búsqueda.'
+                                    : 'No hay registros de transporte disponibles.'}
+                                </p>
+                                {searchTerm && (
+                                  <button
+                                    onClick={() => setSearchTerm('')}
+                                    className={`text-xs underline ${theme === 'dark'
+                                      ? 'text-sky-400 hover:text-sky-300'
+                                      : 'text-blue-600 hover:text-blue-700'
+                                      }`}
+                                  >
+                                    Limpiar búsqueda
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredRecords.map((item) => (
+                            <tr
+                              key={item.id}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                setContextMenu({
+                                  x: e.clientX,
+                                  y: e.clientY,
+                                  record: item,
+                                });
+                              }}
+                              className={`transition-colors ${theme === 'dark'
+                                ? `hover:bg-slate-900/60 ${selectedRows.has(item.id) ? 'bg-slate-800/40' : ''}`
+                                : `hover:bg-gray-100 ${selectedRows.has(item.id) ? 'bg-blue-50' : ''}`
+                                }`}
+                            >
+                              <td className="px-4 py-4">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRows.has(item.id)}
+                                  onChange={() => handleToggleRowSelection(item.id)}
+                                  disabled={!canEdit}
+                                  className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                    ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                    : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                    }`}
+                                />
+                              </td>
+                              {transportesColumns.map((column) => {
+                                // Checkbox especial para AT CONTROLADA
+                                if (column.key === 'atmosfera_controlada') {
+                                  return (
+                                    <td
+                                      key={`${item.id}-${column.header}`}
+                                      className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={item.atmosfera_controlada || false}
+                                        onChange={(e) => handleToggleAtmosferaControlada(item, e.target.checked)}
+                                        disabled={!canEdit}
+                                        className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                          }`}
+                                      />
+                                    </td>
+                                  );
+                                }
+
+                                // Checkbox especial para LATE
+                                if (column.key === 'late') {
+                                  return (
+                                    <td
+                                      key={`${item.id}-${column.header}`}
+                                      className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={item.late || false}
+                                        onChange={(e) => handleToggleLate(item, e.target.checked)}
+                                        disabled={!canEdit}
+                                        className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                          }`}
+                                      />
+                                    </td>
+                                  );
+                                }
+
+                                // Checkbox especial para EXTRA LATE
+                                if (column.key === 'extra_late') {
+                                  return (
+                                    <td
+                                      key={`${item.id}-${column.header}`}
+                                      className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={item.extra_late || false}
+                                        onChange={(e) => handleToggleExtraLate(item, e.target.checked)}
+                                        disabled={!canEdit}
+                                        className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                          }`}
+                                      />
+                                    </td>
+                                  );
+                                }
+
+                                // Checkboxes booleanos adicionales
+                                const booleanCheckboxes = ['porteo', 'ingresado_stacking', 'sobreestadia', 'scanner'];
+                                if (booleanCheckboxes.includes(column.key)) {
+                                  const checkboxValue = item[column.key] as boolean | null;
+                                  return (
+                                    <td
+                                      key={`${item.id}-${column.header}`}
+                                      className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                        }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={checkboxValue || false}
+                                        onChange={(e) => handleToggleBoolean(item, column.key, e.target.checked)}
+                                        disabled={!canEdit}
+                                        className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
+                                          ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                          : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                          }`}
+                                      />
+                                    </td>
+                                  );
+                                }
+
+                                // Renderizado especial para BOOKING con botón de descarga
+                                if (column.key === 'booking') {
+                                  const bookingValue = item.booking;
+                                  const bookingKey = bookingValue ? bookingValue.trim().toUpperCase().replace(/\s+/g, '') : '';
+                                  const hasPdf = bookingKey && bookingDocuments.has(bookingKey);
+
+                                  return (
+                                    <td
+                                      key={`${item.id}-${column.header}`}
+                                      className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                        }`}
+                                    >
+                                      <div className="flex items-center justify-center gap-2">
+                                        <span>{bookingValue || '—'}</span>
+                                        {hasPdf && canEdit && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleDownloadBooking(bookingValue);
+                                            }}
+                                            disabled={downloadingBooking === bookingKey}
+                                            className={`p-1.5 rounded transition-colors flex-shrink-0 ${downloadingBooking === bookingKey
+                                              ? 'opacity-50 cursor-not-allowed'
+                                              : theme === 'dark'
+                                                ? 'hover:bg-slate-700 text-slate-300 hover:text-sky-200'
+                                                : 'hover:bg-gray-200 text-gray-600 hover:text-blue-600'
+                                              }`}
+                                            title="Descargar PDF de booking"
+                                          >
+                                            {downloadingBooking === bookingKey ? (
+                                              <RefreshCcw className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Download className="h-4 w-4" />
+                                            )}
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+                                }
+
+                                // CO2 y O2 solo editables si AT CONTROLADA está activo
+                                const isDisabled = (column.key === 'co2' || column.key === 'o2') && !item.atmosfera_controlada;
+                                // Si no tiene permisos de edición, mostrar solo texto
+                                const shouldShowTextOnly = !canEdit || isDisabled;
+
+                                return (
+                                  <td
+                                    key={`${item.id}-${column.header}`}
+                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                      }`}
+                                  >
+                                    {column.render ? (
+                                      column.render(item)
+                                    ) : shouldShowTextOnly ? (
+                                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                        }`}>
+                                        {item[column.key] !== null && item[column.key] !== undefined ? item[column.key] : '—'}
+                                      </span>
+                                    ) : (
+                                      <InlineEditCell
+                                        value={item[column.key]}
+                                        field={column.key}
+                                        record={item}
+                                        onSave={handleUpdateRecord}
+                                        type={
+                                          dateKeys.has(column.key)
+                                            ? 'date'
+                                            : typeof item[column.key] === 'number'
+                                              ? 'number'
+                                              : 'text'
+                                        }
+                                      />
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
                           ))
                         )}
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y ${theme === 'dark'
-                      ? 'divide-slate-800/60 bg-slate-950/50'
-                      : 'divide-gray-200 bg-white'
-                      }`}>
-                      {isLoading ? (
-                        <tr>
-                          <td
-                            colSpan={transportesColumns.length + 1}
-                            className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                              }`}
-                          >
-                            <div className="flex items-center justify-center gap-3">
-                              <RefreshCcw className={`h-5 w-5 animate-spin ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
-                                }`} />
-                              <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>Cargando transportes...</span>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : filteredRecords.length === 0 ? (
-                        <tr>
-                          <td
-                            colSpan={transportesColumns.length + 1}
-                            className={`px-4 py-12 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                              }`}
-                          >
-                            <div className="flex flex-col items-center gap-2">
-                              <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
-                                {searchTerm
-                                  ? 'No se encontraron registros que coincidan con la búsqueda.'
-                                  : 'No hay registros de transporte disponibles.'}
-                              </p>
-                              {searchTerm && (
-                                <button
-                                  onClick={() => setSearchTerm('')}
-                                  className={`text-xs underline ${theme === 'dark'
-                                    ? 'text-sky-400 hover:text-sky-300'
-                                    : 'text-blue-600 hover:text-blue-700'
-                                    }`}
-                                >
-                                  Limpiar búsqueda
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredRecords.map((item) => (
-                          <tr
-                            key={item.id}
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              setContextMenu({
-                                x: e.clientX,
-                                y: e.clientY,
-                                record: item,
-                              });
-                            }}
-                            className={`transition-colors ${theme === 'dark'
-                              ? `hover:bg-slate-900/60 ${selectedRows.has(item.id) ? 'bg-slate-800/40' : ''}`
-                              : `hover:bg-gray-100 ${selectedRows.has(item.id) ? 'bg-blue-50' : ''}`
-                              }`}
-                          >
-                            <td className="px-4 py-4">
-                              <input
-                                type="checkbox"
-                                checked={selectedRows.has(item.id)}
-                                onChange={() => handleToggleRowSelection(item.id)}
-                                disabled={!canEdit}
-                                className={`h-4 w-4 rounded focus:ring-2 ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
-                                  ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                  : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                  }`}
-                              />
-                            </td>
-                            {transportesColumns.map((column) => {
-                              // Checkbox especial para AT CONTROLADA
-                              if (column.key === 'atmosfera_controlada') {
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                      }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={item.atmosfera_controlada || false}
-                                      onChange={(e) => handleToggleAtmosferaControlada(item, e.target.checked)}
-                                      disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
-                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                        }`}
-                                    />
-                                  </td>
-                                );
-                              }
-
-                              // Checkbox especial para LATE
-                              if (column.key === 'late') {
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                      }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={item.late || false}
-                                      onChange={(e) => handleToggleLate(item, e.target.checked)}
-                                      disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
-                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                        }`}
-                                    />
-                                  </td>
-                                );
-                              }
-
-                              // Checkbox especial para EXTRA LATE
-                              if (column.key === 'extra_late') {
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                      }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={item.extra_late || false}
-                                      onChange={(e) => handleToggleExtraLate(item, e.target.checked)}
-                                      disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
-                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                        }`}
-                                    />
-                                  </td>
-                                );
-                              }
-
-                              // Checkboxes booleanos adicionales
-                              const booleanCheckboxes = ['porteo', 'ingresado_stacking', 'sobreestadia', 'scanner'];
-                              if (booleanCheckboxes.includes(column.key)) {
-                                const checkboxValue = item[column.key] as boolean | null;
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                      }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={checkboxValue || false}
-                                      onChange={(e) => handleToggleBoolean(item, column.key, e.target.checked)}
-                                      disabled={!canEdit}
-                                      className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
-                                        ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                        : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                        }`}
-                                    />
-                                  </td>
-                                );
-                              }
-
-                              // Renderizado especial para BOOKING con botón de descarga
-                              if (column.key === 'booking') {
-                                const bookingValue = item.booking;
-                                const bookingKey = bookingValue ? bookingValue.trim().toUpperCase().replace(/\s+/g, '') : '';
-                                const hasPdf = bookingKey && bookingDocuments.has(bookingKey);
-
-                                return (
-                                  <td
-                                    key={`${item.id}-${column.header}`}
-                                    className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                      }`}
-                                  >
-                                    <div className="flex items-center justify-center gap-2">
-                                      <span>{bookingValue || '—'}</span>
-                                      {hasPdf && canEdit && (
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDownloadBooking(bookingValue);
-                                          }}
-                                          disabled={downloadingBooking === bookingKey}
-                                          className={`p-1.5 rounded transition-colors flex-shrink-0 ${downloadingBooking === bookingKey
-                                            ? 'opacity-50 cursor-not-allowed'
-                                            : theme === 'dark'
-                                              ? 'hover:bg-slate-700 text-slate-300 hover:text-sky-200'
-                                              : 'hover:bg-gray-200 text-gray-600 hover:text-blue-600'
-                                            }`}
-                                          title="Descargar PDF de booking"
-                                        >
-                                          {downloadingBooking === bookingKey ? (
-                                            <RefreshCcw className="h-4 w-4 animate-spin" />
-                                          ) : (
-                                            <Download className="h-4 w-4" />
-                                          )}
-                                        </button>
-                                      )}
-                                    </div>
-                                  </td>
-                                );
-                              }
-
-                              // CO2 y O2 solo editables si AT CONTROLADA está activo
-                              const isDisabled = (column.key === 'co2' || column.key === 'o2') && !item.atmosfera_controlada;
-                              // Si no tiene permisos de edición, mostrar solo texto
-                              const shouldShowTextOnly = !canEdit || isDisabled;
-
-                              return (
-                                <td
-                                  key={`${item.id}-${column.header}`}
-                                  className={`px-4 py-4 text-sm whitespace-nowrap text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-                                    }`}
-                                >
-                                  {column.render ? (
-                                    column.render(item)
-                                  ) : shouldShowTextOnly ? (
-                                    <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                                      }`}>
-                                      {item[column.key] !== null && item[column.key] !== undefined ? item[column.key] : '—'}
-                                    </span>
-                                  ) : (
-                                    <InlineEditCell
-                                      value={item[column.key]}
-                                      field={column.key}
-                                      record={item}
-                                      onSave={handleUpdateRecord}
-                                      type={
-                                        dateKeys.has(column.key)
-                                          ? 'date'
-                                          : typeof item[column.key] === 'number'
-                                            ? 'number'
-                                            : 'text'
-                                      }
-                                    />
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ) : (
+                /* Vista de tarjetas */
+                <section className={`rounded-3xl border shadow-xl backdrop-blur-xl p-6 ${theme === 'dark'
+                  ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
+                  : 'border-gray-200 bg-white shadow-md'
+                  }`}>
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="flex items-center gap-3">
+                        <RefreshCcw className={`h-5 w-5 animate-spin ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                        <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>Cargando transportes...</span>
+                      </div>
+                    </div>
+                  ) : filteredRecords.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <p className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>
+                        {searchTerm
+                          ? 'No se encontraron registros que coincidan con la búsqueda.'
+                          : 'No hay registros de transporte disponibles.'}
+                      </p>
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className={`mt-2 text-xs underline ${theme === 'dark'
+                            ? 'text-sky-400 hover:text-sky-300'
+                            : 'text-blue-600 hover:text-blue-700'
+                            }`}
+                        >
+                          Limpiar búsqueda
+                        </button>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </section>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {filteredRecords.map((item) => (
+                        <TransporteCard
+                          key={item.id}
+                          transporte={item}
+                          theme={theme}
+                          canEdit={canEdit}
+                          isSelected={selectedRows.has(item.id)}
+                          onSelect={() => handleToggleRowSelection(item.id)}
+                          onUpdate={handleUpdateRecord}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            setContextMenu({
+                              x: e.clientX,
+                              y: e.clientY,
+                              record: item,
+                            });
+                          }}
+                          bookingDocuments={bookingDocuments}
+                          downloadingBooking={downloadingBooking}
+                          onDownloadBooking={handleDownloadBooking}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
           </main>
 
