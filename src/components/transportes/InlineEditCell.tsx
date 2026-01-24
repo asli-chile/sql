@@ -303,8 +303,8 @@ export function InlineEditCell({
       console.error('=== ERROR EN handleSave ===');
       console.error('Error completo:', err);
       console.error('Tipo de error:', typeof err);
-      console.error('Mensaje:', err?.message);
-      console.error('Stack:', err?.stack);
+      console.error('Mensaje:', (err as any)?.message || 'Sin mensaje');
+      console.error('Stack:', (err as any)?.stack || 'Sin stack');
       setError('Error al guardar');
     } finally {
       setLoading(false);
