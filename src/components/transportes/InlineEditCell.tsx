@@ -476,7 +476,7 @@ export function InlineEditCell({
               🕐 Reloj
             </div>
           </>
-        ) : isDateTimeField || type === 'datetime' ? (
+        ) : isDateTimeField || (type as string) === 'datetime' ? (
           <>
             <input
               type="datetime-local"
