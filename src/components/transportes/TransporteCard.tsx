@@ -129,7 +129,7 @@ export function TransporteCard({
                 {formatValue(transporte.booking)}
               </span>
             )}
-            {hasPdf && canEdit && (
+            {hasPdf && canEdit && bookingValue && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
