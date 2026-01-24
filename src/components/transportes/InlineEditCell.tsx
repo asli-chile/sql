@@ -182,7 +182,13 @@ export function InlineEditCell({
   }, [value, isDateField, isTimeField, isDateTimeField]);
 
   const handleSave = async () => {
-    if (!canEdit) return;
+    console.log('=== handleSave INICIADO ===');
+    console.log('Campo:', field, 'Valor:', editValue, 'ID:', record.id);
+    
+    if (!canEdit) {
+      console.log('Sin permisos para editar');
+      return;
+    }
 
     try {
       setLoading(true);
@@ -294,7 +300,11 @@ export function InlineEditCell({
       onSave(updatedRecord);
       clearEditing();
     } catch (err) {
-      console.error('Error in handleSave:', err);
+      console.error('=== ERROR EN handleSave ===');
+      console.error('Error completo:', err);
+      console.error('Tipo de error:', typeof err);
+      console.error('Mensaje:', err?.message);
+      console.error('Stack:', err?.stack);
       setError('Error al guardar');
     } finally {
       setLoading(false);
