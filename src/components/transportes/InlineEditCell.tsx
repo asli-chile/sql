@@ -60,6 +60,32 @@ export function InlineEditCell({
   const [editValue, setEditValue] = useState(value || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [plantasOptions, setPlantasOptions] = useState<string[]>([]);
+
+  // Cargar catálogo de plantas si el campo es 'planta'
+  useEffect(() => {
+    if (field === 'planta') {
+      console.log('🔄 InlineEditCell: Cargando catálogo de plantas para campo:', field);
+      const loadPlantas = async () => {
+        try {
+          const response = await fetch('/api/catalogos/plantas');
+          console.log('📡 InlineEditCell: Response status:', response.status);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('📋 InlineEditCell: Plantas recibidas:', data.plantas);
+            console.log('📋 InlineEditCell: Longitud:', data.plantas?.length);
+            setPlantasOptions(data.plantas || []);
+          } else {
+            console.error('❌ InlineEditCell: Error en respuesta:', response.statusText);
+          }
+        } catch (error) {
+          console.error('💥 InlineEditCell: Error cargando plantas:', error);
+        }
+      };
+      loadPlantas();
+    }
+  }, [field]);
 
   // Determinar si el campo es editable
   const isFieldEditable = () => {
@@ -76,6 +102,21 @@ export function InlineEditCell({
   const isEditable = isFieldEditable();
   const isEditing = isEditingInContext(record.id, field);
   const isDateField = dateKeys.has(field);
+
+  // Usar plantasOptions si el campo es planta, sino usar options
+  const selectOptions = field === 'planta' ? plantasOptions : options;
+
+  // Debug logs
+  if (field === 'planta') {
+    console.log('🔍 InlineEditCell Debug:', {
+      field,
+      type,
+      isEditing,
+      plantasOptionsLength: plantasOptions.length,
+      selectOptionsLength: selectOptions.length,
+      selectOptions: selectOptions.slice(0, 3) // Primeras 3 opciones
+    });
+  }
 
   useEffect(() => {
     if (isDateField && value) {
@@ -132,6 +173,8 @@ export function InlineEditCell({
             processedValue = null;
           }
         }
+      } else if (type === 'select') {
+        processedValue = editValue === '' ? null : String(editValue).trim();
       } else if (type === 'text') {
         processedValue = editValue === '' ? null : String(editValue).trim();
       }
@@ -214,29 +257,68 @@ export function InlineEditCell({
   }
 
   if (isEditing) {
+    console.log('🎯 InlineEditCell Render Debug:', {
+      field,
+      type,
+      isEditing,
+      selectOptionsLength: selectOptions.length,
+      hasSelectOptions: selectOptions.length > 0,
+      shouldRenderSelect: field === 'planta' || (type === 'select' && selectOptions.length > 0)
+    });
+
     return (
       <div className="relative">
-        {type === 'select' && options.length > 0 ? (
-          <select
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-              theme === 'dark'
-                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-            }`}
-            disabled={loading}
-          >
-            <option value="">—</option>
-            {options.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+        {/* SIEMPRE mostrar select para el campo planta */}
+        {field === 'planta' ? (
+          <>
+            <select
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-sky-500'
+                  : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500'
+              } ${className}`}
+            >
+              <option value="">Seleccionar planta...</option>
+              {selectOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-gray-500 mt-1">
+              {selectOptions.length} plantas disponibles
+            </div>
+          </>
+        ) : type === 'select' && selectOptions.length > 0 ? (
+          <>
+            <select
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-slate-600 bg-slate-800 text-slate-200 focus:ring-sky-500'
+                  : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500'
+              } ${className}`}
+            >
+              <option value="">Seleccionar...</option>
+              {selectOptions.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <div className="text-xs text-gray-500 mt-1">
+              {selectOptions.length} opciones disponibles
+            </div>
+          </>
         ) : isDateField ? (
           <input
             type="date"
@@ -268,20 +350,27 @@ export function InlineEditCell({
             disabled={loading}
           />
         ) : (
-          <input
-            type="text"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={handleSave}
-            onKeyDown={handleKeyDown}
-            autoFocus
-            className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-              theme === 'dark'
-                ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-            }`}
-            disabled={loading}
-          />
+          <>
+            <input
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                  : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+              }`}
+              disabled={loading}
+            />
+            {type === 'select' && (
+              <div className="text-xs text-red-500 mt-1">
+                Cargando opciones... ({selectOptions.length})
+              </div>
+            )}
+          </>
         )}
         {error && (
           <span className="absolute -bottom-5 left-0 text-[10px] text-rose-400">

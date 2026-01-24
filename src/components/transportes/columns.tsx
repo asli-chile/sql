@@ -1,5 +1,7 @@
 import { TransporteRecord } from '@/lib/transportes-service';
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
+import { InlineEditCell } from './InlineEditCell';
+import { PlantaCell } from './PlantaCell';
 
 export type TransporteColumn = {
   key: keyof TransporteRecord;

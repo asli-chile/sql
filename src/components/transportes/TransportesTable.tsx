@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { TransporteRecord, fetchTransportes, deleteMultipleTransportes } from '@/lib/transportes-service';
 import { transportesColumns } from './columns';
 import { AddTransporteModal } from './AddTransporteModal';
+import { InlineEditCell } from './InlineEditCell';
 import { Trash2, CheckSquare, Square } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
 
@@ -246,7 +247,22 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                         key={`${item.id}-${column.header}`}
                         className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100"
                       >
-                        {column.render ? column.render(item) : formatValue(item, column.key)}
+                        {column.render ? (
+                          column.render(item)
+                        ) : (
+                          <InlineEditCell
+                            value={item[column.key]}
+                            field={column.key}
+                            record={item}
+                            onSave={(updatedRecord) => {
+                              // Actualizar el registro en el estado local
+                              setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+                            }}
+                            type={column.key === 'planta' ? 'select' : 'text'}
+                            options={column.key === 'planta' ? [] : undefined}
+                            className="w-full"
+                          />
+                        )}
                       </td>
                     ))}
                   </tr>

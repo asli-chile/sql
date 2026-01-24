@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase-browser';
 export type TransporteRecord = {
   id: string;
   ref_cliente: string | null;
+  ref_asli: string | null;
   semana: number | null;
   exportacion: string | null;
   planta: string | null;
@@ -31,6 +32,7 @@ export type TransporteRecord = {
   ubicacion: string | null;
   dia_presentacion: string | null;
   hora_presentacion: string | null;
+  fecha_presentacion: string | null;
   fecha_planta: string | null;
   llegada_planta: string | null;
   salida_planta: string | null;
@@ -39,14 +41,16 @@ export type TransporteRecord = {
   llegada_puerto: string | null;
   transportes: string | null;
   conductor: string | null;
-  rut: string | null;
-  fono: string | null;
+  rut_conductor: string | null;
+  celular: string | null;
   patentes: string | null;
   patente_rem: string | null;
   ingresado_stacking: boolean | null;
   sobreestadia: boolean | null;
   scanner: boolean | null;
   lote_carga: string | null;
+  dus: string | null;
+  sps: string | null;
   observacion: string | null;
   // Campo para identificar si viene de registros
   from_registros: boolean | null;

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
@@ -80,6 +80,8 @@ export default function TransportesPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [sortBy, setSortBy] = useState<keyof TransporteRecord>('contenedor');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { canAdd, canEdit, setCurrentUser, currentUser } = useUser();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -521,7 +523,7 @@ export default function TransportesPage() {
   };
 
   const filteredRecords = useMemo(() => {
-    return records.filter((record) => {
+    let filtered = records.filter((record) => {
       // Búsqueda general
       const searchMatch = !searchTerm || 
         Object.values(record).some(value => 
@@ -581,7 +583,27 @@ export default function TransportesPage() {
              especieMatch && depositoMatch && conductorMatch && transportistaMatch && semanaMatch &&
              atControladaMatch && lateMatch && extraLateMatch && porteoMatch && ingresadoStackingMatch;
     });
-  }, [records, searchTerm, filters]);
+
+    // Aplicar ordenamiento
+    return filtered.sort((a, b) => {
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
+      
+      // Manejar valores nulos/undefined
+      if (aValue === null || aValue === undefined) return sortOrder === 'asc' ? 1 : -1;
+      if (bValue === null || bValue === undefined) return sortOrder === 'asc' ? -1 : 1;
+      
+      // Convertir a string para comparación
+      const aStr = String(aValue).toLowerCase();
+      const bStr = String(bValue).toLowerCase();
+      
+      let comparison = 0;
+      if (aStr < bStr) comparison = -1;
+      if (aStr > bStr) comparison = 1;
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [records, searchTerm, filters, sortBy, sortOrder]);
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
@@ -766,6 +788,45 @@ export default function TransportesPage() {
                   
                   {/* Botones de acción */}
                   <div className="flex items-center gap-2">
+                    {/* Controles de ordenamiento sutiles */}
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as keyof TransporteRecord)}
+                        className={`px-2 py-1.5 text-xs font-medium transition-colors rounded border ${
+                          theme === 'dark'
+                            ? 'border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 focus:ring-1 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:ring-1 focus:ring-blue-500/50'
+                        }`}
+                      >
+                        <option value="contenedor">Contenedor</option>
+                        <option value="ref_cliente">Ref Cliente</option>
+                        <option value="ref_asli">Ref ASLI</option>
+                        <option value="booking">Booking</option>
+                        <option value="nave">Nave</option>
+                        <option value="naviera">Naviera</option>
+                        <option value="deposito">Depósito</option>
+                        <option value="planta">Planta</option>
+                        <option value="conductor">Conductor</option>
+                        <option value="semana">Semana</option>
+                      </select>
+                      <button
+                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                        className={`p-1.5 text-xs font-medium transition-colors rounded border ${
+                          theme === 'dark'
+                            ? 'border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                            : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
+                        }`}
+                        title={`Ordenar ${sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
+                      >
+                        {sortOrder === 'asc' ? (
+                          <ArrowUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+                    
                     {/* Botones de vista */}
                     <div className={`flex items-center rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                       <button
@@ -1468,7 +1529,7 @@ export default function TransportesPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       {filteredRecords.map((item) => (
                         <TransporteCard
                           key={item.id}
