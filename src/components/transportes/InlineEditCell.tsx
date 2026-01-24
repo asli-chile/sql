@@ -324,6 +324,18 @@ export function InlineEditCell({
       }
     }
 
+    if (isTimeField && typeof val === 'string') {
+      // Si está en formato HH:MM, convertir a HHMM
+      if (/^\d{2}:\d{2}$/.test(val)) {
+        const [hours, minutes] = val.split(':');
+        return `${hours}${minutes}`;
+      }
+      // Si ya está en formato HHMM, mostrarlo directamente
+      if (/^\d{4}$/.test(val)) {
+        return val;
+      }
+    }
+
     if (typeof val === 'boolean') {
       return val ? 'Sí' : 'No';
     }
