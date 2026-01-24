@@ -28,7 +28,7 @@ type FormState = Partial<Pick<
   | 'pod'
   | 'fecha_planta'
   | 'guia_despacho'
-  | 'transportes'
+  | 'transporte'
   | 'conductor'
   | 'rut'
   | 'telefono'
@@ -63,7 +63,7 @@ const initialState: FormState = {
   pod: '',
   fecha_planta: '',
   guia_despacho: '',
-  transportes: '',
+  transport: '',
   conductor: '',
   rut: '',
   telefono: '',
@@ -182,7 +182,7 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
         vent: form.vent,
         fecha_planta: form.fecha_planta,
         guia_despacho: form.guia_despacho,
-        transportes: form.transportes,
+        transporte: form.transporte,
         conductor: form.conductor,
         rut: form.rut,
         telefono: form.telefono,
@@ -527,11 +527,11 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
             </label>
 
             <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Transportes</span>
+              <span className="font-medium text-slate-300">Transporte</span>
               <input
                 type="text"
-                value={form.transportes ?? ''}
-                onChange={(e) => handleChange('transportes', e.target.value)}
+                value={form.transporte ?? ''}
+                onChange={(e) => handleChange('transporte', e.target.value)}
                 className="rounded-xl border border-slate-800/70 bg-slate-900/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/70 transition-colors"
               />
             </label>
