@@ -576,8 +576,8 @@ export default function TransportesPage() {
         (filters.porteo === 'false' && !record.porteo);
       
       const ingresadoStackingMatch = filters.ingresadoStacking === '' || 
-        (filters.ingresadoStacking === 'true' && record.ingresado_stacking) ||
-        (filters.ingresadoStacking === 'false' && !record.ingresado_stacking);
+        (filters.ingresadoStacking === 'true' && record.ingreso_stacking) ||
+        (filters.ingresadoStacking === 'false' && !record.ingreso_stacking);
 
       return searchMatch && bookingMatch && contenedorMatch && naveMatch && navieraMatch && 
              especieMatch && depositoMatch && conductorMatch && transportistaMatch && semanaMatch &&
