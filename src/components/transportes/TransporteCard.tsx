@@ -383,15 +383,15 @@ export function TransporteCard({
               </span>
               {canEdit ? (
                 <InlineEditCell
-                  value={transporte.fecha_presentacion}
-                  field="fecha_presentacion"
+                  value={transporte.dia_presentacion}
+                  field="dia_presentacion"
                   record={transporte}
                   onSave={onUpdate}
                   type="text"
                 />
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.fecha_presentacion)}
+                  {formatValue(transporte.dia_presentacion)}
                 </span>
               )}
             </div>
