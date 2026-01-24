@@ -392,33 +392,6 @@ export function TransporteCard({
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                   {formatValue(transporte.dia_presentacion)}
-                </span>
-              )}
-            </div>
-            <div className="space-y-1 text-center">
-              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Sello
-              </span>
-              {canEdit ? (
-                <InlineEditCell
-                  value={transporte.sello}
-                  field="sello"
-                  record={transporte}
-                  onSave={onUpdate}
-                  type="text"
-                />
-              ) : (
-                <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.sello)}
-                </span>
-              )}
-            </div>
-            <div className="space-y-1 text-center">
-              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                Tara
-              </span>
-              {canEdit ? (
-                <InlineEditCell
                   value={transporte.tara}
                   field="tara"
                   record={transporte}
@@ -428,24 +401,6 @@ export function TransporteCard({
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                   {formatValue(transporte.tara)}
-                </span>
-              )}
-            </div>
-            <div className="space-y-1 text-center">
-              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                DUS
-              </span>
-              {canEdit ? (
-                <InlineEditCell
-                  value={transporte.dus}
-                  field="dus"
-                  record={transporte}
-                  onSave={onUpdate}
-                  type="text"
-                />
-              ) : (
-                <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.dus)}
                 </span>
               )}
             </div>
@@ -500,15 +455,15 @@ export function TransporteCard({
               </span>
               {canEdit ? (
                 <InlineEditCell
-                  value={transporte.rut_conductor}
-                  field="rut_conductor"
+                  value={transporte.rut}
+                  field="rut"
                   record={transporte}
                   onSave={onUpdate}
                   type="text"
                 />
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.rut_conductor)}
+                  {formatValue(transporte.rut)}
                 </span>
               )}
             </div>
@@ -518,15 +473,15 @@ export function TransporteCard({
               </span>
               {canEdit ? (
                 <InlineEditCell
-                  value={transporte.celular}
-                  field="celular"
+                  value={transporte.telefono}
+                  field="telefono"
                   record={transporte}
                   onSave={onUpdate}
                   type="text"
                 />
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.celular)}
+                  {formatValue(transporte.telefono)}
                 </span>
               )}
             </div>
@@ -536,15 +491,15 @@ export function TransporteCard({
               </span>
               {canEdit ? (
                 <InlineEditCell
-                  value={transporte.patentes}
-                  field="patentes"
+                  value={transporte.patente}
+                  field="patente"
                   record={transporte}
                   onSave={onUpdate}
                   type="text"
                 />
               ) : (
                 <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                  {formatValue(transporte.patentes)}
+                  {formatValue(transporte.patente)}
                 </span>
               )}
             </div>
@@ -573,17 +528,15 @@ export function TransporteCard({
 
 🏭 PRESENTACIÓN EN PLANTA
 🔹 Planta: ${transporte.planta || 'N/A'}
-🔹 Fecha y Hora: ${transporte.fecha_presentacion || 'N/A'}
+🔹 Fecha y Hora: ${transporte.dia_presentacion || 'N/A'}
 🔹 Sello: ${transporte.sello || 'N/A'}
 🔹 Tara: ${transporte.tara || 'N/A'}
-🔹 DUS: ${transporte.dus || 'N/A'}
-🔹 SPS: ${transporte.sps || 'N/A'}
 
 🚛 INFORMACIÓN DE TRANSPORTISTA
 🔹 Conductor: ${transporte.conductor || 'N/A'}
-🔹 RUT: ${transporte.rut_conductor || 'N/A'}
-🔹 Celular: ${transporte.celular || 'N/A'}
-🔹 Patente: ${transporte.patentes || 'N/A'}
+🔹 RUT: ${transporte.rut || 'N/A'}
+🔹 Celular: ${transporte.telefono || 'N/A'}
+🔹 Patente: ${transporte.patente || 'N/A'}
 
 ${transporte.atmosfera_controlada ? '🌡️ AT CONTROLADA' : ''}
 ${transporte.late ? '⏰ LATE' : ''}
