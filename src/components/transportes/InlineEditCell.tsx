@@ -477,8 +477,14 @@ export function InlineEditCell({
                   value = value.slice(0, 4);
                 }
                 
-                // Formatear automáticamente HH:MM
-                if (value.length >= 3) {
+                // Guardar como HHMM (sin dos puntos) para que el usuario pueda seguir escribiendo
+                setEditValue(value);
+              }}
+              onBlur={(e) => {
+                // Al perder foco, convertir HHMM a HH:MM para guardar
+                let value = e.target.value.replace(/\D/g, '');
+                
+                if (value.length === 4) {
                   const hours = value.slice(0, 2);
                   const minutes = value.slice(2, 4);
                   
@@ -487,15 +493,20 @@ export function InlineEditCell({
                   const minuteNum = parseInt(minutes);
                   
                   if (hourNum <= 23 && minuteNum <= 59) {
-                    setEditValue(`${hours}:${minutes}`);
-                  } else if (hourNum <= 23) {
-                    setEditValue(`${hours}:${minutes.padEnd(2, '0')}`);
+                    const formattedValue = `${hours}:${minutes}`;
+                    setEditValue(formattedValue);
+                    
+                    // Guardar con handleSave
+                    handleSave();
+                  } else {
+                    // Si es inválido, dejar el valor original
+                    setEditValue(value);
                   }
                 } else {
-                  setEditValue(value);
+                  // Si no tiene 4 dígitos, guardar como está
+                  handleSave();
                 }
               }}
-              onBlur={handleSave}
               onKeyDown={handleKeyDown}
               autoFocus
               maxLength={4} // HHMM = 4 caracteres
@@ -507,7 +518,7 @@ export function InlineEditCell({
               disabled={loading}
             />
             <div className="text-xs text-gray-500 mt-1">
-              🕐 Hora (24h) - Solo números HHMM
+              🕐 Hora (24h) - Escribir HHMM
             </div>
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
