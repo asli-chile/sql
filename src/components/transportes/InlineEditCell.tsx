@@ -325,13 +325,14 @@ export function InlineEditCell({
     }
 
     if (isTimeField && typeof val === 'string') {
-      // Si está en formato HH:MM, convertir a HHMM
-      if (/^\d{2}:\d{2}$/.test(val)) {
-        const [hours, minutes] = val.split(':');
-        return `${hours}${minutes}`;
-      }
-      // Si ya está en formato HHMM, mostrarlo directamente
+      // Si está en formato HHMM, convertir a HH:MM
       if (/^\d{4}$/.test(val)) {
+        const hours = val.slice(0, 2);
+        const minutes = val.slice(2, 4);
+        return `${hours}:${minutes}`;
+      }
+      // Si ya está en formato HH:MM, mostrarlo directamente
+      if (/^\d{2}:\d{2}$/.test(val)) {
         return val;
       }
     }
