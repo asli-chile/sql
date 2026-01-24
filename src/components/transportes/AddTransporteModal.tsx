@@ -31,8 +31,8 @@ type FormState = Partial<Pick<
   | 'transportes'
   | 'conductor'
   | 'rut'
-  | 'fono'
-  | 'patentes'
+  | 'telefono'
+  | 'patente'
   | 'from_registros'
 >>;
 
@@ -66,8 +66,8 @@ const initialState: FormState = {
   transportes: '',
   conductor: '',
   rut: '',
-  fono: '',
-  patentes: '',
+  telefono: '',
+  patente: '',
   from_registros: false,
 };
 
@@ -185,8 +185,8 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
         transportes: form.transportes,
         conductor: form.conductor,
         rut: form.rut,
-        fono: form.fono,
-        patentes: form.patentes,
+        telefono: form.telefono,
+        patente: form.patente,
         // Marcar que viene de registros
         from_registros: true,
       });
@@ -557,21 +557,21 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
             </label>
 
             <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-slate-300">Fono</span>
+              <span className="font-medium text-slate-300">Teléfono</span>
               <input
                 type="text"
-                value={form.fono ?? ''}
-                onChange={(e) => handleChange('fono', e.target.value)}
+                value={form.telefono ?? ''}
+                onChange={(e) => handleChange('telefono', e.target.value)}
                 className="rounded-xl border border-slate-800/70 bg-slate-900/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/70 transition-colors"
               />
             </label>
 
             <label className="flex flex-col gap-1.5 text-sm lg:col-span-3">
-              <span className="font-medium text-slate-300">Patentes</span>
+              <span className="font-medium text-slate-300">Patente</span>
               <input
                 type="text"
-                value={form.patentes ?? ''}
-                onChange={(e) => handleChange('patentes', e.target.value)}
+                value={form.patente ?? ''}
+                onChange={(e) => handleChange('patente', e.target.value)}
                 className="rounded-xl border border-slate-800/70 bg-slate-900/80 px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-500/50 focus:border-sky-500/70 transition-colors"
               />
             </label>
