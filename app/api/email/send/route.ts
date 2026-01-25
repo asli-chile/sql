@@ -84,7 +84,18 @@ const getDelegatedGmailClient = async (subjectEmail: string) => {
   // across google-auth-library versions (some builds mis-handle the options object).
   const JWTAny = (google.auth as any).JWT;
   console.log('[email/send] DEBUG JWT constructor available');
-  const auth = new JWTAny(serviceAccountEmail, undefined, privateKey, scopes, subjectEmail);
+  
+  // Try classic constructor with options object
+  const jwtConfig = {
+    email: serviceAccountEmail,
+    key: privateKey,
+    scopes: scopes,
+    subject: subjectEmail
+  };
+  console.log('[email/send] DEBUG JWT config keys:', Object.keys(jwtConfig));
+  console.log('[email/send] DEBUG JWT config key length:', jwtConfig.key.length);
+  
+  const auth = new JWTAny(jwtConfig);
   console.log('[email/send] DEBUG JWT created, calling authorize...');
 
   // Fail fast: if we cannot obtain an access token, do not proceed to Gmail API.
