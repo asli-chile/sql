@@ -39,57 +39,38 @@ const getServiceAccountKeyOrThrow = () => {
 
 const normalizeServiceAccountPrivateKey = (raw: string) => {
   console.log('[email/send] DEBUG normalize input length:', raw.length);
-  console.log('[email/send] DEBUG normalize input starts with BEGIN?', raw.includes('BEGIN PRIVATE KEY'));
   
-  let value = raw.trim();
-
-  // Strip wrapping quotes (common when copy/pasting into env vars)
-  if (
-    (value.startsWith('"') && value.endsWith('"'))
-    || (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    value = value.slice(1, -1);
-    console.log('[email/send] DEBUG stripped quotes');
-  }
-
-  // Support passing full JSON as GOOGLE_SERVICE_ACCOUNT_KEY
-  if (value.startsWith('{')) {
-    console.log('[email/send] DEBUG detected JSON input');
-    try {
-      const parsed = JSON.parse(value);
-      if (typeof parsed?.private_key === 'string') {
-        value = parsed.private_key;
-        console.log('[email/send] DEBUG extracted private_key from JSON');
-      }
-    } catch {
-      console.log('[email/send] DEBUG JSON parse failed');
-      // ignore
+  // El raw ya es el JSON decodificado, extraer private_key directamente
+  try {
+    const parsed = JSON.parse(raw);
+    const privateKey = parsed.private_key;
+    if (!privateKey || typeof privateKey !== 'string') {
+      throw new Error('private_key not found in JSON');
     }
+    
+    // Normalizar newlines
+    const normalized = privateKey.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+    console.log('[email/send] DEBUG extracted private_key length:', normalized.length);
+    console.log('[email/send] DEBUG contains BEGIN PRIVATE KEY?', normalized.includes('BEGIN PRIVATE KEY'));
+    
+    if (!normalized.includes('BEGIN PRIVATE KEY')) {
+      throw new Error('Invalid private key format');
+    }
+    
+    return normalized;
+  } catch (e) {
+    console.error('[email/send] DEBUG normalize error:', e);
+    throw new Error('Failed to extract private key from JSON');
   }
-
-  // Normalize escaped newlines
-  value = value.replace(/\\n/g, '\n');
-  // Normalize Windows newlines
-  value = value.replace(/\r\n/g, '\n');
-
-  console.log('[email/send] DEBUG after normalize length:', value.length);
-  console.log('[email/send] DEBUG contains BEGIN PRIVATE KEY?', value.includes('BEGIN PRIVATE KEY'));
-
-  if (!value.includes('BEGIN PRIVATE KEY')) {
-    console.log('[email/send] DEBUG value preview:', value.substring(0, 200));
-    throw new Error(
-      'GOOGLE_SERVICE_ACCOUNT_KEY is present but does not look like a valid private key. '
-        + 'Expected a PEM that contains "BEGIN PRIVATE KEY" (or a full service-account JSON with a "private_key" field).'
-    );
-  }
-
-  return value;
 };
 
 const getDelegatedGmailClient = async (subjectEmail: string) => {
+  console.log('[email/send] DEBUG getDelegatedGmailClient start');
   const serviceAccountEmail = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
+  console.log('[email/send] DEBUG serviceAccountEmail:', serviceAccountEmail);
   const privateKeyRaw = getServiceAccountKeyOrThrow();
   const privateKey = normalizeServiceAccountPrivateKey(privateKeyRaw);
+  console.log('[email/send] DEBUG privateKey length:', privateKey.length);
 
   const scopes = [
     'https://www.googleapis.com/auth/gmail.compose',
@@ -98,13 +79,17 @@ const getDelegatedGmailClient = async (subjectEmail: string) => {
     'https://www.googleapis.com/auth/gmail.settings.basic',
   ];
 
+  console.log('[email/send] DEBUG creating JWT...');
   // IMPORTANT: Use classic constructor to avoid runtime incompatibilities
   // across google-auth-library versions (some builds mis-handle the options object).
   const JWTAny = (google.auth as any).JWT;
+  console.log('[email/send] DEBUG JWT constructor available');
   const auth = new JWTAny(serviceAccountEmail, undefined, privateKey, scopes, subjectEmail);
+  console.log('[email/send] DEBUG JWT created, calling authorize...');
 
   // Fail fast: if we cannot obtain an access token, do not proceed to Gmail API.
   await auth.authorize();
+  console.log('[email/send] DEBUG JWT authorized successfully');
 
   return google.gmail({ version: 'v1', auth });
 };
