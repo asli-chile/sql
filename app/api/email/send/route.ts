@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 
 export const runtime = 'nodejs';
 
-const REQUIRED_ENV = ['GOOGLE_SERVICE_ACCOUNT_KEY', 'GOOGLE_SERVICE_ACCOUNT_EMAIL'] as const;
+const REQUIRED_ENV = ['GOOGLE_SERVICE_ACCOUNT_EMAIL'] as const;
 
 const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
   const value = process.env[key];
@@ -12,6 +12,29 @@ const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
     throw new Error(`Missing env var: ${key}`);
   }
   return value;
+};
+
+const getServiceAccountKeyOrThrow = () => {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  const rawB64 = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
+
+  console.log('[email/send] DEBUG rawB64 exists?', !!rawB64, 'length:', rawB64?.length || 0);
+  console.log('[email/send] DEBUG raw exists?', !!raw, 'length:', raw?.length || 0);
+
+  if (raw && raw.trim()) return raw;
+
+  if (rawB64 && rawB64.trim()) {
+    try {
+      const decoded = Buffer.from(rawB64.trim(), 'base64').toString('utf8');
+      console.log('[email/send] DEBUG decoded length:', decoded.length);
+      return decoded;
+    } catch (e) {
+      console.error('[email/send] Base64 decode error:', e);
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 is present but could not be decoded as base64');
+    }
+  }
+
+  throw new Error('Missing env var: GOOGLE_SERVICE_ACCOUNT_KEY (or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64)');
 };
 
 const normalizeServiceAccountPrivateKey = (raw: string) => {
@@ -54,7 +77,7 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
 
 const getDelegatedGmailClient = async (subjectEmail: string) => {
   const serviceAccountEmail = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
-  const privateKeyRaw = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_KEY');
+  const privateKeyRaw = getServiceAccountKeyOrThrow();
   const privateKey = normalizeServiceAccountPrivateKey(privateKeyRaw);
 
   const scopes = [
