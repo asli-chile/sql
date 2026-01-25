@@ -1545,6 +1545,7 @@ export default function TransportesPage() {
                           transporte={item}
                           theme={theme}
                           canEdit={canEdit}
+                          userEmail={currentUser?.email ?? user?.email ?? null}
                           isSelected={selectedRows.has(item.id)}
                           onSelect={() => handleToggleRowSelection(item.id)}
                           onUpdate={handleUpdateRecord}

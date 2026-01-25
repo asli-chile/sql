@@ -2,13 +2,14 @@
 
 import { TransporteRecord } from '@/lib/transportes-service';
 import { InlineEditCell } from './InlineEditCell';
-import { Download, RefreshCcw, Truck, Calendar, MapPin, User, Package, Thermometer, Wind, Ship, ChevronDown } from 'lucide-react';
+import { Download, RefreshCcw, Truck, Calendar, MapPin, User, Package, Thermometer, Wind, Ship, ChevronDown, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface TransporteCardProps {
   transporte: TransporteRecord;
   theme: 'dark' | 'light';
   canEdit: boolean;
+  userEmail?: string | null;
   isSelected: boolean;
   onSelect: () => void;
   onUpdate: (updatedRecord: TransporteRecord) => void;
@@ -30,6 +31,7 @@ export function TransporteCard({
   transporte,
   theme,
   canEdit,
+  userEmail,
   isSelected,
   onSelect,
   onUpdate,
@@ -40,6 +42,7 @@ export function TransporteCard({
 }: TransporteCardProps) {
   const [plantas, setPlantas] = useState<string[]>([]);
   const [isLoadingPlantas, setIsLoadingPlantas] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Cargar catálogo de plantas
   useEffect(() => {
@@ -89,6 +92,126 @@ export function TransporteCard({
     }
 
     return String(value);
+  };
+
+  const handleSendEmail = async () => {
+    if (!canEdit) {
+      alert('No tienes permisos para enviar correos');
+      return;
+    }
+
+    if (!userEmail) {
+      alert('No se pudo determinar el email del usuario actual. Cierra sesión e inicia nuevamente.');
+      return;
+    }
+
+    setSendingEmail(true);
+
+    try {
+      const emailSubject = `Solicitud de Retiro y Presentación en Planta - ${transporte.contenedor || 'N/A'} - ${transporte.booking || 'N/A'}`;
+
+      const emailBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px;">
+            🚛 SOLICITUD DE RETIRO Y PRESENTACIÓN EN PLANTA
+          </h2>
+          
+          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #0066cc; margin-top: 0;">📦 DATOS DEL CONTENEDOR</h3>
+            <p><strong>Contenedor:</strong> ${transporte.contenedor || 'N/A'}</p>
+            <p><strong>Booking:</strong> ${transporte.booking || 'N/A'}</p>
+            <p><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'}</p>
+            <p><strong>Ref ASLI:</strong> ${transporte.ref_asli || 'N/A'}</p>
+          </div>
+
+          <div style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #0066cc; margin-top: 0;">🚢 INFORMACIÓN DE EMBARQUE</h3>
+            <p><strong>Nave:</strong> ${transporte.nave || 'N/A'}</p>
+            <p><strong>Naviera:</strong> ${transporte.naviera || 'N/A'}</p>
+            <p><strong>Depósito:</strong> ${transporte.deposito || 'N/A'}</p>
+            <p><strong>POL:</strong> ${transporte.pol || 'N/A'}</p>
+            <p><strong>POD:</strong> ${transporte.pod || 'N/A'}</p>
+          </div>
+
+          <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #856404; margin-top: 0;">📅 INFORMACIÓN DE STACKING</h3>
+            <p><strong>Inicio Stacking:</strong> ${formatValue(transporte.stacking)}</p>
+            <p><strong>Fin Stacking:</strong> ${formatValue(transporte.fin_stacking)}</p>
+            <p><strong>Cut Off:</strong> ${formatValue(transporte.cut_off)}</p>
+          </div>
+
+          <div style="background-color: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #155724; margin-top: 0;">🏭 PRESENTACIÓN EN PLANTA</h3>
+            <p><strong>Planta:</strong> ${transporte.planta || 'N/A'}</p>
+            <p><strong>Fecha y Hora:</strong> ${transporte.dia_presentacion || 'N/A'}</p>
+            <p><strong>Sello:</strong> ${transporte.sello || 'N/A'}</p>
+            <p><strong>Tara:</strong> ${transporte.tara || 'N/A'}</p>
+          </div>
+
+          <div style="background-color: #f8d7da; padding: 15px; border-radius: 5px; margin: 20px 0;">
+            <h3 style="color: #721c24; margin-top: 0;">🚛 INFORMACIÓN DE TRANSPORTISTA</h3>
+            <p><strong>Conductor:</strong> ${transporte.conductor || 'N/A'}</p>
+            <p><strong>RUT:</strong> ${transporte.rut || 'N/A'}</p>
+            <p><strong>Celular:</strong> ${transporte.telefono || 'N/A'}</p>
+            <p><strong>Patente:</strong> ${transporte.patente || 'N/A'}</p>
+          </div>
+
+          ${transporte.atmosfera_controlada ? '<div style="background-color: #cce5ff; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>🌡️ AT CONTROLADA</strong></div>' : ''}
+          ${transporte.late ? '<div style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>⏰ LATE</strong></div>' : ''}
+          ${transporte.extra_late ? '<div style="background-color: #f8d7da; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>⏰ EXTRA LATE</strong></div>' : ''}
+          ${transporte.porteo ? '<div style="background-color: #d1ecf1; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>🚚 PORTEO</strong></div>' : ''}
+          ${transporte.ingreso_stacking ? '<div style="background-color: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>📦 INGRESADO STACKING</strong></div>' : ''}
+
+          <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #0066cc;">
+            <p style="margin: 0;"><strong>📋 Acciones Requeridas:</strong></p>
+            <ul style="margin: 10px 0;">
+              <li>Coordinar retiro del contenedor</li>
+              <li>Confirmar presentación en planta</li>
+              <li>Verificar documentación requerida</li>
+            </ul>
+          </div>
+
+          <div style="margin-top: 20px; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+            <p>Este correo fue generado automáticamente desde el sistema ASLI</p>
+            <p>Fecha de envío: ${new Date().toLocaleString('es-CL')}</p>
+          </div>
+        </div>
+      `;
+
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: 'alex.cardenas@asli.cl',
+          subject: emailSubject,
+          body: emailBody,
+          action: 'draft',
+          fromEmail: userEmail,
+          transportData: transporte,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const details = typeof result?.details === 'string' ? result.details : '';
+        const message = typeof result?.error === 'string' ? result.error : 'Error al preparar correo';
+        const fullMessage = details ? `${message} (${response.status}): ${details}` : `${message} (${response.status})`;
+        throw new Error(fullMessage);
+      }
+
+      window.open('https://mail.google.com/mail/#drafts', '_blank');
+      alert('✅ Borrador creado en tu Gmail (con firma). Revisa Borradores.');
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      alert(`❌ Error al preparar correo: ${errorMessage}`);
+      console.error('Error preparando correo:', error);
+    } finally {
+      setSendingEmail(false);
+    }
   };
 
   const bookingValue = transporte.booking;
@@ -330,6 +453,66 @@ export function TransporteCard({
           </div>
         </div>
 
+        {/* Stacking y Cut Off */}
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1 text-center">
+              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Inicio Stacking
+              </span>
+              {canEdit ? (
+                <InlineEditCell
+                  value={transporte.stacking}
+                  field="stacking"
+                  record={transporte}
+                  onSave={onUpdate}
+                  type="datetime"
+                />
+              ) : (
+                <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                  {formatValue(transporte.stacking)}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1 text-center">
+              <span className={`text-xs font-black uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                Fin Stacking
+              </span>
+              {canEdit ? (
+                <InlineEditCell
+                  value={transporte.fin_stacking}
+                  field="fin_stacking"
+                  record={transporte}
+                  onSave={onUpdate}
+                  type="datetime"
+                />
+              ) : (
+                <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                  {formatValue(transporte.fin_stacking)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-center">
+            <span className={`text-xs font-black uppercase tracking-wider block mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Cut Off
+            </span>
+            {canEdit ? (
+              <InlineEditCell
+                value={transporte.cut_off}
+                field="cut_off"
+                record={transporte}
+                onSave={onUpdate}
+                type="datetime"
+              />
+            ) : (
+              <span className={`text-sm font-black ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                {formatValue(transporte.cut_off)}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Presentación en planta */}
         <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'}`}>
           <span className={`text-xs font-black uppercase tracking-wider block mb-2 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -515,8 +698,8 @@ export function TransporteCard({
           </div>
         </div>
 
-        {/* Botón para copiar tarjeta */}
-        <div className="flex justify-center pt-2">
+        {/* Botones de acción */}
+        <div className="flex justify-center gap-2 pt-2">
           <button
             onClick={() => {
               // Formatear el contenido de la tarjeta como texto
@@ -534,6 +717,11 @@ export function TransporteCard({
 🔹 Depósito: ${transporte.deposito || 'N/A'}
 🔹 POL: ${transporte.pol || 'N/A'}
 🔹 POD: ${transporte.pod || 'N/A'}
+
+📅 INFORMACIÓN DE STACKING
+🔹 Inicio Stacking: ${formatValue(transporte.stacking)}
+🔹 Fin Stacking: ${formatValue(transporte.fin_stacking)}
+🔹 Cut Off: ${formatValue(transporte.cut_off)}
 
 🏭 PRESENTACIÓN EN PLANTA
 🔹 Planta: ${transporte.planta || 'N/A'}
@@ -569,6 +757,31 @@ ${transporte.ingreso_stacking ? '📦 INGRESADO STACKING' : ''}
             }`}
           >
             📋 Copiar Tarjeta
+          </button>
+
+          <button
+            onClick={handleSendEmail}
+            disabled={sendingEmail || !canEdit}
+            className={`px-4 py-2 rounded-lg font-black text-sm transition-colors ${
+              sendingEmail || !canEdit
+                ? 'opacity-50 cursor-not-allowed bg-gray-400 text-gray-200'
+                : theme === 'dark'
+                  ? 'bg-green-600 hover:bg-green-500 text-white'
+                  : 'bg-green-600 hover:bg-green-500 text-white'
+            }`}
+            title={canEdit ? 'Preparar borrador en tu Gmail (con firma)' : 'No tienes permisos para enviar correos'}
+          >
+            {sendingEmail ? (
+              <>
+                <RefreshCcw className="h-3 w-3 animate-spin inline mr-1" />
+                Preparando...
+              </>
+            ) : (
+              <>
+                <Mail className="h-3 w-3 inline mr-1" />
+                Gmail
+              </>
+            )}
           </button>
         </div>
       </div>
