@@ -88,8 +88,20 @@ const getDelegatedGmailClient = async (subjectEmail: string) => {
   console.log('[email/send] DEBUG JWT created, calling authorize...');
 
   // Fail fast: if we cannot obtain an access token, do not proceed to Gmail API.
-  await auth.authorize();
-  console.log('[email/send] DEBUG JWT authorized successfully');
+  try {
+    await auth.authorize();
+    console.log('[email/send] DEBUG JWT authorized successfully');
+  } catch (authError) {
+    console.error('[email/send] DEBUG JWT authorize error:', authError);
+    const err = authError as any;
+    console.error('[email/send] DEBUG auth error details:', {
+      message: err.message,
+      code: err.code,
+      status: err.status,
+      details: err.details
+    });
+    throw authError;
+  }
 
   return google.gmail({ version: 'v1', auth });
 };
