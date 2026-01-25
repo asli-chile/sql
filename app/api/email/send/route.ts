@@ -112,6 +112,25 @@ export async function POST(request: NextRequest) {
 
     const gmail = await getDelegatedGmailClient(fromEmail);
 
+    // Si solo se pide la firma, retornarla sin crear borrador
+    if (action === 'get-signature') {
+      try {
+        const sendAs = await gmail.users.settings.sendAs.get({
+          userId: 'me',
+          sendAsEmail: fromEmail,
+        });
+        return NextResponse.json({
+          success: true,
+          signature: sendAs.data.signature || null,
+        });
+      } catch {
+        return NextResponse.json({
+          success: true,
+          signature: null,
+        });
+      }
+    }
+
     const finalBody = await appendSignatureIfAny(gmail, fromEmail, body);
 
     // Crear el contenido del correo
@@ -193,4 +212,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
- }
+}
