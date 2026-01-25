@@ -73,7 +73,6 @@ const getDelegatedGmailClient = async (subjectEmail: string) => {
   console.log('[email/send] DEBUG privateKey length:', privateKey.length);
 
   const scopes = [
-    'https://www.googleapis.com/auth/gmail.compose',
     'https://www.googleapis.com/auth/gmail.send',
     'https://www.googleapis.com/auth/gmail.drafts',
     'https://www.googleapis.com/auth/gmail.settings.basic',
