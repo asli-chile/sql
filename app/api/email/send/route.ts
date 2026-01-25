@@ -26,12 +26,15 @@ const getDelegatedGmailClient = (subjectEmail: string) => {
     'https://www.googleapis.com/auth/gmail.settings.basic',
   ];
 
-  const auth = new google.auth.JWT({
-    email: serviceAccountEmail,
-    key: privateKey,
-    scopes,
-    subject: subjectEmail,
-  });
+  // IMPORTANT: Use classic constructor to avoid runtime incompatibilities
+  // across google-auth-library versions (some builds mis-handle the options object).
+  const JWTAny = (google.auth as any).JWT;
+  const auth = new JWTAny(serviceAccountEmail, undefined, privateKey, scopes);
+  auth.subject = subjectEmail;
+
+  // Warm up / validate auth early so errors are clearer
+  // (googleapis will also authorize lazily if we don't do this)
+  void auth.authorize().catch(() => undefined);
 
   return google.gmail({ version: 'v1', auth });
 };
