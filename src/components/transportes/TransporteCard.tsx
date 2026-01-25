@@ -204,7 +204,9 @@ export function TransporteCard({
 
       // Abrir el borrador directamente en modo de redacción
       if (result.draftId) {
-        window.open(`https://mail.google.com/mail/#draft?message=${result.draftId}`, '_blank');
+        // Usar el messageId en lugar del draftId para abrir en compose
+        const messageId = result.messageId || result.draftId;
+        window.open(`https://mail.google.com/mail/#compose/${messageId}`, '_blank');
         alert('✅ Correo abierto en Gmail (con firma). Revisa y envía cuando esté listo.');
       } else {
         // Fallback: abrir lista de borradores
