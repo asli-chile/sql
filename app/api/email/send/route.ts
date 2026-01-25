@@ -18,18 +18,12 @@ const getServiceAccountKeyOrThrow = () => {
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   const rawB64 = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
 
-  console.log('[email/send] DEBUG rawB64 exists?', !!rawB64, 'length:', rawB64?.length || 0);
-  console.log('[email/send] DEBUG raw exists?', !!raw, 'length:', raw?.length || 0);
-
   if (raw && raw.trim()) return raw;
 
   if (rawB64 && rawB64.trim()) {
     try {
-      const decoded = Buffer.from(rawB64.trim(), 'base64').toString('utf8');
-      console.log('[email/send] DEBUG decoded length:', decoded.length);
-      return decoded;
+      return Buffer.from(rawB64.trim(), 'base64').toString('utf8');
     } catch (e) {
-      console.error('[email/send] Base64 decode error:', e);
       throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 is present but could not be decoded as base64');
     }
   }
@@ -38,8 +32,6 @@ const getServiceAccountKeyOrThrow = () => {
 };
 
 const normalizeServiceAccountPrivateKey = (raw: string) => {
-  console.log('[email/send] DEBUG normalize input length:', raw.length);
-  
   // El raw ya es el JSON decodificado, extraer private_key directamente
   try {
     const parsed = JSON.parse(raw);
@@ -50,8 +42,6 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
     
     // Normalizar newlines
     const normalized = privateKey.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-    console.log('[email/send] DEBUG extracted private_key length:', normalized.length);
-    console.log('[email/send] DEBUG contains BEGIN PRIVATE KEY?', normalized.includes('BEGIN PRIVATE KEY'));
     
     if (!normalized.includes('BEGIN PRIVATE KEY')) {
       throw new Error('Invalid private key format');
@@ -59,57 +49,32 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
     
     return normalized;
   } catch (e) {
-    console.error('[email/send] DEBUG normalize error:', e);
     throw new Error('Failed to extract private key from JSON');
   }
 };
 
 const getDelegatedGmailClient = async (subjectEmail: string) => {
-  console.log('[email/send] DEBUG getDelegatedGmailClient start');
   const serviceAccountEmail = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
-  console.log('[email/send] DEBUG serviceAccountEmail:', serviceAccountEmail);
   const privateKeyRaw = getServiceAccountKeyOrThrow();
   const privateKey = normalizeServiceAccountPrivateKey(privateKeyRaw);
-  console.log('[email/send] DEBUG privateKey length:', privateKey.length);
 
   const scopes = [
     'https://mail.google.com/',
   ];
 
-  console.log('[email/send] DEBUG creating JWT...');
-  // IMPORTANT: Use classic constructor to avoid runtime incompatibilities
-  // across google-auth-library versions (some builds mis-handle the options object).
+  // Use JWT constructor with options object
   const JWTAny = (google.auth as any).JWT;
-  console.log('[email/send] DEBUG JWT constructor available');
-  
-  // Try classic constructor with options object
   const jwtConfig = {
     email: serviceAccountEmail,
     key: privateKey,
     scopes: scopes,
     subject: subjectEmail
   };
-  console.log('[email/send] DEBUG JWT config keys:', Object.keys(jwtConfig));
-  console.log('[email/send] DEBUG JWT config key length:', jwtConfig.key.length);
   
   const auth = new JWTAny(jwtConfig);
-  console.log('[email/send] DEBUG JWT created, calling authorize...');
 
-  // Fail fast: if we cannot obtain an access token, do not proceed to Gmail API.
-  try {
-    await auth.authorize();
-    console.log('[email/send] DEBUG JWT authorized successfully');
-  } catch (authError) {
-    console.error('[email/send] DEBUG JWT authorize error:', authError);
-    const err = authError as any;
-    console.error('[email/send] DEBUG auth error details:', {
-      message: err.message,
-      code: err.code,
-      status: err.status,
-      details: err.details
-    });
-    throw authError;
-  }
+  // Authorize the client
+  await auth.authorize();
 
   return google.gmail({ version: 'v1', auth });
 };

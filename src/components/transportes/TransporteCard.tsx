@@ -202,8 +202,15 @@ export function TransporteCard({
         throw new Error(fullMessage);
       }
 
-      window.open('https://mail.google.com/mail/#drafts', '_blank');
-      alert('✅ Borrador creado en tu Gmail (con firma). Revisa Borradores.');
+      // Abrir el borrador directamente en modo de redacción
+      if (result.draftId) {
+        window.open(`https://mail.google.com/mail/#draft?message=${result.draftId}`, '_blank');
+        alert('✅ Correo abierto en Gmail (con firma). Revisa y envía cuando esté listo.');
+      } else {
+        // Fallback: abrir lista de borradores
+        window.open('https://mail.google.com/mail/#drafts', '_blank');
+        alert('✅ Borrador creado en tu Gmail (con firma). Revisa Borradores.');
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
