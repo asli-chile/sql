@@ -14,10 +14,48 @@ const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
   return value;
 };
 
+const normalizeServiceAccountPrivateKey = (raw: string) => {
+  let value = raw.trim();
+
+  // Strip wrapping quotes (common when copy/pasting into env vars)
+  if (
+    (value.startsWith('"') && value.endsWith('"'))
+    || (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1);
+  }
+
+  // Support passing full JSON as GOOGLE_SERVICE_ACCOUNT_KEY
+  if (value.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (typeof parsed?.private_key === 'string') {
+        value = parsed.private_key;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Normalize escaped newlines
+  value = value.replace(/\\n/g, '\n');
+  // Normalize Windows newlines
+  value = value.replace(/\r\n/g, '\n');
+
+  if (!value.includes('BEGIN PRIVATE KEY')) {
+    throw new Error(
+      'GOOGLE_SERVICE_ACCOUNT_KEY is present but does not look like a valid private key. '
+        + 'Expected a PEM that contains "BEGIN PRIVATE KEY" (or a full service-account JSON with a "private_key" field).'
+    );
+  }
+
+  return value;
+};
+
 const getDelegatedGmailClient = async (subjectEmail: string) => {
   const serviceAccountEmail = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
   const privateKeyRaw = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_KEY');
-  const privateKey = privateKeyRaw.includes('\\n') ? privateKeyRaw.replace(/\\n/g, '\n') : privateKeyRaw;
+  const privateKey = normalizeServiceAccountPrivateKey(privateKeyRaw);
 
   const scopes = [
     'https://www.googleapis.com/auth/gmail.compose',
