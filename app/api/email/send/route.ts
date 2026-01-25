@@ -14,7 +14,7 @@ const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
   return value;
 };
 
-const getDelegatedGmailClient = (subjectEmail: string) => {
+const getDelegatedGmailClient = async (subjectEmail: string) => {
   const serviceAccountEmail = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
   const privateKeyRaw = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_KEY');
   const privateKey = privateKeyRaw.includes('\\n') ? privateKeyRaw.replace(/\\n/g, '\n') : privateKeyRaw;
@@ -29,12 +29,10 @@ const getDelegatedGmailClient = (subjectEmail: string) => {
   // IMPORTANT: Use classic constructor to avoid runtime incompatibilities
   // across google-auth-library versions (some builds mis-handle the options object).
   const JWTAny = (google.auth as any).JWT;
-  const auth = new JWTAny(serviceAccountEmail, undefined, privateKey, scopes);
-  auth.subject = subjectEmail;
+  const auth = new JWTAny(serviceAccountEmail, undefined, privateKey, scopes, subjectEmail);
 
-  // Warm up / validate auth early so errors are clearer
-  // (googleapis will also authorize lazily if we don't do this)
-  void auth.authorize().catch(() => undefined);
+  // Fail fast: if we cannot obtain an access token, do not proceed to Gmail API.
+  await auth.authorize();
 
   return google.gmail({ version: 'v1', auth });
 };
@@ -70,7 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const gmail = getDelegatedGmailClient(fromEmail);
+    const gmail = await getDelegatedGmailClient(fromEmail);
 
     const finalBody = await appendSignatureIfAny(gmail, fromEmail, body);
 
