@@ -20,13 +20,17 @@ interface InlineEditCellProps {
 
 const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
-  'fin_stacking',
-  'cut_off',
   'cut_off_documental',
   'fecha_planta',
   'dia_presentacion',
   'created_at',
   'updated_at',
+]);
+
+const datetimeKeys = new Set<keyof TransporteRecord>([
+  'fin_stacking',
+  'ingreso_stacking',
+  'cut_off',
 ]);
 
 const timeKeys = new Set<keyof TransporteRecord>([
@@ -73,6 +77,7 @@ export function InlineEditCell({
   const [error, setError] = useState('');
   const [plantasOptions, setPlantasOptions] = useState<string[]>([]);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showDatetimePicker, setShowDatetimePicker] = useState(false);
 
   // Cargar catálogo de plantas si el campo es 'planta'
   useEffect(() => {
@@ -115,7 +120,7 @@ export function InlineEditCell({
   const isEditing = isEditingInContext(record.id, field);
   const isDateField = dateKeys.has(field);
   const isTimeField = timeKeys.has(field) || type === 'time';
-  const isDateTimeField = type === 'datetime';
+  const isDateTimeField = datetimeKeys.has(field) || type === 'datetime';
 
   // Usar plantasOptions si el campo es planta, sino usar options
   const selectOptions = field === 'planta' ? plantasOptions : options;
@@ -161,26 +166,40 @@ export function InlineEditCell({
       }
     } else if (isDateTimeField && value) {
       // Para datetime, formatear para input datetime-local
+      console.log('Datetime field value:', value, 'type:', typeof value);
       if (typeof value === 'string') {
         // Si es un string de fecha/hora, formatearlo para datetime-local
         const date = new Date(value);
+        console.log('Parsed date:', date, 'isValid:', !Number.isNaN(date.getTime()));
         if (!Number.isNaN(date.getTime())) {
           const year = date.getFullYear();
           const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
           const hours = String(date.getHours()).padStart(2, '0');
           const minutes = String(date.getMinutes()).padStart(2, '0');
-          setEditValue(`${year}-${month}-${day}T${hours}:${minutes}`);
+          const formattedValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+          console.log('Formatted datetime value:', formattedValue);
+          setEditValue(formattedValue);
         } else {
+          console.log('Invalid date, setting empty value');
           setEditValue('');
         }
       } else {
+        console.log('Value is not string, setting empty value');
         setEditValue('');
       }
     } else {
       setEditValue(value || '');
     }
   }, [value, isDateField, isTimeField, isDateTimeField]);
+
+  // Resetear estados cuando empieza a editar
+  useEffect(() => {
+    if (isEditing) {
+      setShowCalendar(false);
+      setShowDatetimePicker(false);
+    }
+  }, [isEditing]);
 
   const handleSave = async () => {
     if (!canEdit) return;
@@ -551,23 +570,59 @@ export function InlineEditCell({
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
           <>
-            <input
-              type="datetime-local"
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={handleSave}
-              onKeyDown={handleKeyDown}
-              autoFocus
-              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-                theme === 'dark'
-                  ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                  : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-              }`}
-              disabled={loading}
-            />
-            <div className="text-xs text-gray-500 mt-1">
-              📅🕐 Calendario + Reloj
-            </div>
+            {showDatetimePicker ? (
+              <>
+                <input
+                  type="datetime-local"
+                  value={editValue}
+                  onChange={(e) => {
+                    console.log('Datetime input change:', e.target.value);
+                    setEditValue(e.target.value);
+                  }}
+                  onBlur={handleSave}
+                  onKeyDown={handleKeyDown}
+                  autoFocus
+                  className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                    theme === 'dark'
+                      ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                      : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+                  }`}
+                  disabled={loading}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  📅🕐 Calendario + Reloj
+                </div>
+              </>
+            ) : (
+              <>
+                <input
+                  type="date"
+                  value={editValue ? editValue.split('T')[0] : ''}
+                  onChange={(e) => {
+                    const dateValue = e.target.value;
+                    if (dateValue) {
+                      // Después de seleccionar fecha, mostrar datetime picker
+                      setEditValue(dateValue + 'T00:00');
+                      setShowDatetimePicker(true);
+                    } else {
+                      setEditValue('');
+                    }
+                  }}
+                  onBlur={handleSave}
+                  onKeyDown={handleKeyDown}
+                  autoFocus
+                  className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                    theme === 'dark'
+                      ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                      : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+                  }`}
+                  disabled={loading}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  📅 Seleccionar fecha primero
+                </div>
+              </>
+            )}
           </>
         ) : type === 'number' ? (
           <input

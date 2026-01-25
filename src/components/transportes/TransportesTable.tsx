@@ -261,10 +261,14 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                             type={
                               column.key === 'planta' ? 'select' :
                               column.key === 'dia_presentacion' ? 'date' :
+                              column.key === 'stacking' ? 'date' :
                               column.key === 'hora_presentacion' ? 'time' :
                               column.key === 'llegada_planta' ? 'time' :
                               column.key === 'salida_planta' ? 'time' :
                               column.key === 'llegada_puerto' ? 'time' :
+                              column.key === 'fin_stacking' ? 'datetime' :
+                              column.key === 'ingreso_stacking' ? 'datetime' :
+                              column.key === 'cut_off' ? 'datetime' :
                               'text'
                             }
                             options={column.key === 'planta' ? [] : undefined}
@@ -277,10 +281,14 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                             {column.key}: {
                               column.key === 'planta' ? 'select' :
                               column.key === 'dia_presentacion' ? 'date' :
+                              column.key === 'stacking' ? 'date' :
                               column.key === 'hora_presentacion' ? 'time' :
                               column.key === 'llegada_planta' ? 'time' :
                               column.key === 'salida_planta' ? 'time' :
                               column.key === 'llegada_puerto' ? 'time' :
+                              column.key === 'fin_stacking' ? 'datetime' :
+                              column.key === 'ingreso_stacking' ? 'datetime' :
+                              column.key === 'cut_off' ? 'datetime' :
                               'text'
                             }
                           </div>

@@ -54,7 +54,7 @@ export type TransporteRecord = {
   salida_planta: string | null;
   tiempo_planta: string | null;
   terminal_portuario: string | null;
-  ingreso_stacking: boolean | null;
+  ingreso_stacking: string | null;
   sobre_estadia: boolean | null;
   scanner: boolean | null;
   atmosfera_controlada: boolean | null;
