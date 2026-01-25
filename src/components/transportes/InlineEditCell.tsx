@@ -169,7 +169,20 @@ export function InlineEditCell({
       console.log('Datetime field value:', value, 'type:', typeof value);
       if (typeof value === 'string') {
         // Si es un string de fecha/hora, formatearlo para datetime-local
-        const date = new Date(value);
+        let date: Date;
+        
+        // Intentar parsear diferentes formatos
+        if (value.includes('T')) {
+          // Ya está en formato ISO
+          date = new Date(value);
+        } else if (value.includes(' ')) {
+          // Formato "YYYY-MM-DD HH:MM"
+          date = new Date(value.replace(' ', 'T'));
+        } else {
+          // Otro formato, intentar directamente
+          date = new Date(value);
+        }
+        
         console.log('Parsed date:', date, 'isValid:', !Number.isNaN(date.getTime()));
         if (!Number.isNaN(date.getTime())) {
           const year = date.getFullYear();
@@ -181,12 +194,26 @@ export function InlineEditCell({
           console.log('Formatted datetime value:', formattedValue);
           setEditValue(formattedValue);
         } else {
-          console.log('Invalid date, setting empty value');
-          setEditValue('');
+          console.log('Invalid date, setting current datetime');
+          // Si no se puede parsear, usar fecha y hora actual
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          const hours = String(now.getHours()).padStart(2, '0');
+          const minutes = String(now.getMinutes()).padStart(2, '0');
+          setEditValue(`${year}-${month}-${day}T${hours}:${minutes}`);
         }
       } else {
-        console.log('Value is not string, setting empty value');
-        setEditValue('');
+        console.log('Value is not string, setting current datetime');
+        // Si no es string, usar fecha y hora actual
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        setEditValue(`${year}-${month}-${day}T${hours}:${minutes}`);
       }
     } else {
       setEditValue(value || '');
@@ -570,59 +597,27 @@ export function InlineEditCell({
           </>
         ) : isDateTimeField || (type as string) === 'datetime' ? (
           <>
-            {showDatetimePicker ? (
-              <>
-                <input
-                  type="datetime-local"
-                  value={editValue}
-                  onChange={(e) => {
-                    console.log('Datetime input change:', e.target.value);
-                    setEditValue(e.target.value);
-                  }}
-                  onBlur={handleSave}
-                  onKeyDown={handleKeyDown}
-                  autoFocus
-                  className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-                    theme === 'dark'
-                      ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                      : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-                  }`}
-                  disabled={loading}
-                />
-                <div className="text-xs text-gray-500 mt-1">
-                  📅🕐 Calendario + Reloj
-                </div>
-              </>
-            ) : (
-              <>
-                <input
-                  type="date"
-                  value={editValue ? editValue.split('T')[0] : ''}
-                  onChange={(e) => {
-                    const dateValue = e.target.value;
-                    if (dateValue) {
-                      // Después de seleccionar fecha, mostrar datetime picker
-                      setEditValue(dateValue + 'T00:00');
-                      setShowDatetimePicker(true);
-                    } else {
-                      setEditValue('');
-                    }
-                  }}
-                  onBlur={handleSave}
-                  onKeyDown={handleKeyDown}
-                  autoFocus
-                  className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
-                    theme === 'dark'
-                      ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
-                      : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
-                  }`}
-                  disabled={loading}
-                />
-                <div className="text-xs text-gray-500 mt-1">
-                  📅 Seleccionar fecha primero
-                </div>
-              </>
-            )}
+            <input
+              type="datetime-local"
+              value={editValue}
+              onChange={(e) => {
+                console.log('Datetime input change:', e.target.value);
+                setEditValue(e.target.value);
+              }}
+              onBlur={handleSave}
+              onKeyDown={handleKeyDown}
+              autoFocus
+              step="60" // Forzar minutos como unidad mínima
+              className={`w-full rounded border px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 ${
+                theme === 'dark'
+                  ? 'border-sky-500 bg-slate-900 text-slate-100 focus:ring-sky-500/50'
+                  : 'border-blue-500 bg-white text-gray-900 focus:ring-blue-500/50 shadow-sm'
+              }`}
+              disabled={loading}
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              📅🕐 Seleccionar fecha y hora
+            </div>
           </>
         ) : type === 'number' ? (
           <input
