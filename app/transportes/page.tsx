@@ -20,6 +20,7 @@ import { SidebarSection } from '@/types/layout';
 import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { InlineEditCell } from '@/components/transportes/InlineEditCell';
 import { TrashModalTransportes } from '@/components/transportes/TrashModalTransportes';
+import { SimpleStackingModal } from '@/components/transportes/SimpleStackingModal';
 
 const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
@@ -58,6 +59,8 @@ export default function TransportesPage() {
   const [records, setRecords] = useState<TransporteRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDateTimeModalOpen, setIsDateTimeModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<TransporteRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   
@@ -520,6 +523,12 @@ export default function TransportesPage() {
     } else {
       setSelectedRows(new Set(filteredRecords.map((r) => r.id)));
     }
+  };
+
+  const handleStackingClick = (record: TransporteRecord) => {
+    console.log('📅 handleStackingClick llamado para registro:', record.id);
+    setSelectedRecord(record);
+    setIsDateTimeModalOpen(true);
   };
 
   const filteredRecords = useMemo(() => {
@@ -1465,7 +1474,7 @@ export default function TransportesPage() {
                                       }`}
                                   >
                                     {column.render ? (
-                                      column.render(item)
+                                      column.render(item, handleStackingClick, theme)
                                     ) : shouldShowTextOnly ? (
                                       <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                                         }`}>
@@ -1590,6 +1599,19 @@ export default function TransportesPage() {
             }}
             onError={(message) => {
               console.error(message);
+            }}
+          />
+
+          {/* Modal para editar fechas de stacking */}
+          <SimpleStackingModal
+            isOpen={isDateTimeModalOpen}
+            onClose={() => {
+              setIsDateTimeModalOpen(false);
+              setSelectedRecord(null);
+            }}
+            record={selectedRecord}
+            onSave={(updatedRecord: TransporteRecord) => {
+              setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
             }}
           />
 

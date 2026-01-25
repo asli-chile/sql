@@ -1,18 +1,117 @@
 import { TransporteRecord } from '@/lib/transportes-service';
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { InlineEditCell } from './InlineEditCell';
 import { PlantaCell } from './PlantaCell';
+import { Calendar } from 'lucide-react';
 
 export type TransporteColumn = {
   key: keyof TransporteRecord;
   header: string;
   section: string;
-  render?: (item: TransporteRecord) => ReactNode;
+  render?: (item: TransporteRecord, onStackingClick?: (record: TransporteRecord) => void, theme?: string) => ReactNode;
 };
 
 export type TransporteSection = {
   name: string;
   columns: TransporteColumn[];
+};
+
+// Función para crear render personalizado para columnas de stacking
+const createStackingRender = (key: keyof TransporteRecord) => {
+  return (item: TransporteRecord, onStackingClick?: (record: TransporteRecord) => void, theme?: string) => {
+    const formatValue = (value: any) => {
+      if (value === null || value === undefined || value === '') {
+        return '—';
+      }
+
+      if (typeof value === 'string') {
+        // Nombres de meses en español
+        const meses = [
+          'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+          'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+        ];
+
+        // Si está en formato DD-MM-YYYY HH:MM, convertir a nombre de mes
+        if (/^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$/.test(value)) {
+          const [datePart, timePart] = value.split(' ');
+          const [day, month, year] = datePart.split('-');
+          const monthName = meses[parseInt(month) - 1];
+          return `${parseInt(day)} de ${monthName} de ${year} ${timePart}`;
+        }
+        
+        // Si está en formato DD-MM-YYYY (solo fecha), convertir a nombre de mes
+        if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+          const [day, month, year] = value.split('-');
+          const monthName = meses[parseInt(month) - 1];
+          return `${parseInt(day)} de ${monthName} de ${year}`;
+        }
+        
+        // Para fechas en formato YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+          const [year, month, day] = value.split('-');
+          const monthName = meses[parseInt(month) - 1];
+          return `${parseInt(day)} de ${monthName} de ${year}`;
+        }
+        
+        // Para datetime en formato ISO (con T)
+        if (value.includes('T')) {
+          const date = new Date(value);
+          if (!Number.isNaN(date.getTime())) {
+            const day = date.getDate();
+            const monthName = meses[date.getMonth()];
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${day} de ${monthName} de ${year} ${hours}:${minutes}`;
+          }
+        }
+        
+        // Para datetime con espacio (formato legible)
+        if (value.includes(' ') && !/^\d{2}-\d{2}-\d{4}/.test(value)) {
+          const date = new Date(value.replace(' ', 'T'));
+          if (!Number.isNaN(date.getTime())) {
+            const day = date.getDate();
+            const monthName = meses[date.getMonth()];
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${day} de ${monthName} de ${year} ${hours}:${minutes}`;
+          }
+        }
+      }
+
+      return String(value);
+    };
+
+    return (
+      <div
+        onClick={() => {
+          console.log('📅 Click detectado en columna:', key, 'para item:', item.id);
+          if (onStackingClick) {
+            console.log('📅 Llamando a onStackingClick');
+            onStackingClick(item);
+          } else {
+            console.log('❌ onStackingClick es undefined');
+          }
+        }}
+        className={`group flex items-center justify-center gap-1 rounded px-2 py-1 -mx-2 -my-1 transition-colors cursor-pointer ${
+          theme === 'dark'
+            ? 'hover:bg-slate-700/50'
+            : 'hover:bg-blue-50'
+        }`}
+        title="Click para editar fechas de stacking"
+      >
+        <span className={`text-sm text-center ${
+          theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+        }`}>
+          {formatValue(item[key])}
+        </span>
+        <Calendar className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+          theme === 'dark' ? 'text-slate-500' : 'text-blue-500'
+        }`} />
+      </div>
+    );
+  };
 };
 
 export const transportesSections: TransporteSection[] = [
@@ -47,9 +146,9 @@ export const transportesSections: TransporteSection[] = [
   {
     name: 'STACKING',
     columns: [
-      { key: 'stacking', header: 'INICIO STACKING', section: 'STACKING' },
-      { key: 'fin_stacking', header: 'FIN STACKING', section: 'STACKING' },
-      { key: 'cut_off', header: 'CUT OFF', section: 'STACKING' },
+      { key: 'stacking', header: 'INICIO STACKING', section: 'STACKING', render: createStackingRender('stacking') },
+      { key: 'fin_stacking', header: 'FIN STACKING', section: 'STACKING', render: createStackingRender('fin_stacking') },
+      { key: 'cut_off', header: 'CUT OFF', section: 'STACKING', render: createStackingRender('cut_off') },
       { key: 'late', header: 'LATE', section: 'STACKING' },
       { key: 'extra_late', header: 'EXTRA LATE', section: 'STACKING' },
     ],
@@ -109,4 +208,12 @@ export const transportesSections: TransporteSection[] = [
 
 // Para compatibilidad con el código existente
 export const transportesColumns: TransporteColumn[] = transportesSections.flatMap((section) => section.columns);
+
+// Debug: Verificar que las columnas de stacking tengan render
+console.log('📋 Stacking columns debug:');
+transportesColumns
+  .filter(col => ['stacking', 'fin_stacking', 'cut_off'].includes(col.key))
+  .forEach(col => {
+    console.log(`- ${col.key}: hasRender = ${!!col.render}`);
+  });
 

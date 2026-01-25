@@ -8,8 +8,10 @@ import { TransporteRecord, fetchTransportes, deleteMultipleTransportes } from '@
 import { transportesColumns } from './columns';
 import { AddTransporteModal } from './AddTransporteModal';
 import { InlineEditCell } from './InlineEditCell';
-import { Trash2, CheckSquare, Square } from 'lucide-react';
+import { SimpleStackingModal } from './SimpleStackingModal';
+import { Trash2, CheckSquare, Square, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/useToast';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TransportesTableProps {
   transportes: TransporteRecord[];
@@ -46,12 +48,56 @@ function formatValue(item: TransporteRecord, key: keyof TransporteRecord) {
 export default function TransportesTable({ transportes }: TransportesTableProps) {
   const [records, setRecords] = useState<TransporteRecord[]>(transportes);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDateTimeModalOpen, setIsDateTimeModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<TransporteRecord | null>(null);
   const [isRefreshing, startTransition] = useTransition();
   const [selectedRecords, setSelectedRecords] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const { canAdd, setCurrentUser } = useUser();
   const { success, error } = useToast();
+  const { theme } = useTheme();
+
+  // Definir handleStackingClick antes de cualquier uso
+  const handleStackingClick = (record: TransporteRecord) => {
+    console.log('📅 handleStackingClick llamado para registro:', record.id);
+    console.log('📅 Estado actual del modal:', { isOpen: isDateTimeModalOpen, selectedRecord: selectedRecord?.id });
+    setSelectedRecord(record);
+    setIsDateTimeModalOpen(true);
+    console.log('📅 Modal debería abrirse ahora');
+  };
+
+  const formatValue = (item: TransporteRecord, key: keyof TransporteRecord) => {
+    if (item[key] === null || item[key] === undefined || item[key] === '') {
+      return '—';
+    }
+
+    if (typeof item[key] === 'string') {
+      // Para fechas
+      if (/^\d{4}-\d{2}-\d{2}$/.test(item[key])) {
+        const [year, month, day] = item[key].split('-');
+        return `${day}-${month}-${year}`;
+      }
+      // Para datetime
+      if (item[key].includes('T') || item[key].includes(' ')) {
+        const date = new Date(item[key].includes(' ') ? item[key].replace(' ', 'T') : item[key]);
+        if (!Number.isNaN(date.getTime())) {
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${day}-${month}-${year} ${hours}:${minutes}`;
+        }
+      }
+      // Si ya está en formato DD-MM-YYYY
+      if (/^\d{2}-\d{2}-\d{4}$/.test(item[key])) {
+        return item[key];
+      }
+    }
+
+    return String(item[key]);
+  };
 
   useEffect(() => {
     setRecords(transportes);
@@ -90,17 +136,13 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
   };
 
   const handleSelectRecord = (id: string) => {
-    console.log('📝 Seleccionando registro:', id);
     setSelectedRecords(prev => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
         newSet.delete(id);
-        console.log('❌ Deseleccionado:', id);
       } else {
         newSet.add(id);
-        console.log('✅ Seleccionado:', id);
       }
-      console.log('📋 Selección actual:', Array.from(newSet));
       return newSet;
     });
   };
@@ -115,14 +157,10 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
 
   const handleDeleteSelected = async () => {
     if (selectedRecords.size === 0) return;
-
-    console.log('🗑️ Iniciando eliminación múltiple');
-    console.log('📋 Registros seleccionados:', Array.from(selectedRecords));
     
     setIsDeleting(true);
     try {
       await deleteMultipleTransportes(Array.from(selectedRecords));
-      console.log('✅ Eliminación completada');
       success(`${selectedRecords.size} transporte(s) eliminado(s) correctamente`);
       reload();
     } catch (err: any) {
@@ -247,48 +285,107 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                         key={`${item.id}-${column.header}`}
                         className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100"
                       >
-                        {column.render ? (
-                          column.render(item)
-                        ) : (
-                          <InlineEditCell
-                            value={item[column.key]}
-                            field={column.key}
-                            record={item}
-                            onSave={(updatedRecord) => {
-                              // Actualizar el registro en el estado local
-                              setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
-                            }}
-                            type={
-                              column.key === 'planta' ? 'select' :
-                              column.key === 'dia_presentacion' ? 'date' :
-                              column.key === 'stacking' ? 'date' :
-                              column.key === 'hora_presentacion' ? 'time' :
-                              column.key === 'llegada_planta' ? 'time' :
-                              column.key === 'salida_planta' ? 'time' :
-                              column.key === 'llegada_puerto' ? 'time' :
-                              column.key === 'fin_stacking' ? 'datetime' :
-                              column.key === 'ingreso_stacking' ? 'datetime' :
-                              column.key === 'cut_off' ? 'datetime' :
-                              'text'
-                            }
-                            options={column.key === 'planta' ? [] : undefined}
-                            className="w-full"
-                          />
-                        )}
+                        {(() => {
+                          console.log('🔍 Procesando columna:', column.key, 'es stacking?:', column.key === 'stacking' || column.key === 'fin_stacking' || column.key === 'cut_off');
+                          if (column.key === 'stacking' || column.key === 'fin_stacking' || column.key === 'cut_off') {
+                            console.log('🔧 Renderizando columna de stacking:', column.key, 'handleStackingClick existe:', !!handleStackingClick);
+                            
+                            const formatValue = (value: any) => {
+                              if (value === null || value === undefined || value === '') {
+                                return '—';
+                              }
+                              if (typeof value === 'string') {
+                                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                                  const [year, month, day] = value.split('-');
+                                  return `${day}-${month}-${year}`;
+                                }
+                                if (value.includes('T') || value.includes(' ')) {
+                                  const date = new Date(value.includes(' ') ? value.replace(' ', 'T') : value);
+                                  if (!Number.isNaN(date.getTime())) {
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const year = date.getFullYear();
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    return `${day}-${month}-${year} ${hours}:${minutes}`;
+                                  }
+                                }
+                                if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+                                  return value;
+                                }
+                              }
+                              return String(value);
+                            };
+                            
+                            return (
+                              <div
+                                onClick={() => {
+                                  console.log('📅 Click detectado en columna NUEVA:', column.key, 'para item:', item.id);
+                                  if (handleStackingClick) {
+                                    console.log('📅 Llamando a handleStackingClick NUEVO');
+                                    handleStackingClick(item);
+                                  } else {
+                                    console.log('❌ handleStackingClick es undefined NUEVO');
+                                  }
+                                }}
+                                className={`group flex items-center justify-center gap-1 rounded px-2 py-1 -mx-2 -my-1 transition-colors cursor-pointer ${
+                                  theme === 'dark'
+                                    ? 'hover:bg-slate-700/50'
+                                    : 'hover:bg-blue-50'
+                                }`}
+                                title="Click para editar fechas de stacking"
+                              >
+                                <span className={`text-sm text-center ${
+                                  theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                }`}>
+                                  {formatValue(item[column.key])}
+                                </span>
+                                <Calendar className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+                                  theme === 'dark' ? 'text-slate-500' : 'text-blue-500'
+                                }`} />
+                              </div>
+                            );
+                          } else if (column.render) {
+                            console.log('🔧 Renderizando columna:', column.key, 'handleStackingClick existe:', !!handleStackingClick);
+                            return column.render(item, handleStackingClick, theme);
+                          } else {
+                            return (
+                              <InlineEditCell
+                                value={item[column.key]}
+                                field={column.key}
+                                record={item}
+                                onSave={(updatedRecord) => {
+                                  // Actualizar el registro en el estado local
+                                  setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+                                }}
+                                type={
+                                  column.key === 'planta' ? 'select' :
+                                  column.key === 'dia_presentacion' ? 'date' :
+                                  column.key === 'hora_presentacion' ? 'time' :
+                                  column.key === 'llegada_planta' ? 'time' :
+                                  column.key === 'salida_planta' ? 'time' :
+                                  column.key === 'llegada_puerto' ? 'time' :
+                                  column.key === 'ingreso_stacking' ? 'datetime' :
+                                  'text'
+                                }
+                                options={column.key === 'planta' ? [] : undefined}
+                                className="w-full"
+                              />
+                            );
+                          }
+                        })()}
                         {/* Debug info */}
                         {process.env.NODE_ENV === 'development' && (
                           <div className="text-xs mt-1 text-gray-400">
                             {column.key}: {
                               column.key === 'planta' ? 'select' :
                               column.key === 'dia_presentacion' ? 'date' :
-                              column.key === 'stacking' ? 'date' :
                               column.key === 'hora_presentacion' ? 'time' :
                               column.key === 'llegada_planta' ? 'time' :
                               column.key === 'salida_planta' ? 'time' :
                               column.key === 'llegada_puerto' ? 'time' :
-                              column.key === 'fin_stacking' ? 'datetime' :
                               column.key === 'ingreso_stacking' ? 'datetime' :
-                              column.key === 'cut_off' ? 'datetime' :
+                              column.render ? 'custom-render' :
                               'text'
                             }
                           </div>
@@ -307,6 +404,18 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={reload}
+      />
+      
+      <SimpleStackingModal
+        isOpen={isDateTimeModalOpen}
+        onClose={() => {
+          setIsDateTimeModalOpen(false);
+          setSelectedRecord(null);
+        }}
+        record={selectedRecord}
+        onSave={(updatedRecord: TransporteRecord) => {
+          setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+        }}
       />
     </div>
   );
