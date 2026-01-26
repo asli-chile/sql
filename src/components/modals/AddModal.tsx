@@ -362,6 +362,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
   };
 
   const sendReservationEmail = async () => {
+    console.log('🚀 sendReservationEmail llamada!');
     try {
       console.log('📧 Iniciando sendReservationEmail...');
       console.log('📧 userEmail:', userEmail);
@@ -1769,14 +1770,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     
                     <button
                       type="button"
-                      onClick={() => {
-                        console.log('🔘 Botón clickeado - isSaved:', isSaved);
-                        if (isSaved) {
-                          sendReservationEmail();
-                        } else {
-                          handleSave();
-                        }
-                      }}
+                      onClick={isSaved ? sendReservationEmail : handleSave}
                       disabled={loading}
                       className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
                     >
