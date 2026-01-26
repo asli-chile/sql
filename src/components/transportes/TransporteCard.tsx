@@ -111,70 +111,32 @@ export function TransporteCard({
       const emailSubject = `Solicitud de Retiro y Presentación en Planta - ${transporte.contenedor || 'N/A'} - ${transporte.booking || 'N/A'}`;
 
       const emailBody = `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #333; border-bottom: 2px solid #0066cc; padding-bottom: 10px;">
-            🚛 SOLICITUD DE RETIRO Y PRESENTACIÓN EN PLANTA
-          </h2>
+        <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; color: #333;">
+          <strong style="color: #0066cc; font-size: 12px;">🚛 SOLICITUD RETIRO - PRESENTACIÓN</strong><br/><br/>
           
-          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #0066cc; margin-top: 0;">📦 DATOS DEL CONTENEDOR</h3>
-            <p><strong>Contenedor:</strong> ${transporte.contenedor || 'N/A'}</p>
-            <p><strong>Booking:</strong> ${transporte.booking || 'N/A'}</p>
-            <p><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'}</p>
-            <p><strong>Ref ASLI:</strong> ${transporte.ref_asli || 'N/A'}</p>
-          </div>
-
-          <div style="background-color: #e8f4fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #0066cc; margin-top: 0;">🚢 INFORMACIÓN DE EMBARQUE</h3>
-            <p><strong>Nave:</strong> ${transporte.nave || 'N/A'}</p>
-            <p><strong>Naviera:</strong> ${transporte.naviera || 'N/A'}</p>
-            <p><strong>Depósito:</strong> ${transporte.deposito || 'N/A'}</p>
-            <p><strong>POL:</strong> ${transporte.pol || 'N/A'}</p>
-            <p><strong>POD:</strong> ${transporte.pod || 'N/A'}</p>
-          </div>
-
-          <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #856404; margin-top: 0;">📅 INFORMACIÓN DE STACKING</h3>
-            <p><strong>Inicio Stacking:</strong> ${formatValue(transporte.stacking)}</p>
-            <p><strong>Fin Stacking:</strong> ${formatValue(transporte.fin_stacking)}</p>
-            <p><strong>Cut Off:</strong> ${formatValue(transporte.cut_off)}</p>
-          </div>
-
-          <div style="background-color: #d4edda; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #155724; margin-top: 0;">🏭 PRESENTACIÓN EN PLANTA</h3>
-            <p><strong>Planta:</strong> ${transporte.planta || 'N/A'}</p>
-            <p><strong>Fecha y Hora:</strong> ${transporte.dia_presentacion || 'N/A'}</p>
-            <p><strong>Sello:</strong> ${transporte.sello || 'N/A'}</p>
-            <p><strong>Tara:</strong> ${transporte.tara || 'N/A'}</p>
-          </div>
-
-          <div style="background-color: #f8d7da; padding: 15px; border-radius: 5px; margin: 20px 0;">
-            <h3 style="color: #721c24; margin-top: 0;">🚛 INFORMACIÓN DE TRANSPORTISTA</h3>
-            <p><strong>Conductor:</strong> ${transporte.conductor || 'N/A'}</p>
-            <p><strong>RUT:</strong> ${transporte.rut || 'N/A'}</p>
-            <p><strong>Celular:</strong> ${transporte.telefono || 'N/A'}</p>
-            <p><strong>Patente:</strong> ${transporte.patente || 'N/A'}</p>
-          </div>
-
-          ${transporte.atmosfera_controlada ? '<div style="background-color: #cce5ff; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>🌡️ AT CONTROLADA</strong></div>' : ''}
-          ${transporte.late ? '<div style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>⏰ LATE</strong></div>' : ''}
-          ${transporte.extra_late ? '<div style="background-color: #f8d7da; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>⏰ EXTRA LATE</strong></div>' : ''}
-          ${transporte.porteo ? '<div style="background-color: #d1ecf1; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>🚚 PORTEO</strong></div>' : ''}
-          ${transporte.ingreso_stacking ? '<div style="background-color: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;"><strong>📦 INGRESADO STACKING</strong></div>' : ''}
-
-          <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #0066cc;">
-            <p style="margin: 0;"><strong>📋 Acciones Requeridas:</strong></p>
-            <ul style="margin: 10px 0;">
-              <li>Coordinar retiro del contenedor</li>
-              <li>Confirmar presentación en planta</li>
-              <li>Verificar documentación requerida</li>
-            </ul>
-          </div>
-
-          <div style="margin-top: 20px; padding: 10px; text-align: center; font-size: 12px; color: #666;">
-            <p>Este correo fue generado automáticamente desde el sistema ASLI</p>
-            <p>Fecha de envío: ${new Date().toLocaleString('es-CL')}</p>
-          </div>
+          <strong>📦 Contenedor:</strong> ${transporte.contenedor || 'N/A'}<br/>
+          <strong>📋 Booking:</strong> ${transporte.booking || 'N/A'}<br/>
+          <strong>👤 Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'}<br/>
+          <strong>🏢 Ref ASLI:</strong> ${transporte.ref_asli || 'N/A'}<br/><br/>
+          
+          <strong>🚚 Transporte:</strong> ${transporte.transporte || 'N/A'}<br/>
+          <strong>🏭 Planta:</strong> ${transporte.planta || 'N/A'}<br/>
+          <strong>⚓ Naviera:</strong> ${transporte.naviera || 'N/A'}<br/>
+          <strong>🚢 Nave:</strong> ${transporte.nave || 'N/A'}<br/><br/>
+          
+          <strong>📋 ACCIONES:</strong><br/>
+          • Coordinar retiro<br/>
+          • Presentar en planta<br/>
+          • Verificar docs<br/><br/>
+          
+          ${transporte.atmosfera_controlada ? '<strong>🌡️ ATMÓSFERA CONTROLADA</strong><br/>' : ''}
+          ${transporte.late ? '<strong>⏰ LATE</strong><br/>' : ''}
+          ${transporte.extra_late ? '<strong>⏰ EXTRA LATE</strong><br/>' : ''}
+          ${transporte.porteo ? '<strong>🚚 PORTEO</strong><br/>' : ''}
+          ${transporte.ingreso_stacking ? '<strong>📦 INGRESADO STACKING</strong><br/>' : ''}
+          
+          <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;"/>
+          <small style="color: #666;">ASLI Sistema - ${new Date().toLocaleDateString('es-CL')}</small>
         </div>
       `;
 
