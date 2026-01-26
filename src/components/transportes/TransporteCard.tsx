@@ -187,7 +187,7 @@ export function TransporteCard({
           to: 'alex.cardenas@asli.cl',
           subject: emailSubject,
           body: emailBody,
-          action: 'get-signature', // Nueva acción para solo obtener la firma
+          action: 'draft', // Volvemos a crear borrador
           fromEmail: userEmail,
           transportData: transporte,
         }),
@@ -202,12 +202,15 @@ export function TransporteCard({
         throw new Error(fullMessage);
       }
 
-      // Crear mailto con la firma incluida
-      const finalBody = result.signature ? `${emailBody}<br/><br/>${result.signature}` : emailBody;
-      const mailtoLink = `mailto:alex.cardenas@asli.cl?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(finalBody)}`;
-      
-      window.open(mailtoLink);
-      alert('📧 Correo abierto en redacción con firma ASLI. Revisa y envía cuando esté listo.');
+      // Abrir el borrador en modo de redacción usando el messageId
+      if (result.messageId) {
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent('alex.cardenas@asli.cl')}&su=${encodeURIComponent(emailSubject)}&th=${result.messageId}`, '_blank');
+        alert('📧 Correo abierto en redacción con firma ASLI. Revisa y envía cuando esté listo.');
+      } else {
+        // Fallback: abrir lista de borradores
+        window.open('https://mail.google.com/mail/#drafts', '_blank');
+        alert('📧 Borrador creado en Gmail con firma ASLI. Revisa la sección Borradores.');
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
