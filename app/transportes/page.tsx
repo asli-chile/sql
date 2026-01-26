@@ -815,16 +815,11 @@ export default function TransportesPage() {
                             : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:ring-1 focus:ring-blue-500/50'
                         }`}
                       >
-                        <option value="contenedor">Contenedor</option>
+                        <option value="exportacion">Cliente</option>
                         <option value="ref_cliente">Ref Cliente</option>
-                        <option value="ref_asli">Ref ASLI</option>
-                        <option value="booking">Booking</option>
                         <option value="nave">Nave</option>
                         <option value="naviera">Naviera</option>
-                        <option value="deposito">Depósito</option>
-                        <option value="planta">Planta</option>
-                        <option value="conductor">Conductor</option>
-                        <option value="semana">Semana</option>
+                        <option value="especie">Especie</option>
                       </select>
                       <button
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
