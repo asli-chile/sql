@@ -80,6 +80,7 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
 
   // Si hay un cliente específico, filtrar por shipper
   if (clientName && clientName.trim() !== '') {
+    console.log('🔍 Filtrando transportes por cliente:', clientName.trim());
     query = query.eq('shipper', clientName.trim());
   }
 
@@ -93,9 +94,15 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
   console.log('📋 Transportes fetched:', data?.length || 0);
   console.log('👤 Filtered by client:', clientName || 'ALL');
   
-  // Para debug: mostrar algunos registros con registro_id
+  // Para debug: mostrar algunos registros con shipper
   if (data && data.length > 0) {
-    console.log('🔍 Sample registro_id values:', data.slice(0, 3).map(t => ({ id: t.id, registro_id: t.registro_id, shipper: t.shipper })));
+    console.log('🔍 Sample registros con shipper:', data.slice(0, 5).map(t => ({ 
+      id: t.id, 
+      shipper: t.shipper,
+      ref_cliente: t.ref_cliente,
+      booking: t.booking,
+      contenedor: t.contenedor
+    })));
   }
 
   return data ?? [];

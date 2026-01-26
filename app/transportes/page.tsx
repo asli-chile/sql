@@ -260,6 +260,8 @@ export default function TransportesPage() {
       }
       // Obtener el nombre del cliente desde currentUser
       const clientName = currentUser?.nombre || currentUser?.email?.split('@')[0] || null;
+      console.log('👤 Usuario actual:', currentUser);
+      console.log('🏢 Cliente para filtrar:', clientName);
       const data = await fetchTransportes(clientName);
       if (isMounted) {
         setRecords(data || []);
