@@ -146,13 +146,26 @@ export const createRegistrosColumns = (
     minSize: COLUMN_WIDTHS.refCliente.min,
     maxSize: COLUMN_WIDTHS.refCliente.max,
     header: 'Ref Externa',
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
       const selectedRecordsArray = getSelectedRecords();
       const isCurrentRecordSelected = selectedRecordsArray.some(selected => selected.id === row.original.id);
       const shouldShowIndicator = selectedRecordsArray.length > 1 && isCurrentRecordSelected;
       const rowId = row.original.id || '';
       const isSelected = selectedRows?.has(rowId) || false;
       const rowIndex = row.index;
+      
+      // Detectar si la refCliente está duplicada
+      const currentRefCliente = row.original.refCliente;
+      const isDuplicate = currentRefCliente && currentRefCliente.trim() !== '' 
+        ? table.getFilteredRowModel().rows.filter(r => 
+            r.original.refCliente === currentRefCliente
+          ).length > 1
+        : false;
+      
+      // Determinar clases de estilo para resaltar duplicados
+      const cellClasses = isDuplicate 
+        ? "bg-orange-100 dark:bg-orange-900/40 border border-orange-300 dark:border-orange-600 rounded px-1" 
+        : "";
       
       return (
         <div className="flex w-full items-center justify-center gap-3 overflow-hidden px-2">
@@ -176,7 +189,7 @@ export const createRegistrosColumns = (
               type="text"
               selectedRecords={selectedRecordsArray}
               isSelectionMode={true}
-              className="justify-center text-center font-semibold"
+              className={`justify-center text-center font-semibold ${cellClasses}`}
             />
             {shouldShowIndicator && (
               <span className="flex-shrink-0 text-[10px] font-semibold text-white bg-blue-500 rounded-full px-1 py-0.5">
