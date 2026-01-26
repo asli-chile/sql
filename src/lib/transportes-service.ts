@@ -78,10 +78,12 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
     .select('*')
     .is('deleted_at', null);
 
-  // Si hay un cliente específico, filtrar por shipper
+  // Si hay un cliente específico, intentar filtrar por múltiples campos
   if (clientName && clientName.trim() !== '') {
     console.log('🔍 Filtrando transportes por cliente:', clientName.trim());
-    query = query.eq('shipper', clientName.trim());
+    
+    // Intentar filtrar por shipper o ref_cliente (algunos registros pueden tener uno u otro)
+    query = query.or(`shipper.eq.${clientName.trim()},ref_cliente.eq.${clientName.trim()}`);
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -94,9 +96,9 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
   console.log('📋 Transportes fetched:', data?.length || 0);
   console.log('👤 Filtered by client:', clientName || 'ALL');
   
-  // Para debug: mostrar algunos registros con shipper
+  // Para debug: mostrar algunos registros con shipper y ref_cliente
   if (data && data.length > 0) {
-    console.log('🔍 Sample registros con shipper:', data.slice(0, 5).map(t => ({ 
+    console.log('🔍 Sample registros con shipper/ref_cliente:', data.slice(0, 5).map(t => ({ 
       id: t.id, 
       shipper: t.shipper,
       ref_cliente: t.ref_cliente,
