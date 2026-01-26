@@ -111,7 +111,7 @@ export function TransporteCard({
       const emailSubject = `${transporte.ref_cliente || 'N/A'} // SOLICITUD DE RETIRO Y PRESENTACION EN PLANTA // ${transporte.booking || 'N/A'} // ${transporte.naviera || 'N/A'} // ${transporte.nave || 'N/A'} // ${transporte.planta || 'N/A'} // ${transporte.pol || 'N/A'} - ${transporte.pod || 'N/A'} // ${transporte.shipper || 'N/A'}`;
 
       const emailBody = `
-        <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.2; color: #333;">
+        <div style="font-family: Calibri, Arial, sans-serif; font-size: 12px; line-height: 1.2; color: #333;">
           <p>Estimado Alex, gusto en saludarte, espero te encuentres bien</p>
           <p>Favor tu ayuda con la coordinación de retiro de unidad desde "${transporte.deposito || 'N/A'}" para presentar en "${transporte.planta || 'N/A'}" el dia "${transporte.dia_presentacion || 'N/A'}" a las "${transporte.hora_presentacion || 'N/A'}"</p>
           
