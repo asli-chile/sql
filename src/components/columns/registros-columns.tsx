@@ -249,7 +249,7 @@ export const createRegistrosColumns = (
     cell: ({ row }) => {
       const value = row.getValue('usuario') as string || row.original.createdBy || '';
       return (
-        <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
           {value || '-'}
         </span>
       );
@@ -326,13 +326,13 @@ export const createRegistrosColumns = (
         <div className="flex items-center gap-2 w-full">
           <div className="flex-1 flex items-center gap-2">
             {value ? (
-              <span className={`px-2 py-1 text-xs font-medium ${
+              <span className={`px-2 py-1 text-sm font-medium ${
                 isCancelado ? 'bg-red-600 text-black rounded' : ''
               }`}>
                 {value}
               </span>
             ) : (
-              <span className="px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
+              <span className="px-2 py-1 text-sm text-gray-400 dark:text-gray-500">
                 Sin booking
               </span>
             )}
