@@ -118,8 +118,8 @@ export const transportesSections: TransporteSection[] = [
   {
     name: 'CONTROL INTERNO',
     columns: [
-      { key: 'semana', header: 'WK', section: 'CONTROL INTERNO' },
       { key: 'exportacion', header: 'EXPORT.', section: 'CONTROL INTERNO' },
+      { key: 'semana', header: 'WK', section: 'CONTROL INTERNO' },
     ],
   },
   {
