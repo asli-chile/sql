@@ -76,7 +76,7 @@ export async function fetchTransportes(): Promise<TransporteRecord[]> {
     .from('transportes')
     .select(`
       *,
-      registros!inner (
+      registros (
         shipper,
         consignatario
       )
