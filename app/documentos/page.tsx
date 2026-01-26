@@ -1253,12 +1253,12 @@ export default function DocumentosPage() {
               ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
               : 'border-gray-200 bg-white shadow-md'
               }`}>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[70vh]">
                 <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                   }`}>
-                  <thead className={`sticky top-0 z-10 backdrop-blur-sm ${theme === 'dark'
+                  <thead className={`sticky top-0 z-20 backdrop-blur-sm ${theme === 'dark'
                     ? 'bg-slate-900/95 border-b border-slate-800/60'
-                    : 'bg-white border-b border-gray-200'
+                    : 'bg-white/95 border-b border-gray-200 shadow-sm'
                     }`}>
                     <tr>
                       <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
