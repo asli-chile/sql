@@ -614,13 +614,15 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
       await upsertNaveMappingEntry();
 
-      // No cerrar el modal, solo marcar como guardado y abrir el correo automáticamente
+      // No cerrar el modal, solo marcar como guardado y enviar correo automáticamente
       setIsSaved(true);
       setLoading(false);
       onSuccess();
       
-      // Enviar correo automático usando nuestra nueva API
-      await sendReservationEmail();
+      // Enviar correo automático inmediatamente después de guardar
+      setTimeout(() => {
+        sendReservationEmail();
+      }, 500); // Pequeño delay para asegurar que el UI se actualice
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =
@@ -1746,7 +1748,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     disabled={loading}
                     className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
                   >
-                    {loading ? 'Guardando…' : isSaved ? 'Solicitar vía correo' : 'Guardar registro'}
+                    {loading ? 'Guardando…' : isSaved ? 'Correo enviado' : 'Guardar registro'}
                   </button>
                 )}
               </div>
