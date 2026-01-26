@@ -116,19 +116,21 @@ const createStackingRender = (key: keyof TransporteRecord) => {
 
 export const transportesSections: TransporteSection[] = [
   {
-    name: 'CONTROL INTERNO',
+    name: 'DATOS PRINCIPALES',
     columns: [
-      { key: 'exportacion', header: 'EXPORT.', section: 'CONTROL INTERNO' },
-      { key: 'semana', header: 'WK', section: 'CONTROL INTERNO' },
+      { key: 'exportacion', header: 'CLIENTE', section: 'DATOS PRINCIPALES' },
+      { key: 'ref_cliente', header: 'REF EXTERNA', section: 'DATOS PRINCIPALES' },
+      { key: 'nave', header: 'NAVE', section: 'DATOS PRINCIPALES' },
+      { key: 'naviera', header: 'NAVIERA', section: 'DATOS PRINCIPALES' },
+      { key: 'pod', header: 'DESTINO', section: 'DATOS PRINCIPALES' },
     ],
   },
   {
     name: 'INFORMACION BOOKING',
     columns: [
       { key: 'booking', header: 'BOOKING', section: 'INFORMACION BOOKING' },
-      { key: 'nave', header: 'NAVE', section: 'INFORMACION BOOKING' },
-      { key: 'naviera', header: 'NAVIERA', section: 'INFORMACION BOOKING' },
       { key: 'especie', header: 'ESPECIE', section: 'INFORMACION BOOKING' },
+      { key: 'pol', header: 'POL', section: 'INFORMACION BOOKING' },
       {
         key: 'atmosfera_controlada',
         header: 'AT CONTROLADA',
@@ -139,8 +141,12 @@ export const transportesSections: TransporteSection[] = [
       { key: 'o2', header: 'O₂', section: 'INFORMACION BOOKING' },
       { key: 'temperatura', header: 'T°', section: 'INFORMACION BOOKING' },
       { key: 'vent', header: 'VENT (cbm)', section: 'INFORMACION BOOKING' },
-      { key: 'pol', header: 'POL', section: 'INFORMACION BOOKING' },
-      { key: 'pod', header: 'POD', section: 'INFORMACION BOOKING' },
+    ],
+  },
+  {
+    name: 'CONTROL INTERNO',
+    columns: [
+      { key: 'semana', header: 'WK', section: 'CONTROL INTERNO' },
     ],
   },
   {
@@ -198,7 +204,7 @@ export const transportesSections: TransporteSection[] = [
     name: 'ADICIONAL',
     columns: [
       { key: 'ingreso_stacking', header: 'INGRESADO STACKING', section: 'ADICIONAL' },
-      { key: 'sobreestadia', header: 'SOBREESTADIA', section: 'ADICIONAL' },
+      { key: 'sobreestadia', header: 'SOBRESTADIA', section: 'ADICIONAL' },
       { key: 'scanner', header: 'SCANNER', section: 'ADICIONAL' },
       { key: 'lote_carga', header: 'LOTE CARGA', section: 'ADICIONAL' },
       { key: 'observacion', header: 'OBSERVACION', section: 'ADICIONAL' },
