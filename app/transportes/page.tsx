@@ -251,7 +251,8 @@ export default function TransportesPage() {
     let isMounted = true;
 
     const loadTransportes = async () => {
-      if (!user) {
+      if (!user || !currentUser) {
+        console.log('⏳ Esperando carga de usuario y currentUser...');
         return;
       }
       
@@ -274,7 +275,7 @@ export default function TransportesPage() {
     return () => {
       isMounted = false;
     };
-  }, [user]);
+  }, [user, currentUser]); // Agregar currentUser como dependencia
 
   // Función para descargar el PDF de booking
   const handleDownloadBooking = async (booking: string | null) => {
