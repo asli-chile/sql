@@ -614,15 +614,10 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
       await upsertNaveMappingEntry();
 
-      // No cerrar el modal, solo marcar como guardado y enviar correo automáticamente
+      // No cerrar el modal, solo marcar como guardado y mostrar botón de correo
       setIsSaved(true);
       setLoading(false);
       onSuccess();
-      
-      // Enviar correo automático inmediatamente después de guardar
-      setTimeout(() => {
-        sendReservationEmail();
-      }, 500); // Pequeño delay para asegurar que el UI se actualice
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =
@@ -1742,14 +1737,34 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={isSaved ? sendReservationEmail : handleSave}
-                    disabled={loading}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
-                  >
-                    {loading ? 'Guardando…' : isSaved ? 'Correo enviado' : 'Guardar registro'}
-                  </button>
+                  <div className="space-y-3">
+                    {isSaved && (
+                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-green-900/50 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
+                        <p className={`text-center font-semibold ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
+                          ✅ Registro guardado exitosamente
+                        </p>
+                      </div>
+                    )}
+                    
+                    <button
+                      type="button"
+                      onClick={isSaved ? sendReservationEmail : handleSave}
+                      disabled={loading}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
+                    >
+                      {loading ? 'Guardando…' : isSaved ? '📧 Enviar Solicitud de Reserva' : 'Guardar registro'}
+                    </button>
+                    
+                    {isSaved && (
+                      <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gray-500 hover:bg-gray-600 px-6 py-3 text-lg font-semibold text-white transition-colors"
+                      >
+                        Cerrar
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
