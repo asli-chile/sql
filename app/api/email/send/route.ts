@@ -101,7 +101,7 @@ const appendSignatureIfAny = async (gmail: ReturnType<typeof google.gmail>, from
 
 export async function POST(request: NextRequest) {
   try {
-    const { to, subject, body, action = 'send', fromEmail } = await request.json();
+    const { to, subject, body, action = 'send', fromEmail, attachmentData } = await request.json();
 
     if (!to || !subject || !body || !fromEmail) {
       return NextResponse.json(
@@ -133,19 +133,49 @@ export async function POST(request: NextRequest) {
 
     const finalBody = await appendSignatureIfAny(gmail, fromEmail, body);
 
-    // Crear el contenido del correo
-    const emailContent = [
-      `From: ${fromEmail}`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=utf-8',
-      '',
-      finalBody,
-    ].join('\n');
+    // Crear el contenido del correo con posible adjunto
+    let emailContent: string[];
+
+    if (attachmentData) {
+      // Correo con adjunto (multipart/mixed)
+      const boundary = 'boundary_' + Math.random().toString(36).substring(2);
+      
+      emailContent = [
+        `From: ${fromEmail}`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        `Content-Type: multipart/mixed; boundary="${boundary}"`,
+        '',
+        `--${boundary}`,
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        finalBody,
+        '',
+        `--${boundary}`,
+        'Content-Type: application/pdf',
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${attachmentData.filename}"`,
+        '',
+        attachmentData.content,
+        '',
+        `--${boundary}--`,
+      ];
+    } else {
+      // Correo sin adjunto
+      emailContent = [
+        `From: ${fromEmail}`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=utf-8',
+        '',
+        finalBody,
+      ];
+    }
 
     // Codificar en base64
-    const encodedMessage = Buffer.from(emailContent)
+    const encodedMessage = Buffer.from(emailContent.join('\n'))
       .toString('base64')
       .replace(/\+/g, '-')
       .replace(/\//g, '_')
@@ -166,7 +196,7 @@ export async function POST(request: NextRequest) {
         action,
         draftId: result.data.id,
         messageId: result.data.message?.id ?? null,
-        message: 'Borrador creado exitosamente',
+        message: attachmentData ? 'Borrador creado con adjunto' : 'Borrador creado exitosamente',
       });
     }
 
@@ -179,36 +209,34 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      messageId: result.data.id,
       action,
-      message: 'Correo enviado exitosamente',
+      messageId: result.data.id,
+      message: attachmentData ? 'Correo enviado con adjunto' : 'Correo enviado exitosamente',
     });
-
-  } catch (error) {
-    const err = error as any;
-    const baseMessage = error instanceof Error ? error.message : 'Unknown error';
-    const googleStatus = typeof err?.code === 'number' ? err.code : undefined;
-    const googleApiError = err?.response?.data?.error;
-    const googleErrorMessage =
-      typeof googleApiError?.message === 'string' ? googleApiError.message : undefined;
-    const googleReasons = Array.isArray(googleApiError?.errors)
-      ? googleApiError.errors
-          .map((e: any) => e?.reason)
-          .filter((r: any) => typeof r === 'string')
-          .join(', ')
-      : undefined;
-
-    const errorMessageParts = [
-      baseMessage,
-      googleErrorMessage ? `google: ${googleErrorMessage}` : null,
-      googleReasons ? `reasons: ${googleReasons}` : null,
-      googleStatus ? `code: ${googleStatus}` : null,
-    ].filter(Boolean);
-
-    const errorMessage = errorMessageParts.join(' | ');
+  } catch (error: any) {
+    console.error('Error en /api/email/send:', error);
+    
+    let errorMessage = 'Error al procesar el correo';
+    let errorDetails = '';
+    
+    if (error.code) {
+      errorDetails = `Código: ${error.code}`;
+    }
+    
+    if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    if (error.errors && error.errors.length > 0) {
+      errorDetails = error.errors.map((e: any) => e.message || e.reason).join(', ');
+    }
 
     return NextResponse.json(
-      { error: 'Error en operación de correo', details: errorMessage },
+      { 
+        error: errorMessage, 
+        details: errorDetails,
+        code: error.code || 'UNKNOWN_ERROR'
+      },
       { status: 500 }
     );
   }

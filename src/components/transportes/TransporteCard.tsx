@@ -95,8 +95,8 @@ export function TransporteCard({
   };
 
   const handleSendEmail = async () => {
-    if (!canEdit) {
-      alert('No tienes permisos para enviar correos');
+    if (!transporte) {
+      alert('No hay información del transporte disponible.');
       return;
     }
 
@@ -152,6 +152,40 @@ export function TransporteCard({
         </div>
       `;
 
+      // Intentar obtener el PDF del booking como adjunto
+      let attachmentData = null;
+      const bookingValue = transporte.booking;
+      const bookingKey = bookingValue ? bookingValue.trim().toUpperCase().replace(/\s+/g, '') : '';
+      
+      if (bookingKey && bookingDocuments.has(bookingKey)) {
+        try {
+          // Obtener el PDF del booking
+          const pdfResponse = await fetch(`/api/bookings/pdf/${bookingKey}`);
+          if (pdfResponse.ok) {
+            const pdfBlob = await pdfResponse.blob();
+            const pdfBase64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                const result = reader.result as string;
+                // Quitar el prefijo data:application/pdf;base64,
+                const base64 = result.split(',')[1];
+                resolve(base64);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(pdfBlob);
+            });
+            
+            attachmentData = {
+              filename: `Booking_${bookingKey}.pdf`,
+              content: pdfBase64
+            };
+          }
+        } catch (error) {
+          console.warn('No se pudo obtener el PDF del booking:', error);
+          // Continuar sin adjunto si falla
+        }
+      }
+
       const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: {
@@ -164,6 +198,7 @@ export function TransporteCard({
           action: 'draft', // Volvemos a crear borrador
           fromEmail: userEmail,
           transportData: transporte,
+          attachmentData, // Enviar el adjunto si existe
         }),
       });
 
@@ -179,16 +214,18 @@ export function TransporteCard({
       // Abrir el borrador en modo de redacción usando el draftId
       if (result.draftId) {
         window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
-        alert('✅ Correo ASLI abierto en redacción\n\n📧 Listo para revisar y enviar con firma corporativa');
+        alert(' Correo ASLI abierto en redacción\n\n Listo para revisar y enviar con firma corporativa' + 
+              (attachmentData ? '\n Booking PDF adjunto' : ''));
       } else {
         // Fallback: abrir lista de borradores
         window.open('https://mail.google.com/mail/#drafts', '_blank');
-        alert('📧 Borrador ASLI creado\n\nRevisa la sección Borradores en Gmail');
+        alert(' Borrador ASLI creado\n\nRevisa la sección Borradores en Gmail' + 
+              (attachmentData ? '\n Booking PDF adjunto' : ''));
       }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-      alert(`❌ Error al preparar correo: ${errorMessage}`);
+      alert(` Error al preparar correo: ${errorMessage}`);
       console.error('Error preparando correo:', error);
     } finally {
       setSendingEmail(false);
