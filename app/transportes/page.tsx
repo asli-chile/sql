@@ -258,7 +258,9 @@ export default function TransportesPage() {
       if (isMounted) {
         setIsLoading(true);
       }
-      const data = await fetchTransportes();
+      // Obtener el nombre del cliente desde currentUser
+      const clientName = currentUser?.nombre || currentUser?.email?.split('@')[0] || null;
+      const data = await fetchTransportes(clientName);
       if (isMounted) {
         setRecords(data || []);
         setIsLoading(false);
@@ -312,7 +314,9 @@ export default function TransportesPage() {
   const reload = async () => {
     try {
       setIsLoading(true);
-      const data = await fetchTransportes();
+      // Obtener el nombre del cliente desde currentUser
+      const clientName = currentUser?.nombre || currentUser?.email?.split('@')[0] || null;
+      const data = await fetchTransportes(clientName);
       setRecords(data);
     } catch (error) {
       console.error('[Transportes] Error recargando transportes:', error);

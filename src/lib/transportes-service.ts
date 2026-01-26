@@ -70,13 +70,20 @@ export type TransporteRecord = {
   consignatario: string | null;
 };
 
-export async function fetchTransportes(): Promise<TransporteRecord[]> {
+export async function fetchTransportes(clientName?: string | null): Promise<TransporteRecord[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  
+  let query = supabase
     .from('transportes')
     .select('*')
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false });
+    .is('deleted_at', null);
+
+  // Si hay un cliente específico, filtrar por shipper
+  if (clientName && clientName.trim() !== '') {
+    query = query.eq('shipper', clientName.trim());
+  }
+
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     console.error('Error fetching transportes:', error);
@@ -84,10 +91,11 @@ export async function fetchTransportes(): Promise<TransporteRecord[]> {
   }
 
   console.log('📋 Transportes fetched:', data?.length || 0);
+  console.log('👤 Filtered by client:', clientName || 'ALL');
   
   // Para debug: mostrar algunos registros con registro_id
   if (data && data.length > 0) {
-    console.log('🔍 Sample registro_id values:', data.slice(0, 3).map(t => ({ id: t.id, registro_id: t.registro_id })));
+    console.log('🔍 Sample registro_id values:', data.slice(0, 3).map(t => ({ id: t.id, registro_id: t.registro_id, shipper: t.shipper })));
   }
 
   return data ?? [];
