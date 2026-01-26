@@ -202,14 +202,14 @@ export function TransporteCard({
         throw new Error(fullMessage);
       }
 
-      // Abrir el borrador en modo de redacción usando el messageId
-      if (result.messageId) {
-        window.open(`https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=${encodeURIComponent('alex.cardenas@asli.cl')}&su=${encodeURIComponent(emailSubject)}&th=${result.messageId}`, '_blank');
-        alert('📧 Correo abierto en redacción con firma ASLI. Revisa y envía cuando esté listo.');
+      // Abrir el borrador en modo de redacción usando el draftId
+      if (result.draftId) {
+        window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
+        alert('✅ Correo ASLI abierto en redacción\n\n📧 Listo para revisar y enviar con firma corporativa');
       } else {
         // Fallback: abrir lista de borradores
         window.open('https://mail.google.com/mail/#drafts', '_blank');
-        alert('📧 Borrador creado en Gmail con firma ASLI. Revisa la sección Borradores.');
+        alert('📧 Borrador ASLI creado\n\nRevisa la sección Borradores en Gmail');
       }
 
     } catch (error) {
