@@ -111,32 +111,23 @@ export function TransporteCard({
       const emailSubject = `${transporte.ref_cliente || 'N/A'} // SOLICITUD DE RETIRO Y PRESENTACION EN PLANTA // ${transporte.booking || 'N/A'} // ${transporte.naviera || 'N/A'} // ${transporte.nave || 'N/A'} // ${transporte.planta || 'N/A'} // ${transporte.pol || 'N/A'} - ${transporte.pod || 'N/A'} // ${transporte.shipper || 'N/A'}`;
 
       const emailBody = `
-        <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; color: #333;">
-          <strong style="color: #0066cc; font-size: 12px;">🚛 SOLICITUD RETIRO - PRESENTACIÓN</strong><br/><br/>
+        <div style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #333;">
+          <p>Estimado Alex, gusto en saludarte, espero te encuentres bien</p>
+          <p>Favor tu ayuda con la coordinación de retiro de unidad desde "${transporte.deposito || 'N/A'}" para presentar en "${transporte.planta || 'N/A'}" el dia "${transporte.dia_presentacion || 'N/A'}" a las "${transporte.hora_presentacion || 'N/A'}"</p>
           
-          <strong>📦 Contenedor:</strong> ${transporte.contenedor || 'N/A'}<br/>
-          <strong>📋 Booking:</strong> ${transporte.booking || 'N/A'}<br/>
-          <strong>👤 Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'}<br/>
-          <strong>🏢 Ref ASLI:</strong> ${transporte.ref_asli || 'N/A'}<br/><br/>
+          <p><strong>SOLICITUD RETIRO - PRESENTACIÓN</strong></p>
           
-          <strong>🚚 Transporte:</strong> ${transporte.transporte || 'N/A'}<br/>
-          <strong>🏭 Planta:</strong> ${transporte.planta || 'N/A'}<br/>
-          <strong>⚓ Naviera:</strong> ${transporte.naviera || 'N/A'}<br/>
-          <strong>🚢 Nave:</strong> ${transporte.nave || 'N/A'}<br/><br/>
+          <p><strong>Booking:</strong> ${transporte.booking || 'N/A'}</p>
+          <p><strong>${transporte.shipper || 'N/A'}</strong></p>
+          <p><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'} ${transporte.naviera || 'N/A'} ${transporte.nave || 'N/A'}${transporte.deposito || 'N/A'}${transporte.pol || 'N/A'} ${transporte.pod || 'N/A'}${transporte.dia_presentacion || 'N/A'} ${transporte.hora_presentacion || 'N/A'}${transporte.planta || 'N/A'}</p>
           
-          <strong>📋 ACCIONES:</strong><br/>
-          • Coordinar retiro<br/>
-          • Presentar en planta<br/>
-          • Verificar docs<br/><br/>
+          <p><strong>DATOS DE TRANSPORTE</strong></p>
+          <p><strong>Transporte:</strong> ${transporte.transporte || 'N/A'}</p>
+          <p><strong>CONTENEDOR</strong>${transporte.contenedor || 'N/A'}<strong>SELLO</strong>${transporte.sello || 'N/A'}<strong>TARA</strong>${transporte.tara || 'N/A'}</p>
+          <p><strong>CONDUCTOR</strong>${transporte.conductor || 'N/A'}<strong>RUT</strong>${transporte.rut || 'N/A'}<strong>TELEFONO</strong>${transporte.telefono || 'N/A'}<strong>PATENTE</strong>${transporte.patente || 'N/A'}<strong>PATENTE REM.</strong>${transporte.patente_remolque || 'N/A'}</p>
           
-          ${transporte.atmosfera_controlada ? '<strong>🌡️ ATMÓSFERA CONTROLADA</strong><br/>' : ''}
-          ${transporte.late ? '<strong>⏰ LATE</strong><br/>' : ''}
-          ${transporte.extra_late ? '<strong>⏰ EXTRA LATE</strong><br/>' : ''}
-          ${transporte.porteo ? '<strong>🚚 PORTEO</strong><br/>' : ''}
-          ${transporte.ingreso_stacking ? '<strong>📦 INGRESADO STACKING</strong><br/>' : ''}
-          
-          <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;"/>
-          <small style="color: #666;">ASLI Sistema - ${new Date().toLocaleDateString('es-CL')}</small>
+          <p><strong>DATOS DE STACKING</strong></p>
+          <p><strong>INICIO STACKING</strong>${transporte.stacking || 'N/A'}<strong>FIN DE STACKING</strong>${transporte.fin_stacking || 'N/A'} <strong>CUTOFF</strong>${transporte.cut_off || 'N/A'}</p>
         </div>
       `;
 
