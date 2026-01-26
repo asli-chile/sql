@@ -111,55 +111,28 @@ export function TransporteCard({
       const emailSubject = `${transporte.ref_cliente || 'N/A'} // SOLICITUD DE RETIRO Y PRESENTACION EN PLANTA // ${transporte.booking || 'N/A'} // ${transporte.naviera || 'N/A'} // ${transporte.nave || 'N/A'} // ${transporte.planta || 'N/A'} // ${transporte.pol || 'N/A'} - ${transporte.pod || 'N/A'} // ${transporte.shipper || 'N/A'}`;
 
       const emailBody = `
-        <div style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #333; max-width: 600px;">
-          <p style="margin: 0 0 15px 0;">Estimado Alex, gusto en saludarte, espero te encuentres bien</p>
-          <p style="margin: 0 0 20px 0;">Favor tu ayuda con la coordinación de retiro de unidad desde <strong style="color: #0066cc;">"${transporte.deposito || 'N/A'}"</strong> para presentar en <strong style="color: #0066cc;">"${transporte.planta || 'N/A'}"</strong> el dia <strong style="color: #0066cc;">"${transporte.dia_presentacion || 'N/A'}"</strong> a las <strong style="color: #0066cc;">"${transporte.hora_presentacion || 'N/A'}"</strong></p>
+        <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.2; color: #333;">
+          <p>Estimado Alex, gusto en saludarte, espero te encuentres bien</p>
+          <p>Favor tu ayuda con la coordinación de retiro de unidad desde "${transporte.deposito || 'N/A'}" para presentar en "${transporte.planta || 'N/A'}" el dia "${transporte.dia_presentacion || 'N/A'}" a las "${transporte.hora_presentacion || 'N/A'}"</p>
           
-          <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #0066cc; margin: 20px 0;">
-            <h3 style="margin: 0 0 15px 0; color: #0066cc; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">SOLICITUD RETIRO - PRESENTACIÓN</h3>
-            
-            <div style="margin-bottom: 15px;">
-              <p style="margin: 0 0 5px 0;"><strong style="color: #333;">Booking:</strong> ${transporte.booking || 'N/A'}</p>
-              <p style="margin: 0 0 5px 0;"><strong style="color: #333;">${transporte.shipper || 'N/A'}</strong></p>
-              <p style="margin: 0; font-size: 11px; color: #666;">Ref Cliente: ${transporte.ref_cliente || 'N/A'} | Naviera: ${transporte.naviera || 'N/A'} | Nave: ${transporte.nave || 'N/A'} | Depósito: ${transporte.deposito || 'N/A'} | POL: ${transporte.pol || 'N/A'} | POD: ${transporte.pod || 'N/A'} | Fecha: ${transporte.dia_presentacion || 'N/A'} | Hora: ${transporte.hora_presentacion || 'N/A'} | Planta: ${transporte.planta || 'N/A'}</p>
-            </div>
-          </div>
+          <p><strong>SOLICITUD RETIRO - PRESENTACIÓN</strong></p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>Booking:</strong> ${transporte.booking || 'N/A'}</li>
+            <li><strong>${transporte.shipper || 'N/A'}</strong></li>
+            <li><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'} | Naviera: ${transporte.naviera || 'N/A'} | Nave: ${transporte.nave || 'N/A'} | Depósito: ${transporte.deposito || 'N/A'} | POL: ${transporte.pol || 'N/A'} | POD: ${transporte.pod || 'N/A'} | Fecha: ${transporte.dia_presentacion || 'N/A'} | Hora: ${transporte.hora_presentacion || 'N/A'} | Planta: ${transporte.planta || 'N/A'}</li>
+          </ul>
           
-          <div style="background: #fafafa; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #28a745; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">DATOS DE TRANSPORTE</h4>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-              <div><strong style="color: #333;">Transporte:</strong> ${transporte.transporte || 'N/A'}</div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px;">
-              <div><strong style="color: #333;">CONTENEDOR:</strong> ${transporte.contenedor || 'N/A'}</div>
-              <div><strong style="color: #333;">SELLO:</strong> ${transporte.sello || 'N/A'}</div>
-              <div><strong style="color: #333;">TARA:</strong> ${transporte.tara || 'N/A'}</div>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;">
-              <div><strong style="color: #333;">CONDUCTOR:</strong> ${transporte.conductor || 'N/A'}</div>
-              <div><strong style="color: #333;">RUT:</strong> ${transporte.rut || 'N/A'}</div>
-              <div><strong style="color: #333;">TELEFONO:</strong> ${transporte.telefono || 'N/A'}</div>
-              <div><strong style="color: #333;">PATENTE:</strong> ${transporte.patente || 'N/A'}</div>
-              <div><strong style="color: #333;">PATENTE REM.:</strong> ${transporte.patente_remolque || 'N/A'}</div>
-            </div>
-          </div>
+          <p><strong>DATOS DE TRANSPORTE</strong></p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>Transporte:</strong> ${transporte.transporte || 'N/A'}</li>
+            <li><strong>CONTENEDOR:</strong> ${transporte.contenedor || 'N/A'} | <strong>SELLO:</strong> ${transporte.sello || 'N/A'} | <strong>TARA:</strong> ${transporte.tara || 'N/A'}</li>
+            <li><strong>CONDUCTOR:</strong> ${transporte.conductor || 'N/A'} | <strong>RUT:</strong> ${transporte.rut || 'N/A'} | <strong>TELEFONO:</strong> ${transporte.telefono || 'N/A'} | <strong>PATENTE:</strong> ${transporte.patente || 'N/A'} | <strong>PATENTE REM.:</strong> ${transporte.patente_remolque || 'N/A'}</li>
+          </ul>
           
-          <div style="background: #f0f8ff; padding: 15px; border-left: 4px solid #17a2b8; margin: 20px 0;">
-            <h4 style="margin: 0 0 10px 0; color: #17a2b8; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">DATOS DE STACKING</h4>
-            
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
-              <div><strong style="color: #333;">INICIO STACKING:</strong> ${transporte.stacking || 'N/A'}</div>
-              <div><strong style="color: #333;">FIN DE STACKING:</strong> ${transporte.fin_stacking || 'N/A'}</div>
-              <div><strong style="color: #333;">CUTOFF:</strong> ${transporte.cut_off || 'N/A'}</div>
-            </div>
-          </div>
-          
-          <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center;">
-            <small style="color: #666; font-size: 10px;">ASLI Sistema - ${new Date().toLocaleDateString('es-CL')}</small>
-          </div>
+          <p><strong>DATOS DE STACKING</strong></p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>INICIO STACKING:</strong> ${transporte.stacking || 'N/A'} | <strong>FIN DE STACKING:</strong> ${transporte.fin_stacking || 'N/A'} | <strong>CUTOFF:</strong> ${transporte.cut_off || 'N/A'}</li>
+          </ul>
         </div>
       `;
 
