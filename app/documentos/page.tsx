@@ -333,8 +333,11 @@ export default function DocumentosPage() {
       const { convertSupabaseToApp } = await import('@/lib/migration-utils');
       const registrosList = (data || []).map((registro: any) => convertSupabaseToApp(registro));
 
-      setAllRegistros(registrosList);
-      setRegistros(registrosList);
+      // Filtrar localmente para excluir cancelados (más seguro)
+      const registrosActivos = registrosList.filter(registro => registro.estado !== 'CANCELADO');
+
+      setAllRegistros(registrosActivos);
+      setRegistros(registrosActivos);
     } catch (err: any) {
       console.error('Error cargando registros:', err);
       showError('Error al cargar los registros. Por favor, recarga la página.');
