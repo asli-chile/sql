@@ -23,6 +23,7 @@ interface AddModalProps {
   onClose: () => void;
   onSuccess: () => void;
   createdByName: string;
+  userEmail?: string | null;
   ejecutivosUnicos: string[];
   clientesUnicos: string[];
   refExternasUnicas: string[];
@@ -48,6 +49,7 @@ export function AddModal({
   onClose, 
   onSuccess,
   createdByName,
+  userEmail,
   ejecutivosUnicos,
   clientesUnicos,
   refExternasUnicas,
@@ -64,8 +66,8 @@ export function AddModal({
   contratosUnicos,
   co2sUnicos,
   o2sUnicos,
-  tratamientosDeFrioOpciones = [],
-  clienteFijadoPorCoincidencia,
+  tratamientosDeFrioOpciones,
+  clienteFijadoPorCoincidencia
 }: AddModalProps) {
   
   const { theme } = useTheme();
@@ -406,6 +408,90 @@ Saludos cordiales.`;
     window.open(gmailUrl, '_blank');
   };
 
+  const sendReservationEmail = async () => {
+    try {
+      const copiesInput = numberOfCopies.trim();
+      let resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
+      if (Number.isNaN(resolvedCopies) || resolvedCopies < 1) {
+        resolvedCopies = 1;
+      }
+      resolvedCopies = Math.min(resolvedCopies, MAX_COPIES);
+
+      const naveCompleta = formData.naveInicial && formData.viaje.trim() 
+        ? `${formData.naveInicial} [${formData.viaje.trim()}]` 
+        : formData.naveInicial || '';
+
+      const condiciones = [];
+      if (formData.temperatura) condiciones.push(`${formData.temperatura}°C`);
+      if (formData.cbm) condiciones.push(`CBM ${formData.cbm}`);
+      if (formData.tratamientoFrio) condiciones.push(`Trat. Frío ${formData.tratamientoFrio}`);
+      if (atmosferaControlada) {
+        if (formData.co2) condiciones.push(`CO₂ ${formData.co2}%`);
+        if (formData.o2) condiciones.push(`O₂ ${formData.o2}%`);
+        const tipoAtmosfera = formData.naviera?.includes('CMA') ? 'DAIKIN' : formData.naviera?.includes('MSC') ? 'STARCOOL' : '';
+        if (tipoAtmosfera) condiciones.push(tipoAtmosfera);
+      }
+      const condicionesTexto = condiciones.length > 0 ? condiciones.join(' // ') : 'No especificado';
+
+      const emailSubject = `SOLICITUD DE RESERVA // ${resolvedCopies} // ${formData.pod || 'N/A'} // ${formData.pol || 'N/A'} // ${formData.deposito || 'N/A'} // ${formData.naviera || 'N/A'} // ${naveCompleta || 'N/A'} // ${formData.especie || 'N/A'} // ${condicionesTexto} // ${formData.flete || 'N/A'} // ${formData.shipper || 'N/A'} // ${formData.contrato || 'N/A'}`;
+
+      const emailBody = `
+        <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.2; color: #333;">
+          <p>Estimado equipo,</p>
+          <p>Favor su ayuda con la solicitud de reserva bajo el siguiente detalle:</p>
+          
+          <p><strong>DETALLE DE SOLICITUD DE RESERVA</strong></p>
+          <ul style="margin: 5px 0; padding-left: 20px;">
+            <li><strong>Cantidad:</strong> ${resolvedCopies} contenedor(es)</li>
+            <li><strong>Shipper:</strong> ${formData.shipper || 'N/A'}</li>
+            <li><strong>Naviera:</strong> ${formData.naviera || 'N/A'}</li>
+            <li><strong>Nave:</strong> ${naveCompleta || 'N/A'}</li>
+            <li><strong>Especie:</strong> ${formData.especie || 'N/A'}</li>
+            <li><strong>POL:</strong> ${formData.pol || 'N/A'}</li>
+            <li><strong>POD:</strong> ${formData.pod || 'N/A'}</li>
+            <li><strong>Depósito:</strong> ${formData.deposito || 'N/A'}</li>
+            <li><strong>Flete:</strong> ${formData.flete || 'N/A'}</li>
+            <li><strong>Contrato:</strong> ${formData.contrato || 'N/A'}</li>
+            <li><strong>Condiciones:</strong> ${condicionesTexto}</li>
+            <li><strong>Ejecutivo:</strong> ${formData.ejecutivo || 'N/A'}</li>
+            <li><strong>Fecha Ingreso:</strong> ${formData.ingresado || 'N/A'}</li>
+            <li><strong>ETD:</strong> ${formData.etd || 'N/A'}</li>
+            <li><strong>ETA:</strong> ${formData.eta || 'N/A'}</li>
+            <li><strong>Comentario:</strong> ${formData.comentario || 'SIN COMENTARIO'}</li>
+          </ul>
+          
+          <p>Saludos cordiales.</p>
+        </div>
+      `;
+
+      // Enviar usando nuestra API de Gmail
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: ['rocio.villarroel@asli.cl', 'poliana.cisternas@asli.cl'],
+          subject: emailSubject,
+          body: emailBody,
+          action: 'draft', // Crear borrador para revisión
+          fromEmail: userEmail, // Email del usuario que crea el registro
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.draftId) {
+        // Abrir el borrador en Gmail
+        window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
+      } else {
+        console.warn('No se pudo crear el borrador del correo:', result);
+      }
+    } catch (error) {
+      console.error('Error enviando correo de solicitud de reserva:', error);
+    }
+  };
+
   const handleSave = async () => {
     // Solo se puede guardar desde el paso 5
     if (currentStep !== 5) {
@@ -584,50 +670,8 @@ Saludos cordiales.`;
       setLoading(false);
       onSuccess();
       
-      // Actualizar la ventana que abrimos al inicio con la URL del correo
-      if (emailWindow && !emailWindow.closed) {
-        const copiesInput = numberOfCopies.trim();
-        let resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
-        if (Number.isNaN(resolvedCopies) || resolvedCopies < 1) {
-          resolvedCopies = 1;
-        }
-        resolvedCopies = Math.min(resolvedCopies, MAX_COPIES);
-
-        const naveCompleta = formData.naveInicial && formData.viaje.trim() 
-          ? `${formData.naveInicial} [${formData.viaje.trim()}]` 
-          : formData.naveInicial || '';
-
-        const condiciones = [];
-        if (formData.temperatura) condiciones.push(`${formData.temperatura}°C`);
-        if (formData.cbm) condiciones.push(`CBM ${formData.cbm}`);
-        if (formData.tratamientoFrio) condiciones.push(`Trat. Frío ${formData.tratamientoFrio}`);
-        if (atmosferaControlada) {
-          if (formData.co2) condiciones.push(`CO₂ ${formData.co2}%`);
-          if (formData.o2) condiciones.push(`O₂ ${formData.o2}%`);
-          const tipoAtmosfera = formData.naviera?.includes('CMA') ? 'DAIKIN' : formData.naviera?.includes('MSC') ? 'STARCOOL' : '';
-          if (tipoAtmosfera) condiciones.push(tipoAtmosfera);
-        }
-        const condicionesTexto = condiciones.length > 0 ? condiciones.join(' // ') : 'No especificado';
-
-        const subject = `SOLICITUD DE RESERVA // ${resolvedCopies} // ${formData.pod || 'N/A'} // ${formData.pol || 'N/A'} // ${formData.deposito || 'N/A'} // ${formData.naviera || 'N/A'} // ${naveCompleta || 'N/A'} // ${formData.especie || 'N/A'} // ${condicionesTexto} // ${formData.flete || 'N/A'} // ${formData.shipper || 'N/A'} // ${formData.contrato || 'N/A'}`;
-
-        const body = `Estimado equipo,
-
-Favor su ayuda con la solicitud de reserva bajo el siguiente detalle:
-
-${generateEmailContent()}
-
-Saludos cordiales.`;
-
-        const toEmails = 'poliana.cisternas@asli.cl,rocio.villarroel@asli.cl';
-        const ccEmails = 'mario.basaez@asli.cl,hans.vasquez@asli.cl,alex.cardenas@asli.cl';
-
-        const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toEmails)}&cc=${encodeURIComponent(ccEmails)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        emailWindow.location.href = gmailUrl;
-      } else {
-        // Si la ventana se cerró o fue bloqueada, intentar abrir normalmente
-        handleRequestEmail();
-      }
+      // Enviar correo automático usando nuestra nueva API
+      await sendReservationEmail();
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =

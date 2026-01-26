@@ -2859,6 +2859,7 @@ export default function RegistrosPage() {
           createdByName={
             currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'
           }
+          userEmail={currentUser?.email || user?.email || null}
           navierasUnicas={navierasUnicas}
           ejecutivosUnicos={ejecutivosUnicos}
           especiesUnicas={especiesUnicas}
