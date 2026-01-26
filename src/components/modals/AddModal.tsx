@@ -451,10 +451,6 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       return;
     }
     
-    // Abrir una ventana en blanco ANTES de las operaciones async para evitar bloqueos
-    // Esto debe hacerse en el contexto del evento de usuario
-    const emailWindow = window.open('about:blank', '_blank');
-    
     setLoading(true);
     setError('');
 
