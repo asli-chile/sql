@@ -417,6 +417,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         </div>
       `;
 
+      console.log('📧 Enviando correo de solicitud de reserva...');
+      console.log('📧 userEmail:', userEmail);
+      console.log('📧 to:', ['rocio.villarroel@asli.cl', 'poliana.cisternas@asli.cl']);
+      console.log('📧 subject:', emailSubject);
+
       // Enviar usando nuestra API de Gmail
       const response = await fetch('/api/email/send', {
         method: 'POST',
@@ -433,12 +438,21 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       });
 
       const result = await response.json();
+      console.log('📧 Respuesta de API:', result);
+      console.log('📧 Response status:', response.status);
 
       if (response.ok && result.draftId) {
+        console.log('📧 Abriendo Gmail con draftId:', result.draftId);
         // Abrir el borrador en Gmail
-        window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
+        const gmailWindow = window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
+        console.log('📧 Ventana abierta:', gmailWindow);
+        
+        if (!gmailWindow) {
+          alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
+        }
       } else {
-        console.warn('No se pudo crear el borrador del correo:', result);
+        console.error('❌ No se pudo crear el borrador del correo:', result);
+        alert(`Error al crear el correo: ${result.error || 'Error desconocido'}`);
       }
     } catch (error) {
       console.error('Error enviando correo de solicitud de reserva:', error);
