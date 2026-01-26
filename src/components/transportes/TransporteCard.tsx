@@ -159,26 +159,42 @@ export function TransporteCard({
       
       if (bookingKey && bookingDocuments.has(bookingKey)) {
         try {
-          // Obtener el PDF del booking
-          const pdfResponse = await fetch(`/api/bookings/pdf/${bookingKey}`);
-          if (pdfResponse.ok) {
-            const pdfBlob = await pdfResponse.blob();
-            const pdfBase64 = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = () => {
-                const result = reader.result as string;
-                // Quitar el prefijo data:application/pdf;base64,
-                const base64 = result.split(',')[1];
-                resolve(base64);
-              };
-              reader.onerror = reject;
-              reader.readAsDataURL(pdfBlob);
+          const document = bookingDocuments.get(bookingKey);
+          if (document) {
+            // Obtener URL firmada desde Supabase Storage
+            const response = await fetch('/api/bookings/signed-url', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ path: document.path }),
             });
             
-            attachmentData = {
-              filename: `Booking_${bookingKey}.pdf`,
-              content: pdfBase64
-            };
+            if (response.ok) {
+              const { signedUrl } = await response.json();
+              
+              // Descargar el PDF desde la URL firmada
+              const pdfResponse = await fetch(signedUrl);
+              if (pdfResponse.ok) {
+                const pdfBlob = await pdfResponse.blob();
+                const pdfBase64 = await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const result = reader.result as string;
+                    // Quitar el prefijo data:application/pdf;base64,
+                    const base64 = result.split(',')[1];
+                    resolve(base64);
+                  };
+                  reader.onerror = reject;
+                  reader.readAsDataURL(pdfBlob);
+                });
+                
+                attachmentData = {
+                  filename: `Booking_${bookingKey}.pdf`,
+                  content: pdfBase64
+                };
+              }
+            }
           }
         } catch (error) {
           console.warn('No se pudo obtener el PDF del booking:', error);
