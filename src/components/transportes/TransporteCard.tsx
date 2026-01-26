@@ -119,19 +119,35 @@ export function TransporteCard({
           <ul style="margin: 5px 0; padding-left: 20px;">
             <li><strong>Booking:</strong> ${transporte.booking || 'N/A'}</li>
             <li><strong>${transporte.shipper || 'N/A'}</strong></li>
-            <li><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'} | <strong>Naviera:</strong> ${transporte.naviera || 'N/A'} | <strong>Nave:</strong> ${transporte.nave || 'N/A'} | <strong>Depósito:</strong> ${transporte.deposito || 'N/A'} | <strong>POL:</strong> ${transporte.pol || 'N/A'} | <strong>POD:</strong> ${transporte.pod || 'N/A'} | <strong>Fecha:</strong> ${transporte.dia_presentacion || 'N/A'} | <strong>Hora:</strong> ${transporte.hora_presentacion || 'N/A'} | <strong>Planta:</strong> ${transporte.planta || 'N/A'}</li>
+            <li><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'}</li>
+            <li><strong>Naviera:</strong> ${transporte.naviera || 'N/A'}</li>
+            <li><strong>Nave:</strong> ${transporte.nave || 'N/A'}</li>
+            <li><strong>Depósito:</strong> ${transporte.deposito || 'N/A'}</li>
+            <li><strong>POL:</strong> ${transporte.pol || 'N/A'}</li>
+            <li><strong>POD:</strong> ${transporte.pod || 'N/A'}</li>
+            <li><strong>Fecha:</strong> ${transporte.dia_presentacion || 'N/A'}</li>
+            <li><strong>Hora:</strong> ${transporte.hora_presentacion || 'N/A'}</li>
+            <li><strong>Planta:</strong> ${transporte.planta || 'N/A'}</li>
           </ul>
           
           <p><strong>DATOS DE TRANSPORTE</strong></p>
           <ul style="margin: 5px 0; padding-left: 20px;">
             <li><strong>Transporte:</strong> ${transporte.transporte || 'N/A'}</li>
-            <li><strong>CONTENEDOR:</strong> ${transporte.contenedor || 'N/A'} | <strong>SELLO:</strong> ${transporte.sello || 'N/A'} | <strong>TARA:</strong> ${transporte.tara || 'N/A'}</li>
-            <li><strong>CONDUCTOR:</strong> ${transporte.conductor || 'N/A'} | <strong>RUT:</strong> ${transporte.rut || 'N/A'} | <strong>TELEFONO:</strong> ${transporte.telefono || 'N/A'} | <strong>PATENTE:</strong> ${transporte.patente || 'N/A'} | <strong>PATENTE REM.:</strong> ${transporte.patente_remolque || 'N/A'}</li>
+            <li><strong>CONTENEDOR:</strong> ${transporte.contenedor || 'N/A'}</li>
+            <li><strong>SELLO:</strong> ${transporte.sello || 'N/A'}</li>
+            <li><strong>TARA:</strong> ${transporte.tara || 'N/A'}</li>
+            <li><strong>CONDUCTOR:</strong> ${transporte.conductor || 'N/A'}</li>
+            <li><strong>RUT:</strong> ${transporte.rut || 'N/A'}</li>
+            <li><strong>TELEFONO:</strong> ${transporte.telefono || 'N/A'}</li>
+            <li><strong>PATENTE:</strong> ${transporte.patente || 'N/A'}</li>
+            <li><strong>PATENTE REM.:</strong> ${transporte.patente_remolque || 'N/A'}</li>
           </ul>
           
           <p><strong>DATOS DE STACKING</strong></p>
           <ul style="margin: 5px 0; padding-left: 20px;">
-            <li><strong>INICIO STACKING:</strong> ${transporte.stacking || 'N/A'} | <strong>FIN DE STACKING:</strong> ${transporte.fin_stacking || 'N/A'} | <strong>CUTOFF:</strong> ${transporte.cut_off || 'N/A'}</li>
+            <li><strong>INICIO STACKING:</strong> ${transporte.stacking || 'N/A'}</li>
+            <li><strong>FIN DE STACKING:</strong> ${transporte.fin_stacking || 'N/A'}</li>
+            <li><strong>CUTOFF:</strong> ${transporte.cut_off || 'N/A'}</li>
           </ul>
         </div>
       `;
