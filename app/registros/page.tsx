@@ -53,7 +53,7 @@ interface User {
 
 export default function RegistrosPage() {
   const { theme } = useTheme();
-  const { currentUser, setCurrentUser } = useUser();
+  const { currentUser, setCurrentUser, transportesCount, registrosCount } = useUser();
   const { toasts, removeToast, success, error, warning } = useToast();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2612,8 +2612,8 @@ export default function RegistrosPage() {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', isActive: true, counter: totalRegistros, tone: 'sky', icon: Ship },
-        { label: 'Transportes', id: '/transportes', icon: Truck },
+        { label: 'Embarques', id: '/registros', isActive: true, counter: registrosCount, tone: 'violet', icon: Ship },
+        { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         ...(isRodrigo

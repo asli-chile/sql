@@ -2,6 +2,8 @@
 
 import { useState, useEffect, createContext, useContext } from 'react';
 import { createLogger } from '@/lib/logger';
+import { fetchTransportes } from '@/lib/transportes-service';
+import { createClient } from '@/lib/supabase-browser';
 
 const log = createLogger('useUser');
 
@@ -26,6 +28,8 @@ interface UserContextType {
   canViewHistory: boolean;
   canDelete: boolean;
   canExport: boolean;
+  transportesCount: number;
+  registrosCount: number;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -33,12 +37,64 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [transportesCount, setTransportesCount] = useState<number>(0);
+  const [registrosCount, setRegistrosCount] = useState<number>(0);
 
   useEffect(() => {
     // NO cargar desde localStorage - siempre cargar desde Supabase
     // Esto asegura que los datos siempre estén sincronizados con la base de datos
     loadUserFromSupabase();
   }, []);
+
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (!currentUser) {
+        console.log('🔢 Sin usuario, contadores en 0');
+        setTransportesCount(0);
+        setRegistrosCount(0);
+        return;
+      }
+
+      console.log('🔢 Cargando contadores para:', currentUser.nombre);
+      
+      try {
+        // Contar transportes
+        const supabase = createClient();
+        const { count: transportesCount, error: transportesError } = await supabase
+          .from('transportes')
+          .select('*', { count: 'exact', head: true })
+          .is('deleted_at', null);
+
+        if (transportesError) {
+          console.error('🔢 Error contando transportes:', transportesError);
+          setTransportesCount(0);
+        } else {
+          console.log('🔢 Transportes:', transportesCount || 0);
+          setTransportesCount(transportesCount || 0);
+        }
+
+        // Contar registros
+        const { count: registrosCount, error: registrosError } = await supabase
+          .from('registros')
+          .select('*', { count: 'exact', head: true })
+          .is('deleted_at', null);
+
+        if (registrosError) {
+          console.error('🔢 Error contando registros:', registrosError);
+          setRegistrosCount(0);
+        } else {
+          console.log('🔢 Registros:', registrosCount || 0);
+          setRegistrosCount(registrosCount || 0);
+        }
+      } catch (error) {
+        console.error('🔢 Error general:', error);
+        setTransportesCount(0);
+        setRegistrosCount(0);
+      }
+    };
+
+    loadCounts();
+  }, [currentUser]);
 
   const loadUserFromSupabase = async () => {
     try {
@@ -98,6 +154,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     canViewHistory,
     canDelete,
     canExport,
+    transportesCount,
+    registrosCount,
   };
 
   return (

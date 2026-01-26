@@ -85,7 +85,8 @@ export default function TransportesPage() {
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [sortBy, setSortBy] = useState<keyof TransporteRecord>('exportacion');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const { canAdd, canEdit, setCurrentUser, currentUser } = useUser();
+  const { canAdd, canEdit, setCurrentUser, currentUser, transportesCount, registrosCount } = useUser();
+  console.log(' En página transportes - transportesCount:', transportesCount, 'registrosCount:', registrosCount);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -635,8 +636,8 @@ export default function TransportesPage() {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', icon: Ship },
-        { label: 'Transportes', id: '/transportes', isActive: true, icon: Truck },
+        { label: 'Embarques', id: '/registros', icon: Ship, counter: registrosCount, tone: 'violet' },
+        { label: 'Transportes', id: '/transportes', isActive: true, icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         ...(isRodrigo
