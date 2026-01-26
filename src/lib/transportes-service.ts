@@ -66,6 +66,8 @@ export type TransporteRecord = {
   ref_cliente: string | null;
   from_registros: boolean | null;
   ref_asli: string | null;
+  shipper: string | null;
+  consignatario: string | null;
 };
 
 export async function fetchTransportes(): Promise<TransporteRecord[]> {
