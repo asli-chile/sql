@@ -85,7 +85,7 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
     // Primero buscar el usuario y obtener su cliente asignado
     const { data: userData, error: userError } = await supabase
       .from('usuarios')
-      .select('cliente')
+      .select('cliente_nombre')
       .eq('nombre', clientName.trim())
       .single();
     
@@ -96,19 +96,19 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
       // SEGURIDAD: Si no encuentra el usuario, no mostrar ningún transporte
       query = query.eq('exportacion', 'USUARIO_NO_VALIDO_' + Date.now());
     } else if (userData) {
-      console.log('✅ Usuario encontrado:', clientName.trim(), '-> cliente:', userData.cliente);
+      console.log('✅ Usuario encontrado:', clientName.trim(), '-> cliente:', userData.cliente_nombre);
       
-      if (userData.cliente && userData.cliente.trim() !== '') {
+      if (userData.cliente_nombre && userData.cliente_nombre.trim() !== '') {
         // Ahora buscar el cliente real en la tabla clientes
         const { data: clienteData, error: clienteError } = await supabase
           .from('clientes')
           .select('nombre')
-          .eq('nombre', userData.cliente.trim())
+          .eq('nombre', userData.cliente_nombre.trim())
           .single();
         
         if (clienteError) {
           console.log('⚠️ Cliente no encontrado en tabla clientes, usando nombre directo del usuario');
-          query = query.eq('exportacion', userData.cliente.trim());
+          query = query.eq('exportacion', userData.cliente_nombre.trim());
         } else if (clienteData) {
           console.log('✅ Cliente confirmado:', clienteData.nombre);
           query = query.eq('exportacion', clienteData.nombre);
