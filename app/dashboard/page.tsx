@@ -206,7 +206,9 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme } = useTheme();
-  const { transportesCount, registrosCount } = useUser();
+  const { transportesCount, registrosCount, setCurrentUser } = useUser();
+  
+  console.log('🔢 Dashboard - transportesCount:', transportesCount, 'registrosCount:', registrosCount);
 
   // Detectar si estamos en la página de registros y qué filtro está activo
   const isRegistrosPage = pathname === '/registros';
@@ -468,13 +470,19 @@ export default function DashboardPage() {
       if (userError) {
         console.error('Error obteniendo información del usuario:', userError);
         // Si no se encuentra en la tabla usuarios, intentar usar datos de auth como fallback
-        setUserInfo({
+        const fallbackUser = {
+          id: user.id,
           nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-          email: user.email || ''
-        });
+          email: user.email || '',
+          rol: 'cliente',
+          activo: true
+        };
+        setUserInfo(fallbackUser);
+        setCurrentUser(fallbackUser);
       } else {
         // Usar datos de la tabla usuarios (fuente de verdad)
         setUserInfo(userData);
+        setCurrentUser(userData);
       }
     } catch (error) {
       console.error('Error checking user:', error);
