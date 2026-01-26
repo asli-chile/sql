@@ -659,20 +659,21 @@ export default function TransportesPage() {
         {
           title: 'Mantenimiento',
           items: [
-            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
-          ],
-        },
-      ]
-      : []),
-  ];
 
-  if (loadingUser) {
-    return <LoadingScreen message="Cargando transportes..." />;
-  }
+if (!user) {
+return null;
+}
 
-  if (!user) {
-    return null;
-  }
+return (
+<EditingCellProvider>
+<div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+{/* Overlay para móvil */}
+{isMobileMenuOpen && (
+<div
+className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+onClick={() => setIsMobileMenuOpen(false)}
+/>
+)}
 
   return (
     <EditingCellProvider>

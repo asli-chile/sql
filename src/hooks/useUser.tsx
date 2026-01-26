@@ -49,13 +49,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadCounts = async () => {
       if (!currentUser) {
-        console.log('🔢 Sin usuario, contadores en 0');
         setTransportesCount(0);
         setRegistrosCount(0);
         return;
       }
-
-      console.log('🔢 Cargando contadores para:', currentUser.nombre);
       
       try {
         // Contar transportes
@@ -66,10 +63,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           .is('deleted_at', null);
 
         if (transportesError) {
-          console.error('🔢 Error contando transportes:', transportesError);
           setTransportesCount(0);
         } else {
-          console.log('🔢 Transportes:', transportesCount || 0);
           setTransportesCount(transportesCount || 0);
         }
 
@@ -80,14 +75,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           .is('deleted_at', null);
 
         if (registrosError) {
-          console.error('🔢 Error contando registros:', registrosError);
           setRegistrosCount(0);
         } else {
-          console.log('🔢 Registros:', registrosCount || 0);
           setRegistrosCount(registrosCount || 0);
         }
       } catch (error) {
-        console.error('🔢 Error general:', error);
         setTransportesCount(0);
         setRegistrosCount(0);
       }

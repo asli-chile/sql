@@ -207,8 +207,6 @@ export default function DashboardPage() {
   const searchParams = useSearchParams();
   const { theme } = useTheme();
   const { transportesCount, registrosCount, setCurrentUser } = useUser();
-  
-  console.log('🔢 Dashboard - transportesCount:', transportesCount, 'registrosCount:', registrosCount);
 
   // Detectar si estamos en la página de registros y qué filtro está activo
   const isRegistrosPage = pathname === '/registros';
