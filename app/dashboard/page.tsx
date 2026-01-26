@@ -36,6 +36,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/layout/AppFooter';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
+import { fetchTransportes } from '@/lib/transportes-service';
 
 // Importar el mapa dinámicamente para evitar problemas con SSR
 const ShipmentsMap = dynamic(() => import('@/components/tracking/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
@@ -201,6 +202,7 @@ export default function DashboardPage() {
   const [selectedEjecutivo, setSelectedEjecutivo] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [transportesCount, setTransportesCount] = useState<number>(0);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -440,6 +442,22 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    const loadTransportesCount = async () => {
+      try {
+        const transportes = await fetchTransportes();
+        setTransportesCount(transportes.length);
+      } catch (error) {
+        console.error('Error loading transportes count:', error);
+        setTransportesCount(0);
+      }
+    };
+
+    if (user) {
+      void loadTransportesCount();
+    }
+  }, [user]);
+
   const checkUser = async () => {
     try {
       const supabase = createClient();
@@ -663,7 +681,7 @@ export default function DashboardPage() {
       title: 'Módulos',
       items: [
         { label: 'Embarques', id: '/registros', icon: Ship },
-        { label: 'Transportes', id: '/transportes', icon: Truck },
+        { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         ...(isRodrigo
