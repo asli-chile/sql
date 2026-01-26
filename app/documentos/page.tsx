@@ -55,6 +55,9 @@ const DOCUMENT_TYPE_MAP: Record<string, string> = {
 interface DocumentInfo {
   path: string;
   name: string;
+  size?: number;
+  type?: string;
+  modified_at?: string;
 }
 
 type DocumentMap = Map<string, Map<string, DocumentInfo>>; // Map<booking, Map<documentType, DocumentInfo>>
@@ -1395,8 +1398,8 @@ export default function DocumentosPage() {
               onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
             />
 
-            {/* Modal */}
-            <div className={`relative z-10 w-full max-w-2xl rounded-2xl border shadow-2xl ${theme === 'dark'
+            {/* Modal más grande */}
+            <div className={`relative z-10 w-full max-w-6xl max-h-[90vh] rounded-2xl border shadow-2xl overflow-hidden ${theme === 'dark'
               ? 'border-slate-700 bg-slate-800'
               : 'border-gray-200 bg-white'
               }`}>
@@ -1412,11 +1415,11 @@ export default function DocumentosPage() {
                   <div>
                     <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                       }`}>
-                      {documentModal.hasDocument ? 'Detalles del documento' : 'Subir documento'}
+                      {documentModal.hasDocument ? 'Vista previa del documento' : 'Subir documento'}
                     </h2>
                     <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                       }`}>
-                      {documentModal.hasDocument ? 'Información del archivo almacenado' : 'Revisa la información antes de subir'}
+                      {documentModal.hasDocument ? 'Visualización del archivo PDF' : 'Revisa la información antes de subir'}
                     </p>
                   </div>
                 </div>
@@ -1432,123 +1435,243 @@ export default function DocumentosPage() {
                 </button>
               </div>
 
-              {/* Content */}
-              <div className="p-6 space-y-6">
-                {/* Información del documento */}
-                <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
-                  }`}>
-                  <h3 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-                    }`}>
-                    Información del documento
-                  </h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+              {/* Contenido principal */}
+              <div className="flex flex-col lg:flex-row h-[calc(90vh-8rem)]">
+                {/* Panel lateral con información */}
+                <div className={`w-full lg:w-80 border-b lg:border-b-0 lg:border-r ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'} p-6`}>
+                  {/* Información del documento */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className={`text-xs font-medium uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
                         }`}>
-                        Booking:
-                      </span>
-                      <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        Booking
+                      </p>
+                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
                         {documentModal.booking}
-                      </span>
+                      </p>
                     </div>
-                    <div className="flex justify-between">
-                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                    <div>
+                      <p className={`text-xs font-medium uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
                         }`}>
-                        Tipo de documento:
-                      </span>
-                      <span className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        Tipo
+                      </p>
+                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                         }`}>
                         {documentModal.docType.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
+                      </p>
                     </div>
-                  </div>
-                </div>
 
-                {/* Información del archivo - si existe o si se va a subir */}
-                {documentModal.hasDocument && docInfo ? (
-                  <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
-                    }`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-white'
+                    {/* Información del archivo */}
+                    {documentModal.hasDocument && docInfo ? (
+                      <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
                         }`}>
-                        <File className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
-                          }`} />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-3">
-                        <div>
-                          <p className={`text-xs uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                        <div className="flex items-start gap-4">
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${theme === 'dark' ? 'bg-sky-500/20' : 'bg-blue-100'
                             }`}>
-                            Nombre del archivo
-                          </p>
-                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                            }`}>
-                            {docInfo.name}
-                          </p>
-                        </div>
-                        <div>
-                          <p className={`text-xs uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                            }`}>
-                            Ruta
-                          </p>
-                          <p className={`text-sm font-mono ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-                            }`}>
-                            {docInfo.path}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : documentModal.file ? (
-                  <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
-                    }`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-white'
-                        }`}>
-                        <File className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
-                          }`} />
-                      </div>
-                      <div className="flex-1 min-w-0 space-y-3">
-                        <div>
-                          <p className={`text-xs uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                            }`}>
-                            Nombre del archivo
-                          </p>
-                          <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                            }`}>
-                            {documentModal.file.name}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className={`text-xs uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                            <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                              }`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
-                              Tamaño
+                              {docInfo.name}
                             </p>
-                            <div className="flex items-center gap-2">
-                              <HardDrive className={`h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
-                                }`} />
+                            <div className="grid grid-cols-2 gap-4 mt-2">
+                              <div>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                  }`}>
+                                  Tamaño
+                                </p>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                                  }`}>
+                                  {((docInfo.size || 0) / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                              <div>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                  }`}>
+                                  Tipo
+                                </p>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                                  }`}>
+                                  {docInfo.type}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                }`}>
+                                Modificado
+                              </p>
                               <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
                                 }`}>
-                                {(documentModal.file.size / 1024 / 1024).toFixed(2)} MB
+                                {new Date(docInfo.modified_at || Date.now()).toLocaleString('es-CL')}
                               </p>
                             </div>
                           </div>
-                          <div>
-                            <p className={`text-xs uppercase tracking-wider mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                        </div>
+                      </div>
+                    ) : documentModal.file ? (
+                      <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
+                        }`}>
+                        <div className="flex items-start gap-4">
+                          <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${theme === 'dark' ? 'bg-sky-500/20' : 'bg-blue-100'
+                            }`}>
+                            <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                              }`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
                               }`}>
-                              Tipo
+                              Archivo a subir
                             </p>
-                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                            <p className={`font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'
                               }`}>
-                              {documentModal.file.type || documentModal.file.name.split('.').pop()?.toUpperCase() || 'N/A'}
+                              {documentModal.file.name}
                             </p>
+                            <div className="grid grid-cols-2 gap-4 mt-2">
+                              <div>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                  }`}>
+                                  Tamaño
+                                </p>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                                  }`}>
+                                  {(documentModal.file.size / 1024 / 1024).toFixed(2)} MB
+                                </p>
+                              </div>
+                              <div>
+                                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                  }`}>
+                                  Tipo
+                                </p>
+                                <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+                                  }`}>
+                                  {documentModal.file.type || documentModal.file.name.split('.').pop()?.toUpperCase() || 'N/A'}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : null}
                   </div>
-                ) : null}
+                </div>
+
+                {/* Área de vista previa del PDF */}
+                <div className="flex-1 p-6 overflow-hidden">
+                  {documentModal.hasDocument && docInfo ? (
+                    <div className="w-full h-full flex flex-col">
+                      <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
+                        <p><strong>Debug:</strong> Cargando {docInfo.type || 'documento'} desde: {docInfo.path}</p>
+                      </div>
+                      <div className="flex-1 bg-gray-100 dark:bg-slate-900 rounded-lg overflow-hidden">
+                        {(() => {
+                          const isPDF = docInfo.name?.toLowerCase().endsWith('.pdf');
+                          const isExcel = docInfo.name?.toLowerCase().match(/\.(xlsx|xls)$/);
+                          
+                          if (isPDF) {
+                            // Vista previa de PDF
+                            return (
+                              <iframe
+                                src={`/api/bookings/signed-url?documentPath=${encodeURIComponent(docInfo.path)}`}
+                                className="w-full h-full border-0"
+                                title={`Vista previa de ${docInfo.name}`}
+                                onLoad={() => console.log('✅ PDF cargado exitosamente')}
+                                onError={(e) => {
+                                  console.error('❌ Error al cargar PDF:', e);
+                                  console.error('📄 Path del documento:', docInfo.path);
+                                }}
+                              />
+                            );
+                          } else if (isExcel) {
+                            // Para Excel, mostrar vista previa con SheetJS (renderizado nativo en el navegador)
+                            return (
+                              <div className="w-full h-full flex flex-col">
+                                <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm">
+                                  <p><strong>Excel:</strong> Cargando vista previa...</p>
+                                </div>
+                                <div className="flex-1 bg-white rounded-lg overflow-hidden">
+                                  <iframe
+                                    src={`/api/bookings/excel-preview?documentPath=${encodeURIComponent(docInfo.path)}`}
+                                    className="w-full h-full border-0"
+                                    title={`Vista previa de ${docInfo.name}`}
+                                    onLoad={() => console.log('✅ Excel preview con SheetJS cargado')}
+                                    onError={(e) => {
+                                      console.error('❌ Error al cargar Excel preview:', e);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            // Para otros archivos, mostrar mensaje
+                            return (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <div className="text-center p-6">
+                                  <div className={`flex h-16 w-16 items-center justify-center rounded-full mx-auto mb-4 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                                    }`}>
+                                    <FileText className={`h-8 w-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                      }`} />
+                                  </div>
+                                  <p className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                                    }`}>
+                                    Vista previa no disponible
+                                  </p>
+                                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                    } mt-1`}>
+                                    Tipo de archivo: {docInfo.type || 'Desconocido'}
+                                  </p>
+                                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                                    } mt-2`}>
+                                    Usa el botón "Descargar" para ver este archivo
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+                        })()}
+                      </div>
+                    </div>
+                  ) : documentModal.file ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <div className={`flex h-16 w-16 items-center justify-center rounded-full mx-auto mb-4 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                          }`}>
+                          <FileText className={`h-8 w-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                            }`} />
+                        </div>
+                        <p className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                          Archivo listo para subir
+                        </p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                          } mt-1`}>
+                          {documentModal.file.name}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="text-center">
+                        <div className={`flex h-16 w-16 items-center justify-center rounded-full mx-auto mb-4 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                          }`}>
+                          <FileText className={`h-8 w-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                            }`} />
+                        </div>
+                        <p className={`text-lg font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                          No hay documento
+                        </p>
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                          } mt-1`}>
+                          Sube un archivo para verlo aquí
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Footer */}
@@ -1567,11 +1690,23 @@ export default function DocumentosPage() {
                         : 'text-red-600 hover:bg-red-50 hover:text-red-700'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                      {isDeleting ? 'Eliminando...' : 'Eliminar documento'}
                     </button>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  {documentModal.hasDocument && (
+                    <button
+                      onClick={() => handleDownloadDocument(documentModal.booking, documentModal.docType)}
+                      disabled={isDeleting || isUploading}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark'
+                        ? 'text-slate-300 hover:bg-slate-700'
+                        : 'text-gray-700 hover:bg-gray-100'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      Descargar
+                    </button>
+                  )}
                   <button
                     onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark'
@@ -1579,31 +1714,16 @@ export default function DocumentosPage() {
                       : 'text-gray-700 hover:bg-gray-100'
                       }`}
                   >
-                    {documentModal.hasDocument ? 'Cerrar' : 'Cancelar'}
+                    Cerrar
                   </button>
-                  {documentModal.hasDocument ? (
-                    <button
-                      onClick={() => handleDownloadDocument(documentModal.booking, documentModal.docType)}
-                      disabled={isUploading || isDeleting}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Descargar
-                    </button>
-                  ) : canUpload && documentModal.file ? (
-                    <button
-                      onClick={handleConfirmUpload}
-                      disabled={isUploading}
-                      className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {isUploading ? 'Subiendo...' : 'Confirmar y subir'}
-                    </button>
-                  ) : null}
                 </div>
               </div>
             </div>
           </div>
         );
       })()}
+
+      {/* Resto del contenido */}
     </div>
   );
 }
