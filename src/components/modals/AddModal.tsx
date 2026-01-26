@@ -363,6 +363,13 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
   const sendReservationEmail = async () => {
     try {
+      console.log('📧 Iniciando sendReservationEmail...');
+      console.log('📧 userEmail:', userEmail);
+      
+      if (!userEmail) {
+        alert('Error: No se encontró el email del usuario. Por favor, inicia sesión nuevamente.');
+        return;
+      }
       const copiesInput = numberOfCopies.trim();
       let resolvedCopies = copiesInput === '' ? 1 : parseInt(copiesInput, 10);
       if (Number.isNaN(resolvedCopies) || resolvedCopies < 1) {
@@ -1762,7 +1769,14 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     
                     <button
                       type="button"
-                      onClick={isSaved ? sendReservationEmail : handleSave}
+                      onClick={() => {
+                        console.log('🔘 Botón clickeado - isSaved:', isSaved);
+                        if (isSaved) {
+                          sendReservationEmail();
+                        } else {
+                          handleSave();
+                        }
+                      }}
                       disabled={loading}
                       className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
                     >
