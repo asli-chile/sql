@@ -119,7 +119,7 @@ export function TransporteCard({
           <ul style="margin: 5px 0; padding-left: 20px;">
             <li><strong>Booking:</strong> ${transporte.booking || 'N/A'}</li>
             <li><strong>${transporte.shipper || 'N/A'}</strong></li>
-            <li><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'} | Naviera: ${transporte.naviera || 'N/A'} | Nave: ${transporte.nave || 'N/A'} | Depósito: ${transporte.deposito || 'N/A'} | POL: ${transporte.pol || 'N/A'} | POD: ${transporte.pod || 'N/A'} | Fecha: ${transporte.dia_presentacion || 'N/A'} | Hora: ${transporte.hora_presentacion || 'N/A'} | Planta: ${transporte.planta || 'N/A'}</li>
+            <li><strong>Ref Cliente:</strong> ${transporte.ref_cliente || 'N/A'} | <strong>Naviera:</strong> ${transporte.naviera || 'N/A'} | <strong>Nave:</strong> ${transporte.nave || 'N/A'} | <strong>Depósito:</strong> ${transporte.deposito || 'N/A'} | <strong>POL:</strong> ${transporte.pol || 'N/A'} | <strong>POD:</strong> ${transporte.pod || 'N/A'} | <strong>Fecha:</strong> ${transporte.dia_presentacion || 'N/A'} | <strong>Hora:</strong> ${transporte.hora_presentacion || 'N/A'} | <strong>Planta:</strong> ${transporte.planta || 'N/A'}</li>
           </ul>
           
           <p><strong>DATOS DE TRANSPORTE</strong></p>
