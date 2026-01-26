@@ -78,12 +78,26 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
     .select('*')
     .is('deleted_at', null);
 
-  // Si hay un cliente específico, intentar filtrar por múltiples campos
+  // Si hay un cliente específico, obtener el nombre exacto desde la tabla clientes
   if (clientName && clientName.trim() !== '') {
-    console.log('🔍 Filtrando transportes por cliente:', clientName.trim());
+    console.log('🔍 Buscando cliente exacto para:', clientName.trim());
     
-    // Intentar filtrar por shipper o ref_cliente (algunos registros pueden tener uno u otro)
-    query = query.or(`shipper.eq.${clientName.trim()},ref_cliente.eq.${clientName.trim()}`);
+    // Obtener el nombre exacto del cliente desde la tabla clientes
+    const { data: clienteData, error: clienteError } = await supabase
+      .from('clientes')
+      .select('nombre')
+      .eq('nombre', clientName.trim())
+      .single();
+    
+    if (clienteError) {
+      console.log('⚠️ Cliente no encontrado en tabla clientes, usando nombre directo');
+      // Si no encuentra en clientes, intenta con el nombre directo
+      query = query.eq('exportacion', clientName.trim());
+    } else if (clienteData) {
+      console.log('✅ Cliente encontrado:', clienteData.nombre);
+      // Filtrar por el nombre exacto del cliente en el campo exportacion
+      query = query.eq('exportacion', clienteData.nombre);
+    }
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -96,10 +110,11 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
   console.log('📋 Transportes fetched:', data?.length || 0);
   console.log('👤 Filtered by client:', clientName || 'ALL');
   
-  // Para debug: mostrar algunos registros con shipper y ref_cliente
+  // Para debug: mostrar exportacion y otros campos
   if (data && data.length > 0) {
-    console.log('🔍 Sample registros con shipper/ref_cliente:', data.slice(0, 5).map(t => ({ 
+    console.log('🔍 Sample registros con exportacion:', data.slice(0, 3).map(t => ({ 
       id: t.id, 
+      exportacion: t.exportacion,
       shipper: t.shipper,
       ref_cliente: t.ref_cliente,
       booking: t.booking,
