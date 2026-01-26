@@ -83,7 +83,7 @@ export default function TransportesPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  const [sortBy, setSortBy] = useState<keyof TransporteRecord>('contenedor');
+  const [sortBy, setSortBy] = useState<keyof TransporteRecord>('exportacion');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { canAdd, canEdit, setCurrentUser, currentUser } = useUser();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
