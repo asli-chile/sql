@@ -108,7 +108,7 @@ export function TransporteCard({
     setSendingEmail(true);
 
     try {
-      const emailSubject = `Solicitud de Retiro y Presentación en Planta - ${transporte.contenedor || 'N/A'} - ${transporte.booking || 'N/A'}`;
+      const emailSubject = `${transporte.ref_cliente || 'N/A'} // SOLICITUD DE RETIRO Y PRESENTACION EN PLANTA // ${transporte.booking || 'N/A'} // ${transporte.naviera || 'N/A'} // ${transporte.nave || 'N/A'} // ${transporte.planta || 'N/A'} // POL - POD // ${transporte.ref_cliente || 'N/A'} // ${transporte.ref_asli || 'N/A'}`;
 
       const emailBody = `
         <div style="font-family: Arial, sans-serif; font-size: 11px; line-height: 1.3; color: #333;">
