@@ -82,17 +82,20 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
   if (clientName && clientName.trim() !== '') {
     console.log('🔍 Buscando cliente exacto para:', clientName.trim());
     
-    // Obtener el nombre exacto del cliente desde la tabla clientes
+    // Intentar múltiples formas de encontrar el cliente
     const { data: clienteData, error: clienteError } = await supabase
       .from('clientes')
       .select('nombre')
-      .eq('nombre', clientName.trim())
+      .or(`nombre.eq.${clientName.trim()},nombre.ilike.%${clientName.trim()}%`)
+      .limit(1)
       .single();
     
     if (clienteError) {
-      console.log('⚠️ Cliente no encontrado en tabla clientes, usando nombre directo');
-      // Si no encuentra en clientes, intenta con el nombre directo
-      query = query.eq('exportacion', clientName.trim());
+      console.log('⚠️ Cliente no encontrado en tabla clientes, sin acceso a transportes');
+      console.log('🔍 Error detalles:', clienteError);
+      console.log('🔍 Cliente buscado:', clientName.trim());
+      // SEGURIDAD: Si no encuentra el cliente, no mostrar ningún transporte
+      query = query.eq('exportacion', 'CLIENTE_NO_VALIDO_' + Date.now());
     } else if (clienteData) {
       console.log('✅ Cliente encontrado:', clienteData.nombre);
       // Filtrar por el nombre exacto del cliente en el campo exportacion
