@@ -74,13 +74,7 @@ export async function fetchTransportes(): Promise<TransporteRecord[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from('transportes')
-    .select(`
-      *,
-      registros (
-        shipper,
-        consignatario
-      )
-    `)
+    .select('*')
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
@@ -89,12 +83,14 @@ export async function fetchTransportes(): Promise<TransporteRecord[]> {
     throw error;
   }
 
-  // Aplanar los datos para incluir shipper y consignatario
-  return data?.map(item => ({
-    ...item,
-    shipper: item.registros?.shipper || null,
-    consignatario: item.registros?.consignatario || null,
-  })) ?? [];
+  console.log('📋 Transportes fetched:', data?.length || 0);
+  
+  // Para debug: mostrar algunos registros con registro_id
+  if (data && data.length > 0) {
+    console.log('🔍 Sample registro_id values:', data.slice(0, 3).map(t => ({ id: t.id, registro_id: t.registro_id })));
+  }
+
+  return data ?? [];
 }
 
 export async function fetchDeletedTransportes(selectedDays: number = 7): Promise<TransporteRecord[]> {
