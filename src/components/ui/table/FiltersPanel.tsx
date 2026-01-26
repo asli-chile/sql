@@ -330,6 +330,20 @@ export function FiltersPanel({
           }
 
           if (column.id === 'naveInicial') {
+            // Obtener el filtro de naviera activo
+            const navieraFilter = table.getColumn('naviera')?.getFilterValue() as string;
+            
+            // Filtrar naves por naviera seleccionada
+            const navesFiltradas = navieraFilter 
+              ? navesFiltrables.filter(([value]) => {
+                  // Buscar la nave en los datos originales para verificar su naviera
+                  const registro = table.getPreFilteredRowModel().rows.find(row => 
+                    row.original.naveInicial === value
+                  );
+                  return registro?.original.naviera === navieraFilter;
+                })
+              : navesFiltrables;
+
             return (
               <div key={column.id} className="space-y-1">
                 <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
@@ -346,7 +360,7 @@ export function FiltersPanel({
                   className={getFilterStyles(hasFilter)}
                 >
                   <option value="">Todas</option>
-                  {navesFiltrables.map(([value, label]) => (
+                  {navesFiltradas.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
