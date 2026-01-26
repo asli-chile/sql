@@ -78,14 +78,14 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
     .select('*')
     .is('deleted_at', null);
 
-  // Si hay un cliente específico, obtener el cliente real desde la tabla usuarios
+  // Si hay un cliente específico, obtener el usuario y filtrar según su rol
   if (clientName && clientName.trim() !== '') {
-    console.log('🔍 Buscando cliente real para usuario:', clientName.trim());
+    console.log('🔍 Buscando usuario:', clientName.trim());
     
-    // Primero buscar el usuario y obtener su cliente asignado
+    // Primero buscar el usuario y obtener su rol y asignaciones
     const { data: userData, error: userError } = await supabase
       .from('usuarios')
-      .select('cliente_nombre')
+      .select('rol, cliente_nombre, clientes_asignados')
       .eq('nombre', clientName.trim())
       .single();
     
@@ -96,26 +96,33 @@ export async function fetchTransportes(clientName?: string | null): Promise<Tran
       // SEGURIDAD: Si no encuentra el usuario, no mostrar ningún transporte
       query = query.eq('exportacion', 'USUARIO_NO_VALIDO_' + Date.now());
     } else if (userData) {
-      console.log('✅ Usuario encontrado:', clientName.trim(), '-> cliente:', userData.cliente_nombre);
+      console.log('✅ Usuario encontrado:', clientName.trim(), '-> rol:', userData.rol);
       
-      if (userData.cliente_nombre && userData.cliente_nombre.trim() !== '') {
-        // Ahora buscar el cliente real en la tabla clientes
-        const { data: clienteData, error: clienteError } = await supabase
-          .from('clientes')
-          .select('nombre')
-          .eq('nombre', userData.cliente_nombre.trim())
-          .single();
-        
-        if (clienteError) {
-          console.log('⚠️ Cliente no encontrado en tabla clientes, usando nombre directo del usuario');
+      if (userData.rol === 'cliente') {
+        // Cliente: ver solo sus transportes usando cliente_nombre
+        if (userData.cliente_nombre && userData.cliente_nombre.trim() !== '') {
+          console.log('👤 Cliente filtrando por:', userData.cliente_nombre);
           query = query.eq('exportacion', userData.cliente_nombre.trim());
-        } else if (clienteData) {
-          console.log('✅ Cliente confirmado:', clienteData.nombre);
-          query = query.eq('exportacion', clienteData.nombre);
+        } else {
+          console.log('⚠️ Cliente sin cliente_nombre asignado, sin acceso a transportes');
+          query = query.eq('exportacion', 'SIN_CLIENTE_' + Date.now());
         }
+      } else if (userData.rol === 'ejecutivo') {
+        // Ejecutivo: ver transportes de sus clientes asignados
+        if (userData.clientes_asignados && userData.clientes_asignados.length > 0) {
+          console.log('💼 Ejecutivo filtrando por clientes:', userData.clientes_asignados);
+          query = query.in('exportacion', userData.clientes_asignados);
+        } else {
+          console.log('⚠️ Ejecutivo sin clientes asignados, sin acceso a transportes');
+          query = query.eq('exportacion', 'SIN_CLIENTES_' + Date.now());
+        }
+      } else if (userData.rol === 'admin') {
+        // Admin: ver todos los transportes (no aplicar filtro)
+        console.log('👑 Admin viendo todos los transportes');
+        // No aplicar filtro, query ya está configurada para mostrar todos
       } else {
-        console.log('⚠️ Usuario sin cliente asignado, sin acceso a transportes');
-        query = query.eq('exportacion', 'SIN_CLIENTE_' + Date.now());
+        console.log('⚠️ Rol no reconocido:', userData.rol, ', sin acceso a transportes');
+        query = query.eq('exportacion', 'ROL_NO_VALIDO_' + Date.now());
       }
     }
   }

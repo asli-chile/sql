@@ -1,13 +1,8 @@
--- Corregir asignación de clientes en tabla usuarios
--- Cada usuario debe ver solo los datos de su propio cliente
+-- Verificar si GF EXPORT existe en la tabla clientes
+SELECT * FROM clientes WHERE nombre = 'GF EXPORT';
 
--- Verificar usuarios actuales y sus clientes asignados
-SELECT nombre, cliente_nombre, clientes_asignados FROM usuarios 
-WHERE nombre IN ('AlmaFruit Export', 'Leandro Mariscal', 'Hans Vasquez');
+-- Verificar todos los clientes que contienen "GF" o "EXPORT"
+SELECT * FROM clientes WHERE nombre ILIKE '%GF%' OR nombre ILIKE '%EXPORT%';
 
--- Verificar que existan transportes para cada cliente
-SELECT exportacion, COUNT(*) as cantidad_transportes 
-FROM transportes 
-WHERE deleted_at IS NULL 
-GROUP BY exportacion 
-ORDER BY cantidad_transportes DESC;
+-- Mostrar todos los clientes disponibles
+SELECT nombre FROM clientes ORDER BY nombre;
