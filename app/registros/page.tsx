@@ -2854,7 +2854,7 @@ export default function RegistrosPage() {
           onSuccess={() => {
             loadRegistros();
             loadCatalogos();
-            setIsAddModalOpen(false);
+            // No cerrar el modal automáticamente para permitir enviar el correo
           }}
           createdByName={
             currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'
