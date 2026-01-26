@@ -86,7 +86,6 @@ export default function TransportesPage() {
   const [sortBy, setSortBy] = useState<keyof TransporteRecord>('exportacion');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { canAdd, canEdit, setCurrentUser, currentUser, transportesCount, registrosCount } = useUser();
-  console.log(' En página transportes - transportesCount:', transportesCount, 'registrosCount:', registrosCount);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -659,21 +658,20 @@ export default function TransportesPage() {
         {
           title: 'Mantenimiento',
           items: [
+            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+          ],
+        },
+      ]
+      : []),
+  ];
 
-if (!user) {
-return null;
-}
+  if (loadingUser) {
+    return <LoadingScreen message="Cargando transportes..." />;
+  }
 
-return (
-<EditingCellProvider>
-<div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-{/* Overlay para móvil */}
-{isMobileMenuOpen && (
-<div
-className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-onClick={() => setIsMobileMenuOpen(false)}
-/>
-)}
+  if (!user) {
+    return null;
+  }
 
   return (
     <EditingCellProvider>
