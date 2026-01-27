@@ -633,65 +633,6 @@ export default function DocumentosPage() {
     return filtered;
   }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
 
-  const documentosRows: DocumentoRow[] = registros.map((reg: any) => {
-    const booking = reg.booking || '';
-    return {
-      id: reg.id,
-      nave: reg.naveInicial || '',
-      booking,
-      contenedor: reg.contenedor || '',
-      refCliente: reg.refCliente || '',
-      reservaPdf: getDocumentStatus(booking, 'reservaPdf'),
-      instructivo: getDocumentStatus(booking, 'instructivo'),
-      guiaDespacho: getDocumentStatus(booking, 'guiaDespacho'),
-      packingList: getDocumentStatus(booking, 'packingList'),
-      proformaInvoice: getDocumentStatus(booking, 'proformaInvoice'),
-      blSwbTelex: getDocumentStatus(booking, 'blSwbTelex'),
-      facturaSii: getDocumentStatus(booking, 'facturaSii'),
-      dusLegalizado: getDocumentStatus(booking, 'dusLegalizado'),
-      fullset: getDocumentStatus(booking, 'fullset'),
-    };
-  });
-
-  // Aplicar ordenamiento a los documentosRows
-  const sortedDocumentosRows = useMemo(() => {
-    if (!sortField) return documentosRows;
-
-    return [...documentosRows].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortField) {
-        case 'refCliente':
-          aValue = a.refCliente || '';
-          bValue = b.refCliente || '';
-          break;
-        case 'fechaIngreso':
-          // Obtener la fecha de ingreso del registro original
-          const regA = registros.find(r => r.id === a.id);
-          const regB = registros.find(r => r.id === b.id);
-          aValue = regA?.ingresado ? new Date(regA.ingresado).getTime() : 0;
-          bValue = regB?.ingresado ? new Date(regB.ingresado).getTime() : 0;
-          break;
-        case 'nave':
-          aValue = a.nave || '';
-          bValue = b.nave || '';
-          break;
-        default:
-          return 0;
-      }
-
-      // Manejar ordenamiento para strings y números
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue, 'es', { sensitivity: 'base' })
-          : bValue.localeCompare(aValue, 'es', { sensitivity: 'base' });
-      } else {
-        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-    });
-  }, [documentosRows, sortField, sortDirection, registros]);
-
   // Función para manejar el ordenamiento
   const handleSort = (field: 'refCliente' | 'fechaIngreso' | 'nave') => {
     if (sortField === field) {
@@ -760,6 +701,65 @@ export default function DocumentosPage() {
     const docTypeId = DOCUMENT_TYPE_MAP[docType];
     return !!bookingDocs?.get(docTypeId);
   };
+
+  const documentosRows: DocumentoRow[] = registros.map((reg: any) => {
+    const booking = reg.booking || '';
+    return {
+      id: reg.id,
+      nave: reg.naveInicial || '',
+      booking,
+      contenedor: reg.contenedor || '',
+      refCliente: reg.refCliente || '',
+      reservaPdf: getDocumentStatus(booking, 'reservaPdf'),
+      instructivo: getDocumentStatus(booking, 'instructivo'),
+      guiaDespacho: getDocumentStatus(booking, 'guiaDespacho'),
+      packingList: getDocumentStatus(booking, 'packingList'),
+      proformaInvoice: getDocumentStatus(booking, 'proformaInvoice'),
+      blSwbTelex: getDocumentStatus(booking, 'blSwbTelex'),
+      facturaSii: getDocumentStatus(booking, 'facturaSii'),
+      dusLegalizado: getDocumentStatus(booking, 'dusLegalizado'),
+      fullset: getDocumentStatus(booking, 'fullset'),
+    };
+  });
+
+  // Aplicar ordenamiento a los documentosRows
+  const sortedDocumentosRows = useMemo(() => {
+    if (!sortField) return documentosRows;
+
+    return [...documentosRows].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'refCliente':
+          aValue = a.refCliente || '';
+          bValue = b.refCliente || '';
+          break;
+        case 'fechaIngreso':
+          // Obtener la fecha de ingreso del registro original
+          const regA = registros.find(r => r.id === a.id);
+          const regB = registros.find(r => r.id === b.id);
+          aValue = regA?.ingresado ? new Date(regA.ingresado).getTime() : 0;
+          bValue = regB?.ingresado ? new Date(regB.ingresado).getTime() : 0;
+          break;
+        case 'nave':
+          aValue = a.nave || '';
+          bValue = b.nave || '';
+          break;
+        default:
+          return 0;
+      }
+
+      // Manejar ordenamiento para strings y números
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue, 'es', { sensitivity: 'base' })
+          : bValue.localeCompare(aValue, 'es', { sensitivity: 'base' });
+      } else {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+    });
+  }, [documentosRows, sortField, sortDirection, registros]);
 
   // Obtener información del documento
   const getDocumentInfo = (booking: string, docType: string): DocumentInfo | null => {
