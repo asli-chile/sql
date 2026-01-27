@@ -755,7 +755,7 @@ export default function DocumentosPage() {
     }
   };
 
-  const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta;
+  const hasActiveFilters = Boolean(selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta);
 
   // IMPORTANTE: El return condicional debe estar DESPUÉS de todos los hooks
   if (!currentUser) {
