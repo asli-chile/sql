@@ -633,67 +633,6 @@ export default function DocumentosPage() {
     return filtered;
   }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
 
-  // Función para manejar el ordenamiento
-  const handleSort = (field: 'refCliente' | 'fechaIngreso' | 'nave') => {
-    if (sortField === field) {
-      // Si ya está ordenado por este campo, cambiar dirección
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Si es un nuevo campo, establecerlo y ordenar ascendente
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  // Actualizar registros cuando cambian los filtros
-  useEffect(() => {
-    setRegistros(filteredRegistros);
-  }, [filteredRegistros]);
-
-  const handleClearFilters = () => {
-    setSelectedSeason(null);
-    setSelectedClientes([]);
-    setSelectedEjecutivo(null);
-    setSelectedEstado(null);
-    setSelectedNaviera(null);
-    setSelectedEspecie(null);
-    setSelectedNave(null);
-    setFechaDesde('');
-    setFechaHasta('');
-  };
-
-  const handleToggleCliente = (cliente: string) => {
-    setSelectedClientes((prev) => {
-      const clienteNormalizado = cliente.trim();
-      const clienteUpper = clienteNormalizado.toUpperCase();
-      const exists = prev.some(c => c.trim().toUpperCase() === clienteUpper);
-
-      if (exists) {
-        return prev.filter(c => c.trim().toUpperCase() !== clienteUpper);
-      } else {
-        return [...prev, clienteNormalizado];
-      }
-    });
-  };
-
-  const handleSelectAllClientes = () => {
-    if (!filterOptions || !filterOptions.clientes || filterOptions.clientes.length === 0) {
-      return;
-    }
-    if (selectedClientes.length === filterOptions.clientes.length) {
-      setSelectedClientes([]);
-    } else {
-      setSelectedClientes([...filterOptions.clientes]);
-    }
-  };
-
-  const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta;
-
-  // IMPORTANTE: El return condicional debe estar DESPUÉS de todos los hooks
-  if (!currentUser) {
-    return <LoadingScreen message="Cargando..." />;
-  }
-
   // Obtener información de documentos para cada registro
   const getDocumentStatus = (booking: string, docType: string): boolean => {
     const bookingKey = normalizeBooking(booking).replace(/\s+/g, '');
@@ -760,6 +699,67 @@ export default function DocumentosPage() {
       }
     });
   }, [documentosRows, sortField, sortDirection, registros]);
+
+  // Función para manejar el ordenamiento
+  const handleSort = (field: 'refCliente' | 'fechaIngreso' | 'nave') => {
+    if (sortField === field) {
+      // Si ya está ordenado por este campo, cambiar dirección
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Si es un nuevo campo, establecerlo y ordenar ascendente
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Actualizar registros cuando cambian los filtros
+  useEffect(() => {
+    setRegistros(filteredRegistros);
+  }, [filteredRegistros]);
+
+  const handleClearFilters = () => {
+    setSelectedSeason(null);
+    setSelectedClientes([]);
+    setSelectedEjecutivo(null);
+    setSelectedEstado(null);
+    setSelectedNaviera(null);
+    setSelectedEspecie(null);
+    setSelectedNave(null);
+    setFechaDesde('');
+    setFechaHasta('');
+  };
+
+  const handleToggleCliente = (cliente: string) => {
+    setSelectedClientes((prev) => {
+      const clienteNormalizado = cliente.trim();
+      const clienteUpper = clienteNormalizado.toUpperCase();
+      const exists = prev.some(c => c.trim().toUpperCase() === clienteUpper);
+
+      if (exists) {
+        return prev.filter(c => c.trim().toUpperCase() !== clienteUpper);
+      } else {
+        return [...prev, clienteNormalizado];
+      }
+    });
+  };
+
+  const handleSelectAllClientes = () => {
+    if (!filterOptions || !filterOptions.clientes || filterOptions.clientes.length === 0) {
+      return;
+    }
+    if (selectedClientes.length === filterOptions.clientes.length) {
+      setSelectedClientes([]);
+    } else {
+      setSelectedClientes([...filterOptions.clientes]);
+    }
+  };
+
+  const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta;
+
+  // IMPORTANTE: El return condicional debe estar DESPUÉS de todos los hooks
+  if (!currentUser) {
+    return <LoadingScreen message="Cargando..." />;
+  }
 
   // Obtener información del documento
   const getDocumentInfo = (booking: string, docType: string): DocumentInfo | null => {
