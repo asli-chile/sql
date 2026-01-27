@@ -79,7 +79,7 @@ export function DocumentosFiltersPanel({
       )}
 
       {/* Sidebar de filtros */}
-      <div className={`fixed top-0 right-0 h-full w-full sm:w-80 md:w-96 transform transition-transform duration-300 ease-in-out z-50 ${
+      <div className={`fixed top-0 right-0 h-screen w-full sm:h-full sm:w-80 md:w-96 transform transition-transform duration-300 ease-in-out z-50 ${
         showFilters ? 'translate-x-0' : 'translate-x-full'
       } ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'} border-l shadow-2xl`}>
         {/* Header */}
@@ -102,7 +102,7 @@ export function DocumentosFiltersPanel({
         </div>
 
         {/* Contenido de filtros */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4" style={{ maxHeight: 'calc(100vh - 140px)' }}>
           {/* Filtro Temporada */}
           <div>
             <label className={`block text-xs sm:text-sm font-medium mb-1.5 sm:mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
