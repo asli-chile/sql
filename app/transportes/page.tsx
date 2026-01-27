@@ -11,6 +11,7 @@ import { transportesColumns, transportesSections } from '@/components/transporte
 import { AddTransporteModal } from '@/components/transportes/AddTransporteModal';
 import { TransporteCard } from '@/components/transportes/TransporteCard';
 import { useUser } from '@/hooks/useUser';
+import { useToast } from '@/hooks/useToast';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -21,6 +22,7 @@ import { EditingCellProvider } from '@/contexts/EditingCellContext';
 import { InlineEditCell } from '@/components/transportes/InlineEditCell';
 import { TrashModalTransportes } from '@/components/transportes/TrashModalTransportes';
 import { SimpleStackingModal } from '@/components/transportes/SimpleStackingModal';
+import { syncOrphanTransportes } from '@/lib/sync-transportes';
 
 const dateKeys = new Set<keyof TransporteRecord>([
   'stacking',
@@ -86,6 +88,7 @@ export default function TransportesPage() {
   const [sortBy, setSortBy] = useState<keyof TransporteRecord>('exportacion');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const { canAdd, canEdit, setCurrentUser, currentUser, transportesCount, registrosCount } = useUser();
+  const { success, error: showError, warning } = useToast();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -323,6 +326,35 @@ export default function TransportesPage() {
       setRecords(data);
     } catch (error) {
       console.error('[Transportes] Error recargando transportes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSyncOrphanTransportes = async () => {
+    if (!canEdit) {
+      warning('No tienes permisos para sincronizar transportes');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const result = await syncOrphanTransportes();
+      
+      if (result.success) {
+        if ((result.updated || 0) > 0) {
+          success(`✅ Se sincronizaron ${result.updated} transportes huérfanos con los registros correspondientes`);
+          // Recargar transportes para mostrar los datos actualizados
+          await reload();
+        } else {
+          warning('No se encontraron transportes huérfanos para sincronizar');
+        }
+      } else {
+        showError(`Error en sincronización: ${result.error}`);
+      }
+    } catch (err) {
+      console.error('[Transportes] Error en sincronización de huérfanos:', err);
+      showError('Error crítico al sincronizar transportes huérfanos');
     } finally {
       setIsLoading(false);
     }
@@ -736,6 +768,21 @@ export default function TransportesPage() {
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={handleSyncOrphanTransportes}
+                    disabled={isLoading}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
+                      ? 'border-orange-800/70 text-orange-300 hover:border-orange-400/60 hover:text-orange-200'
+                      : 'border-orange-300 text-orange-700 hover:border-orange-400 hover:text-orange-600 bg-orange-50 shadow-sm'
+                      }`}
+                    title="Sincronizar transportes huérfanos con registros"
+                  >
+                    <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                    <span className="hidden sm:inline">Sincronizar</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={reload}

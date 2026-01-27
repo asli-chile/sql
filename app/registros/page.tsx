@@ -20,6 +20,7 @@ import { TrashModal } from '@/components/modals/TrashModal';
 import { HistorialModal } from '@/components/modals/HistorialModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 import { BookingModal } from '@/components/modals/BookingModal';
+import { syncTransportesFromRegistro, syncMultipleTransportesFromRegistros } from '@/lib/sync-transportes';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/hooks/useToast';
@@ -1422,12 +1423,31 @@ export default function RegistrosPage() {
     setDeleteConfirm({ registros: registrosParaEliminar, mode: 'bulk' });
   };
 
-  const handleUpdateRecord = useCallback((updatedRecord: Registro) => {
+  const handleUpdateRecord = useCallback(async (updatedRecord: Registro, oldRecord?: Registro) => {
+    // Actualizar el registro en el estado local primero
     setRegistros(prevRegistros =>
       prevRegistros.map(record =>
         record.id === updatedRecord.id ? updatedRecord : record
       )
     );
+
+    // Sincronizar con transportes relacionados
+    try {
+      const oldBooking = oldRecord?.booking;
+      const syncResult = await syncTransportesFromRegistro(updatedRecord, oldBooking);
+      
+      if (syncResult.success && (syncResult.updated || 0) > 0) {
+        console.log(`✅ Se sincronizaron ${syncResult.updated} transportes con el registro actualizado`);
+        // Opcional: Mostrar notificación al usuario
+        // success(`Se actualizaron ${syncResult.updated} transportes relacionados`);
+      } else if (!syncResult.success) {
+        console.warn('⚠️ Error en sincronización de transportes:', syncResult.error);
+        // Opcional: Mostrar advertencia al usuario
+        // warning('No se pudieron sincronizar los transportes relacionados');
+      }
+    } catch (error) {
+      console.error('❌ Error crítico en sincronización:', error);
+    }
   }, []);
 
   const handleBulkUpdate = useCallback(async (field: keyof Registro, value: any, selectedRecords: Registro[]) => {
@@ -1524,18 +1544,36 @@ export default function RegistrosPage() {
       }
 
       // Actualizar el estado local
+      const updatedRecords = registrosParaActualizar.map(record => ({
+        ...record,
+        [field]: normalizedValue,
+        updated_at: new Date().toISOString()
+      }));
+
       setRegistros(prevRegistros =>
         prevRegistros.map(record => {
-          if (registrosParaActualizar.some(selected => selected.id === record.id)) {
-            return {
-              ...record,
-              [field]: normalizedValue,
-              updated_at: new Date().toISOString()
-            };
-          }
-          return record;
+          const updated = updatedRecords.find(updated => updated.id === record.id);
+          return updated || record;
         })
       );
+
+      // Sincronizar con transportes relacionados (solo para campos relevantes)
+      const syncFields = ['booking', 'naveInicial', 'naviera', 'refCliente', 'contenedor'];
+      if (syncFields.includes(field)) {
+        try {
+          const syncResult = await syncMultipleTransportesFromRegistros(updatedRecords);
+          
+          if (syncResult.success && syncResult.totalUpdated > 0) {
+            console.log(`✅ Se sincronizaron ${syncResult.totalUpdated} transportes con la actualización masiva`);
+            // Opcional: Mostrar notificación al usuario
+            // success(`Se actualizaron ${syncResult.totalUpdated} transportes relacionados`);
+          } else if (!syncResult.success) {
+            console.warn('⚠️ Error en sincronización masiva de transportes:', syncResult.results);
+          }
+        } catch (error) {
+          console.error('❌ Error crítico en sincronización masiva:', error);
+        }
+      }
 
       // Mostrar confirmación visual mejorada
       const fieldNames: Record<string, string> = {
