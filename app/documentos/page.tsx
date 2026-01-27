@@ -1678,7 +1678,7 @@ export default function DocumentosPage() {
               </div>
 
               {/* Footer */}
-              <div className={`flex items-center justify-between border-t px-6 py-4 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+              <div className={`flex items-center justify-between border-t px-8 py-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
                 }`}>
                 <div>
                   {documentModal.hasDocument && canDeleteDoc && (
@@ -1698,6 +1698,29 @@ export default function DocumentosPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  {documentModal.mode === 'upload' && documentModal.file && (
+                    <button
+                      onClick={handleConfirmUpload}
+                      disabled={isUploading || isDeleting}
+                      className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all transform hover:scale-105 ${theme === 'dark'
+                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/25'
+                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25'
+                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`}>
+                      <div className="flex items-center gap-2">
+                        {isUploading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Subiendo...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="h-4 w-4" />
+                            Subir documento
+                          </>
+                        )}
+                      </div>
+                    </button>
+                  )}
                   {documentModal.hasDocument && (
                     <button
                       onClick={() => handleDownloadDocument(documentModal.booking, documentModal.docType)}
