@@ -67,6 +67,11 @@ export default function DocumentosPage() {
   const { theme } = useTheme();
   const { currentUser, setCurrentUser, canEdit, canDelete } = useUser();
   const supabase = useMemo(() => createClient(), []);
+  
+  // Estados de ordenamiento
+  const [sortField, setSortField] = useState<'refCliente' | 'fechaIngreso' | 'nave' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -99,9 +104,6 @@ export default function DocumentosPage() {
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
   const [selectedNaviera, setSelectedNaviera] = useState<string | null>(null);
   const [selectedNave, setSelectedNave] = useState<string | null>(null);
-  // Estados de ordenamiento
-  const [sortField, setSortField] = useState<'refCliente' | 'fechaIngreso' | 'nave' | null>(null);
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
   const [fechaDesde, setFechaDesde] = useState<string>('');
   const [fechaHasta, setFechaHasta] = useState<string>('');
@@ -631,6 +633,77 @@ export default function DocumentosPage() {
     return filtered;
   }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
 
+  const documentosRows: DocumentoRow[] = registros.map((reg: any) => {
+    const booking = reg.booking || '';
+    return {
+      id: reg.id,
+      nave: reg.naveInicial || '',
+      booking,
+      contenedor: reg.contenedor || '',
+      refCliente: reg.refCliente || '',
+      reservaPdf: getDocumentStatus(booking, 'reservaPdf'),
+      instructivo: getDocumentStatus(booking, 'instructivo'),
+      guiaDespacho: getDocumentStatus(booking, 'guiaDespacho'),
+      packingList: getDocumentStatus(booking, 'packingList'),
+      proformaInvoice: getDocumentStatus(booking, 'proformaInvoice'),
+      blSwbTelex: getDocumentStatus(booking, 'blSwbTelex'),
+      facturaSii: getDocumentStatus(booking, 'facturaSii'),
+      dusLegalizado: getDocumentStatus(booking, 'dusLegalizado'),
+      fullset: getDocumentStatus(booking, 'fullset'),
+    };
+  });
+
+  // Aplicar ordenamiento a los documentosRows
+  const sortedDocumentosRows = useMemo(() => {
+    if (!sortField) return documentosRows;
+
+    return [...documentosRows].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'refCliente':
+          aValue = a.refCliente || '';
+          bValue = b.refCliente || '';
+          break;
+        case 'fechaIngreso':
+          // Obtener la fecha de ingreso del registro original
+          const regA = registros.find(r => r.id === a.id);
+          const regB = registros.find(r => r.id === b.id);
+          aValue = regA?.ingresado ? new Date(regA.ingresado).getTime() : 0;
+          bValue = regB?.ingresado ? new Date(regB.ingresado).getTime() : 0;
+          break;
+        case 'nave':
+          aValue = a.nave || '';
+          bValue = b.nave || '';
+          break;
+        default:
+          return 0;
+      }
+
+      // Manejar ordenamiento para strings y números
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue, 'es', { sensitivity: 'base' })
+          : bValue.localeCompare(aValue, 'es', { sensitivity: 'base' });
+      } else {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+    });
+  }, [documentosRows, sortField, sortDirection, registros]);
+
+  // Función para manejar el ordenamiento
+  const handleSort = (field: 'refCliente' | 'fechaIngreso' | 'nave') => {
+    if (sortField === field) {
+      // Si ya está ordenado por este campo, cambiar dirección
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Si es un nuevo campo, establecerlo y ordenar ascendente
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   // Actualizar registros cuando cambian los filtros
   useEffect(() => {
     setRegistros(filteredRegistros);
@@ -796,77 +869,6 @@ export default function DocumentosPage() {
       </div>
     );
   };
-
-  const documentosRows: DocumentoRow[] = registros.map((reg: any) => {
-    const booking = reg.booking || '';
-    return {
-      id: reg.id,
-      nave: reg.naveInicial || '',
-      booking,
-      contenedor: reg.contenedor || '',
-      refCliente: reg.refCliente || '',
-      reservaPdf: getDocumentStatus(booking, 'reservaPdf'),
-      instructivo: getDocumentStatus(booking, 'instructivo'),
-      guiaDespacho: getDocumentStatus(booking, 'guiaDespacho'),
-      packingList: getDocumentStatus(booking, 'packingList'),
-      proformaInvoice: getDocumentStatus(booking, 'proformaInvoice'),
-      blSwbTelex: getDocumentStatus(booking, 'blSwbTelex'),
-      facturaSii: getDocumentStatus(booking, 'facturaSii'),
-      dusLegalizado: getDocumentStatus(booking, 'dusLegalizado'),
-      fullset: getDocumentStatus(booking, 'fullset'),
-    };
-  });
-
-  // Función para manejar el ordenamiento
-  const handleSort = (field: 'refCliente' | 'fechaIngreso' | 'nave') => {
-    if (sortField === field) {
-      // Si ya está ordenado por este campo, cambiar dirección
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      // Si es un nuevo campo, establecerlo y ordenar ascendente
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
-
-  // Aplicar ordenamiento a los documentosRows
-  const sortedDocumentosRows = useMemo(() => {
-    if (!sortField) return documentosRows;
-
-    return [...documentosRows].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortField) {
-        case 'refCliente':
-          aValue = a.refCliente || '';
-          bValue = b.refCliente || '';
-          break;
-        case 'fechaIngreso':
-          // Obtener la fecha de ingreso del registro original
-          const regA = registros.find(r => r.id === a.id);
-          const regB = registros.find(r => r.id === b.id);
-          aValue = regA?.ingresado ? new Date(regA.ingresado).getTime() : 0;
-          bValue = regB?.ingresado ? new Date(regB.ingresado).getTime() : 0;
-          break;
-        case 'nave':
-          aValue = a.nave || '';
-          bValue = b.nave || '';
-          break;
-        default:
-          return 0;
-      }
-
-      // Manejar ordenamiento para strings y números
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue, 'es', { sensitivity: 'base' })
-          : bValue.localeCompare(aValue, 'es', { sensitivity: 'base' });
-      } else {
-        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
-      }
-    });
-  }, [documentosRows, sortField, sortDirection, registros]);
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
