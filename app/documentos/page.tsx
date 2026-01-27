@@ -98,8 +98,11 @@ export default function DocumentosPage() {
   const [selectedEjecutivo, setSelectedEjecutivo] = useState<string | null>(null);
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
   const [selectedNaviera, setSelectedNaviera] = useState<string | null>(null);
-  const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
   const [selectedNave, setSelectedNave] = useState<string | null>(null);
+  // Estados de ordenamiento
+  const [sortField, setSortField] = useState<'refCliente' | 'fechaIngreso' | 'nave' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
   const [fechaDesde, setFechaDesde] = useState<string>('');
   const [fechaHasta, setFechaHasta] = useState<string>('');
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
@@ -814,6 +817,57 @@ export default function DocumentosPage() {
     };
   });
 
+  // Función para manejar el ordenamiento
+  const handleSort = (field: 'refCliente' | 'fechaIngreso' | 'nave') => {
+    if (sortField === field) {
+      // Si ya está ordenado por este campo, cambiar dirección
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Si es un nuevo campo, establecerlo y ordenar ascendente
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Aplicar ordenamiento a los documentosRows
+  const sortedDocumentosRows = useMemo(() => {
+    if (!sortField) return documentosRows;
+
+    return [...documentosRows].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case 'refCliente':
+          aValue = a.refCliente || '';
+          bValue = b.refCliente || '';
+          break;
+        case 'fechaIngreso':
+          // Obtener la fecha de ingreso del registro original
+          const regA = registros.find(r => r.id === a.id);
+          const regB = registros.find(r => r.id === b.id);
+          aValue = regA?.ingresado ? new Date(regA.ingresado).getTime() : 0;
+          bValue = regB?.ingresado ? new Date(regB.ingresado).getTime() : 0;
+          break;
+        case 'nave':
+          aValue = a.nave || '';
+          bValue = b.nave || '';
+          break;
+        default:
+          return 0;
+      }
+
+      // Manejar ordenamiento para strings y números
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue, 'es', { sensitivity: 'base' })
+          : bValue.localeCompare(aValue, 'es', { sensitivity: 'base' });
+      } else {
+        return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+    });
+  }, [documentosRows, sortField, sortDirection, registros]);
+
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   const sidebarSections: SidebarSection[] = [
@@ -1261,13 +1315,47 @@ export default function DocumentosPage() {
                     : 'bg-white/95 border-b border-gray-200 shadow-sm'
                     }`}>
                     <tr>
-                      <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
-                        }`}>
-                        Nave | Booking | Contenedor
+                      <th 
+                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
+                          }`}
+                        onClick={() => handleSort('nave')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Nave | Booking | Contenedor
+                          {sortField === 'nave' && (
+                            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {sortDirection === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
                       </th>
-                      <th className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
-                        }`}>
-                        Ref Cliente
+                      <th 
+                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
+                          }`}
+                        onClick={() => handleSort('refCliente')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Ref Cliente
+                          {sortField === 'refCliente' && (
+                            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {sortDirection === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
+                      </th>
+                      <th 
+                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
+                          }`}
+                        onClick={() => handleSort('fechaIngreso')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Fecha Ingreso
+                          {sortField === 'fechaIngreso' && (
+                            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {sortDirection === 'asc' ? '↑' : '↓'}
+                            </span>
+                          )}
+                        </div>
                       </th>
                       <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
                         }`}>
@@ -1311,20 +1399,20 @@ export default function DocumentosPage() {
                     }`}>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={11} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        <td colSpan={12} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                           }`}>
                           Cargando documentos...
                         </td>
                       </tr>
-                    ) : documentosRows.length === 0 ? (
+                    ) : sortedDocumentosRows.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        <td colSpan={12} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                           }`}>
                           No hay documentos disponibles
                         </td>
                       </tr>
                     ) : (
-                      documentosRows.map((row) => (
+                      sortedDocumentosRows.map((row) => (
                         <tr key={row.id} className={`hover:${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
                           } transition-colors`}>
                           <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
@@ -1338,6 +1426,15 @@ export default function DocumentosPage() {
                           <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
                             }`}>
                             {row.refCliente || '—'}
+                          </td>
+                          <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
+                            }`}>
+                            {(() => {
+                              const registro = registros.find(r => r.id === row.id);
+                              return registro?.ingresado 
+                                ? new Date(registro.ingresado).toLocaleDateString('es-CL')
+                                : '—';
+                            })()}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-center">
                             {renderDocumentCell(row.booking, 'reservaPdf', row.reservaPdf)}
