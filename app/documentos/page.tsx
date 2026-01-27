@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon, Globe, BarChart3, DollarSign, Users } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -65,6 +65,7 @@ type DocumentMap = Map<string, Map<string, DocumentInfo>>; // Map<booking, Map<d
 
 export default function DocumentosPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme } = useTheme();
   const { currentUser, setCurrentUser, canEdit, canDelete } = useUser();
   const supabase = useMemo(() => createClient(), []);
@@ -883,14 +884,14 @@ export default function DocumentosPage() {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', icon: Ship },
-        { label: 'Transportes', id: '/transportes', icon: Truck },
-        { label: 'Documentos', id: '/documentos', isActive: true, icon: FileText },
-        { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
+        { label: 'Embarques', id: '/registros', isActive: pathname === '/registros', icon: Ship },
+        { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
+        { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText },
+        { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: pathname === '/dashboard/seguimiento', icon: Globe },
         ...(isRodrigo
           ? [
-            { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
-            { label: 'Reportes', id: '/reportes', icon: BarChart3 },
+            { label: 'Finanzas', id: '/finanzas', isActive: pathname === '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', isActive: pathname === '/reportes', icon: BarChart3 },
           ]
           : []),
       ],
@@ -900,7 +901,7 @@ export default function DocumentosPage() {
         {
           title: 'Mantenimiento',
           items: [
-            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+            { label: 'Usuarios', id: '/mantenimiento', isActive: pathname === '/mantenimiento', icon: Users },
           ],
         },
       ]
