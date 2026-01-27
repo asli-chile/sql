@@ -14,6 +14,7 @@ import { normalizeBooking, sanitizeFileName, parseStoredDocumentName } from '@/u
 import { useToast } from '@/hooks/useToast';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
+import { DocumentosFiltersPanel } from '@/components/ui/table/DocumentosFiltersPanel';
 
 const normalizeSeasonLabel = (value?: string | null): string => {
   if (!value) {
@@ -1022,287 +1023,34 @@ export default function DocumentosPage() {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
           <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
-            {/* Panel de Filtros */}
-            {showFilters && (
-              <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Filtros
-                  </h3>
-                  <div className="flex items-center gap-2">
-                    {hasActiveFilters && (
-                      <button
-                        onClick={handleClearFilters}
-                        className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${theme === 'dark'
-                          ? 'text-slate-300 hover:bg-slate-700'
-                          : 'text-gray-600 hover:bg-gray-100'
-                          }`}
-                      >
-                        Limpiar filtros
-                      </button>
-                    )}
-                    <button
-                      onClick={() => setShowFilters(false)}
-                      className={`p-1.5 rounded-lg transition-colors ${theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      aria-label="Cerrar filtros"
-                    >
-                      <XIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {/* Filtro Temporada */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Temporada
-                    </label>
-                    <select
-                      value={selectedSeason ?? ''}
-                      onChange={(e) => setSelectedSeason(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                    >
-                      <option value="">Todas</option>
-                      {filterOptions.temporadas.map((temp) => (
-                        <option key={temp} value={temp}>
-                          Temporada {temp}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Filtro Cliente - Lista de Checkboxes */}
-                  <div className="lg:col-span-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className={`block text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                        Clientes {selectedClientes.length > 0 && `(${selectedClientes.length} seleccionados)`}
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={handleSelectAllClientes}
-                          className={`text-xs px-2 py-1 rounded transition-colors ${theme === 'dark'
-                            ? 'text-sky-400 hover:bg-slate-700'
-                            : 'text-blue-600 hover:bg-gray-100'
-                            }`}
-                        >
-                          {selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
-                            ? 'Desmarcar todos'
-                            : 'Seleccionar todos'}
-                        </button>
-                        {selectedClientes.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => setSelectedClientes([])}
-                            className={`text-xs px-2 py-1 rounded transition-colors ${theme === 'dark'
-                              ? 'text-slate-400 hover:bg-slate-700'
-                              : 'text-gray-600 hover:bg-gray-100'
-                              }`}
-                          >
-                            Limpiar
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className={`max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800'
-                      : 'border-gray-300 bg-white'
-                      }`}>
-                      {filterOptions.clientes.length > 0 ? (
-                        filterOptions.clientes.map((cliente) => {
-                          const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
-                          return (
-                            <label
-                              key={cliente}
-                              className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${isChecked
-                                ? theme === 'dark'
-                                  ? 'bg-sky-900/30 border border-sky-700/50'
-                                  : 'bg-blue-50 border border-blue-200'
-                                : theme === 'dark'
-                                  ? 'hover:bg-slate-700/50'
-                                  : 'hover:bg-gray-50'
-                                }`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleCliente(cliente);
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                                className={`h-4 w-4 rounded cursor-pointer flex-shrink-0 ${theme === 'dark'
-                                  ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                  : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                  }`}
-                              />
-                              <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                                {cliente}
-                              </span>
-                            </label>
-                          );
-                        })
-                      ) : (
-                        <p className={`text-xs text-center py-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                          No hay clientes disponibles
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Filtro Ejecutivo */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Ejecutivo
-                    </label>
-                    <select
-                      value={selectedEjecutivo ?? ''}
-                      onChange={(e) => setSelectedEjecutivo(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                      disabled={filterOptions.ejecutivos.length === 0}
-                    >
-                      <option value="">Todos</option>
-                      {filterOptions.ejecutivos.map((ejecutivo) => (
-                        <option key={ejecutivo} value={ejecutivo}>
-                          {ejecutivo}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Filtro Estado */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Estado
-                    </label>
-                    <select
-                      value={selectedEstado ?? ''}
-                      onChange={(e) => setSelectedEstado(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                    >
-                      <option value="">Todos</option>
-                      <option value="PENDIENTE">Pendiente</option>
-                      <option value="CONFIRMADO">Confirmado</option>
-                      <option value="CANCELADO">Cancelado</option>
-                    </select>
-                  </div>
-
-                  {/* Filtro Naviera */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Naviera
-                    </label>
-                    <select
-                      value={selectedNaviera ?? ''}
-                      onChange={(e) => setSelectedNaviera(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                      disabled={filterOptions.navieras.length === 0}
-                    >
-                      <option value="">Todas</option>
-                      {filterOptions.navieras.map((naviera) => (
-                        <option key={naviera} value={naviera}>
-                          {naviera}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Filtro Especie */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Especie
-                    </label>
-                    <select
-                      value={selectedEspecie ?? ''}
-                      onChange={(e) => setSelectedEspecie(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                      disabled={filterOptions.especies.length === 0}
-                    >
-                      <option value="">Todas</option>
-                      {filterOptions.especies.map((especie) => (
-                        <option key={especie} value={especie}>
-                          {especie}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Filtro Nave */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Nave
-                    </label>
-                    <select
-                      value={selectedNave ?? ''}
-                      onChange={(e) => setSelectedNave(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                      disabled={filterOptions.naves.length === 0}
-                    >
-                      <option value="">Todas</option>
-                      {filterOptions.naves.map((nave) => (
-                        <option key={nave} value={nave}>
-                          {nave}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Filtro Fecha Desde */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Fecha Desde
-                    </label>
-                    <input
-                      type="date"
-                      value={fechaDesde}
-                      onChange={(e) => setFechaDesde(e.target.value)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                    />
-                  </div>
-
-                  {/* Filtro Fecha Hasta */}
-                  <div>
-                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Fecha Hasta
-                    </label>
-                    <input
-                      type="date"
-                      value={fechaHasta}
-                      onChange={(e) => setFechaHasta(e.target.value)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                        }`}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Sidebar de Filtros */}
+            <DocumentosFiltersPanel
+              showFilters={showFilters}
+              setShowFilters={setShowFilters}
+              hasActiveFilters={hasActiveFilters}
+              handleClearFilters={handleClearFilters}
+              selectedSeason={selectedSeason}
+              setSelectedSeason={setSelectedSeason}
+              selectedClientes={selectedClientes}
+              setSelectedClientes={setSelectedClientes}
+              selectedEjecutivo={selectedEjecutivo}
+              setSelectedEjecutivo={setSelectedEjecutivo}
+              selectedEstado={selectedEstado}
+              setSelectedEstado={setSelectedEstado}
+              selectedNaviera={selectedNaviera}
+              setSelectedNaviera={setSelectedNaviera}
+              selectedEspecie={selectedEspecie}
+              setSelectedEspecie={setSelectedEspecie}
+              selectedNave={selectedNave}
+              setSelectedNave={setSelectedNave}
+              fechaDesde={fechaDesde}
+              setFechaDesde={setFechaDesde}
+              fechaHasta={fechaHasta}
+              setFechaHasta={setFechaHasta}
+              filterOptions={filterOptions}
+              handleToggleCliente={handleToggleCliente}
+              handleSelectAllClientes={handleSelectAllClientes}
+            />
 
             {/* Tabla de Documentos */}
             <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden ${theme === 'dark'
