@@ -60,9 +60,14 @@ const getServiceAccountKeyOrThrow = () => {
 };
 
 const normalizeServiceAccountPrivateKey = (raw: string) => {
+  console.log('[email/send] Debug - Raw input length:', raw.length);
+  console.log('[email/send] Debug - Raw input starts with:', raw.substring(0, 50));
+  console.log('[email/send] Debug - Raw input ends with:', raw.substring(raw.length - 50));
+  
   try {
     // Si es JSON completo, extraer private_key
     if (raw.trim().startsWith('{')) {
+      console.log('[email/send] Debug - Detected JSON format');
       const parsed = JSON.parse(raw);
       const privateKey = parsed.private_key;
       if (!privateKey || typeof privateKey !== 'string') {
@@ -81,6 +86,7 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
     
     // Si es solo la clave privada (empieza con -----BEGIN)
     if (raw.trim().startsWith('-----BEGIN PRIVATE KEY-----')) {
+      console.log('[email/send] Debug - Detected private key format');
       // Normalizar newlines
       const normalized = raw.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
       
@@ -91,8 +97,22 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
       return normalized;
     }
     
+    // Si está entre comillas, removerlas
+    if (raw.trim().startsWith('"') && raw.trim().endsWith('"')) {
+      console.log('[email/send] Debug - Detected quoted format, removing quotes');
+      const unquoted = raw.slice(1, -1);
+      const normalized = unquoted.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+      
+      if (!normalized.includes('BEGIN PRIVATE KEY')) {
+        throw new Error('Invalid private key format after quote removal');
+      }
+      
+      return normalized;
+    }
+    
     throw new Error('Invalid input format: expected JSON or private key');
   } catch (e) {
+    console.log('[email/send] Debug - Error in normalizeServiceAccountPrivateKey:', e);
     throw new Error('Failed to extract private key: ' + (e instanceof Error ? e.message : 'Unknown error'));
   }
 };
