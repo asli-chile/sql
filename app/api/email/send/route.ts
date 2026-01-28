@@ -6,12 +6,17 @@ export const runtime = 'nodejs';
 const REQUIRED_ENV = ['GOOGLE_SERVICE_ACCOUNT_EMAIL'] as const;
 
 const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
-  // Intentar con variable original
+  // Intentar con variable original primero
   let value = process.env[key];
   
   // Si es GOOGLE_SERVICE_ACCOUNT_EMAIL, intentar con alternativa
   if (key === 'GOOGLE_SERVICE_ACCOUNT_EMAIL' && !value) {
     value = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL_NEW;
+  }
+  
+  // Priorizar variables originales que ya funcionaban
+  if (!value && key === 'GOOGLE_SERVICE_ACCOUNT_EMAIL') {
+    value = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL_NEW;
   }
   
   if (!value) {
@@ -48,9 +53,9 @@ const getServiceAccountKeyOrThrow = () => {
     return null;
   };
 
-  // Intentar en orden: base64 -> raw -> alternativas
-  let result = processBase64(rawB64) || processRaw(raw) || 
-               processBase64(rawB64New) || processRaw(rawNew);
+  // Intentar en orden: variables originales primero (las que funcionaban antes)
+  let result = processRaw(raw) || processBase64(rawB64) || 
+               processRaw(rawNew) || processBase64(rawB64New);
 
   if (!result) {
     throw new Error('Missing env var: GOOGLE_SERVICE_ACCOUNT_KEY (or GOOGLE_SERVICE_ACCOUNT_KEY_NEW or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64_NEW)');
