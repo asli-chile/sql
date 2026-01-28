@@ -48,9 +48,9 @@ const getServiceAccountKeyOrThrow = () => {
     return null;
   };
 
-  // Intentar en orden: originales -> alternativas
-  let result = processRaw(raw) || processBase64(rawB64) || 
-               processRaw(rawNew) || processBase64(rawB64New);
+  // Intentar en orden: base64 -> raw -> alternativas
+  let result = processBase64(rawB64) || processRaw(raw) || 
+               processBase64(rawB64New) || processRaw(rawNew);
 
   if (!result) {
     throw new Error('Missing env var: GOOGLE_SERVICE_ACCOUNT_KEY (or GOOGLE_SERVICE_ACCOUNT_KEY_NEW or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64_NEW)');
