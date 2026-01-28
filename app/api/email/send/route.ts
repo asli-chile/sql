@@ -6,29 +6,57 @@ export const runtime = 'nodejs';
 const REQUIRED_ENV = ['GOOGLE_SERVICE_ACCOUNT_EMAIL'] as const;
 
 const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
-  const value = process.env[key];
+  // Intentar con variable original
+  let value = process.env[key];
+  
+  // Si es GOOGLE_SERVICE_ACCOUNT_EMAIL, intentar con alternativa
+  if (key === 'GOOGLE_SERVICE_ACCOUNT_EMAIL' && !value) {
+    value = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL_NEW;
+  }
+  
   if (!value) {
     console.error('[email/send] Missing env var', key, 'available?', Object.prototype.hasOwnProperty.call(process.env, key));
-    throw new Error(`Missing env var: ${key}`);
+    throw new Error(`Missing env var: ${key} or ${key}_NEW`);
   }
   return value;
 };
 
 const getServiceAccountKeyOrThrow = () => {
+  // Intentar con variables originales
   const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
   const rawB64 = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64;
 
-  if (raw && raw.trim()) return raw;
+  // Intentar con variables alternativas
+  const rawNew = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_NEW;
+  const rawB64New = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_BASE64_NEW;
 
-  if (rawB64 && rawB64.trim()) {
-    try {
-      return Buffer.from(rawB64.trim(), 'base64').toString('utf8');
-    } catch (e) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 is present but could not be decoded as base64');
+  // Helper para procesar raw
+  const processRaw = (rawValue: string | undefined) => {
+    if (rawValue && rawValue.trim()) return rawValue;
+    return null;
+  };
+
+  // Helper para procesar base64
+  const processBase64 = (base64Value: string | undefined) => {
+    if (base64Value && base64Value.trim()) {
+      try {
+        return Buffer.from(base64Value.trim(), 'base64').toString('utf8');
+      } catch (e) {
+        throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 is present but could not be decoded as base64');
+      }
     }
+    return null;
+  };
+
+  // Intentar en orden: originales -> alternativas
+  let result = processRaw(raw) || processBase64(rawB64) || 
+               processRaw(rawNew) || processBase64(rawB64New);
+
+  if (!result) {
+    throw new Error('Missing env var: GOOGLE_SERVICE_ACCOUNT_KEY (or GOOGLE_SERVICE_ACCOUNT_KEY_NEW or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64_NEW)');
   }
 
-  throw new Error('Missing env var: GOOGLE_SERVICE_ACCOUNT_KEY (or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64)');
+  return result;
 };
 
 const normalizeServiceAccountPrivateKey = (raw: string) => {
