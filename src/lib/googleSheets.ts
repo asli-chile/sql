@@ -26,12 +26,15 @@ const normalizePrivateKey = (value?: string): string | undefined => {
     return undefined;
   }
 
+  console.log('🔑 Debug - Normalizando private key original length:', value.length);
+
   // Remover comillas si están presentes
   let key = value.replace(/^"(.*)"$/, '$1');
 
   // Reemplazar \n con saltos de línea reales
   if (key.includes('\\n')) {
     key = key.replace(/\\n/g, '\n');
+    console.log('🔑 Debug - Reemplazados \\n con saltos de línea');
   }
 
   // Limpiar espacios en blanco al inicio y final
@@ -42,8 +45,24 @@ const normalizePrivateKey = (value?: string): string | undefined => {
     console.error('🔑 Error: La clave privada no tiene el formato correcto');
     console.error('🔑 Inicio:', key.substring(0, 30));
     console.error('🔑 Fin:', key.substring(key.length - 30));
+    console.error('🔑 Longitud:', key.length);
+    return undefined;
   }
 
+  // Verificar que no contenga caracteres inválidos
+  const invalidChars = /[^\x20-\x7E\n\r]/;
+  if (invalidChars.test(key)) {
+    console.error('🔑 Error: La clave privada contiene caracteres inválidos');
+    return undefined;
+  }
+
+  // Verificar longitud mínima (una clave RSA típica tiene ~1600-2000 caracteres)
+  if (key.length < 1000) {
+    console.error('🔑 Error: La clave privada parece demasiado corta:', key.length);
+    return undefined;
+  }
+
+  console.log('🔑 Debug - Private key normalizada correctamente, length:', key.length);
   return key;
 };
 
