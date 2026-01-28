@@ -15,7 +15,7 @@ interface InlineEditCellProps {
   value: any;
   field: keyof Registro;
   record: Registro;
-  onSave: (updatedRecord: Registro) => void;
+  onSave: (updatedRecord: Registro, oldRecord?: Registro) => void;
   onBulkSave?: (field: keyof Registro, value: any, selectedRecords: Registro[]) => void;
   type?: 'text' | 'number' | 'date' | 'select' | 'textarea';
   options?: string[];
@@ -282,7 +282,7 @@ export function InlineEditCell({
         ...(field === 'etd' || field === 'eta' ? { tt: updateData.tt } : {})
       };
 
-      onSave(updatedRecord);
+      onSave(updatedRecord, record);
       clearEditing();
     } catch (err: any) {
       setError(err.message || 'Error al guardar');

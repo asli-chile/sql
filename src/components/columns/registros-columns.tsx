@@ -99,7 +99,7 @@ export const createRegistrosColumns = (
   data: Registro[] = [],
   selectedRows?: Set<string>,
   onToggleRowSelection?: (id: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => void,
-  onUpdateRecord?: (updatedRecord: Registro) => void,
+  onUpdateRecord?: (updatedRecord: Registro, oldRecord?: Registro) => void,
   onBulkUpdate?: (field: keyof Registro, value: any, selectedRecords: Registro[]) => void,
   navierasUnicas?: string[],
   ejecutivosUnicos?: string[],
