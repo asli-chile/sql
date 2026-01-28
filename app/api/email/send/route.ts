@@ -60,24 +60,40 @@ const getServiceAccountKeyOrThrow = () => {
 };
 
 const normalizeServiceAccountPrivateKey = (raw: string) => {
-  // El raw ya es el JSON decodificado, extraer private_key directamente
   try {
-    const parsed = JSON.parse(raw);
-    const privateKey = parsed.private_key;
-    if (!privateKey || typeof privateKey !== 'string') {
-      throw new Error('private_key not found in JSON');
+    // Si es JSON completo, extraer private_key
+    if (raw.trim().startsWith('{')) {
+      const parsed = JSON.parse(raw);
+      const privateKey = parsed.private_key;
+      if (!privateKey || typeof privateKey !== 'string') {
+        throw new Error('private_key not found in JSON');
+      }
+      
+      // Normalizar newlines
+      const normalized = privateKey.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+      
+      if (!normalized.includes('BEGIN PRIVATE KEY')) {
+        throw new Error('Invalid private key format');
+      }
+      
+      return normalized;
     }
     
-    // Normalizar newlines
-    const normalized = privateKey.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-    
-    if (!normalized.includes('BEGIN PRIVATE KEY')) {
-      throw new Error('Invalid private key format');
+    // Si es solo la clave privada (empieza con -----BEGIN)
+    if (raw.trim().startsWith('-----BEGIN PRIVATE KEY-----')) {
+      // Normalizar newlines
+      const normalized = raw.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
+      
+      if (!normalized.includes('BEGIN PRIVATE KEY')) {
+        throw new Error('Invalid private key format');
+      }
+      
+      return normalized;
     }
     
-    return normalized;
+    throw new Error('Invalid input format: expected JSON or private key');
   } catch (e) {
-    throw new Error('Failed to extract private key from JSON');
+    throw new Error('Failed to extract private key: ' + (e instanceof Error ? e.message : 'Unknown error'));
   }
 };
 
