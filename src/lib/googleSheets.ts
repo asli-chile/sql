@@ -236,9 +236,7 @@ export const mapRegistrosToRows = (
     const includeO2 = shouldIncludeGasColumn(registros, 'o2');
 
     const baseHeaders = [
-      'Generado por',
       'REF ASLI',
-      'REF EXTERNA',
       'Cliente',
       'Booking',
       'Naviera',
@@ -255,7 +253,7 @@ export const mapRegistrosToRows = (
       'Depósito'
     ];
 
-    const baseWidths = [180, 90, 110, 140, 120, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
+    const baseWidths = [90, 140, 120, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
 
     const headers = [...baseHeaders];
     const columnWidths = [...baseWidths];
@@ -272,9 +270,7 @@ export const mapRegistrosToRows = (
 
     const rows = registros.map((registro) => {
       const row: string[] = [
-        generatedBy,
         registro.refAsli ?? '-',
-        registro.refCliente ?? '-',
         registro.shipper ?? '-',
         registro.booking ?? '-',
         registro.naviera ?? '-',
