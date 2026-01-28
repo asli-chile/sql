@@ -320,7 +320,7 @@ async function generarReservaConfirmada(registros: Registro[]): Promise<ExcelJS.
 
   // Headers base - sin Usuario, Ejecutivo, Contrato. CO2 y O2 se agregan dinámicamente si hay datos
   const headers = [
-    'REF ASLI', 'Cliente', 'Naviera', 'Nave', 
+    'REF ASLI', 'Cliente', 'Booking', 'Naviera', 'Nave', 
     'POL', 'POD', 'ETD', 'ETA', 'TT', 'Especie', 'T°', 'CBM', 
     'Flete', 'Depósito'
   ];
@@ -400,14 +400,15 @@ async function generarReservaConfirmada(registros: Registro[]): Promise<ExcelJS.
     
     row.getCell(1).value = registro.refAsli || '-';
     row.getCell(2).value = registro.shipper || '-';
-    row.getCell(3).value = registro.naviera || '-';
-    row.getCell(4).value = registro.naveInicial || '-';
-    row.getCell(5).value = registro.pol || '-';
-    row.getCell(6).value = registro.pod || '-';
-    row.getCell(7).value = registro.etd 
+    row.getCell(3).value = registro.booking || '-';
+    row.getCell(4).value = registro.naviera || '-';
+    row.getCell(5).value = registro.naveInicial || '-';
+    row.getCell(6).value = registro.pol || '-';
+    row.getCell(7).value = registro.pod || '-';
+    row.getCell(8).value = registro.etd 
       ? (registro.etd instanceof Date ? registro.etd.toLocaleDateString('es-CL') : new Date(registro.etd).toLocaleDateString('es-CL'))
       : '-';
-    row.getCell(8).value = registro.eta 
+    row.getCell(9).value = registro.eta 
       ? (registro.eta instanceof Date ? registro.eta.toLocaleDateString('es-CL') : new Date(registro.eta).toLocaleDateString('es-CL'))
       : '-';
     
@@ -424,13 +425,13 @@ async function generarReservaConfirmada(registros: Registro[]): Promise<ExcelJS.
         tt = '-';
       }
     }
-    row.getCell(9).value = tt;
+    row.getCell(10).value = tt;
     
-    row.getCell(10).value = registro.especie || '-';
-    row.getCell(11).value = registro.temperatura !== null && registro.temperatura !== undefined ? registro.temperatura : '-';
-    row.getCell(12).value = registro.cbm !== null && registro.cbm !== undefined ? registro.cbm : '-';
-    row.getCell(13).value = registro.flete || '-';
-    row.getCell(14).value = registro.deposito || '-';
+    row.getCell(11).value = registro.especie || '-';
+    row.getCell(12).value = registro.temperatura !== null && registro.temperatura !== undefined ? registro.temperatura : '-';
+    row.getCell(13).value = registro.cbm !== null && registro.cbm !== undefined ? registro.cbm : '-';
+    row.getCell(14).value = registro.flete || '-';
+    row.getCell(15).value = registro.deposito || '-';
     
     // Agregar CO2 y O2 solo si existen columnas para ellos
     if (columnaCo2 > 0) {

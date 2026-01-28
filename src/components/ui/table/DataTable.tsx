@@ -136,10 +136,8 @@ export function DataTable({
   const columnSizingRef = useRef<ColumnSizingState>({});
   const columnSizingRafRef = useRef<number | null>(null);
   const pendingColumnSizingRef = useRef<ColumnSizingState | null>(null);
-  const sheetsPreviewUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_PREVIEW_URL ?? '';
-  const sheetsEditUrl = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID
-    ? `https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}/edit`
-    : '';
+  const sheetsPreviewUrl = 'https://docs.google.com/spreadsheets/d/1w-qqXkBPNW2j0yvOiL4xp83cBtdbpYWU8YV77PaGBjg/preview';
+  const sheetsEditUrl = 'https://docs.google.com/spreadsheets/d/1w-qqXkBPNW2j0yvOiL4xp83cBtdbpYWU8YV77PaGBjg/edit';
   const canPreviewSheets = Boolean(sheetsPreviewUrl);
   const scrollLockState = useRef<ScrollLockState | null>(null);
   const sizingResetRef = useRef(false);
@@ -1217,16 +1215,17 @@ export function DataTable({
             </div>
           </div>
           <div
-            className="relative h-[600px] w-full overflow-hidden lg:h-[720px]"
+            className="relative w-full overflow-hidden"
+            style={{ height: '70vh', maxHeight: '600px' }}
             onMouseEnter={handleSheetsMouseEnter}
             onMouseLeave={handleSheetsMouseLeave}
           >
-            <div className="h-full w-full origin-top-left scale-[0.8]">
+            <div className="h-full w-full origin-top-left scale-[0.85]">
               <iframe
                 key={iframeKey}
                 src={sheetsPreviewUrl}
                 title="Previsualización Google Sheets"
-                className="h-[125%] w-[125%] border-0"
+                className="h-[118%] w-[118%] border-0"
                 loading="lazy"
                 allowFullScreen
               />

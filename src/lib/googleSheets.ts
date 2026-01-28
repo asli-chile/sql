@@ -3,6 +3,13 @@ import { NextResponse } from 'next/server';
 import { Registro } from '@/types/registros';
 import { TipoReporte } from './reportes';
 
+// Debug al inicio del módulo
+console.log('🔍 Debug - Variables de entorno al cargar googleSheets.ts:');
+console.log('🔍 GOOGLE_SHEETS_SPREADSHEET_ID:', process.env.GOOGLE_SHEETS_SPREADSHEET_ID);
+console.log('🔍 NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID:', process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID);
+console.log('🔍 GOOGLE_SERVICE_ACCOUNT_EMAIL:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+console.log('🔍 GOOGLE_SERVICE_ACCOUNT_KEY exists:', !!process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+
 type SheetsClient = sheets_v4.Sheets;
 
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
@@ -19,32 +26,63 @@ const normalizePrivateKey = (value?: string): string | undefined => {
     return undefined;
   }
 
-  if (value.includes('\\n')) {
-    return value.replace(/\\n/g, '\n');
+  // Remover comillas si están presentes
+  let key = value.replace(/^"(.*)"$/, '$1');
+
+  // Reemplazar \n con saltos de línea reales
+  if (key.includes('\\n')) {
+    key = key.replace(/\\n/g, '\n');
   }
 
-  return value;
+  // Limpiar espacios en blanco al inicio y final
+  key = key.trim();
+
+  // Verificar que tenga el formato correcto
+  if (!key.startsWith('-----BEGIN PRIVATE KEY-----') || !key.endsWith('-----END PRIVATE KEY-----')) {
+    console.error('🔑 Error: La clave privada no tiene el formato correcto');
+    console.error('🔑 Inicio:', key.substring(0, 30));
+    console.error('🔑 Fin:', key.substring(key.length - 30));
+  }
+
+  return key;
 };
 
 export const createSheetsClient = async (): Promise<SheetsClient> => {
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = normalizePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_KEY);
+  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || 'asli-informes@sinuous-pact-465518-q3.iam.gserviceaccount.com';
+  const privateKey = normalizePrivateKey(process.env.GOOGLE_SERVICE_ACCOUNT_KEY) || "-----BEGIN PRIVATE KEY-----\nMIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDJMuK7X6dsEGsp\nfCz2TpDvQlmBilQO2bbgT5rpv2LpbX1isWKe4QKzwguDJZb/hdXSdtngBXt2MGJn\n+PdNPz5l+HknMUG1qIZL859LSWydynQ9WXcEaLjrYstl+7EFi/Ct0dxo2h8PPkqn\nNFltUvJo/Vq5RFcSG10SFCRKO0b4Wt1UW2dS/wgUKcFgwLjJe35Tp/MWzeYgLArd\nu/XL/QNW+1D0kk3aIxunTfe/QURjhla9GfcWfkaTU0ErT1KoqCr6LKKk541F3kvF\nGswrQggwAvrdmeaCi8kl8Gzw6XeaNgPBEgTnQKx+V7XbgZWDkmhtmy42kLGL4n5s\nXxQwjv4HAgMBAAECggEATzivGBJQ7PcGCv6vAYjr/pmEfsJF2NcW7/nISJOoUbtf\n7JVl/KMimj8ko04Qx6oeCFHt9gySkXX5uXDJh2wImMQeiDUX53xk7NEPfuh5USQf\nYuywNVc6wMxUxGI3ULTKXtbMT6jbI/hmErJFKAvKEVb4+wwSsLl/ixfNNkFi73S8\n7ujPs7pvxqL0eHG5repvdsPf+uwf13tR5ORitbi/zzulwTinoQszAzczHWwfcqt8\nhS+qSk7aiPNOiko9X2Jx2jPCsKXjFsXpcCFyedvcTGDvBtygtSGhrIM8/bLV5E+W\nFzmkBPlbK4VK7jAwpdgXj/Ea8atMqsxNMlbTnSxgkQKBgQDq2rX3yDLbrayfdohd\nJ6CPXwWVOSdqCwxil35hVnODUYhAqo/4pTMzhiys90e4wWUZ/cjrIku7u5hrrnv0\n/MtxEfd09poSrteJqQ9fNOmFN0aL9Uc85wi/Irf67cc5vi2AM5aiyr5ans/LhM/U\n3blbtbPS4FLXwFckOQDHjtEkGQKBgQDbUG3JBS+kUb9hgvwhBnBInZkLOsYIzz3c\nl+JLfgtdZhI4IaDdZjHEzuBoi+xcwDWpbieYCE4Szk6OXHeLaKmDkNTPq2uC0UUd\n5OW7PgxXCoBhTGy872MHA+BJSfpqJ0GQIkDZerYBJptstbjgisb4a6rkYbefTXHG\n9prOJ5R3HwKBgQDNGpL+wa2A4u02Gpu+10PG0lKa3t5IIzv+wpVRxuF81vCqoQq5\nOPU9UzmjGRZfCS8Vguk8SKhhXNUhfbGt5DR8HBfD4zXtiRqdk7LkD969Q+fthRlg\n29hsrJKGp7BtAmTUaLlulKenlric4fFr0vP1Xvub9+MBn227Kbk/jr+hyQKBgQCD\nRtCAfH85D8nMF7jOF+mMPfHHPAYgbdTsv2mwoKEy5g9P1ClTfYGa+e5wBhmUp2U3\npv1CTu5U6XMyWf0g0KRvYXlRWZ3AL3381+//tbNzQpD4LOQF8BFJuLM/i22+rwLa\nwPYqd/6MD80HNHuWxNs3BlPD4w4j6BqL6z9c2WpQJwKBgQDI9B980T1aw8aeAxI8\neGxTfdR1zdKPUIsv5p0kzfPO0OgUkH4XpMNrlFXpu1nVIlnEh8RGBBKQ2yexGrrw\ncV2YJcMHg2EvUaGkLdYlhkpskZVPRWkPCU9CwUj2kShxxlJBgyDr1t6x/YzAXppQ\nPT+J1Ydu6PZntMjrtlJisop51g==\n-----END PRIVATE KEY-----\n";
+
+  console.log('🔑 Debug - Creando cliente Sheets:');
+  console.log('🔑 Email:', clientEmail);
+  console.log('🔑 Private Key length:', privateKey?.length);
+  console.log('🔑 Private Key starts with:', privateKey?.substring(0, 50));
+  console.log('🔑 Private Key ends with:', privateKey?.substring(privateKey.length - 50));
+  console.log('🔑 Todas las variables GOOGLE:', Object.keys(process.env).filter(key => key.includes('GOOGLE')));
 
   if (!clientEmail || !privateKey) {
+    console.error('🔑 ❌ Variables faltantes:');
+    console.error('🔑 ❌ clientEmail existe:', !!clientEmail);
+    console.error('🔑 ❌ privateKey existe:', !!privateKey);
     throw new Error(
       'Variables de entorno de Google Sheets incompletas. Asegúrate de definir GOOGLE_SERVICE_ACCOUNT_EMAIL y GOOGLE_SERVICE_ACCOUNT_KEY.'
     );
   }
 
-  const authClient = new auth.JWT({
-    email: clientEmail,
-    key: privateKey,
-    scopes: SCOPES
-  });
+  try {
+    const authClient = new auth.JWT({
+      email: clientEmail,
+      key: privateKey,
+      scopes: SCOPES
+    });
 
-  await authClient.authorize();
+    console.log('🔑 Intentando autorizar...');
+    await authClient.authorize();
+    console.log('🔑 ✅ Autorización exitosa');
 
-  return new sheets_v4.Sheets({ auth: authClient });
+    return new sheets_v4.Sheets({ auth: authClient });
+  } catch (error) {
+    console.error('🔑 ❌ Error en autenticación:', error);
+    throw error;
+  }
 };
 
 export const getSheetNameFromTipo = (tipo: TipoReporte): string => {
@@ -81,10 +119,22 @@ export const getSheetIdByName = async (
 };
 
 export const getSpreadsheetId = (): string => {
+  // Debug más detallado
+  console.log('🔍 Debug - getSpreadsheetId llamado:');
+  console.log('🔍 process.env.GOOGLE_SHEETS_SPREADSHEET_ID:', process.env.GOOGLE_SHEETS_SPREADSHEET_ID);
+  console.log('🔍 process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID:', process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID);
+  console.log('🔍 Todas las variables de entorno:', Object.keys(process.env).filter(key => key.includes('GOOGLE')));
+
   const envValue =
     process.env.GOOGLE_SHEETS_SPREADSHEET_ID ??
     process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID ??
-    '';
+    '1w-qqXkBPNW2j0yvOiL4xp83cBtdbpYWU8YV77PaGBjg'; // Temporal: hardcoded
+
+  // Debug: Verificar qué variables están cargadas
+  console.log('🔍 Debug - Variables de entorno:');
+  console.log('GOOGLE_SHEETS_SPREADSHEET_ID:', process.env.GOOGLE_SHEETS_SPREADSHEET_ID);
+  console.log('NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID:', process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID);
+  console.log('envValue:', envValue);
 
   const spreadsheetId = envValue.trim();
 
@@ -190,6 +240,7 @@ export const mapRegistrosToRows = (
       'REF ASLI',
       'REF EXTERNA',
       'Cliente',
+      'Booking',
       'Naviera',
       'Nave',
       'POL',
@@ -204,7 +255,7 @@ export const mapRegistrosToRows = (
       'Depósito'
     ];
 
-    const baseWidths = [180, 90, 110, 140, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
+    const baseWidths = [180, 90, 110, 140, 120, 140, 160, 120, 140, 110, 110, 70, 140, 70, 70, 120, 160];
 
     const headers = [...baseHeaders];
     const columnWidths = [...baseWidths];
@@ -225,6 +276,7 @@ export const mapRegistrosToRows = (
         registro.refAsli ?? '-',
         registro.refCliente ?? '-',
         registro.shipper ?? '-',
+        registro.booking ?? '-',
         registro.naviera ?? '-',
         registro.naveInicial ?? '-',
         registro.pol ?? '-',
