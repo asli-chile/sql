@@ -143,9 +143,15 @@ const getDelegatedGmailClient = async (subjectEmail: string) => {
   const auth = new JWTAny(jwtConfig);
 
   // Authorize the client
+  console.log('[email/send] Debug - Authorizing JWT...');
   await auth.authorize();
+  console.log('[email/send] Debug - JWT authorized successfully');
 
-  return google.gmail({ version: 'v1', auth });
+  console.log('[email/send] Debug - Creating Gmail client...');
+  const gmailClient = google.gmail({ version: 'v1', auth });
+  console.log('[email/send] Debug - Gmail client created');
+
+  return gmailClient;
 };
 
 const appendSignatureIfAny = async (gmail: ReturnType<typeof google.gmail>, fromEmail: string, htmlBody: string) => {
@@ -184,6 +190,7 @@ export async function POST(request: NextRequest) {
     // Si solo se pide la firma, retornarla sin crear borrador
     if (action === 'get-signature') {
       try {
+        console.log('[email/send] Debug - Getting sendAs settings for:', fromEmail);
         const sendAs = await gmail.users.settings.sendAs.get({
           userId: 'me',
           sendAsEmail: fromEmail,
@@ -251,6 +258,7 @@ export async function POST(request: NextRequest) {
       .replace(/=+$/, '');
 
     if (action === 'draft') {
+      console.log('[email/send] Debug - Creating draft...');
       const result = await gmail.users.drafts.create({
         userId: 'me',
         requestBody: {
@@ -259,16 +267,15 @@ export async function POST(request: NextRequest) {
           },
         },
       });
-
+      console.log('[email/send] Debug - Draft created successfully');
       return NextResponse.json({
         success: true,
-        action,
+        message: 'Borrador creado exitosamente',
         draftId: result.data.id,
-        messageId: result.data.message?.id ?? null,
-        message: attachmentData ? 'Borrador creado con adjunto' : 'Borrador creado exitosamente',
       });
     }
 
+    console.log('[email/send] Debug - Sending message...');
     const result = await gmail.users.messages.send({
       userId: 'me',
       requestBody: {
