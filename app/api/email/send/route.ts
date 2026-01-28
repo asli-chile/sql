@@ -117,17 +117,18 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
   }
 };
 
-const getDelegatedGmailClient = async (subjectEmail?: string) => {
+const getDelegatedGmailClient = async (subjectEmail: string) => {
   const serviceAccountEmail = getEnvOrThrow('GOOGLE_SERVICE_ACCOUNT_EMAIL');
   const privateKeyRaw = getServiceAccountKeyOrThrow();
   const privateKey = normalizeServiceAccountPrivateKey(privateKeyRaw);
 
   console.log('[email/send] Debug - Service Account Email:', serviceAccountEmail);
   console.log('[email/send] Debug - Subject Email:', subjectEmail);
-  console.log('[email/send] Debug - Using direct Service Account (no delegation)');
+  console.log('[email/send] Debug - Using delegation (user sends email)');
 
   const scopes = [
-    'https://www.googleapis.com/auth/gmail.send',
+    'https://mail.google.com/',
+    'https://www.googleapis.com/auth/gmail.send'
   ];
 
   // Use JWT constructor with options object
@@ -136,7 +137,7 @@ const getDelegatedGmailClient = async (subjectEmail?: string) => {
     email: serviceAccountEmail,
     key: privateKey,
     scopes: scopes,
-    // Removido subject para usar el Service Account directamente
+    subject: subjectEmail // Importante: delegar al usuario
   };
   
   const auth = new JWTAny(jwtConfig);
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const gmail = await getDelegatedGmailClient(); // Removido fromEmail para usar Service Account directamente
+    const gmail = await getDelegatedGmailClient(fromEmail); // Restaurado: enviar como el usuario
 
     // Si solo se pide la firma, retornarla sin crear borrador
     if (action === 'get-signature') {
