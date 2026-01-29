@@ -8,17 +8,17 @@ const REQUIRED_ENV = ['GOOGLE_SERVICE_ACCOUNT_EMAIL'] as const;
 const getEnvOrThrow = (key: (typeof REQUIRED_ENV)[number]) => {
   // Intentar con variable original primero
   let value = process.env[key];
-  
+
   // Si es GOOGLE_SERVICE_ACCOUNT_EMAIL, intentar con alternativa
   if (key === 'GOOGLE_SERVICE_ACCOUNT_EMAIL' && !value) {
     value = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL_NEW;
   }
-  
+
   // Priorizar variables originales que ya funcionaban
   if (!value && key === 'GOOGLE_SERVICE_ACCOUNT_EMAIL') {
     value = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL_NEW;
   }
-  
+
   if (!value) {
     console.error('[email/send] Missing env var', key, 'available?', Object.prototype.hasOwnProperty.call(process.env, key));
     throw new Error(`Missing env var: ${key} or ${key}_NEW`);
@@ -55,7 +55,7 @@ const getServiceAccountKeyOrThrow = () => {
 
   // Priorizar base64 que tiene el JSON completo
   let result = processBase64(rawB64) || processBase64(rawB64New) ||
-               processRaw(raw) || processRaw(rawNew);
+    processRaw(raw) || processRaw(rawNew);
 
   if (!result) {
     throw new Error('Missing env var: GOOGLE_SERVICE_ACCOUNT_KEY (or GOOGLE_SERVICE_ACCOUNT_KEY_NEW or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64 or GOOGLE_SERVICE_ACCOUNT_KEY_BASE64_NEW)');
@@ -68,7 +68,7 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
   console.log('[email/send] Debug - Raw input length:', raw.length);
   console.log('[email/send] Debug - Raw input starts with:', raw.substring(0, 50));
   console.log('[email/send] Debug - Raw input ends with:', raw.substring(raw.length - 50));
-  
+
   try {
     // Si es JSON completo, extraer private_key
     if (raw.trim().startsWith('{')) {
@@ -78,43 +78,43 @@ const normalizeServiceAccountPrivateKey = (raw: string) => {
       if (!privateKey || typeof privateKey !== 'string') {
         throw new Error('private_key not found in JSON');
       }
-      
+
       // Normalizar newlines
       const normalized = privateKey.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-      
+
       if (!normalized.includes('BEGIN PRIVATE KEY')) {
         throw new Error('Invalid private key format');
       }
-      
+
       return normalized;
     }
-    
+
     // Si es solo la clave privada (empieza con -----BEGIN)
     if (raw.trim().startsWith('-----BEGIN PRIVATE KEY-----')) {
       console.log('[email/send] Debug - Detected private key format');
       // Normalizar newlines
       const normalized = raw.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-      
+
       if (!normalized.includes('BEGIN PRIVATE KEY')) {
         throw new Error('Invalid private key format');
       }
-      
+
       return normalized;
     }
-    
+
     // Si está entre comillas, removerlas
     if (raw.trim().startsWith('"') && raw.trim().endsWith('"')) {
       console.log('[email/send] Debug - Detected quoted format, removing quotes');
       const unquoted = raw.slice(1, -1);
       const normalized = unquoted.replace(/\\n/g, '\n').replace(/\r\n/g, '\n');
-      
+
       if (!normalized.includes('BEGIN PRIVATE KEY')) {
         throw new Error('Invalid private key format after quote removal');
       }
-      
+
       return normalized;
     }
-    
+
     throw new Error('Invalid input format: expected JSON or private key');
   } catch (e) {
     console.log('[email/send] Debug - Error in normalizeServiceAccountPrivateKey:', e);
@@ -144,7 +144,14 @@ const getDelegatedGmailClient = async (subjectEmail: string) => {
     scopes: scopes,
     subject: subjectEmail // Importante: delegar al usuario
   };
-  
+
+  console.log('[email/send] JWT Config:', {
+    email: serviceAccountEmail,
+    subject: subjectEmail,
+    scopes: scopes,
+    keyPresent: !!privateKey
+  });
+
   const auth = new JWTAny(jwtConfig);
 
   // Authorize the client
@@ -220,7 +227,7 @@ export async function POST(request: NextRequest) {
     if (attachmentData) {
       // Correo con adjunto (multipart/mixed)
       const boundary = 'boundary_' + Math.random().toString(36).substring(2);
-      
+
       emailContent = [
         `From: ${fromEmail}`,
         `To: ${to}`,
@@ -296,25 +303,25 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('Error en /api/email/send:', error);
-    
+
     let errorMessage = 'Error al procesar el correo';
     let errorDetails = '';
-    
+
     if (error.code) {
       errorDetails = `Código: ${error.code}`;
     }
-    
+
     if (error.message) {
       errorMessage = error.message;
     }
-    
+
     if (error.errors && error.errors.length > 0) {
       errorDetails = error.errors.map((e: any) => e.message || e.reason).join(', ');
     }
 
     return NextResponse.json(
-      { 
-        error: errorMessage, 
+      {
+        error: errorMessage,
         details: errorDetails,
         code: error.code || 'UNKNOWN_ERROR'
       },

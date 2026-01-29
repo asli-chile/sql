@@ -175,25 +175,34 @@ export default function RegistrosPage() {
   const [deleteProcessing, setDeleteProcessing] = useState(false);
 
   const estadoParam = searchParams.get('estado');
+  const idParam = searchParams.get('id');
 
-  // Aplicar filtro de estado desde query params cuando el DataTable esté listo
+  // Aplicar filtro de estado o ID desde query params cuando el DataTable esté listo
   useEffect(() => {
-    if (estadoParam && tableInstance && tableStates) {
-      const estadoValue = estadoParam.toUpperCase();
-      if (['PENDIENTE', 'CONFIRMADO', 'CANCELADO'].includes(estadoValue)) {
-        // Aplicar el filtro de estado
+    if (tableInstance && tableStates) {
+      if (idParam) {
+        // Prioridad: Filtrar por ID si existe
         tableInstance.setColumnFilters((prev: any[]) => {
-          const filtered = prev.filter((f: any) => f.id !== 'estado');
-          return [...filtered, { id: 'estado', value: estadoValue }];
+          const filtered = prev.filter((f: any) => f.id !== 'id' && f.id !== 'estado');
+          return [...filtered, { id: 'id', value: idParam }];
         });
+      } else if (estadoParam) {
+        const estadoValue = estadoParam.toUpperCase();
+        if (['PENDIENTE', 'CONFIRMADO', 'CANCELADO'].includes(estadoValue)) {
+          // Aplicar el filtro de estado
+          tableInstance.setColumnFilters((prev: any[]) => {
+            const filtered = prev.filter((f: any) => f.id !== 'estado' && f.id !== 'id');
+            return [...filtered, { id: 'estado', value: estadoValue }];
+          });
+        }
+      } else {
+        // Si no hay parámetros, limpiar filtros de estado e ID
+        tableInstance.setColumnFilters((prev: any[]) =>
+          prev.filter((f: any) => f.id !== 'estado' && f.id !== 'id')
+        );
       }
-    } else if (!estadoParam && tableInstance) {
-      // Si no hay parámetro, remover el filtro de estado
-      tableInstance.setColumnFilters((prev: any[]) =>
-        prev.filter((f: any) => f.id !== 'estado')
-      );
     }
-  }, [estadoParam, tableInstance, tableStates]);
+  }, [estadoParam, idParam, tableInstance, tableStates]);
 
   const registrosVisibles = useMemo(() => {
     return registros;
@@ -1435,7 +1444,7 @@ export default function RegistrosPage() {
     try {
       const oldBooking = oldRecord?.booking;
       const syncResult = await syncTransportesFromRegistro(updatedRecord, oldBooking);
-      
+
       if (syncResult.success && (syncResult.updated || 0) > 0) {
         console.log(`✅ Se sincronizaron ${syncResult.updated} transportes con el registro actualizado`);
         // Opcional: Mostrar notificación al usuario
@@ -1558,11 +1567,11 @@ export default function RegistrosPage() {
       );
 
       // Sincronizar con transportes relacionados (solo para campos relevantes)
-      const syncFields = ['booking', 'naveInicial', 'naviera', 'refCliente', 'contenedor'];
+      const syncFields = ['booking', 'naveInicial', 'naviera', 'refCliente', 'contenedor', 'shipper', 'especie', 'pol', 'pod', 'deposito', 'temperatura'];
       if (syncFields.includes(field)) {
         try {
           const syncResult = await syncMultipleTransportesFromRegistros(updatedRecords);
-          
+
           if (syncResult.success && syncResult.totalUpdated > 0) {
             console.log(`✅ Se sincronizaron ${syncResult.totalUpdated} transportes con la actualización masiva`);
             // Opcional: Mostrar notificación al usuario

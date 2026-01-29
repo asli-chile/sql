@@ -2,7 +2,8 @@ import { TransporteRecord } from '@/lib/transportes-service';
 import { ReactNode } from 'react';
 import { InlineEditCell } from './InlineEditCell';
 import { PlantaCell } from './PlantaCell';
-import { Calendar } from 'lucide-react';
+import { Calendar, Ship, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 
 export type TransporteColumn = {
   key: keyof TransporteRecord;
@@ -38,21 +39,21 @@ const createStackingRender = (key: keyof TransporteRecord) => {
           const monthName = meses[parseInt(month) - 1];
           return `${parseInt(day)} de ${monthName} de ${year} ${timePart}`;
         }
-        
+
         // Si está en formato DD-MM-YYYY (solo fecha), convertir a nombre de mes
         if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
           const [day, month, year] = value.split('-');
           const monthName = meses[parseInt(month) - 1];
           return `${parseInt(day)} de ${monthName} de ${year}`;
         }
-        
+
         // Para fechas en formato YYYY-MM-DD
         if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
           const [year, month, day] = value.split('-');
           const monthName = meses[parseInt(month) - 1];
           return `${parseInt(day)} de ${monthName} de ${year}`;
         }
-        
+
         // Para datetime en formato ISO (con T)
         if (value.includes('T')) {
           const date = new Date(value);
@@ -65,7 +66,7 @@ const createStackingRender = (key: keyof TransporteRecord) => {
             return `${day} de ${monthName} de ${year} ${hours}:${minutes}`;
           }
         }
-        
+
         // Para datetime con espacio (formato legible)
         if (value.includes(' ') && !/^\d{2}-\d{2}-\d{4}/.test(value)) {
           const date = new Date(value.replace(' ', 'T'));
@@ -94,21 +95,18 @@ const createStackingRender = (key: keyof TransporteRecord) => {
             console.log('❌ onStackingClick es undefined');
           }
         }}
-        className={`group flex items-center justify-center gap-1 rounded px-2 py-1 -mx-2 -my-1 transition-colors cursor-pointer ${
-          theme === 'dark'
+        className={`group flex items-center justify-center gap-1 rounded px-2 py-1 -mx-2 -my-1 transition-colors cursor-pointer ${theme === 'dark'
             ? 'hover:bg-slate-700/50'
             : 'hover:bg-blue-50'
-        }`}
+          }`}
         title="Click para editar fechas de stacking"
       >
-        <span className={`text-sm text-center ${
-          theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
-        }`}>
+        <span className={`text-sm text-center ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+          }`}>
           {formatValue(item[key])}
         </span>
-        <Calendar className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
-          theme === 'dark' ? 'text-slate-500' : 'text-blue-500'
-        }`} />
+        <Calendar className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${theme === 'dark' ? 'text-slate-500' : 'text-blue-500'
+          }`} />
       </div>
     );
   };
@@ -128,7 +126,25 @@ export const transportesSections: TransporteSection[] = [
   {
     name: 'INFORMACION BOOKING',
     columns: [
-      { key: 'booking', header: 'BOOKING', section: 'INFORMACION BOOKING' },
+      {
+        key: 'booking',
+        header: 'BOOKING',
+        section: 'INFORMACION BOOKING',
+        render: (item) => (
+          <div className="flex items-center gap-2">
+            <span>{item.booking || '—'}</span>
+            {item.registro_id && (
+              <Link
+                href={`/registros?id=${item.registro_id}`}
+                className="text-sky-500 hover:text-sky-400 p-1"
+                title="Ir al registro original"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </div>
+        )
+      },
       { key: 'especie', header: 'ESPECIE', section: 'INFORMACION BOOKING' },
       { key: 'pol', header: 'POL', section: 'INFORMACION BOOKING' },
       {

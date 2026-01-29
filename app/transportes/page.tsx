@@ -65,7 +65,7 @@ export default function TransportesPage() {
   const [selectedRecord, setSelectedRecord] = useState<TransporteRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  
+
   // Estados para filtros
   const [filters, setFilters] = useState({
     booking: '',
@@ -258,7 +258,7 @@ export default function TransportesPage() {
         console.log('⏳ Esperando carga de usuario y currentUser...');
         return;
       }
-      
+
       if (isMounted) {
         setIsLoading(true);
       }
@@ -340,7 +340,7 @@ export default function TransportesPage() {
     try {
       setIsLoading(true);
       const result = await syncOrphanTransportes();
-      
+
       if (result.success) {
         if ((result.updated || 0) > 0) {
           success(`✅ Se sincronizaron ${result.updated} transportes huérfanos con los registros correspondientes`);
@@ -573,82 +573,82 @@ export default function TransportesPage() {
   const filteredRecords = useMemo(() => {
     let filtered = records.filter((record) => {
       // Búsqueda general
-      const searchMatch = !searchTerm || 
-        Object.values(record).some(value => 
-          value !== null && value !== undefined && 
+      const searchMatch = !searchTerm ||
+        Object.values(record).some(value =>
+          value !== null && value !== undefined &&
           String(value).toLowerCase().includes(searchTerm.toLowerCase())
         );
 
       // Filtros específicos
-      const bookingMatch = !filters.booking || 
+      const bookingMatch = !filters.booking ||
         (record.booking && record.booking.toLowerCase().includes(filters.booking.toLowerCase()));
-      
-      const contenedorMatch = !filters.contenedor || 
+
+      const contenedorMatch = !filters.contenedor ||
         (record.contenedor && record.contenedor.toLowerCase().includes(filters.contenedor.toLowerCase()));
-      
-      const naveMatch = !filters.nave || 
+
+      const naveMatch = !filters.nave ||
         (record.nave && record.nave.toLowerCase().includes(filters.nave.toLowerCase()));
-      
-      const navieraMatch = !filters.naviera || 
+
+      const navieraMatch = !filters.naviera ||
         (record.naviera && record.naviera.toLowerCase().includes(filters.naviera.toLowerCase()));
-      
-      const especieMatch = !filters.especie || 
+
+      const especieMatch = !filters.especie ||
         (record.especie && record.especie.toLowerCase().includes(filters.especie.toLowerCase()));
-      
-      const depositoMatch = !filters.deposito || 
+
+      const depositoMatch = !filters.deposito ||
         (record.deposito && record.deposito.toLowerCase().includes(filters.deposito.toLowerCase()));
-      
-      const conductorMatch = !filters.conductor || 
+
+      const conductorMatch = !filters.conductor ||
         (record.conductor && record.conductor.toLowerCase().includes(filters.conductor.toLowerCase()));
-      
-      const transportistaMatch = !filters.transportista || 
+
+      const transportistaMatch = !filters.transportista ||
         (record.transporte && record.transporte.toLowerCase().includes(filters.transportista.toLowerCase()));
-      
-      const semanaMatch = !filters.semana || 
+
+      const semanaMatch = !filters.semana ||
         (record.semana && String(record.semana).includes(filters.semana));
-      
-      const atControladaMatch = filters.atControlada === '' || 
+
+      const atControladaMatch = filters.atControlada === '' ||
         (filters.atControlada === 'true' && record.atmosfera_controlada) ||
         (filters.atControlada === 'false' && !record.atmosfera_controlada);
-      
-      const lateMatch = filters.late === '' || 
+
+      const lateMatch = filters.late === '' ||
         (filters.late === 'true' && record.late) ||
         (filters.late === 'false' && !record.late);
-      
-      const extraLateMatch = filters.extraLate === '' || 
+
+      const extraLateMatch = filters.extraLate === '' ||
         (filters.extraLate === 'true' && record.extra_late) ||
         (filters.extraLate === 'false' && !record.extra_late);
-      
-      const porteoMatch = filters.porteo === '' || 
+
+      const porteoMatch = filters.porteo === '' ||
         (filters.porteo === 'true' && record.porteo) ||
         (filters.porteo === 'false' && !record.porteo);
-      
-      const ingresadoStackingMatch = filters.ingresadoStacking === '' || 
+
+      const ingresadoStackingMatch = filters.ingresadoStacking === '' ||
         (filters.ingresadoStacking === 'true' && record.ingreso_stacking) ||
         (filters.ingresadoStacking === 'false' && !record.ingreso_stacking);
 
-      return searchMatch && bookingMatch && contenedorMatch && naveMatch && navieraMatch && 
-             especieMatch && depositoMatch && conductorMatch && transportistaMatch && semanaMatch &&
-             atControladaMatch && lateMatch && extraLateMatch && porteoMatch && ingresadoStackingMatch;
+      return searchMatch && bookingMatch && contenedorMatch && naveMatch && navieraMatch &&
+        especieMatch && depositoMatch && conductorMatch && transportistaMatch && semanaMatch &&
+        atControladaMatch && lateMatch && extraLateMatch && porteoMatch && ingresadoStackingMatch;
     });
 
     // Aplicar ordenamiento
     return filtered.sort((a, b) => {
       const aValue = a[sortBy];
       const bValue = b[sortBy];
-      
+
       // Manejar valores nulos/undefined
       if (aValue === null || aValue === undefined) return sortOrder === 'asc' ? 1 : -1;
       if (bValue === null || bValue === undefined) return sortOrder === 'asc' ? -1 : 1;
-      
+
       // Convertir a string para comparación
       const aStr = String(aValue).toLowerCase();
       const bStr = String(bValue).toLowerCase();
-      
+
       let comparison = 0;
       if (aStr < bStr) comparison = -1;
       if (aStr > bStr) comparison = 1;
-      
+
       return sortOrder === 'asc' ? comparison : -comparison;
     });
   }, [records, searchTerm, filters, sortBy, sortOrder]);
@@ -699,6 +699,46 @@ export default function TransportesPage() {
 
   if (loadingUser) {
     return <LoadingScreen message="Cargando transportes..." />;
+  }
+
+  // Modo Mantenimiento: Solo admins o entorno local pueden ver la página real
+  const isMaintenanceMode = true;
+  const isDev = process.env.NODE_ENV === 'development';
+  const isAdmin = currentUser?.rol === 'admin' || currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+
+  // Log para depuración de entorno
+  console.log('[Transportes] Environment:', process.env.NODE_ENV, '| Admin:', isAdmin, '| Maintenance:', isMaintenanceMode);
+
+  if (isMaintenanceMode && !isAdmin && !isDev) {
+    return (
+      <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
+        <div className="text-center space-y-6 p-8 max-w-md">
+          <div className="flex justify-center">
+            <div className={`p-6 rounded-3xl ${theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+              <AlertTriangle className={`h-16 w-16 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">MÓDULO EN MANTENIMIENTO</h1>
+            <p className={`text-lg ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Estamos trabajando en mejoras importantes para el módulo de transportes.
+            </p>
+          </div>
+          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-sky-500/20 bg-sky-500/5' : 'border-blue-200 bg-blue-50'}`}>
+            <p className="text-sm font-medium">Pronto estará disponible con nuevas funcionalidades de sincronización y navegación.</p>
+          </div>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className={`px-6 py-3 rounded-xl font-bold transition-all ${theme === 'dark'
+              ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+              : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-200 shadow-sm'
+              }`}
+          >
+            Volver al Dashboard
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -848,7 +888,7 @@ export default function TransportesPage() {
                       />
                     </div>
                   </div>
-                  
+
                   {/* Botones de acción */}
                   <div className="flex items-center gap-2">
                     {/* Controles de ordenamiento sutiles */}
@@ -856,11 +896,10 @@ export default function TransportesPage() {
                       <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as keyof TransporteRecord)}
-                        className={`px-2 py-1.5 text-xs font-medium transition-colors rounded border ${
-                          theme === 'dark'
-                            ? 'border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 focus:ring-1 focus:ring-sky-500/50'
-                            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:ring-1 focus:ring-blue-500/50'
-                        }`}
+                        className={`px-2 py-1.5 text-xs font-medium transition-colors rounded border ${theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 focus:ring-1 focus:ring-sky-500/50'
+                          : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:ring-1 focus:ring-blue-500/50'
+                          }`}
                       >
                         <option value="exportacion">Cliente</option>
                         <option value="ref_cliente">Ref Cliente</option>
@@ -870,11 +909,10 @@ export default function TransportesPage() {
                       </select>
                       <button
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                        className={`p-1.5 text-xs font-medium transition-colors rounded border ${
-                          theme === 'dark'
-                            ? 'border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
-                            : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
-                        }`}
+                        className={`p-1.5 text-xs font-medium transition-colors rounded border ${theme === 'dark'
+                          ? 'border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                          : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
+                          }`}
                         title={`Ordenar ${sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
                       >
                         {sortOrder === 'asc' ? (
@@ -884,58 +922,55 @@ export default function TransportesPage() {
                         )}
                       </button>
                     </div>
-                    
+
                     {/* Botones de vista */}
                     <div className={`flex items-center rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
                       <button
                         onClick={() => setViewMode('table')}
-                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-l-lg ${
-                          viewMode === 'table'
-                            ? theme === 'dark'
-                              ? 'bg-sky-600 text-white'
-                              : 'bg-blue-600 text-white'
-                            : theme === 'dark'
-                              ? 'text-slate-300 hover:bg-slate-800'
-                              : 'text-gray-700 hover:bg-gray-100'
-                        }`}
+                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-l-lg ${viewMode === 'table'
+                          ? theme === 'dark'
+                            ? 'bg-sky-600 text-white'
+                            : 'bg-blue-600 text-white'
+                          : theme === 'dark'
+                            ? 'text-slate-300 hover:bg-slate-800'
+                            : 'text-gray-700 hover:bg-gray-100'
+                          }`}
                         title="Vista de tabla"
                       >
                         <List className="h-4 w-4" />
                       </button>
                       <button
                         onClick={() => setViewMode('cards')}
-                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-r-lg ${
-                          viewMode === 'cards'
-                            ? theme === 'dark'
-                              ? 'bg-sky-600 text-white'
-                              : 'bg-blue-600 text-white'
-                            : theme === 'dark'
-                              ? 'text-slate-300 hover:bg-slate-800'
-                              : 'text-gray-700 hover:bg-gray-100'
-                        }`}
+                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-r-lg ${viewMode === 'cards'
+                          ? theme === 'dark'
+                            ? 'bg-sky-600 text-white'
+                            : 'bg-blue-600 text-white'
+                          : theme === 'dark'
+                            ? 'text-slate-300 hover:bg-slate-800'
+                            : 'text-gray-700 hover:bg-gray-100'
+                          }`}
                         title="Vista de tarjetas"
                       >
                         <Grid className="h-4 w-4" />
                       </button>
                     </div>
-                    
+
                     <button
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        showFilters
-                          ? theme === 'dark'
-                            ? 'bg-sky-600 text-white hover:bg-sky-500'
-                            : 'bg-blue-600 text-white hover:bg-blue-500'
-                          : theme === 'dark'
-                            ? 'border-slate-700 text-slate-300 hover:border-sky-500 hover:text-sky-200'
-                            : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
-                      }`}
+                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${showFilters
+                        ? theme === 'dark'
+                          ? 'bg-sky-600 text-white hover:bg-sky-500'
+                          : 'bg-blue-600 text-white hover:bg-blue-500'
+                        : theme === 'dark'
+                          ? 'border-slate-700 text-slate-300 hover:border-sky-500 hover:text-sky-200'
+                          : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
+                        }`}
                     >
                       <Filter className="h-4 w-4" />
                       <span className="hidden sm:inline">Filtros</span>
                       <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                     </button>
-                    
+
                     {selectedRows.size > 0 && (
                       <>
                         <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -944,37 +979,34 @@ export default function TransportesPage() {
                         <button
                           onClick={handleDeleteSelected}
                           disabled={isDeleting}
-                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                            theme === 'dark'
-                              ? 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
-                              : 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
-                          }`}
+                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
+                            ? 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
+                            : 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
+                            }`}
                         >
                           <Trash2 className="h-4 w-4" />
                           {isDeleting ? 'Eliminando...' : 'Eliminar'}
                         </button>
                         <button
                           onClick={() => setSelectedRows(new Set())}
-                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${
-                            theme === 'dark'
-                              ? 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
-                              : 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
-                          }`}
+                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${theme === 'dark'
+                            ? 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
+                            : 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
+                            }`}
                         >
                           <X className="h-4 w-4" />
                           Deseleccionar
                         </button>
                       </>
                     )}
-                    
+
                     {filteredRecords.length > 0 && (
                       <button
                         onClick={handleSelectAll}
-                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${
-                          theme === 'dark'
-                            ? 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
-                            : 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
-                        }`}
+                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${theme === 'dark'
+                          ? 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
+                          : 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
+                          }`}
                       >
                         {selectedRows.size === filteredRecords.length ? (
                           <>
@@ -991,13 +1023,13 @@ export default function TransportesPage() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Panel de filtros */}
                 {showFilters && (
                   <div className={`mt-4 p-4 rounded-xl border ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-900/50'
                     : 'border-gray-200 bg-gray-50'
-                  }`}>
+                    }`}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                       {/* Filtros de texto */}
                       <div>
@@ -1006,221 +1038,207 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.booking}
                           onChange={(e) => setFilters(prev => ({ ...prev, booking: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar booking..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Contenedor</label>
                         <input
                           type="text"
                           value={filters.contenedor}
                           onChange={(e) => setFilters(prev => ({ ...prev, contenedor: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar contenedor..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Nave</label>
                         <input
                           type="text"
                           value={filters.nave}
                           onChange={(e) => setFilters(prev => ({ ...prev, nave: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar nave..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Naviera</label>
                         <input
                           type="text"
                           value={filters.naviera}
                           onChange={(e) => setFilters(prev => ({ ...prev, naviera: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar naviera..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Especie</label>
                         <input
                           type="text"
                           value={filters.especie}
                           onChange={(e) => setFilters(prev => ({ ...prev, especie: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar especie..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Depósito</label>
                         <input
                           type="text"
                           value={filters.deposito}
                           onChange={(e) => setFilters(prev => ({ ...prev, deposito: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar depósito..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Conductor</label>
                         <input
                           type="text"
                           value={filters.conductor}
                           onChange={(e) => setFilters(prev => ({ ...prev, conductor: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar conductor..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Transportista</label>
                         <input
                           type="text"
                           value={filters.transportista}
                           onChange={(e) => setFilters(prev => ({ ...prev, transportista: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar transportista..."
                         />
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Semana</label>
                         <input
                           type="text"
                           value={filters.semana}
                           onChange={(e) => setFilters(prev => ({ ...prev, semana: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                           placeholder="Filtrar semana..."
                         />
                       </div>
-                      
+
                       {/* Filtros booleanos */}
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>AT Controlada</label>
                         <select
                           value={filters.atControlada}
                           onChange={(e) => setFilters(prev => ({ ...prev, atControlada: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                         >
                           <option value="">Todos</option>
                           <option value="true">Sí</option>
                           <option value="false">No</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Late</label>
                         <select
                           value={filters.late}
                           onChange={(e) => setFilters(prev => ({ ...prev, late: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                         >
                           <option value="">Todos</option>
                           <option value="true">Sí</option>
                           <option value="false">No</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Extra Late</label>
                         <select
                           value={filters.extraLate}
                           onChange={(e) => setFilters(prev => ({ ...prev, extraLate: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                         >
                           <option value="">Todos</option>
                           <option value="true">Sí</option>
                           <option value="false">No</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Porteo</label>
                         <select
                           value={filters.porteo}
                           onChange={(e) => setFilters(prev => ({ ...prev, porteo: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                         >
                           <option value="">Todos</option>
                           <option value="true">Sí</option>
                           <option value="false">No</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Ingresado Stacking</label>
                         <select
                           value={filters.ingresadoStacking}
                           onChange={(e) => setFilters(prev => ({ ...prev, ingresadoStacking: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${
-                            theme === 'dark'
-                              ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
-                              : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                            : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
+                            }`}
                         >
                           <option value="">Todos</option>
                           <option value="true">Sí</option>
                           <option value="false">No</option>
                         </select>
                       </div>
-                      
+
                       {/* Botón para limpiar filtros */}
                       <div className="flex items-end">
                         <button
@@ -1240,11 +1258,10 @@ export default function TransportesPage() {
                             porteo: '',
                             ingresadoStacking: ''
                           })}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                            theme === 'dark'
-                              ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
-                              : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                          }`}
+                          className={`w-full px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${theme === 'dark'
+                            ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                            : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                            }`}
                         >
                           Limpiar filtros
                         </button>

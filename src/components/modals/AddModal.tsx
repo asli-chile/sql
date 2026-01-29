@@ -17,6 +17,8 @@ import {
 import { parseDateString, formatDateForInput } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { syncMultipleTransportesFromRegistros } from '@/lib/sync-transportes';
+import { convertSupabaseToApp } from '@/lib/migration-utils';
 
 interface AddModalProps {
   isOpen: boolean;
@@ -44,9 +46,9 @@ interface AddModalProps {
   clienteFijadoPorCoincidencia?: string; // Cliente que debe estar preseleccionado y bloqueado
 }
 
-export function AddModal({ 
-  isOpen, 
-  onClose, 
+export function AddModal({
+  isOpen,
+  onClose,
   onSuccess,
   createdByName,
   userEmail,
@@ -69,19 +71,19 @@ export function AddModal({
   tratamientosDeFrioOpciones,
   clienteFijadoPorCoincidencia
 }: AddModalProps) {
-  
+
   const { theme } = useTheme();
   const MAX_COPIES = 50;
-  
+
   // Crear cliente Supabase para versión web
   const supabase = createClient();
-  
+
   // Establecer el cliente para las funciones mobile-api-utils
   setSupabaseClient(supabase);
-  
+
   // Verificar estado de autenticación al montar el modal
   const [authStatus, setAuthStatus] = useState<string>('');
-  
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -101,12 +103,12 @@ export function AddModal({
         setAuthStatus('Error verificando autenticación');
       }
     };
-    
+
     if (isOpen) {
       checkAuth();
     }
   }, [isOpen, supabase]);
-  
+
   // Helper para obtener estilos de select según el tema
   const getSelectStyles = () => {
     return theme === 'dark'
@@ -124,7 +126,7 @@ export function AddModal({
       : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
   };
 
-  
+
   const viajeInputRef = React.useRef<HTMLInputElement>(null);
   const etdDateInputRef = React.useRef<HTMLInputElement>(null);
   const etaDateInputRef = React.useRef<HTMLInputElement>(null);
@@ -203,7 +205,7 @@ export function AddModal({
   useEffect(() => {
     const initializeModal = async () => {
       if (!isOpen) return;
-      
+
       setGeneratingRef(true);
       setError('');
       setNumberOfCopies('');
@@ -212,8 +214,8 @@ export function AddModal({
       setIsSaved(false); // Resetear estado de guardado
       try {
         const [newRefAsli] = await requestRefAsliList(1);
-        setFormData(prev => ({ 
-          ...prev, 
+        setFormData(prev => ({
+          ...prev,
           refAsli: newRefAsli,
           // Pre-seleccionar cliente si hay coincidencia con nombre de usuario
           shipper: clienteFijadoPorCoincidencia || prev.shipper
@@ -222,8 +224,8 @@ export function AddModal({
       } catch (error) {
         console.error('Error generando REF ASLI:', error);
         const fallbackRefAsli = await generateUniqueRefAsli();
-        setFormData(prev => ({ 
-          ...prev, 
+        setFormData(prev => ({
+          ...prev,
           refAsli: fallbackRefAsli,
           shipper: clienteFijadoPorCoincidencia || prev.shipper
         }));
@@ -241,7 +243,7 @@ export function AddModal({
         try {
           console.log('🔄 Generando REF EXTERNA para:', formData.shipper, formData.especie);
           const refExterna = await generateRefExternaMobile(formData.shipper, formData.especie, 1) as string;
-          
+
           if (!refExterna) {
             console.warn('⚠️ REF EXTERNA vacía, generando fallback local');
             // Generar fallback local si todo falla
@@ -252,7 +254,7 @@ export function AddModal({
             setFormData(prev => ({ ...prev, refCliente: fallbackRef }));
             return;
           }
-          
+
           console.log('✅ REF EXTERNA generada:', refExterna);
           setFormData(prev => ({ ...prev, refCliente: refExterna }));
         } catch (error) {
@@ -366,7 +368,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     try {
       console.log('📧 Iniciando sendReservationEmail...');
       console.log('📧 userEmail:', userEmail);
-      
+
       if (!userEmail) {
         alert('Error: No se encontró el email del usuario. Por favor, inicia sesión nuevamente.');
         return;
@@ -378,8 +380,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       }
       resolvedCopies = Math.min(resolvedCopies, MAX_COPIES);
 
-      const naveCompleta = formData.naveInicial && formData.viaje.trim() 
-        ? `${formData.naveInicial} [${formData.viaje.trim()}]` 
+      const naveCompleta = formData.naveInicial && formData.viaje.trim()
+        ? `${formData.naveInicial} [${formData.viaje.trim()}]`
         : formData.naveInicial || '';
 
       const condiciones = [];
@@ -454,7 +456,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         // Abrir el borrador en Gmail
         const gmailWindow = window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
         console.log('📧 Ventana abierta:', gmailWindow);
-        
+
         if (!gmailWindow) {
           alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
         }
@@ -472,7 +474,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     if (currentStep !== 5) {
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
@@ -507,8 +509,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       const todayString = formatDateForInput(new Date());
 
       // Construir el nombre completo de la nave
-      const naveCompleta = formData.naveInicial && formData.viaje.trim() 
-        ? `${formData.naveInicial} [${formData.viaje.trim()}]` 
+      const naveCompleta = formData.naveInicial && formData.viaje.trim()
+        ? `${formData.naveInicial} [${formData.viaje.trim()}]`
         : formData.naveInicial || '';
 
       // Generar REF ASLI únicos para todas las copias
@@ -596,7 +598,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
         await upsertNaveMappingMobile(naviera, sanitizedNave);
       };
-      
+
       const createResult = await createRegistrosMobile(recordsToInsert);
 
       if (!createResult || !createResult.records) {
@@ -635,6 +637,16 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       );
 
       await upsertNaveMappingEntry();
+
+      // Sincronizar con transportes relacionados
+      if (createResult.records && createResult.records.length > 0) {
+        try {
+          const appRecords = createResult.records.map((record: any) => convertSupabaseToApp(record));
+          await syncMultipleTransportesFromRegistros(appRecords);
+        } catch (syncError) {
+          console.warn('⚠️ Error al sincronizar transportes desde AddModal:', syncError);
+        }
+      }
 
       // No cerrar el modal, solo marcar como guardado y mostrar botón de correo
       setIsSaved(true);
@@ -712,16 +724,16 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    
+
     // Para selects, usar el valor directamente (ya están en mayúsculas desde el catálogo)
     // Para inputs de texto y textarea, convertir a mayúsculas
     let normalizedValue = value;
-    
+
     // Format date inputs (ETD, ETA) to DD-MM-YYYY
     if (name === 'etd' || name === 'eta') {
       // Remove all non-numeric characters
       const numericValue = value.replace(/\D/g, '');
-      
+
       // Format as DD-MM-YYYY
       if (numericValue.length <= 2) {
         normalizedValue = numericValue;
@@ -735,7 +747,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     } else {
       // Campos de texto que deben convertirse a mayúsculas
       const textFields = ['refCliente', 'viaje', 'consignatario', 'comentario', 'contrato'];
-      
+
       if (textFields.includes(name)) {
         normalizedValue = normalizeCatalogValue(name, value);
       }
@@ -794,27 +806,24 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
   return isOpen ? (
     <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto ${theme === 'dark' ? 'bg-slate-950/80' : 'bg-black/50'}`}>
-      <div className={`relative flex max-h-[95vh] my-auto w-full max-w-[98vw] 2xl:max-w-[1400px] flex-col rounded-3xl border shadow-2xl ${
-        theme === 'dark' 
-          ? 'border-slate-800/60 bg-slate-950/90 shadow-slate-950/40' 
-          : 'border-gray-200 bg-white shadow-gray-900/20'
-      }`}>
-        <div className={`flex items-center justify-between border-b px-6 py-4 sticky top-0 z-10 rounded-t-3xl ${
-          theme === 'dark' 
-            ? 'border-slate-800/60 bg-slate-950/80' 
-            : 'border-gray-200 bg-gray-50'
+      <div className={`relative flex max-h-[95vh] my-auto w-full max-w-[98vw] 2xl:max-w-[1400px] flex-col rounded-3xl border shadow-2xl ${theme === 'dark'
+        ? 'border-slate-800/60 bg-slate-950/90 shadow-slate-950/40'
+        : 'border-gray-200 bg-white shadow-gray-900/20'
         }`}>
+        <div className={`flex items-center justify-between border-b px-6 py-4 sticky top-0 z-10 rounded-t-3xl ${theme === 'dark'
+          ? 'border-slate-800/60 bg-slate-950/80'
+          : 'border-gray-200 bg-gray-50'
+          }`}>
           <div>
             <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>Agregar nuevo registro</h2>
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Completa la información del embarque</p>
           </div>
           <button
             onClick={onClose}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${
-              theme === 'dark' 
-                ? 'border-slate-800/70 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' 
-                : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
-            }`}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${theme === 'dark'
+              ? 'border-slate-800/70 text-slate-300 hover:border-sky-500/60 hover:text-sky-200'
+              : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
+              }`}
             title="Cerrar"
           >
             <X className="h-4 w-4" />
@@ -828,15 +837,14 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               <React.Fragment key={step}>
                 <div className="flex items-center">
                   <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${
-                      currentStep === step
-                        ? 'bg-sky-500 border-sky-500 text-white'
-                        : currentStep > step
+                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${currentStep === step
+                      ? 'bg-sky-500 border-sky-500 text-white'
+                      : currentStep > step
                         ? 'bg-green-500 border-green-500 text-white'
                         : theme === 'dark'
                           ? 'bg-transparent border-slate-700 text-slate-400'
                           : 'bg-transparent border-gray-300 text-gray-500'
-                    }`}
+                      }`}
                   >
                     {currentStep > step ? (
                       <Check className="h-5 w-5" />
@@ -847,13 +855,12 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 </div>
                 {step < 5 && (
                   <div
-                    className={`h-0.5 w-12 ${
-                      currentStep > step 
-                        ? 'bg-green-500' 
-                        : theme === 'dark' 
-                          ? 'bg-slate-700' 
-                          : 'bg-gray-300'
-                    }`}
+                    className={`h-0.5 w-12 ${currentStep > step
+                      ? 'bg-green-500'
+                      : theme === 'dark'
+                        ? 'bg-slate-700'
+                        : 'bg-gray-300'
+                      }`}
                   />
                 )}
               </React.Fragment>
@@ -866,57 +873,56 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           {currentStep === 1 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* REF ASLI */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                REF ASLI * (Generado automáticamente)
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  name="refAsli"
-                  value={formData.refAsli}
-                  readOnly
-                  disabled={generatingRef}
-                  className={`w-full cursor-not-allowed rounded-xl border px-3 py-2 text-sm ${
-                    theme === 'dark' 
-                      ? 'border-slate-800/60 bg-slate-900/50 text-slate-400' 
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  REF ASLI * (Generado automáticamente)
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="refAsli"
+                    value={formData.refAsli}
+                    readOnly
+                    disabled={generatingRef}
+                    className={`w-full cursor-not-allowed rounded-xl border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-800/60 bg-slate-900/50 text-slate-400'
                       : 'border-gray-300 bg-gray-100 text-gray-500'
-                  }`}
-                  placeholder={generatingRef ? "Generando..." : "A0001"}
-                />
-                {generatingRef && (
-                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  </div>
-                )}
+                      }`}
+                    placeholder={generatingRef ? "Generando..." : "A0001"}
+                  />
+                  {generatingRef && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-slate-400">
+                  El REF ASLI se genera automáticamente para evitar duplicados
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setGeneratingRef(true);
+                    try {
+                      const [newRefAsli] = await requestRefAsliList(1);
+                      setFormData(prev => ({ ...prev, refAsli: newRefAsli }));
+                    } catch (error) {
+                      console.error('Error regenerando REF ASLI:', error);
+                    } finally {
+                      setGeneratingRef(false);
+                    }
+                  }}
+                  disabled={generatingRef}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 disabled:opacity-50"
+                >
+                  {generatingRef ? 'Generando…' : 'Regenerar REF ASLI'}
+                </button>
               </div>
-              <p className="text-xs text-slate-400">
-                El REF ASLI se genera automáticamente para evitar duplicados
-              </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  setGeneratingRef(true);
-                  try {
-                    const [newRefAsli] = await requestRefAsliList(1);
-                    setFormData(prev => ({ ...prev, refAsli: newRefAsli }));
-                  } catch (error) {
-                    console.error('Error regenerando REF ASLI:', error);
-                  } finally {
-                    setGeneratingRef(false);
-                  }
-                }}
-                disabled={generatingRef}
-                className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 disabled:opacity-50"
-              >
-                {generatingRef ? 'Generando…' : 'Regenerar REF ASLI'}
-              </button>
-            </div>
 
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Ref. Externa (Generada automáticamente)
-              </label>
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Ref. Externa (Generada automáticamente)
+                </label>
                 <input
                   type="text"
                   name="refCliente"
@@ -930,68 +936,68 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Formato: [3 letras cliente][2526][3 letras especie][001]
                 </p>
-            </div>
+              </div>
 
-            {/* Ejecutivo */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Ejecutivo *
-              </label>
-              <Combobox
-                options={ejecutivosUnicos}
-                value={formData.ejecutivo || ''}
-                onChange={(value) => handleComboboxChange('ejecutivo', value)}
-                placeholder="Seleccionar ejecutivo"
-                theme={theme}
-                required
-              />
-            </div>
+              {/* Ejecutivo */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Ejecutivo *
+                </label>
+                <Combobox
+                  options={ejecutivosUnicos}
+                  value={formData.ejecutivo || ''}
+                  onChange={(value) => handleComboboxChange('ejecutivo', value)}
+                  placeholder="Seleccionar ejecutivo"
+                  theme={theme}
+                  required
+                />
+              </div>
 
-            {/* Cliente */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Cliente *
-              </label>
-              <Combobox
-                options={clientesUnicos}
-                value={formData.shipper || ''}
-                onChange={(value) => handleComboboxChange('shipper', value)}
-                placeholder="Seleccionar cliente"
-                theme={theme}
-                required
-                disabled={!!clienteFijadoPorCoincidencia}
-              />
-            </div>
+              {/* Cliente */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Cliente *
+                </label>
+                <Combobox
+                  options={clientesUnicos}
+                  value={formData.shipper || ''}
+                  onChange={(value) => handleComboboxChange('shipper', value)}
+                  placeholder="Seleccionar cliente"
+                  theme={theme}
+                  required
+                  disabled={!!clienteFijadoPorCoincidencia}
+                />
+              </div>
 
-            {/* Contrato */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Contrato
-              </label>
-              <Combobox
-                options={contratosUnicos}
-                value={formData.contrato || ''}
-                onChange={(value) => handleComboboxChange('contrato', value)}
-                placeholder="Seleccionar contrato (opcional)"
-                theme={theme}
-              />
-            </div>
+              {/* Contrato */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Contrato
+                </label>
+                <Combobox
+                  options={contratosUnicos}
+                  value={formData.contrato || ''}
+                  onChange={(value) => handleComboboxChange('contrato', value)}
+                  placeholder="Seleccionar contrato (opcional)"
+                  theme={theme}
+                />
+              </div>
 
-            {/* Especie */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Especie *
-              </label>
-              <Combobox
-                options={especiesUnicas}
-                value={formData.especie || ''}
-                onChange={(value) => handleComboboxChange('especie', value)}
-                placeholder="Seleccionar especie"
-                theme={theme}
-                required
-              />
+              {/* Especie */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Especie *
+                </label>
+                <Combobox
+                  options={especiesUnicas}
+                  value={formData.especie || ''}
+                  onChange={(value) => handleComboboxChange('especie', value)}
+                  placeholder="Seleccionar especie"
+                  theme={theme}
+                  required
+                />
+              </div>
             </div>
-          </div>
           )}
 
           {/* Paso 2: Ruta y transporte */}
@@ -999,290 +1005,288 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Naviera */}
               <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Naviera *
-              </label>
-              <Combobox
-                options={navierasUnicas}
-                value={formData.naviera || ''}
-                onChange={(value) => handleComboboxChange('naviera', value)}
-                placeholder="Seleccionar naviera"
-                theme={theme}
-                required
-              />
-              {formData.naviera && formData.naviera.includes('/') && (
-                <div className={`text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
-                  <span className="font-medium">
-                    Consorcio: {formData.naviera}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Nave */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Nave *
-                {formData.naviera && (
-                  <span className={`text-xs ml-2 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
-                    ({naveOptions.length} disponibles)
-                  </span>
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Naviera *
+                </label>
+                <Combobox
+                  options={navierasUnicas}
+                  value={formData.naviera || ''}
+                  onChange={(value) => handleComboboxChange('naviera', value)}
+                  placeholder="Seleccionar naviera"
+                  theme={theme}
+                  required
+                />
+                {formData.naviera && formData.naviera.includes('/') && (
+                  <div className={`text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+                    <span className="font-medium">
+                      Consorcio: {formData.naviera}
+                    </span>
+                  </div>
                 )}
-              </label>
-              <Combobox
-                options={naveOptions}
-                value={formData.naveInicial || ''}
-                onChange={(value) => handleComboboxChange('naveInicial', value)}
-                placeholder={formData.naviera ? 'Seleccionar nave' : 'Primero selecciona una naviera'}
-                theme={theme}
-                required
-                disabled={!formData.naviera}
-              />
-              {formData.naviera && naveOptions.length === 0 && (
-                <p className={`text-xs ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
-                  No hay naves disponibles para esta naviera
-                </p>
-              )}
-            </div>
+              </div>
 
-            {/* Viaje */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${
-                formData.naveInicial && !formData.viaje && error.includes('Viaje')
+              {/* Nave */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Nave *
+                  {formData.naviera && (
+                    <span className={`text-xs ml-2 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+                      ({naveOptions.length} disponibles)
+                    </span>
+                  )}
+                </label>
+                <Combobox
+                  options={naveOptions}
+                  value={formData.naveInicial || ''}
+                  onChange={(value) => handleComboboxChange('naveInicial', value)}
+                  placeholder={formData.naviera ? 'Seleccionar nave' : 'Primero selecciona una naviera'}
+                  theme={theme}
+                  required
+                  disabled={!formData.naviera}
+                />
+                {formData.naviera && naveOptions.length === 0 && (
+                  <p className={`text-xs ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`}>
+                    No hay naves disponibles para esta naviera
+                  </p>
+                )}
+              </div>
+
+              {/* Viaje */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${formData.naveInicial && !formData.viaje && error.includes('Viaje')
                   ? 'text-red-600'
                   : getLabelStyles()
-              }`}>
-                Viaje {formData.naveInicial ? '*' : ''}
-              </label>
-              <input
-                ref={viajeInputRef}
-                type="text"
-                name="viaje"
-                value={formData.viaje}
-                onChange={handleChange}
-                required={!!formData.naveInicial}
-                disabled={!formData.naveInicial}
-                className={`w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
-                placeholder={formData.naveInicial ? "Ej: 001E" : "Primero selecciona una nave"}
-              />
-              {formData.naveInicial && !formData.viaje && error.includes('Viaje') && (
-                <div className="flex items-center space-x-1 text-red-600">
-                  <AlertCircle className="h-4 w-4" />
-                  <p className="text-xs font-medium">
-                    El número de viaje es obligatorio cuando hay una nave seleccionada
+                  }`}>
+                  Viaje {formData.naveInicial ? '*' : ''}
+                </label>
+                <input
+                  ref={viajeInputRef}
+                  type="text"
+                  name="viaje"
+                  value={formData.viaje}
+                  onChange={handleChange}
+                  required={!!formData.naveInicial}
+                  disabled={!formData.naveInicial}
+                  className={`w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
+                  placeholder={formData.naveInicial ? "Ej: 001E" : "Primero selecciona una nave"}
+                />
+                {formData.naveInicial && !formData.viaje && error.includes('Viaje') && (
+                  <div className="flex items-center space-x-1 text-red-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <p className="text-xs font-medium">
+                      El número de viaje es obligatorio cuando hay una nave seleccionada
+                    </p>
+                  </div>
+                )}
+                {formData.naveInicial && formData.viaje && (
+                  <p className="text-xs text-gray-700">
+                    El número de viaje se mostrará entre corchetes en la nave completa
                   </p>
+                )}
+              </div>
+
+              {/* Depósito */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Depósito *
+                </label>
+                <Combobox
+                  options={depositosUnicos}
+                  value={formData.deposito || ''}
+                  onChange={(value) => handleComboboxChange('deposito', value)}
+                  placeholder="Seleccionar depósito"
+                  theme={theme}
+                  required
+                />
+              </div>
+
+              {/* POL */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  POL *
+                </label>
+                <Combobox
+                  options={polsUnicos}
+                  value={formData.pol || ''}
+                  onChange={(value) => handleComboboxChange('pol', value)}
+                  placeholder="Seleccionar POL"
+                  theme={theme}
+                  required
+                />
+              </div>
+
+              {/* POD */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  POD *
+                </label>
+                <Combobox
+                  options={destinosUnicos}
+                  value={formData.pod || ''}
+                  onChange={(value) => handleComboboxChange('pod', value)}
+                  placeholder="Seleccionar POD"
+                  theme={theme}
+                  required
+                />
+              </div>
+
+              {/* Flete */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Flete *
+                </label>
+                <select
+                  name="flete"
+                  value={formData.flete || ''}
+                  onChange={handleChange}
+                  className={getSelectStyles()}
+                  required
+                >
+                  <option value="">Seleccionar flete</option>
+                  {fletesUnicos.map((flete) => (
+                    <option key={flete} value={flete}>
+                      {flete}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Tipo de Ingreso */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  Tipo de Ingreso *
+                </label>
+                <select
+                  name="tipoIngreso"
+                  value={formData.tipoIngreso}
+                  onChange={handleChange}
+                  className={getSelectStyles()}
+                  required
+                >
+                  <option value="">Seleccionar tipo de ingreso</option>
+                  <option value="NORMAL">NORMAL</option>
+                  <option value="EARLY">EARLY</option>
+                  <option value="LATE">LATE</option>
+                  <option value="EXTRA LATE">EXTRA LATE</option>
+                </select>
+              </div>
+
+              {/* ETD */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  ETD
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    name="etd"
+                    value={formData.etd}
+                    onChange={handleChange}
+                    className={`${getInputStyles()} pr-10`}
+                    placeholder="DD-MM-AAAA"
+                    pattern="\d{2}-\d{2}-\d{4}"
+                    maxLength={10}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => etdDateInputRef.current?.showPicker?.()}
+                    className={`absolute right-2 p-1 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
+                    title="Abrir calendario"
+                  >
+                    <Calendar size={18} />
+                  </button>
+                  <input
+                    ref={etdDateInputRef}
+                    type="date"
+                    className="absolute opacity-0 pointer-events-none"
+                    value={formData.etd ? (() => {
+                      try {
+                        const [day, month, year] = formData.etd.split('-');
+                        if (day && month && year && day.length === 2 && month.length === 2 && year.length === 4) {
+                          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                        }
+                      } catch { }
+                      return '';
+                    })() : ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-');
+                        const formatted = `${day}-${month}-${year}`;
+                        setFormData(prev => ({ ...prev, etd: formatted }));
+                      } else {
+                        setFormData(prev => ({ ...prev, etd: '' }));
+                      }
+                    }}
+                  />
                 </div>
-              )}
-              {formData.naveInicial && formData.viaje && (
-                <p className="text-xs text-gray-700">
-                  El número de viaje se mostrará entre corchetes en la nave completa
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
+                  Formato: DD-MM-AAAA (día-mes-año)
                 </p>
-              )}
-            </div>
-
-            {/* Depósito */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Depósito *
-              </label>
-              <Combobox
-                options={depositosUnicos}
-                value={formData.deposito || ''}
-                onChange={(value) => handleComboboxChange('deposito', value)}
-                placeholder="Seleccionar depósito"
-                theme={theme}
-                required
-              />
-            </div>
-
-            {/* POL */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                POL *
-              </label>
-              <Combobox
-                options={polsUnicos}
-                value={formData.pol || ''}
-                onChange={(value) => handleComboboxChange('pol', value)}
-                placeholder="Seleccionar POL"
-                theme={theme}
-                required
-              />
-            </div>
-
-            {/* POD */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                POD *
-              </label>
-              <Combobox
-                options={destinosUnicos}
-                value={formData.pod || ''}
-                onChange={(value) => handleComboboxChange('pod', value)}
-                placeholder="Seleccionar POD"
-                theme={theme}
-                required
-              />
-            </div>
-
-            {/* Flete */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Flete *
-              </label>
-              <select
-                name="flete"
-                value={formData.flete || ''}
-                onChange={handleChange}
-                className={getSelectStyles()}
-                required
-              >
-                <option value="">Seleccionar flete</option>
-                {fletesUnicos.map((flete) => (
-                  <option key={flete} value={flete}>
-                    {flete}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Tipo de Ingreso */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                Tipo de Ingreso *
-              </label>
-              <select
-                name="tipoIngreso"
-                value={formData.tipoIngreso}
-                onChange={handleChange}
-                className={getSelectStyles()}
-                required
-              >
-                <option value="">Seleccionar tipo de ingreso</option>
-                <option value="NORMAL">NORMAL</option>
-                <option value="EARLY">EARLY</option>
-                <option value="LATE">LATE</option>
-                <option value="EXTRA LATE">EXTRA LATE</option>
-              </select>
-            </div>
-
-            {/* ETD */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                ETD
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  name="etd"
-                  value={formData.etd}
-                  onChange={handleChange}
-                  className={`${getInputStyles()} pr-10`}
-                  placeholder="DD-MM-AAAA"
-                  pattern="\d{2}-\d{2}-\d{4}"
-                  maxLength={10}
-                />
-                <button
-                  type="button"
-                  onClick={() => etdDateInputRef.current?.showPicker?.()}
-                  className={`absolute right-2 p-1 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
-                  title="Abrir calendario"
-                >
-                  <Calendar size={18} />
-                </button>
-                <input
-                  ref={etdDateInputRef}
-                  type="date"
-                  className="absolute opacity-0 pointer-events-none"
-                  value={formData.etd ? (() => {
-                    try {
-                      const [day, month, year] = formData.etd.split('-');
-                      if (day && month && year && day.length === 2 && month.length === 2 && year.length === 4) {
-                        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-                      }
-                    } catch {}
-                    return '';
-                  })() : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const [year, month, day] = e.target.value.split('-');
-                      const formatted = `${day}-${month}-${year}`;
-                      setFormData(prev => ({ ...prev, etd: formatted }));
-                    } else {
-                      setFormData(prev => ({ ...prev, etd: '' }));
-                    }
-                  }}
-                />
               </div>
-              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
-                Formato: DD-MM-AAAA (día-mes-año)
-              </p>
-            </div>
 
-            {/* ETA */}
-            <div className="space-y-2">
-              <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                ETA
-              </label>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  name="eta"
-                  value={formData.eta}
-                  onChange={handleChange}
-                  className={`${getInputStyles()} pr-10`}
-                  placeholder="DD-MM-AAAA"
-                  pattern="\d{2}-\d{2}-\d{4}"
-                  maxLength={10}
-                />
-                <button
-                  type="button"
-                  onClick={() => etaDateInputRef.current?.showPicker?.()}
-                  className={`absolute right-2 p-1 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
-                  title="Abrir calendario"
-                >
-                  <Calendar size={18} />
-                </button>
-                <input
-                  ref={etaDateInputRef}
-                  type="date"
-                  className="absolute opacity-0 pointer-events-none"
-                  value={formData.eta ? (() => {
-                    try {
-                      const [day, month, year] = formData.eta.split('-');
-                      if (day && month && year && day.length === 2 && month.length === 2 && year.length === 4) {
-                        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+              {/* ETA */}
+              <div className="space-y-2">
+                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  ETA
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="text"
+                    name="eta"
+                    value={formData.eta}
+                    onChange={handleChange}
+                    className={`${getInputStyles()} pr-10`}
+                    placeholder="DD-MM-AAAA"
+                    pattern="\d{2}-\d{2}-\d{4}"
+                    maxLength={10}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => etaDateInputRef.current?.showPicker?.()}
+                    className={`absolute right-2 p-1 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
+                    title="Abrir calendario"
+                  >
+                    <Calendar size={18} />
+                  </button>
+                  <input
+                    ref={etaDateInputRef}
+                    type="date"
+                    className="absolute opacity-0 pointer-events-none"
+                    value={formData.eta ? (() => {
+                      try {
+                        const [day, month, year] = formData.eta.split('-');
+                        if (day && month && year && day.length === 2 && month.length === 2 && year.length === 4) {
+                          return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                        }
+                      } catch { }
+                      return '';
+                    })() : ''}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [year, month, day] = e.target.value.split('-');
+                        const formatted = `${day}-${month}-${year}`;
+                        setFormData(prev => ({ ...prev, eta: formatted }));
+                      } else {
+                        setFormData(prev => ({ ...prev, eta: '' }));
                       }
-                    } catch {}
-                    return '';
-                  })() : ''}
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const [year, month, day] = e.target.value.split('-');
-                      const formatted = `${day}-${month}-${year}`;
-                      setFormData(prev => ({ ...prev, eta: formatted }));
-                    } else {
-                      setFormData(prev => ({ ...prev, eta: '' }));
-                    }
-                  }}
-                />
+                    }}
+                  />
+                </div>
+                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
+                  Formato: DD-MM-AAAA (día-mes-año)
+                </p>
               </div>
-              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
-                Formato: DD-MM-AAAA (día-mes-año)
-              </p>
             </div>
-          </div>
           )}
 
           {/* Paso 3: Información de carga */}
           {currentStep === 3 && (
             <div className="space-y-4">
               {/* Checkbox Atmósfera Controlada */}
-              <div className={`flex items-center space-x-3 p-4 rounded-xl border ${
-                theme === 'dark' 
-                  ? 'border-slate-800/60 bg-slate-900/50' 
-                  : 'border-gray-300 bg-gray-50'
-              }`}>
+              <div className={`flex items-center space-x-3 p-4 rounded-xl border ${theme === 'dark'
+                ? 'border-slate-800/60 bg-slate-900/50'
+                : 'border-gray-300 bg-gray-50'
+                }`}>
                 <input
                   type="checkbox"
                   id="atmosferaControlada"
@@ -1303,11 +1307,10 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       }));
                     }
                   }}
-                  className={`w-5 h-5 rounded text-sky-500 focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${
-                    theme === 'dark' 
-                      ? 'border-slate-700 bg-slate-800' 
-                      : 'border-gray-300 bg-white'
-                  }`}
+                  className={`w-5 h-5 rounded text-sky-500 focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${theme === 'dark'
+                    ? 'border-slate-700 bg-slate-800'
+                    : 'border-gray-300 bg-white'
+                    }`}
                 />
                 <label
                   htmlFor="atmosferaControlada"
@@ -1507,7 +1510,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     Revisa toda la información antes de guardar
                   </p>
                 </div>
-                
+
                 {/* Sección: Información Básica */}
                 <div className="mb-6">
                   <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-sky-400' : 'text-sky-600'}`}>
@@ -1672,39 +1675,34 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           )}
 
           {error && (
-            <div className={`rounded-2xl border px-4 py-3 text-xs ${
-              theme === 'dark' 
-                ? 'border-red-500/40 bg-red-500/10 text-red-200' 
-                : 'border-red-300 bg-red-50 text-red-700'
-            }`}>
+            <div className={`rounded-2xl border px-4 py-3 text-xs ${theme === 'dark'
+              ? 'border-red-500/40 bg-red-500/10 text-red-200'
+              : 'border-red-300 bg-red-50 text-red-700'
+              }`}>
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
                 <span>{error}</span>
               </div>
             </div>
           )}
-          <div className={`flex flex-col gap-4 rounded-2xl border px-4 py-3 text-xs ${
-            theme === 'dark' 
-              ? 'border-slate-800/60 bg-slate-900/40 text-slate-400' 
-              : 'border-gray-200 bg-gray-50 text-gray-600'
-          }`}>
-            
+          <div className={`flex flex-col gap-4 rounded-2xl border px-4 py-3 text-xs ${theme === 'dark'
+            ? 'border-slate-800/60 bg-slate-900/40 text-slate-400'
+            : 'border-gray-200 bg-gray-50 text-gray-600'
+            }`}>
+
             {/* Indicador de estado de autenticación */}
             {currentStep === 5 && (
-              <div className={`mb-4 p-3 rounded-lg ${
-                authStatus.includes('Autenticado') 
-                  ? theme === 'dark' ? 'bg-green-900/30 border border-green-500/50' : 'bg-green-50 border border-green-200'
-                  : theme === 'dark' ? 'bg-red-900/30 border border-red-500/50' : 'bg-red-50 border border-red-200'
-              }`}>
+              <div className={`mb-4 p-3 rounded-lg ${authStatus.includes('Autenticado')
+                ? theme === 'dark' ? 'bg-green-900/30 border border-green-500/50' : 'bg-green-50 border border-green-200'
+                : theme === 'dark' ? 'bg-red-900/30 border border-red-500/50' : 'bg-red-50 border border-red-200'
+                }`}>
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${
-                    authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
-                  }`} />
-                  <span className={`text-sm ${
-                    authStatus.includes('Autenticado') 
-                      ? theme === 'dark' ? 'text-green-300' : 'text-green-700'
-                      : theme === 'dark' ? 'text-red-300' : 'text-red-700'
-                  }`}>
+                  <div className={`w-2 h-2 rounded-full ${authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
+                    }`} />
+                  <span className={`text-sm ${authStatus.includes('Autenticado')
+                    ? theme === 'dark' ? 'text-green-300' : 'text-green-700'
+                    : theme === 'dark' ? 'text-red-300' : 'text-red-700'
+                    }`}>
                     {authStatus}
                   </span>
                 </div>
@@ -1715,7 +1713,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 )}
               </div>
             )}
-            
+
             <div className="flex justify-between items-center gap-2">
               <AlertCircle className={`h-4 w-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
               <span>Todos los campos marcados con (*) son obligatorios.</span>
@@ -1726,11 +1724,10 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                      theme === 'dark' 
-                        ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white' 
-                        : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-                    }`}
+                    className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
+                      ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                      }`}
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Anterior
@@ -1739,11 +1736,10 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 <button
                   type="button"
                   onClick={onClose}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                    theme === 'dark' 
-                      ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white' 
-                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-                  }`}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
+                    ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                    }`}
                 >
                   Cancelar
                 </button>
@@ -1767,7 +1763,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                         </p>
                       </div>
                     )}
-                    
+
                     <button
                       type="button"
                       onClick={isSaved ? sendReservationEmail : handleSave}
@@ -1776,7 +1772,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     >
                       {loading ? 'Guardando…' : isSaved ? '📧 Enviar Solicitud de Reserva' : 'Guardar registro'}
                     </button>
-                    
+
                     {isSaved && (
                       <button
                         type="button"

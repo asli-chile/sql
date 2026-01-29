@@ -7,6 +7,8 @@ import { supabase } from '@/lib/supabase-mobile';
 import { parseDateString, formatDateForDisplay, formatDateForInput } from '@/lib/date-utils';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
+import { syncTransportesFromRegistro } from '@/lib/sync-transportes';
+import { convertSupabaseToApp } from '@/lib/migration-utils';
 
 interface EditModalProps {
   record: Registro | null;
@@ -94,13 +96,13 @@ export function EditModal({
   refExternasUnicas = [],
   tratamientosDeFrioOpciones = [],
 }: EditModalProps) {
-  
+
   // Función para procesar contenedores múltiples
   const processContainers = (containerValue: string): string => {
     if (!containerValue || containerValue.trim() === '') {
       return '';
     }
-    
+
     // Convertir a mayúsculas y limpiar espacios múltiples
     // Mantener formato: "CONT1 CONT2 CONT3"
     return containerValue.trim().split(/\s+/).map(c => c.toUpperCase()).join(' ');
@@ -350,6 +352,14 @@ export function EditModal({
             newValue: rowData[dbField] ?? updatedData[dbField],
           });
         }
+
+        // Sincronizar con transportes relacionados
+        try {
+          const appRegistro = convertSupabaseToApp(data);
+          await syncTransportesFromRegistro(appRegistro, record.booking);
+        } catch (syncError) {
+          console.warn('⚠️ Error al sincronizar transportes desde EditModal:', syncError);
+        }
       }
 
       onSuccess();
@@ -498,10 +508,9 @@ export function EditModal({
                   REF ASLI
                 </span>
                 <span
-                  className={`${summaryValueClasses} ${
-                    tipoIngresoBadge[formData.tipoIngreso ?? 'NORMAL'] ??
+                  className={`${summaryValueClasses} ${tipoIngresoBadge[formData.tipoIngreso ?? 'NORMAL'] ??
                     tipoIngresoBadge.NORMAL
-                  }`}
+                    }`}
                 >
                   {formData.refAsli}
                 </span>
@@ -528,9 +537,8 @@ export function EditModal({
                 </span>
                 <span className={`${summaryValueClasses} border-slate-700/60 bg-slate-900/70 text-slate-200`}>
                   {formData.naveInicial
-                    ? `${formData.naveInicial}${
-                        formData.viaje?.trim() ? ` [${formData.viaje.trim()}]` : ''
-                      }`
+                    ? `${formData.naveInicial}${formData.viaje?.trim() ? ` [${formData.viaje.trim()}]` : ''
+                    }`
                     : '-'}
                 </span>
               </div>
