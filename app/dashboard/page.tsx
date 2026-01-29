@@ -109,26 +109,6 @@ const parseVesselNameFromNaveInicial = (value?: string | null): string | null =>
 };
 
 const computeStatsForRecords = (records: RawRegistroStats[]): DashboardStats => {
-  const refAsliMap = new Map<string, { estado: string | null; updated_at: string | null; contenedor: any }>();
-
-  records.forEach((record) => {
-    if (!record?.ref_asli) {
-      return;
-    }
-
-    const existing = refAsliMap.get(record.ref_asli);
-    const recordDate = record.updated_at ? new Date(record.updated_at) : null;
-    const existingDate = existing?.updated_at ? new Date(existing.updated_at) : null;
-
-    if (!existing || (recordDate && (!existingDate || recordDate > existingDate))) {
-      refAsliMap.set(record.ref_asli, {
-        estado: record.estado ?? null,
-        updated_at: record.updated_at ?? null,
-        contenedor: record.contenedor ?? null
-      });
-    }
-  });
-
   let totalContenedores = 0;
   const estadoCounts = {
     pendientes: 0,
@@ -136,48 +116,52 @@ const computeStatsForRecords = (records: RawRegistroStats[]): DashboardStats => 
     cancelados: 0
   };
 
-  refAsliMap.forEach((data) => {
+  records.forEach((record) => {
+    // 1. Contar contenedores
     let contenedorTexto = '';
+    const contenedorData = record.contenedor;
 
-    if (Array.isArray(data.contenedor)) {
-      contenedorTexto = data.contenedor.join(' ');
-    } else if (typeof data.contenedor === 'string') {
+    if (Array.isArray(contenedorData)) {
+      contenedorTexto = contenedorData.join(' ');
+    } else if (typeof contenedorData === 'string') {
       try {
-        const parsed = JSON.parse(data.contenedor);
+        const parsed = JSON.parse(contenedorData);
         if (Array.isArray(parsed)) {
           contenedorTexto = parsed.join(' ');
         } else {
-          contenedorTexto = data.contenedor;
+          contenedorTexto = contenedorData;
         }
       } catch {
-        contenedorTexto = data.contenedor;
+        contenedorTexto = contenedorData;
       }
     }
 
     const contenedores = contenedorTexto.trim().split(/\s+/).filter(Boolean);
     totalContenedores += contenedores.length;
 
-    const estado = data.estado ? data.estado.toLowerCase() : '';
+    // 2. Contar estados (según estados estándar de Registros)
+    const estado = record.estado ? record.estado.toUpperCase() : '';
     switch (estado) {
-      case 'pendiente':
-      case 'en proceso':
+      case 'PENDIENTE':
         estadoCounts.pendientes++;
         break;
-      case 'confirmado':
-      case 'completado':
+      case 'CONFIRMADO':
         estadoCounts.confirmados++;
         break;
-      case 'cancelado':
-      case 'rechazado':
+      case 'CANCELADO':
         estadoCounts.cancelados++;
         break;
       default:
+        // Por defecto, si no es confirmado ni cancelado, lo tratamos como pendiente si tiene valor
+        if (estado && !['CONFIRMADO', 'CANCELADO'].includes(estado)) {
+          estadoCounts.pendientes++;
+        }
         break;
     }
   });
 
   return {
-    total: refAsliMap.size,
+    total: records.length,
     totalContenedores,
     pendientes: estadoCounts.pendientes,
     confirmados: estadoCounts.confirmados,

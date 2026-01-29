@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
@@ -808,33 +808,6 @@ export default function TransportesPage() {
               </div>
 
               <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
-                {canEdit && (
-                  <button
-                    type="button"
-                    onClick={handleSyncOrphanTransportes}
-                    disabled={isLoading}
-                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
-                      ? 'border-orange-800/70 text-orange-300 hover:border-orange-400/60 hover:text-orange-200'
-                      : 'border-orange-300 text-orange-700 hover:border-orange-400 hover:text-orange-600 bg-orange-50 shadow-sm'
-                      }`}
-                    title="Sincronizar transportes huérfanos con registros"
-                  >
-                    <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                    <span className="hidden sm:inline">Sincronizar</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={reload}
-                  disabled={isLoading}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
-                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
-                    }`}
-                >
-                  <RefreshCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Actualizar</span>
-                </button>
                 {canAdd && (
                   <button
                     type="button"
@@ -1501,6 +1474,27 @@ export default function TransportesPage() {
                                     >
                                       <div className="flex items-center justify-center gap-2">
                                         <span>{bookingValue || '—'}</span>
+
+                                        {/* Link de navegación al registro original */}
+                                        {(item.registro_id || bookingValue) && (
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const url = item.registro_id
+                                                ? `/registros?id=${item.registro_id}`
+                                                : `/registros?booking=${bookingValue}`;
+                                              router.push(url);
+                                            }}
+                                            className={`p-1.5 rounded transition-colors flex-shrink-0 ${theme === 'dark'
+                                              ? 'hover:bg-slate-700 text-sky-400 hover:text-sky-300'
+                                              : 'hover:bg-gray-200 text-blue-600 hover:text-blue-700'
+                                              }`}
+                                            title="Ver detalles en Registros"
+                                          >
+                                            <ExternalLink className="h-4 w-4" />
+                                          </button>
+                                        )}
+
                                         {hasPdf && canEdit && (
                                           <button
                                             onClick={(e) => {

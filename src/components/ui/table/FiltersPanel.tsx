@@ -62,7 +62,7 @@ export function FiltersPanel({
 
   // Normalizar executiveFilter para asegurar que siempre sea string
   const normalizedExecutiveFilter = executiveFilter || '';
-  
+
   // Leer columnFilters directamente del estado de la tabla en cada render
   // Esto asegura que siempre tengamos el estado más actualizado
   const columnFilters = table.getState().columnFilters;
@@ -93,7 +93,7 @@ export function FiltersPanel({
   const getFilterValue = (column: any): string => {
     // Leer columnFilters fresco del estado de la tabla cada vez
     const currentColumnFilters = table.getState().columnFilters;
-    
+
     // Primero intentar desde el estado de columnFilters
     const columnFilterFromState = currentColumnFilters.find(f => f.id === column.id);
     if (columnFilterFromState && columnFilterFromState.value !== undefined && columnFilterFromState.value !== null) {
@@ -106,7 +106,7 @@ export function FiltersPanel({
         return String(stateValue).trim();
       }
     }
-    
+
     // Fallback a getFilterValue si no está en columnFilters
     const rawFilterValue = column.getFilterValue();
     if (rawFilterValue !== null && rawFilterValue !== undefined) {
@@ -118,7 +118,7 @@ export function FiltersPanel({
         return String(rawFilterValue).trim();
       }
     }
-    
+
     return '';
   };
 
@@ -126,7 +126,7 @@ export function FiltersPanel({
   // Usar filterUpdateTrigger para forzar recálculo cuando cambien los filtros
   const getActiveFiltersSummary = useMemo(() => {
     const activeFilters: Array<{ label: string; value: string; onClear: () => void }> = [];
-    
+
     if (normalizedExecutiveFilter) {
       activeFilters.push({
         label: 'Ejecutivo',
@@ -138,7 +138,7 @@ export function FiltersPanel({
     // Usar columnFilters directamente del estado de la tabla como fuente de verdad
     // Leer fresco cada vez para obtener el estado más actualizado
     const columnFiltersFromState = table.getState().columnFilters;
-    
+
     columnFiltersFromState.forEach((filter) => {
       // Verificar que el filtro tenga un valor válido
       if (!filter.value || filter.value === '' || filter.value === null || filter.value === undefined) {
@@ -165,17 +165,25 @@ export function FiltersPanel({
           deposito: 'Depósito',
           pol: 'POL',
           estado: 'Estado',
-          especie: 'Especie'
+          especie: 'Especie',
+          id: 'ID'
         };
-        
-        const column = table.getColumn(filter.id);
-        if (column) {
-          activeFilters.push({
-            label: columnNames[filter.id] || filter.id,
-            value: filterValueStr,
-            onClear: () => column.setFilterValue(undefined)
-          });
-        }
+
+        // Usar getAllColumns().find para evitar el error de consola "[Table] Column with id 'id' does not exist"
+        const column = table.getAllColumns().find(c => c.id === filter.id);
+
+        activeFilters.push({
+          label: columnNames[filter.id] || filter.id,
+          value: filterValueStr,
+          onClear: () => {
+            if (column) {
+              column.setFilterValue(undefined);
+            } else {
+              // Si la columna no está definida (ej. id), limpiar el filtro manualmente
+              table.setColumnFilters(prev => prev.filter(f => f.id !== filter.id));
+            }
+          }
+        });
       }
     });
 
@@ -187,17 +195,17 @@ export function FiltersPanel({
   const handleClearAll = () => {
     // Limpiar el filtro de ejecutivo primero
     setExecutiveFilter('');
-    
+
     // Limpiar todos los filtros de columnas individualmente
     table.getAllLeafColumns().forEach((column) => {
       if (!column.id.startsWith('_')) {
         column.setFilterValue(undefined);
       }
     });
-    
+
     // Resetear usando el método de la tabla para asegurar sincronización
     table.resetColumnFilters();
-    
+
     // Llamar al callback si existe
     onClearAll?.();
   };
@@ -215,11 +223,10 @@ export function FiltersPanel({
           {hasActiveFilters && (
             <button
               onClick={handleClearAll}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                theme === 'dark'
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${theme === 'dark'
                   ? 'border border-blue-500/70 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20'
                   : 'border border-blue-500 bg-blue-50 text-blue-600 hover:bg-blue-100'
-              }`}
+                }`}
             >
               <RotateCcw className="h-3 w-3" />
               Limpiar
@@ -230,11 +237,10 @@ export function FiltersPanel({
 
       {/* Resumen de filtros activos */}
       {activeFiltersSummary.length > 0 && (
-        <div className={`rounded-lg border-2 p-3 space-y-2 ${
-          theme === 'dark'
+        <div className={`rounded-lg border-2 p-3 space-y-2 ${theme === 'dark'
             ? 'border-blue-500/50 bg-blue-900/20'
             : 'border-blue-300 bg-blue-50'
-        }`}>
+          }`}>
           <div className="flex items-center gap-2">
             <Filter className={`h-4 w-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
             <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>
@@ -245,19 +251,17 @@ export function FiltersPanel({
             {activeFiltersSummary.map((filter: { label: string; value: string; onClear: () => void }, index: number) => (
               <div
                 key={index}
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
-                  theme === 'dark'
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${theme === 'dark'
                     ? 'bg-blue-800/50 border border-blue-600/50 text-blue-200'
                     : 'bg-blue-100 border border-blue-300 text-blue-700'
-                }`}
+                  }`}
               >
                 <span className="font-semibold">{filter.label}:</span>
                 <span>{filter.value}</span>
                 <button
                   onClick={filter.onClear}
-                  className={`ml-1 hover:opacity-70 transition-opacity ${
-                    theme === 'dark' ? 'text-blue-300' : 'text-blue-600'
-                  }`}
+                  className={`ml-1 hover:opacity-70 transition-opacity ${theme === 'dark' ? 'text-blue-300' : 'text-blue-600'
+                    }`}
                   aria-label={`Quitar filtro ${filter.label}`}
                 >
                   <X className="h-3 w-3" />
@@ -301,7 +305,7 @@ export function FiltersPanel({
           // Usar la función centralizada para obtener el valor del filtro
           const filterValue = getFilterValue(column);
           const hasFilter = filterValue !== '';
-          
+
           if (column.id === 'shipper') {
             return (
               <div key={column.id} className="space-y-1">
@@ -332,16 +336,16 @@ export function FiltersPanel({
           if (column.id === 'naveInicial') {
             // Obtener el filtro de naviera activo
             const navieraFilter = table.getColumn('naviera')?.getFilterValue() as string;
-            
+
             // Filtrar naves por naviera seleccionada
-            const navesFiltradas = navieraFilter 
+            const navesFiltradas = navieraFilter
               ? navesFiltrables.filter(([value]) => {
-                  // Buscar la nave en los datos originales para verificar su naviera
-                  const registro = table.getPreFilteredRowModel().rows.find(row => 
-                    row.original.naveInicial === value
-                  );
-                  return registro?.original.naviera === navieraFilter;
-                })
+                // Buscar la nave en los datos originales para verificar su naviera
+                const registro = table.getPreFilteredRowModel().rows.find(row =>
+                  row.original.naveInicial === value
+                );
+                return registro?.original.naviera === navieraFilter;
+              })
               : navesFiltrables;
 
             return (

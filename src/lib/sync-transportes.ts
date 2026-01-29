@@ -63,7 +63,12 @@ export async function syncTransportesFromRegistro(rawRegistro: any, oldBooking?:
       orConditions.push(`booking.in.(${bookingsStr})`);
     }
 
-    // 3. Fallback: Link por Ref Cliente (solo para transportes que no tengan registro_id o que coincidan con la ref)
+    // 3. Link por Ref ASLI (para transportes que tengan esta referencia)
+    if (refAsli) {
+      orConditions.push(`ref_asli.eq."${refAsli}"`);
+    }
+
+    // 4. Fallback: Link por Ref Cliente (solo para transportes que no tengan registro_id o que coincidan con la ref)
     if (refCliente) {
       // Limpiar caracteres especiales que rompen la query .or()
       const sanitizedRef = refCliente.replace(/[(),]/g, '');

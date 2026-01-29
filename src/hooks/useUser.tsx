@@ -53,33 +53,53 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setRegistrosCount(0);
         return;
       }
-      
+
       try {
-        // Contar transportes
         const supabase = createClient();
-        const { count: transportesCount, error: transportesError } = await supabase
+        const isAdmin = currentUser.rol === 'admin';
+        const clienteNombre = currentUser.cliente_nombre?.trim();
+        const clientesAsignados = currentUser.clientes_asignados || [];
+
+        // --- Contar transportes ---
+        let transportesQuery = supabase
           .from('transportes')
           .select('*', { count: 'exact', head: true })
           .is('deleted_at', null);
 
-        if (transportesError) {
-          setTransportesCount(0);
-        } else {
-          setTransportesCount(transportesCount || 0);
+        if (!isAdmin) {
+          if (currentUser.rol === 'cliente' && clienteNombre) {
+            transportesQuery = transportesQuery.eq('exportacion', clienteNombre);
+          } else if (clientesAsignados.length > 0) {
+            transportesQuery = transportesQuery.in('exportacion', clientesAsignados);
+          } else if (currentUser.rol !== 'admin') {
+            // Si no es admin y no tiene clientes, no debería ver nada
+            transportesQuery = transportesQuery.eq('id', 'NONE');
+          }
         }
 
-        // Contar registros
-        const { count: registrosCount, error: registrosError } = await supabase
+        const { count: tCount, error: tError } = await transportesQuery;
+        setTransportesCount(tError ? 0 : (tCount || 0));
+
+        // --- Contar registros ---
+        let registrosQuery = supabase
           .from('registros')
           .select('*', { count: 'exact', head: true })
           .is('deleted_at', null);
 
-        if (registrosError) {
-          setRegistrosCount(0);
-        } else {
-          setRegistrosCount(registrosCount || 0);
+        if (!isAdmin) {
+          if (currentUser.rol === 'cliente' && clienteNombre) {
+            registrosQuery = registrosQuery.ilike('shipper', clienteNombre);
+          } else if (clientesAsignados.length > 0) {
+            registrosQuery = registrosQuery.in('shipper', clientesAsignados);
+          } else {
+            registrosQuery = registrosQuery.eq('id', 'NONE');
+          }
         }
+
+        const { count: rCount, error: rError } = await registrosQuery;
+        setRegistrosCount(rError ? 0 : (rCount || 0));
       } catch (error) {
+        console.error('Error loading counts:', error);
         setTransportesCount(0);
         setRegistrosCount(0);
       }
@@ -92,7 +112,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       // Limpiar localStorage para evitar datos obsoletos
       localStorage.removeItem('currentUser');
-      
+
       // Solo inicializar como null - cada página cargará sus propios datos frescos
       setCurrentUser(null);
       setIsLoading(false);

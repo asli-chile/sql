@@ -197,7 +197,8 @@ export function DataTable({
     const initialVisibility: Record<string, boolean> = {};
     columns.forEach(column => {
       if (column.id) {
-        initialVisibility[column.id] = true;
+        // La columna 'id' se mantiene oculta por defecto (se usa para filtrado interno)
+        initialVisibility[column.id] = column.id !== 'id';
       }
     });
     return initialVisibility;
@@ -304,7 +305,7 @@ export function DataTable({
   // Calcular ancho de la tabla dinámicamente
   useEffect(() => {
     let debounceTimer: NodeJS.Timeout;
-    
+
     const updateTableWidth = () => {
       if (tableContainerRef.current) {
         // Obtener el ancho del contenedor padre (el div que envuelve tableContainerRef)
@@ -312,7 +313,7 @@ export function DataTable({
         if (parentElement) {
           const parentRect = parentElement.getBoundingClientRect();
           const parentWidth = Math.floor(parentRect.width); // Redondear para evitar cambios mínimos
-          
+
           // Solo actualizar si el cambio es significativo (más de 2px de diferencia)
           if (parentWidth > 0 && Math.abs(parentWidth - tableWidth) > 2) {
             setTableWidth(parentWidth);
@@ -335,15 +336,15 @@ export function DataTable({
 
     // Actualizar inmediatamente
     updateTableWidth();
-    
+
     // Usar requestAnimationFrame solo una vez al inicio
     const rafId = requestAnimationFrame(updateTableWidth);
-    
+
     window.addEventListener('resize', debouncedUpdate);
-    
+
     // Usar ResizeObserver solo en el contenedor padre para evitar observaciones redundantes
     const resizeObserver = new ResizeObserver(debouncedUpdate);
-    
+
     const parentElement = tableContainerRef.current?.parentElement;
     if (parentElement) {
       resizeObserver.observe(parentElement);
@@ -577,7 +578,7 @@ export function DataTable({
       onTableInstanceReadyRef.current(table, statesRef.current);
     }
   }, [table]); // Solo dependemos de table para evitar ejecuciones innecesarias
-  
+
   // Actualizar el callback cuando cambien los estados importantes para que el padre tenga los valores actualizados
   useEffect(() => {
     if (onTableInstanceReadyRef.current && table && lastTableRef.current === table) {
@@ -639,7 +640,7 @@ export function DataTable({
 
   const handleContextSendToTransportes = () => {
     if (!contextMenu || !onSendToTransportes) return;
-    
+
     // Si hay múltiples registros seleccionados, enviarlos todos de una vez
     if (hasSelection && selectedRecordsList.length > 0) {
       onSendToTransportes(selectedRecordsList);
@@ -647,7 +648,7 @@ export function DataTable({
       // Si no hay selección, enviar solo el registro del menú contextual
       onSendToTransportes(contextMenu.record);
     }
-    
+
     closeContextMenu();
   };
 
@@ -912,18 +913,18 @@ export function DataTable({
     if (!table) {
       return { total: 0, confirmadas: 0, pendientes: 0, canceladas: 0 };
     }
-    
+
     // Obtener las filas filtradas actuales de la tabla
     const filteredRows = table.getFilteredRowModel().rows;
-    
+
     // Detectar si hay filtros aplicados desde el panel de filtros
     // (excluyendo el filtro de estado que puede venir de las tarjetas)
     const filtrosPanel = columnFilters.filter(f => f.id !== 'estado');
     const hayFiltrosPanel = filtrosPanel.length > 0 || globalFilter.trim() !== '' || executiveFilter.trim() !== '';
-    
+
     // Calcular total: si hay filtros del panel, usar el filtrado; si no, usar todos los datos
     const total = hayFiltrosPanel ? filteredRows.length : data.length;
-    
+
     let confirmadas = 0;
     let pendientes = 0;
     let canceladas = 0;
@@ -1032,15 +1033,15 @@ export function DataTable({
               >
                 <Trash2 className={`h-4 w-4 sm:h-5 sm:w-5 ${isDark ? 'text-white' : 'text-black'}`} />
                 <span className={`hidden lg:inline whitespace-nowrap ${isDark ? 'text-white' : 'text-black'}`}>Eliminar</span>
-            {hasSelection && (
-              <span
+                {hasSelection && (
+                  <span
                     className={`ml-1.5 inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold ${isDark
                       ? 'bg-white/20 text-white'
                       : 'bg-black/15 text-black'
-                  }`}
-              >
-                {selectedCount}
-              </span>
+                      }`}
+                  >
+                    {selectedCount}
+                  </span>
                 )}
               </button>
             )}
@@ -1050,11 +1051,11 @@ export function DataTable({
             const cardBaseClasses = isDark
               ? 'border border-slate-800/50 bg-slate-950/40 backdrop-blur-sm'
               : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm';
-            
+
             // Detectar qué filtro de estado está activo
             const estadoFilter = columnFilters.find(f => f.id === 'estado');
             const estadoActivo = estadoFilter?.value as string | undefined;
-            
+
             return (
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
                 {/* Tarjeta Total/Reservas */}
@@ -1062,13 +1063,12 @@ export function DataTable({
                   onClick={() => {
                     setColumnFilters(prev => prev.filter(f => f.id !== 'estado'));
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80 cursor-pointer active:scale-95 ${
-                    !estadoActivo
-                      ? isDark
-                        ? 'bg-slate-800/60 border-slate-600/50 shadow-lg shadow-slate-900/50'
-                        : 'bg-gray-100 border-gray-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80 cursor-pointer active:scale-95 ${!estadoActivo
+                    ? isDark
+                      ? 'bg-slate-800/60 border-slate-600/50 shadow-lg shadow-slate-900/50'
+                      : 'bg-gray-100 border-gray-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Mostrar todos los registros"
                 >
                   <div className="flex items-center gap-2">
@@ -1089,13 +1089,12 @@ export function DataTable({
                       return [...filtered, { id: 'estado', value: 'CONFIRMADO' }];
                     });
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30 cursor-pointer active:scale-95 ${
-                    estadoActivo === 'CONFIRMADO'
-                      ? isDark
-                        ? 'bg-emerald-900/40 border-emerald-600/50 shadow-lg shadow-emerald-900/30'
-                        : 'bg-emerald-50 border-emerald-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30 cursor-pointer active:scale-95 ${estadoActivo === 'CONFIRMADO'
+                    ? isDark
+                      ? 'bg-emerald-900/40 border-emerald-600/50 shadow-lg shadow-emerald-900/30'
+                      : 'bg-emerald-50 border-emerald-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Filtrar por confirmados"
                 >
                   <div className="flex items-center gap-2">
@@ -1116,13 +1115,12 @@ export function DataTable({
                       return [...filtered, { id: 'estado', value: 'PENDIENTE' }];
                     });
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30 cursor-pointer active:scale-95 ${
-                    estadoActivo === 'PENDIENTE'
-                      ? isDark
-                        ? 'bg-amber-900/40 border-amber-600/50 shadow-lg shadow-amber-900/30'
-                        : 'bg-amber-50 border-amber-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30 cursor-pointer active:scale-95 ${estadoActivo === 'PENDIENTE'
+                    ? isDark
+                      ? 'bg-amber-900/40 border-amber-600/50 shadow-lg shadow-amber-900/30'
+                      : 'bg-amber-50 border-amber-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Filtrar por pendientes"
                 >
                   <div className="flex items-center gap-2">
@@ -1143,13 +1141,12 @@ export function DataTable({
                       return [...filtered, { id: 'estado', value: 'CANCELADO' }];
                     });
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30 cursor-pointer active:scale-95 ${
-                    estadoActivo === 'CANCELADO'
-                      ? isDark
-                        ? 'bg-rose-900/40 border-rose-600/50 shadow-lg shadow-rose-900/30'
-                        : 'bg-rose-50 border-rose-300 shadow-md'
-                      : ''
-                  }`}
+                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30 cursor-pointer active:scale-95 ${estadoActivo === 'CANCELADO'
+                    ? isDark
+                      ? 'bg-rose-900/40 border-rose-600/50 shadow-lg shadow-rose-900/30'
+                      : 'bg-rose-50 border-rose-300 shadow-md'
+                    : ''
+                    }`}
                   aria-label="Filtrar por cancelados"
                 >
                   <div className="flex items-center gap-2">
@@ -1286,165 +1283,164 @@ export function DataTable({
                         const columnSize = columnWidths.get(header.id) || 150;
                         const headerBorderColor = isDark ? 'rgba(56, 74, 110, 0.9)' : 'rgba(209, 213, 219, 0.9)';
 
-                      const baseHeaderStyle = {
-                        background: isDark
-                          ? 'linear-gradient(180deg, #10203f 0%, #0c1a36 100%)'
-                          : 'linear-gradient(180deg, #f9fafb 0%, #e5e7eb 100%)',
-                        color: isDark ? '#f8fafc' : '#0f172a',
-                        backdropFilter: 'blur(12px)',
-                      };
-
-                      if (isRefClienteColumn) {
-                        stickyClasses = 'sticky left-0 z-[260]';
-                        stickyStyles = {
-                          ...baseHeaderStyle,
-                          left: 0,
-                          top: 0,
-                          width: `${columnSize}px`,
-                          minWidth: `${columnSize}px`,
-                          maxWidth: `${columnSize}px`,
-                          borderBottom: `1px solid ${headerBorderColor}`,
-                          borderRight: `1px solid ${headerBorderColor}`,
+                        const baseHeaderStyle = {
+                          background: isDark
+                            ? 'linear-gradient(180deg, #10203f 0%, #0c1a36 100%)'
+                            : 'linear-gradient(180deg, #f9fafb 0%, #e5e7eb 100%)',
+                          color: isDark ? '#f8fafc' : '#0f172a',
+                          backdropFilter: 'blur(12px)',
                         };
-                      } else {
-                        stickyStyles = {
-                          ...baseHeaderStyle,
-                          width: `${columnSize}px`,
-                          minWidth: `${columnSize}px`,
-                          maxWidth: `${columnSize}px`,
-                          borderRight: `1px solid ${headerBorderColor}`,
-                          borderBottom: `1px solid ${headerBorderColor}`,
-                        };
-                      }
 
-                      const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-                        if (!canSort) return;
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          header.column.toggleSorting();
+                        if (isRefClienteColumn) {
+                          stickyClasses = 'sticky left-0 z-[260]';
+                          stickyStyles = {
+                            ...baseHeaderStyle,
+                            left: 0,
+                            top: 0,
+                            width: `${columnSize}px`,
+                            minWidth: `${columnSize}px`,
+                            maxWidth: `${columnSize}px`,
+                            borderBottom: `1px solid ${headerBorderColor}`,
+                            borderRight: `1px solid ${headerBorderColor}`,
+                          };
+                        } else {
+                          stickyStyles = {
+                            ...baseHeaderStyle,
+                            width: `${columnSize}px`,
+                            minWidth: `${columnSize}px`,
+                            maxWidth: `${columnSize}px`,
+                            borderRight: `1px solid ${headerBorderColor}`,
+                            borderBottom: `1px solid ${headerBorderColor}`,
+                          };
                         }
-                      };
 
-                      return (
-                        <th
-                          key={header.id}
-                          colSpan={header.colSpan}
-                          className={`p-0 ${stickyClasses}`}
-                          style={stickyStyles}
-                        >
-                          <div
-                            className={`relative flex min-h-[36px] w-full items-center justify-center gap-1.5 px-3 py-1.5 select-none`}
+                        const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+                          if (!canSort) return;
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            header.column.toggleSorting();
+                          }
+                        };
+
+                        return (
+                          <th
+                            key={header.id}
+                            colSpan={header.colSpan}
+                            className={`p-0 ${stickyClasses}`}
+                            style={stickyStyles}
                           >
                             <div
-                              {...(canSort
-                                ? {
-                                  role: 'button',
-                                  tabIndex: 0,
-                                  onClick: header.column.getToggleSortingHandler(),
-                                  onKeyDown: handleKeyDown,
-                                }
-                                : {})}
-                              className={`flex items-center justify-center gap-1.5 text-center ${canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'}`}
+                              className={`relative flex min-h-[36px] w-full items-center justify-center gap-1.5 px-3 py-1.5 select-none`}
                             >
-                              <span className={`block whitespace-nowrap text-xs font-semibold uppercase tracking-[0.08em] ${isDark ? 'text-slate-100' : 'text-slate-700'
-                                }`}>
-                                {flexRender(header.column.columnDef.header, header.getContext())}
-                              </span>
-                              {sortDirection ? (
-                                sortDirection === 'asc' ? (
-                                  <ArrowUp size={14} />
+                              <div
+                                {...(canSort
+                                  ? {
+                                    role: 'button',
+                                    tabIndex: 0,
+                                    onClick: header.column.getToggleSortingHandler(),
+                                    onKeyDown: handleKeyDown,
+                                  }
+                                  : {})}
+                                className={`flex items-center justify-center gap-1.5 text-center ${canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'}`}
+                              >
+                                <span className={`block whitespace-nowrap text-xs font-semibold uppercase tracking-[0.08em] ${isDark ? 'text-slate-100' : 'text-slate-700'
+                                  }`}>
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                </span>
+                                {sortDirection ? (
+                                  sortDirection === 'asc' ? (
+                                    <ArrowUp size={14} />
+                                  ) : (
+                                    <ArrowDown size={14} />
+                                  )
                                 ) : (
-                                  <ArrowDown size={14} />
-                                )
-                              ) : (
-                                canSort && <ArrowUpDown size={14} />
+                                  canSort && <ArrowUpDown size={14} />
+                                )}
+                              </div>
+                              {header.column.getCanResize() && (
+                                <div
+                                  onMouseDown={header.getResizeHandler()}
+                                  onTouchStart={header.getResizeHandler()}
+                                  onDoubleClick={() => {
+                                    // Auto-ajustar ancho de columna al contenido más largo (como Excel)
+                                    const columnId = header.column.id;
+
+                                    // Crear un elemento temporal para medir el ancho del texto
+                                    const tempElement = document.createElement('span');
+                                    tempElement.style.visibility = 'hidden';
+                                    tempElement.style.position = 'absolute';
+                                    tempElement.style.whiteSpace = 'nowrap';
+                                    tempElement.style.fontSize = '13px';
+                                    tempElement.style.fontFamily = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                                    tempElement.style.fontWeight = '500';
+                                    document.body.appendChild(tempElement);
+
+                                    let maxWidth = 0;
+
+                                    // Medir el ancho del header
+                                    const headerText = typeof header.column.columnDef.header === 'string'
+                                      ? header.column.columnDef.header
+                                      : columnId;
+                                    tempElement.textContent = headerText;
+                                    tempElement.style.fontWeight = '600';
+                                    tempElement.style.fontSize = '12px';
+                                    tempElement.style.textTransform = 'uppercase';
+                                    tempElement.style.letterSpacing = '0.08em';
+                                    maxWidth = Math.max(maxWidth, tempElement.offsetWidth + 40); // +40 para padding y iconos
+
+                                    // Medir el ancho de todas las celdas visibles
+                                    tempElement.style.fontWeight = '500';
+                                    tempElement.style.fontSize = '13px';
+                                    tempElement.style.textTransform = 'none';
+                                    tempElement.style.letterSpacing = 'normal';
+
+                                    const rowsToMeasure = rows.slice(0, Math.min(100, rows.length)); // Medir máximo 100 filas para performance
+                                    rowsToMeasure.forEach(row => {
+                                      const cell = row.getVisibleCells().find(c => c.column.id === columnId);
+                                      if (cell) {
+                                        const cellValue = cell.getValue();
+                                        let textContent = '';
+
+                                        if (cellValue === null || cellValue === undefined) {
+                                          textContent = '-';
+                                        } else if (Array.isArray(cellValue)) {
+                                          textContent = cellValue.join(', ');
+                                        } else if (typeof cellValue === 'object' && cellValue instanceof Date) {
+                                          textContent = cellValue.toLocaleDateString();
+                                        } else {
+                                          textContent = String(cellValue);
+                                        }
+
+                                        tempElement.textContent = textContent;
+                                        maxWidth = Math.max(maxWidth, tempElement.offsetWidth + 24); // +24 para padding
+                                      }
+                                    });
+
+                                    document.body.removeChild(tempElement);
+
+                                    // Aplicar un ancho mínimo de 120px y máximo de 600px
+                                    const newWidth = Math.max(120, Math.min(600, maxWidth));
+
+                                    // Actualizar el tamaño de la columna
+                                    setColumnSizing(prev => ({
+                                      ...prev,
+                                      [columnId]: newWidth
+                                    }));
+                                  }}
+                                  className="absolute top-0 right-0 h-full w-4 cursor-col-resize select-none z-[270] group"
+                                  style={{ marginRight: '-2px' }}
+                                  title="Doble clic para auto-ajustar al contenido"
+                                >
+                                  <div className={`h-full w-[2px] transition-colors ${isDark
+                                    ? 'bg-slate-600/40 group-hover:bg-sky-400/80'
+                                    : 'bg-gray-300/60 group-hover:bg-blue-500/80'
+                                    }`} />
+                                </div>
                               )}
                             </div>
-                            {header.column.getCanResize() && (
-                              <div
-                                onMouseDown={header.getResizeHandler()}
-                                onTouchStart={header.getResizeHandler()}
-                                onDoubleClick={() => {
-                                  // Auto-ajustar ancho de columna al contenido más largo (como Excel)
-                                  const columnId = header.column.id;
-                                  
-                                  // Crear un elemento temporal para medir el ancho del texto
-                                  const tempElement = document.createElement('span');
-                                  tempElement.style.visibility = 'hidden';
-                                  tempElement.style.position = 'absolute';
-                                  tempElement.style.whiteSpace = 'nowrap';
-                                  tempElement.style.fontSize = '13px';
-                                  tempElement.style.fontFamily = 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-                                  tempElement.style.fontWeight = '500';
-                                  document.body.appendChild(tempElement);
-                                  
-                                  let maxWidth = 0;
-                                  
-                                  // Medir el ancho del header
-                                  const headerText = typeof header.column.columnDef.header === 'string' 
-                                    ? header.column.columnDef.header 
-                                    : columnId;
-                                  tempElement.textContent = headerText;
-                                  tempElement.style.fontWeight = '600';
-                                  tempElement.style.fontSize = '12px';
-                                  tempElement.style.textTransform = 'uppercase';
-                                  tempElement.style.letterSpacing = '0.08em';
-                                  maxWidth = Math.max(maxWidth, tempElement.offsetWidth + 40); // +40 para padding y iconos
-                                  
-                                  // Medir el ancho de todas las celdas visibles
-                                  tempElement.style.fontWeight = '500';
-                                  tempElement.style.fontSize = '13px';
-                                  tempElement.style.textTransform = 'none';
-                                  tempElement.style.letterSpacing = 'normal';
-                                  
-                                  const rowsToMeasure = rows.slice(0, Math.min(100, rows.length)); // Medir máximo 100 filas para performance
-                                  rowsToMeasure.forEach(row => {
-                                    const cell = row.getVisibleCells().find(c => c.column.id === columnId);
-                                    if (cell) {
-                                      const cellValue = cell.getValue();
-                                      let textContent = '';
-                                      
-                                      if (cellValue === null || cellValue === undefined) {
-                                        textContent = '-';
-                                      } else if (Array.isArray(cellValue)) {
-                                        textContent = cellValue.join(', ');
-                                      } else if (typeof cellValue === 'object' && cellValue instanceof Date) {
-                                        textContent = cellValue.toLocaleDateString();
-                                      } else {
-                                        textContent = String(cellValue);
-                                      }
-                                      
-                                      tempElement.textContent = textContent;
-                                      maxWidth = Math.max(maxWidth, tempElement.offsetWidth + 24); // +24 para padding
-                                    }
-                                  });
-                                  
-                                  document.body.removeChild(tempElement);
-                                  
-                                  // Aplicar un ancho mínimo de 120px y máximo de 600px
-                                  const newWidth = Math.max(120, Math.min(600, maxWidth));
-                                  
-                                  // Actualizar el tamaño de la columna
-                                  setColumnSizing(prev => ({
-                                    ...prev,
-                                    [columnId]: newWidth
-                                  }));
-                                }}
-                                className="absolute top-0 right-0 h-full w-4 cursor-col-resize select-none z-[270] group"
-                                style={{ marginRight: '-2px' }}
-                                title="Doble clic para auto-ajustar al contenido"
-                              >
-                                <div className={`h-full w-[2px] transition-colors ${
-                                  isDark 
-                                    ? 'bg-slate-600/40 group-hover:bg-sky-400/80' 
-                                    : 'bg-gray-300/60 group-hover:bg-blue-500/80'
-                                }`} />
-                              </div>
-                            )}
-                          </div>
-                        </th>
-                      );
-                    })}
+                          </th>
+                        );
+                      })}
                     </tr>
                   );
                 })}
@@ -1485,7 +1481,7 @@ export function DataTable({
                       onContextMenu={(e) => {
                         e.preventDefault();
                         // Mostrar menú si hay alguna opción disponible
-                        const hasAnyOption = 
+                        const hasAnyOption =
                           ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje) ||
                           onSendToTransportes ||
                           onEdit ||
@@ -1542,7 +1538,7 @@ export function DataTable({
                 {rowVirtualizer.getVirtualItems().length > 0 && (() => {
                   const lastItem = rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1];
                   const paddingBottom = Math.max(0, rowVirtualizer.getTotalSize() - (lastItem?.end ?? 0));
-                  
+
                   return paddingBottom > 0 ? (
                     <tr>
                       <td
@@ -1571,84 +1567,84 @@ export function DataTable({
             onScroll={handleCardsScroll}
             style={{ overscrollBehavior: 'contain', overflowAnchor: 'none' }}
           >
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-            {table.getFilteredRowModel().rows.map((row) => {
-              const record = row.original;
-              const index = row.index;
-              const key = record.id ?? `registro-${record.refAsli ?? index}`;
-              const estado = record.estado ?? 'SIN ESTADO';
-              const estadoColor = estado === 'CONFIRMADO'
-                ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'
-                : estado === 'PENDIENTE'
-                  ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
-                  : estado === 'CANCELADO'
-                    ? 'bg-rose-500/15 text-rose-200 border border-rose-500/30'
-                    : 'bg-slate-500/15 text-slate-200 border border-slate-500/30';
-
-              const handleCardContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
-                event.preventDefault();
-                const hasEditNaveViaje = currentUser?.rol === 'admin' &&
-                  ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
-                if (hasEditNaveViaje) {
-                  setContextMenu({ x: event.clientX, y: event.clientY, record });
-                }
-              };
-
-              const formatDate = (date: Date | null): string => {
-                if (!date) return '-';
-                // Formatear fecha en formato DD-MM-YYYY (estándar chileno)
-                const fecha = new Date(date);
-                const dia = String(fecha.getDate()).padStart(2, '0');
-                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                const año = fecha.getFullYear();
-                return `${dia}-${mes}-${año}`;
-              };
-
-              const formatNave = (): string => {
-                const nave = record.naveInicial || '';
-                const viaje = record.viaje;
-                if (viaje && !nave.includes('[')) {
-                  return `${nave} [${viaje}]`;
-                }
-                return nave || '-';
-              };
-
-              const calculateTransito = (): string => {
-                if (!record.etd || !record.eta) return '-';
-                const etdDate = new Date(record.etd);
-                const etaDate = new Date(record.eta);
-                const diffTime = etaDate.getTime() - etdDate.getTime();
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return diffDays >= 0 ? `${diffDays} días` : '-';
-              };
-
-              const escapeHtml = (text: string | null | undefined): string => {
-                if (!text) return '-';
-                const str = String(text);
-                return str
-                  .replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;')
-                  .replace(/"/g, '&quot;')
-                  .replace(/'/g, '&#039;');
-              };
-
-              const handleCopyCard = async (e: React.MouseEvent) => {
-                e.stopPropagation();
-                
-                const estadoBadgeStyle = estado === 'CONFIRMADO'
-                  ? 'background-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3);'
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {table.getFilteredRowModel().rows.map((row) => {
+                const record = row.original;
+                const index = row.index;
+                const key = record.id ?? `registro-${record.refAsli ?? index}`;
+                const estado = record.estado ?? 'SIN ESTADO';
+                const estadoColor = estado === 'CONFIRMADO'
+                  ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'
                   : estado === 'PENDIENTE'
-                    ? 'background-color: rgba(245, 158, 11, 0.15); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.3);'
+                    ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
                     : estado === 'CANCELADO'
-                      ? 'background-color: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3);'
-                      : 'background-color: rgba(100, 116, 139, 0.15); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.3);';
+                      ? 'bg-rose-500/15 text-rose-200 border border-rose-500/30'
+                      : 'bg-slate-500/15 text-slate-200 border border-slate-500/30';
 
-                const contenedorText = Array.isArray(record.contenedor) 
-                  ? record.contenedor.join(', ') 
-                  : (record.contenedor || '-');
-                
-                const cardHtml = `<div style="font-family: Arial, sans-serif; background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 16px; padding: 20px; max-width: 400px; color: #cbd5e1;">
+                const handleCardContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
+                  event.preventDefault();
+                  const hasEditNaveViaje = currentUser?.rol === 'admin' &&
+                    ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
+                  if (hasEditNaveViaje) {
+                    setContextMenu({ x: event.clientX, y: event.clientY, record });
+                  }
+                };
+
+                const formatDate = (date: Date | null): string => {
+                  if (!date) return '-';
+                  // Formatear fecha en formato DD-MM-YYYY (estándar chileno)
+                  const fecha = new Date(date);
+                  const dia = String(fecha.getDate()).padStart(2, '0');
+                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                  const año = fecha.getFullYear();
+                  return `${dia}-${mes}-${año}`;
+                };
+
+                const formatNave = (): string => {
+                  const nave = record.naveInicial || '';
+                  const viaje = record.viaje;
+                  if (viaje && !nave.includes('[')) {
+                    return `${nave} [${viaje}]`;
+                  }
+                  return nave || '-';
+                };
+
+                const calculateTransito = (): string => {
+                  if (!record.etd || !record.eta) return '-';
+                  const etdDate = new Date(record.etd);
+                  const etaDate = new Date(record.eta);
+                  const diffTime = etaDate.getTime() - etdDate.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return diffDays >= 0 ? `${diffDays} días` : '-';
+                };
+
+                const escapeHtml = (text: string | null | undefined): string => {
+                  if (!text) return '-';
+                  const str = String(text);
+                  return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+                };
+
+                const handleCopyCard = async (e: React.MouseEvent) => {
+                  e.stopPropagation();
+
+                  const estadoBadgeStyle = estado === 'CONFIRMADO'
+                    ? 'background-color: rgba(16, 185, 129, 0.15); color: #a7f3d0; border: 1px solid rgba(16, 185, 129, 0.3);'
+                    : estado === 'PENDIENTE'
+                      ? 'background-color: rgba(245, 158, 11, 0.15); color: #fde68a; border: 1px solid rgba(245, 158, 11, 0.3);'
+                      : estado === 'CANCELADO'
+                        ? 'background-color: rgba(244, 63, 94, 0.15); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.3);'
+                        : 'background-color: rgba(100, 116, 139, 0.15); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.3);';
+
+                  const contenedorText = Array.isArray(record.contenedor)
+                    ? record.contenedor.join(', ')
+                    : (record.contenedor || '-');
+
+                  const cardHtml = `<div style="font-family: Arial, sans-serif; background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 16px; padding: 20px; max-width: 400px; color: #cbd5e1;">
   <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
     <div>
       <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.14em; color: #64748b; margin: 0 0 4px 0;">Ref ASLI</p>
@@ -1725,7 +1721,7 @@ export function DataTable({
   </div>
 </div>`;
 
-                const cardText = `REF ASLI: ${record.refAsli || '-'}
+                  const cardText = `REF ASLI: ${record.refAsli || '-'}
 REF CLIENTE: ${record.refCliente || '-'}
 NAVIERA: ${record.naviera || '-'}
 NAVE: ${formatNave()}
@@ -1739,143 +1735,143 @@ ETA: ${formatDate(record.eta)}
 TRÁNSITO: ${calculateTransito()}
 CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
 
-                try {
-                  // Copiar como HTML para preservar el formato visual
-                  const clipboardItem = new ClipboardItem({
-                    'text/html': new Blob([cardHtml], { type: 'text/html' }),
-                    'text/plain': new Blob([cardText], { type: 'text/plain' })
-                  });
-                  await navigator.clipboard.write([clipboardItem]);
-                } catch (err) {
-                  // Fallback a texto plano si falla la copia HTML
                   try {
-                    await navigator.clipboard.writeText(cardText);
-                  } catch (fallbackErr) {
-                    console.error('Error al copiar:', fallbackErr);
+                    // Copiar como HTML para preservar el formato visual
+                    const clipboardItem = new ClipboardItem({
+                      'text/html': new Blob([cardHtml], { type: 'text/html' }),
+                      'text/plain': new Blob([cardText], { type: 'text/plain' })
+                    });
+                    await navigator.clipboard.write([clipboardItem]);
+                  } catch (err) {
+                    // Fallback a texto plano si falla la copia HTML
+                    try {
+                      await navigator.clipboard.writeText(cardText);
+                    } catch (fallbackErr) {
+                      console.error('Error al copiar:', fallbackErr);
+                    }
                   }
-                }
-              };
+                };
 
-              return (
-                <div
-                  key={key}
-                  className={`group relative space-y-2 sm:space-y-3 rounded-xl sm:rounded-2xl border p-3 sm:p-4 md:p-5 shadow-lg transition-transform hover:-translate-y-[3px] w-full max-w-full overflow-hidden ${isDark 
-                    ? 'border-slate-800/60 bg-slate-950/60 shadow-slate-950/20 hover:border-sky-500/60' 
-                    : 'border-gray-200 bg-white shadow-gray-200/20 hover:border-blue-500/60'
-                  }`}
-                  onContextMenu={handleCardContextMenu}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ref ASLI</p>
-                      <h3 className="text-base font-semibold text-slate-100 sm:text-lg">{record.refAsli || 'Sin referencia'}</h3>
+                return (
+                  <div
+                    key={key}
+                    className={`group relative space-y-2 sm:space-y-3 rounded-xl sm:rounded-2xl border p-3 sm:p-4 md:p-5 shadow-lg transition-transform hover:-translate-y-[3px] w-full max-w-full overflow-hidden ${isDark
+                      ? 'border-slate-800/60 bg-slate-950/60 shadow-slate-950/20 hover:border-sky-500/60'
+                      : 'border-gray-200 bg-white shadow-gray-200/20 hover:border-blue-500/60'
+                      }`}
+                    onContextMenu={handleCardContextMenu}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ref ASLI</p>
+                        <h3 className="text-base font-semibold text-slate-100 sm:text-lg">{record.refAsli || 'Sin referencia'}</h3>
+                      </div>
+                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${estadoColor}`}>
+                        {estado}
+                      </span>
                     </div>
-                    <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${estadoColor}`}>
-                      {estado}
-                    </span>
-                  </div>
 
-                  <div className="mt-3 grid gap-2.5 text-slate-300 text-[11px] sm:text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">REF ASLI</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.refAsli || '-'}</span>
+                    <div className="mt-3 grid gap-2.5 text-slate-300 text-[11px] sm:text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">REF ASLI</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.refAsli || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">REF CLIENTE</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">NAVIERA</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">NAVE</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{formatNave()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">MERCANCIA</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.especie || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">BOOKING</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.booking || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">CONTENEDOR</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">POL</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.pol || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">ETD</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{formatDate(record.etd)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">POD</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{record.pod || '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">ETA</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{formatDate(record.eta)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">TRÁNSITO</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{calculateTransito()}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold flex-shrink-0">CONSIGNATARIO</span>
+                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
+                        <span className="font-semibold text-right text-slate-200">{(record as any).consignatario || '-'}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">REF CLIENTE</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">NAVIERA</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">NAVE</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{formatNave()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">MERCANCIA</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.especie || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">BOOKING</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.booking || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">CONTENEDOR</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">POL</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.pol || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">ETD</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{formatDate(record.etd)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">POD</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{record.pod || '-'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">ETA</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{formatDate(record.eta)}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">TRÁNSITO</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{calculateTransito()}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold flex-shrink-0">CONSIGNATARIO</span>
-                      <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                      <span className="font-semibold text-right text-slate-200">{(record as any).consignatario || '-'}</span>
-                    </div>
-                  </div>
 
-                  <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex gap-2">
-                      {onEdit && (
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex gap-2">
+                        {onEdit && (
+                          <button
+                            onClick={() => onEdit(record)}
+                            className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
+                          >
+                            <Edit className="h-4 w-4" />
+                            Editar
+                          </button>
+                        )}
                         <button
-                          onClick={() => onEdit(record)}
+                          onClick={handleCopyCard}
+                          className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
+                          title="Copiar tarjeta al portapapeles"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copiar
+                        </button>
+                      </div>
+                      {onShowHistorial && (
+                        <button
+                          onClick={() => onShowHistorial(record)}
                           className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
                         >
-                          <Edit className="h-4 w-4" />
-                          Editar
+                          <History className="h-4 w-4" />
+                          Historial
                         </button>
                       )}
-                      <button
-                        onClick={handleCopyCard}
-                        className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
-                        title="Copiar tarjeta al portapapeles"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Copiar
-                      </button>
                     </div>
-                    {onShowHistorial && (
-                      <button
-                        onClick={() => onShowHistorial(record)}
-                        className={`${toolbarButtonClasses} flex-1 justify-center text-[11px] py-2`}
-                      >
-                        <History className="h-4 w-4" />
-                        Historial
-                      </button>
-                    )}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -1918,60 +1914,59 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
               // Verificar si el registro tiene PDF de booking cargado
               const bookingPdfValue = contextMenu.record.bookingPdf;
               const bookingValue = contextMenu.record.booking;
-              
+
               // Verificar si tiene bookingPdf en el campo
-              const hasPdfField = bookingPdfValue && 
-                                 typeof bookingPdfValue === 'string' &&
-                                 bookingPdfValue.trim() !== '' &&
-                                 bookingPdfValue.trim() !== 'null' &&
-                                 bookingPdfValue.trim() !== 'undefined';
-              
+              const hasPdfField = bookingPdfValue &&
+                typeof bookingPdfValue === 'string' &&
+                bookingPdfValue.trim() !== '' &&
+                bookingPdfValue.trim() !== 'null' &&
+                bookingPdfValue.trim() !== 'undefined';
+
               // Verificar si existe PDF en storage usando bookingDocuments
               let hasPdfInStorage = false;
               if (bookingValue && bookingDocuments) {
                 const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
                 hasPdfInStorage = bookingDocuments.has(bookingKey);
               }
-              
+
               const recordHasPdf = hasPdfField || hasPdfInStorage;
-              
+
               // Si hay selección múltiple, verificar que todos tengan PDF
               let allHavePdf = recordHasPdf;
               if (hasSelection && selectedRecordsList.length > 0) {
                 allHavePdf = selectedRecordsList.every(r => {
                   const pdfValue = r.bookingPdf;
                   const bookingVal = r.booking;
-                  
-                  const hasPdf = pdfValue && 
-                                typeof pdfValue === 'string' &&
-                                pdfValue.trim() !== '' &&
-                                pdfValue.trim() !== 'null' &&
-                                pdfValue.trim() !== 'undefined';
-                  
+
+                  const hasPdf = pdfValue &&
+                    typeof pdfValue === 'string' &&
+                    pdfValue.trim() !== '' &&
+                    pdfValue.trim() !== 'null' &&
+                    pdfValue.trim() !== 'undefined';
+
                   let hasStoragePdf = false;
                   if (bookingVal && bookingDocuments) {
                     const bookingKey = bookingVal.trim().toUpperCase().replace(/\s+/g, '');
                     hasStoragePdf = bookingDocuments.has(bookingKey);
                   }
-                  
+
                   return hasPdf || hasStoragePdf;
                 });
               }
-              
+
               // Mostrar el botón siempre, pero deshabilitado si no hay PDF
               return (
                 <button
                   onClick={allHavePdf ? handleContextSendToTransportes : undefined}
                   disabled={!allHavePdf}
-                  className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors ${
-                    allHavePdf
-                      ? isDark 
-                        ? 'hover:bg-emerald-500/15 hover:text-emerald-200 cursor-pointer' 
-                        : 'hover:bg-green-50 hover:text-green-600 cursor-pointer'
-                      : isDark
-                        ? 'opacity-50 cursor-not-allowed text-slate-500'
-                        : 'opacity-50 cursor-not-allowed text-gray-400'
-                  }`}
+                  className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors ${allHavePdf
+                    ? isDark
+                      ? 'hover:bg-emerald-500/15 hover:text-emerald-200 cursor-pointer'
+                      : 'hover:bg-green-50 hover:text-green-600 cursor-pointer'
+                    : isDark
+                      ? 'opacity-50 cursor-not-allowed text-slate-500'
+                      : 'opacity-50 cursor-not-allowed text-gray-400'
+                    }`}
                   title={!allHavePdf ? 'El registro debe tener PDF de booking cargado para enviar a Transportes' : ''}
                 >
                   <div className="flex items-center gap-2">
@@ -1979,11 +1974,10 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
                     <span>Enviar a Transportes</span>
                   </div>
                   {hasSelection && selectedRecordsList.length > 0 && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      isDark 
-                        ? allHavePdf ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/50 text-slate-500'
-                        : allHavePdf ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
-                    }`}>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isDark
+                      ? allHavePdf ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/50 text-slate-500'
+                      : allHavePdf ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
+                      }`}>
                       {selectedRecordsList.length}
                     </span>
                   )}
