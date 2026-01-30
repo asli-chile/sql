@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { PageWrapper } from '@/components/PageWrapper';
 
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/ui/table/DataTable';
@@ -2633,7 +2634,7 @@ export default function RegistrosPage() {
   ]);
 
   if (loading) {
-    return <LoadingScreen message="Cargando registros..." />;
+    return null; // El PageWrapper manejará el loading
   }
 
   if (!user) {
@@ -2694,7 +2695,7 @@ export default function RegistrosPage() {
 
   return (
     <EditingCellProvider>
-      <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+        <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
         {/* Overlay para móvil */}
         {isMobileMenuOpen && (
           <div

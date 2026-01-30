@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Fira_Sans } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "@/contexts/ThemeContext";
-import { UserProvider } from "@/hooks/useUser";
+import { LoadingProvider } from '@/contexts/LoadingContext';
+import { GlobalLoading } from '@/components/ui/GlobalLoading';
+import { UserProvider } from '@/hooks/useUser';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const firaSans = Fira_Sans({
@@ -43,11 +45,14 @@ export default function RootLayout({
         className={`${firaSans.variable} antialiased`}
       >
         <ErrorBoundary>
-          <ThemeProvider>
-            <UserProvider>
-              {children}
-            </UserProvider>
-          </ThemeProvider>
+          <LoadingProvider>
+            <ThemeProvider>
+              <UserProvider>
+                {children}
+                <GlobalLoading />
+              </UserProvider>
+            </ThemeProvider>
+          </LoadingProvider>
         </ErrorBoundary>
       </body>
     </html>
