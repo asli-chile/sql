@@ -15,10 +15,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: isCapacitor,
   },
-  // @ts-ignore
-  eslint: {
-    ignoreDuringBuilds: isCapacitor,
-  },
   images: {
     unoptimized: true,
   },
