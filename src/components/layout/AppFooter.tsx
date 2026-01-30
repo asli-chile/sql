@@ -81,7 +81,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
 
   return (
     <footer
-      className={`rounded-2xl border border-slate-800/60 bg-slate-950/70 p-8 shadow-xl shadow-slate-900/20 ${className}`}
+      className={`border border-slate-700/60 bg-slate-800/60 p-8 ${className}`}
     >
       <div className="grid gap-8 lg:grid-cols-4">
         <FooterSection title="ASLI GESTIÓN LOGÍSTICA">
@@ -89,7 +89,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
             Coordinamos operaciones marítimas, terrestres y documentales para exportadores que necesitan visibilidad
             total y respuesta inmediata.
           </p>
-          <div className="inline-flex items-center gap-2 rounded-full bg-sky-500/10 px-4 py-1 text-xs font-semibold text-sky-300">
+          <div className="inline-flex items-center gap-2 border border-sky-500/30 bg-sky-500/10 px-4 py-1 text-xs font-medium text-sky-300">
             <Ship className="h-3.5 w-3.5" aria-hidden="true" />
             años de experiencia
           </div>
@@ -109,7 +109,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
                   }
                 }}
                 aria-label={`Abrir ${link.label}`}
-                className="flex w-full items-center justify-between rounded-lg border border-transparent px-3 py-2 text-left text-slate-300 transition hover:border-sky-500/40 hover:bg-slate-900/60 hover:text-sky-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                className="flex w-full items-center justify-between border border-transparent px-3 py-2 text-left text-slate-300 transition hover:border-sky-500/40 hover:bg-slate-700/60 hover:text-sky-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
               >
                 <span>{link.label}</span>
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -134,7 +134,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
                     }
                   }}
                   aria-label={`Abrir ${link.label}`}
-                  className="flex items-center gap-2 rounded-full border border-slate-800/60 bg-slate-900/60 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-500/60 hover:text-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+                  className="flex items-center gap-2 border border-slate-700/60 bg-slate-700/60 px-4 py-2 text-sm text-slate-200 transition hover:border-sky-500/60 hover:text-sky-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
                 >
                   <IconComponent className="h-4 w-4" aria-hidden="true" />
                   {link.label}
@@ -187,11 +187,11 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
         </FooterSection>
       </div>
 
-      <div className="mt-8 flex flex-col gap-3 border-t border-slate-800/60 pt-6 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
+      <div className="mt-8 flex flex-col gap-3 border-t border-slate-700/60 pt-6 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
         <p>© {new Date().getFullYear()} ASLI Gestión Logística. Todos los derechos reservados.</p>
         <div className="flex flex-wrap items-center gap-4 text-slate-400">
           <span>Operación 24/7</span>
-          <span className="hidden h-1 w-1 rounded-full bg-slate-600 md:inline-block" aria-hidden="true" />
+          <span className="hidden h-1 w-1 bg-slate-600 md:inline-block" aria-hidden="true" />
           <button
             type="button"
             onClick={() => handleOpenLink('https://asli.cl/aviso-legal')}

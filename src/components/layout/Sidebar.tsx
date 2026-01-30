@@ -53,34 +53,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
 
             <aside
-                className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700 bg-slate-800' : 'border-r border-gray-200 bg-white shadow-lg'
+                className={`fixed lg:sticky left-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 self-start ${theme === 'dark' ? 'border-r border-slate-700/60 bg-slate-800/60' : 'border-r border-gray-200 bg-white'
                     } ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isSidebarCollapsed && !isMobileMenuOpen ? 'lg:w-0 lg:opacity-0 lg:overflow-hidden lg:border-r-0' : 'w-64 lg:opacity-100'
                     }`}
             >
                 <div
-                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700 bg-slate-800' : 'border-b border-gray-200 bg-white'
+                    className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 ${theme === 'dark' ? 'border-b border-slate-700/60 bg-slate-800/60' : 'border-b border-gray-200 bg-white'
                         } sticky top-0 z-10 overflow-hidden`}
                 >
                     {/* Botón cerrar móvil */}
                     <button
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700' : 'text-gray-600 hover:bg-gray-100'
+                        className={`lg:hidden absolute right-3 flex h-8 w-8 items-center justify-center transition-colors ${theme === 'dark' ? 'text-slate-300 hover:bg-slate-700/60' : 'text-gray-600 hover:bg-gray-100/80'
                             }`}
                         aria-label="Cerrar menú"
                     >
-                        <X className="h-5 w-5" />
+                        <X className="h-4 w-4" />
                     </button>
 
                     {(!isSidebarCollapsed || isMobileMenuOpen) && (
                         <>
                             <div
-                                className={`h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                                className={`h-8 w-8 overflow-hidden border flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700/60 border-slate-600/50' : 'bg-gray-100 border-gray-300'
                                     } flex items-center justify-center`}
                             >
                                 <img
                                     src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                                     alt="ASLI Gestión Logística"
-                                    className="h-7 w-7 sm:h-8 sm:w-8 object-contain"
+                                    className="h-6 w-6 object-contain"
                                     onError={(event) => {
                                         event.currentTarget.style.display = 'none';
                                     }}
@@ -88,7 +88,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             </div>
                             <div className="flex-1 min-w-0 overflow-hidden">
                                 <p
-                                    className={`text-xs sm:text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                                    className={`text-xs sm:text-sm font-medium truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
                                         }`}
                                 >
                                     ASLI Gestión Logística
@@ -102,9 +102,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     {!isSidebarCollapsed && !isMobileMenuOpen && (
                         <button
                             onClick={toggleSidebar}
-                            className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark'
-                                ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200'
-                                : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'
+                            className={`hidden lg:flex h-8 w-8 items-center justify-center border flex-shrink-0 ${theme === 'dark'
+                                ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200'
+                                : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-500 hover:text-blue-700'
                                 } transition`}
                             aria-label="Contraer menú lateral"
                         >
@@ -139,11 +139,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                         setIsMobileMenuOpen(false);
                                                     }
                                                 }}
-                                                className={`group w-full text-left flex items-center justify-between rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${isActive
+                                                className={`group w-full text-left flex items-center justify-between px-2 sm:px-3 py-1.5 sm:py-2 transition-colors min-w-0 ${isActive
                                                     ? `${theme === 'dark' ? 'bg-blue-600 text-white' : 'bg-blue-600 text-white'}`
                                                     : `${theme === 'dark'
-                                                        ? 'hover:bg-slate-700 text-slate-300'
-                                                        : 'hover:bg-blue-50 text-blue-600 font-semibold'
+                                                        ? 'hover:bg-slate-700/60 text-slate-300'
+                                                        : 'hover:bg-blue-50 text-blue-600'
                                                     }`
                                                     }`}
                                             >
