@@ -123,28 +123,10 @@ export async function getShipmentTracking(registroId: string): Promise<ShipmentH
                 break;
 
             case 'ingresada_stacking':
-                // Prioridad 1: Verificar en registros
                 if (registro?.ingresoStacking) {
                     status = 'SI';
                     date = registro.ingresoStacking.toISOString();
                     observation = observation || 'Ingreso exitoso a stacking (Registros)';
-                    isAutomated = true;
-                }
-                // Prioridad 2: Verificar en transportes si no hay en registros
-                else if (transporte?.ingreso_stacking) {
-                    status = 'SI';
-                    // Asegurar formato ISO para transporte.ingreso_stacking
-                    try {
-                        const transportDate = new Date(transporte.ingreso_stacking);
-                        if (!isNaN(transportDate.getTime())) {
-                            date = transportDate.toISOString();
-                        } else {
-                            date = transporte.ingreso_stacking; // Usar el valor original si no es una fecha válida
-                        }
-                    } catch {
-                        date = transporte.ingreso_stacking; // Usar el valor original si hay error
-                    }
-                    observation = observation || 'Ingreso exitoso a stacking (Transportes)';
                     isAutomated = true;
                 }
                 break;

@@ -28,7 +28,6 @@ import {
 import { Registro } from '@/types/registros';
 import { ShipmentHito } from '@/types/tracking';
 import { searchShipments, getShipmentTracking, updateTrackingEvent } from '@/lib/tracking-service';
-import { subscribeToTrackingUpdates } from '@/lib/auto-tracking-sync';
 import { MovementCard, TimelineStep, MilestoneEditModal } from '@/components/tracking/TrackingComponents';
 import { MilestoneStatus } from '@/types/tracking';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -99,20 +98,6 @@ export default function TrackingPage() {
     // Cargar tracking cuando cambia la selección
     useEffect(() => {
         fetchTracking();
-    }, [selectedId]);
-
-    // Suscribirse a actualizaciones en tiempo real del tracking
-    useEffect(() => {
-        if (!selectedId) return;
-
-        const unsubscribe = subscribeToTrackingUpdates(selectedId, (updatedTracking) => {
-            console.log('📡 [Tracking UI] Actualización recibida en tiempo real');
-            setTracking(updatedTracking);
-        });
-
-        return () => {
-            unsubscribe();
-        };
     }, [selectedId]);
 
     const fetchTracking = async () => {

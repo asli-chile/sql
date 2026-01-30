@@ -9,7 +9,6 @@ export type TransporteColumn = {
   key: keyof TransporteRecord;
   header: string;
   section: string;
-  sticky?: boolean; // Nueva propiedad para columnas sticky
   render?: (item: TransporteRecord, onStackingClick?: (record: TransporteRecord) => void, theme?: string) => ReactNode;
 };
 
@@ -33,15 +32,7 @@ const createStackingRender = (key: keyof TransporteRecord) => {
           'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
         ];
 
-        // Si está en formato DD/MM/YYYY HH:MM, convertir a nombre de mes
-        if (/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(value)) {
-          const [datePart, timePart] = value.split(' ');
-          const [day, month, year] = datePart.split('/');
-          const monthName = meses[parseInt(month) - 1];
-          return `${parseInt(day)} de ${monthName} de ${year} ${timePart}`;
-        }
-
-        // Si está en formato DD-MM-YYYY HH:MM, convertir a nombre de mes (legacy)
+        // Si está en formato DD-MM-YYYY HH:MM, convertir a nombre de mes
         if (/^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$/.test(value)) {
           const [datePart, timePart] = value.split(' ');
           const [day, month, year] = datePart.split('-');
@@ -49,14 +40,7 @@ const createStackingRender = (key: keyof TransporteRecord) => {
           return `${parseInt(day)} de ${monthName} de ${year} ${timePart}`;
         }
 
-        // Si está en formato DD/MM/YYYY (solo fecha), convertir a nombre de mes
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-          const [day, month, year] = value.split('/');
-          const monthName = meses[parseInt(month) - 1];
-          return `${parseInt(day)} de ${monthName} de ${year}`;
-        }
-
-        // Si está en formato DD-MM-YYYY (solo fecha), convertir a nombre de mes (legacy)
+        // Si está en formato DD-MM-YYYY (solo fecha), convertir a nombre de mes
         if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
           const [day, month, year] = value.split('-');
           const monthName = meses[parseInt(month) - 1];
@@ -132,8 +116,8 @@ export const transportesSections: TransporteSection[] = [
   {
     name: 'DATOS PRINCIPALES',
     columns: [
-      { key: 'ref_cliente', header: 'REF EXTERNA', section: 'DATOS PRINCIPALES', sticky: true },
-      { key: 'exportacion', header: 'CLIENTE', section: 'DATOS PRINCIPALES', sticky: true },
+      { key: 'exportacion', header: 'CLIENTE', section: 'DATOS PRINCIPALES' },
+      { key: 'ref_cliente', header: 'REF EXTERNA', section: 'DATOS PRINCIPALES' },
       { key: 'nave', header: 'NAVE', section: 'DATOS PRINCIPALES' },
       { key: 'naviera', header: 'NAVIERA', section: 'DATOS PRINCIPALES' },
       { key: 'pod', header: 'DESTINO', section: 'DATOS PRINCIPALES' },
@@ -186,7 +170,6 @@ export const transportesSections: TransporteSection[] = [
     columns: [
       { key: 'stacking', header: 'INICIO STACKING', section: 'STACKING', render: createStackingRender('stacking') },
       { key: 'fin_stacking', header: 'FIN STACKING', section: 'STACKING', render: createStackingRender('fin_stacking') },
-      { key: 'ingreso_stacking', header: 'INGRESADO STACKING', section: 'STACKING', render: createStackingRender('ingreso_stacking') },
       { key: 'cut_off', header: 'CUT OFF', section: 'STACKING', render: createStackingRender('cut_off') },
       { key: 'late', header: 'LATE', section: 'STACKING' },
       { key: 'extra_late', header: 'EXTRA LATE', section: 'STACKING' },
@@ -230,12 +213,13 @@ export const transportesSections: TransporteSection[] = [
       { key: 'salida_planta', header: 'SALIDA PLANTA', section: 'DESPACHO' },
       { key: 'guia_despacho', header: 'GUIA DESPACHO', section: 'DESPACHO' },
       { key: 'terminal_portuario', header: 'TERMINAL PORTUARIO', section: 'DESPACHO' },
-      { key: 'ingreso_stacking', header: 'INGRESO STACKING', section: 'DESPACHO', render: createStackingRender('ingreso_stacking') },
+      { key: 'llegada_puerto', header: 'LLEGADA PUERTO', section: 'DESPACHO' },
     ],
   },
   {
     name: 'ADICIONAL',
     columns: [
+      { key: 'ingreso_stacking', header: 'INGRESADO STACKING', section: 'ADICIONAL' },
       { key: 'sobreestadia', header: 'SOBRESTADIA', section: 'ADICIONAL' },
       { key: 'scanner', header: 'SCANNER', section: 'ADICIONAL' },
       { key: 'lote_carga', header: 'LOTE CARGA', section: 'ADICIONAL' },

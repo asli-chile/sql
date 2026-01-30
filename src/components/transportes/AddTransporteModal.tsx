@@ -5,7 +5,6 @@ import { X } from 'lucide-react';
 import { createTransporte, TransporteRecord } from '@/lib/transportes-service';
 import { useToast } from '@/hooks/useToast';
 import { createClient } from '@/lib/supabase-browser';
-import { refreshTrackingForRegistro } from '@/lib/auto-tracking-sync';
 
 type FormState = Partial<Pick<
   TransporteRecord,
@@ -35,7 +34,6 @@ type FormState = Partial<Pick<
   | 'telefono'
   | 'patente'
   | 'from_registros'
-  | 'registro_id'
 >>;
 
 interface AddTransporteModalProps {
@@ -71,7 +69,6 @@ const initialState: FormState = {
   telefono: '',
   patente: '',
   from_registros: false,
-  registro_id: null,
 };
 
 export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporteModalProps) {
@@ -216,16 +213,6 @@ export function AddTransporteModal({ isOpen, onClose, onSuccess }: AddTransporte
     try {
       await createTransporte(form);
       success('Registro de transporte creado correctamente.');
-      
-      // Actualizar tracking automáticamente si el transporte tiene registro_id
-      if (form.registro_id) {
-        try {
-          await refreshTrackingForRegistro(form.registro_id);
-        } catch (trackingError) {
-          console.warn('⚠️ Error al actualizar tracking después de crear transporte:', trackingError);
-        }
-      }
-      
       resetAndClose();
       onSuccess();
     } catch (err: any) {

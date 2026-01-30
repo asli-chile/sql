@@ -7,7 +7,6 @@ import { createClient } from '@/lib/supabase-browser';
 import { useEditingCell } from '@/contexts/EditingCellContext';
 import { useUser } from '@/hooks/useUser';
 import { useTheme } from '@/contexts/ThemeContext';
-import { refreshTrackingForRegistro } from '@/lib/auto-tracking-sync';
 
 interface InlineEditCellProps {
   value: any;
@@ -20,6 +19,7 @@ interface InlineEditCellProps {
 }
 
 const dateKeys = new Set<keyof TransporteRecord>([
+  'stacking',
   'cut_off_documental',
   'fecha_planta',
   'dia_presentacion',
@@ -28,16 +28,16 @@ const dateKeys = new Set<keyof TransporteRecord>([
 ]);
 
 const datetimeKeys = new Set<keyof TransporteRecord>([
-  'stacking',           // Inicio stacking (fecha y hora)
-  'fin_stacking',       // Fin stacking (fecha y hora)
-  'ingreso_stacking',   // Ingresado stacking (fecha y hora)
-  'cut_off',            // Cut off (fecha y hora)
+  'fin_stacking',
+  'ingreso_stacking',
+  'cut_off',
 ]);
 
 const timeKeys = new Set<keyof TransporteRecord>([
   'hora_presentacion',
   'llegada_planta',
   'salida_planta',
+  'llegada_puerto',
   'hora_planta',
   'horario_retiro',
 ]);
@@ -311,29 +311,14 @@ export function InlineEditCell({
         return;
       }
 
-      // Para fechas, mantener formato DD/MM/YYYY en el registro actualizado
+      // Para fechas, mantener formato DD-MM-YYYY en el registro actualizado
       let updatedRecord = { ...record, [field]: processedValue };
       if (isDateField && processedValue && /^\d{4}-\d{2}-\d{2}$/.test(processedValue)) {
         const [year, month, day] = processedValue.split('-');
-        updatedRecord = { ...record, [field]: `${day}/${month}/${year}` };
-      }
-      // Para datetime, mantener formato ISO en la BD pero el display se manejará con formatDisplayValue
-      else if (isDateTimeField && processedValue) {
-        // Mantener el valor ISO para la BD, la visualización se manejará con formatDisplayValue
-        updatedRecord = { ...record, [field]: processedValue };
+        updatedRecord = { ...record, [field]: `${day}-${month}-${year}` };
       }
 
       onSave(updatedRecord);
-      
-      // Actualizar tracking automáticamente si el transporte tiene registro_id
-      if (record.registro_id) {
-        try {
-          await refreshTrackingForRegistro(record.registro_id);
-        } catch (trackingError) {
-          console.warn('⚠️ Error al actualizar tracking después de editar transporte:', trackingError);
-        }
-      }
-      
       clearEditing();
     } catch (err) {
       console.error('Error in handleSave:', err);
@@ -405,45 +390,14 @@ export function InlineEditCell({
     }
 
     if (isDateField && typeof val === 'string') {
-      // Si está en formato YYYY-MM-DD, convertir a DD/MM/YYYY
+      // Si está en formato YYYY-MM-DD, convertir a DD-MM-YYYY
       if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
         const [year, month, day] = val.split('-');
-        return `${day}/${month}/${year}`;
+        return `${day}-${month}-${year}`;
       }
-      // Si ya está en formato DD-MM-YYYY, convertir a DD/MM/YYYY
+      // Si ya está en formato DD-MM-YYYY, mostrarlo directamente
       if (/^\d{2}-\d{2}-\d{4}$/.test(val)) {
-        const [day, month, year] = val.split('-');
-        return `${day}/${month}/${year}`;
-      }
-      // Si ya está en formato DD/MM/YYYY, mostrarlo directamente
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
         return val;
-      }
-    }
-
-    if (isDateTimeField && typeof val === 'string') {
-      // Para campos datetime, formatear a DD/MM/YYYY HH:MM
-      let date: Date;
-      
-      // Intentar parsear diferentes formatos
-      if (val.includes('T')) {
-        // Formato ISO: 2024-01-15T14:30:00.000Z
-        date = new Date(val);
-      } else if (val.includes(' ')) {
-        // Formato "YYYY-MM-DD HH:MM"
-        date = new Date(val.replace(' ', 'T'));
-      } else {
-        // Otro formato, intentar directamente
-        date = new Date(val);
-      }
-      
-      if (!isNaN(date.getTime())) {
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${day}/${month}/${year} ${hours}:${minutes}`;
       }
     }
 

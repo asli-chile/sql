@@ -116,9 +116,7 @@ export function TransporteCard({
             <li><strong>Depósito:</strong> ${transporte.deposito || 'N/A'}</li>
             <li><strong>POL:</strong> ${transporte.pol || 'N/A'}</li>
             <li><strong>POD:</strong> ${transporte.pod || 'N/A'}</li>
-            <li><strong>Fecha:</strong> ${transporte.dia_presentacion || 'N/A'}</li>
-            <li><strong>Hora:</strong> ${transporte.hora_presentacion || 'N/A'}</li>
-            <li><strong>Planta:</strong> ${transporte.planta || 'N/A'}</li>
+            <li><strong>Fecha Hora Planta:</strong> ${transporte.dia_presentacion || 'N/A'} ${transporte.hora_presentacion || 'N/A'} - ${transporte.planta || 'N/A'}</li>
           </ul>
           
           <p><strong>DATOS DE TRANSPORTE</strong></p>

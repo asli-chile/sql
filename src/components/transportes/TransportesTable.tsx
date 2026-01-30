@@ -60,36 +60,11 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
 
   // Definir handleStackingClick antes de cualquier uso
   const handleStackingClick = (record: TransporteRecord) => {
+    console.log('📅 handleStackingClick llamado para registro:', record.id);
+    console.log('📅 Estado actual del modal:', { isOpen: isDateTimeModalOpen, selectedRecord: selectedRecord?.id });
     setSelectedRecord(record);
     setIsDateTimeModalOpen(true);
-  };
-
-  // Función para calcular posición sticky de columnas
-  const getStickyStyle = (columnIndex: number, isSticky: boolean): React.CSSProperties => {
-    if (!isSticky) return {};
-    
-    // Calcular el ancho acumulado de las columnas sticky anteriores
-    let leftPosition = 0; // Empezar después del checkbox
-    
-    // Las primeras dos columnas (Ref Externa y Cliente) son sticky
-    if (columnIndex >= 0) {
-      // Ref Externa (aprox 120px)
-      if (columnIndex > 0) leftPosition += 120;
-      // Cliente (aprox 120px)  
-      if (columnIndex > 1) leftPosition += 120;
-    }
-    
-    return {
-      left: `${leftPosition}px`,
-      position: 'sticky' as const,
-      zIndex: 10
-    };
-  };
-
-  const getStickyClasses = (isSticky: boolean) => {
-    return isSticky 
-      ? 'bg-white dark:bg-gray-900 border-r border-gray-300 dark:border-gray-600' 
-      : '';
+    console.log('📅 Modal debería abrirse ahora');
   };
 
   const formatValue = (item: TransporteRecord, key: keyof TransporteRecord) => {
@@ -261,9 +236,9 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
       </div>
 
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto max-w-full">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 relative">
-            <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-20">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-100 dark:bg-gray-800">
               <tr>
                 <th scope="col" className="px-3 py-2 text-left">
                   <input
@@ -273,14 +248,11 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                 </th>
-                {transportesColumns.map((column, index) => (
+                {transportesColumns.map((column) => (
                   <th
                     key={column.header}
                     scope="col"
-                    className={`px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300 ${
-                      column.sticky ? `bg-gray-100 dark:bg-gray-800 z-30 ${getStickyClasses(column.sticky)}` : ''
-                    }`}
-                    style={getStickyStyle(index, !!column.sticky)}
+                    className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300"
                   >
                     {column.header}
                   </th>
@@ -308,16 +280,73 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                         className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                       />
                     </td>
-                    {transportesColumns.map((column, index) => (
+                    {transportesColumns.map((column) => (
                       <td
                         key={`${item.id}-${column.header}`}
-                        className={`px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100 ${
-                          column.sticky ? getStickyClasses(column.sticky) : ''
-                        }`}
-                        style={getStickyStyle(index, !!column.sticky)}
+                        className="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-gray-100"
                       >
                         {(() => {
-                          if (column.render) {
+                          console.log('🔍 Procesando columna:', column.key, 'es stacking?:', column.key === 'stacking' || column.key === 'fin_stacking' || column.key === 'cut_off');
+                          if (column.key === 'stacking' || column.key === 'fin_stacking' || column.key === 'cut_off') {
+                            console.log('🔧 Renderizando columna de stacking:', column.key, 'handleStackingClick existe:', !!handleStackingClick);
+                            
+                            const formatValue = (value: any) => {
+                              if (value === null || value === undefined || value === '') {
+                                return '—';
+                              }
+                              if (typeof value === 'string') {
+                                if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                                  const [year, month, day] = value.split('-');
+                                  return `${day}-${month}-${year}`;
+                                }
+                                if (value.includes('T') || value.includes(' ')) {
+                                  const date = new Date(value.includes(' ') ? value.replace(' ', 'T') : value);
+                                  if (!Number.isNaN(date.getTime())) {
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const year = date.getFullYear();
+                                    const hours = String(date.getHours()).padStart(2, '0');
+                                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                                    return `${day}-${month}-${year} ${hours}:${minutes}`;
+                                  }
+                                }
+                                if (/^\d{2}-\d{2}-\d{4}$/.test(value)) {
+                                  return value;
+                                }
+                              }
+                              return String(value);
+                            };
+                            
+                            return (
+                              <div
+                                onClick={() => {
+                                  console.log('📅 Click detectado en columna NUEVA:', column.key, 'para item:', item.id);
+                                  if (handleStackingClick) {
+                                    console.log('📅 Llamando a handleStackingClick NUEVO');
+                                    handleStackingClick(item);
+                                  } else {
+                                    console.log('❌ handleStackingClick es undefined NUEVO');
+                                  }
+                                }}
+                                className={`group flex items-center justify-center gap-1 rounded px-2 py-1 -mx-2 -my-1 transition-colors cursor-pointer ${
+                                  theme === 'dark'
+                                    ? 'hover:bg-slate-700/50'
+                                    : 'hover:bg-blue-50'
+                                }`}
+                                title="Click para editar fechas de stacking"
+                              >
+                                <span className={`text-sm text-center ${
+                                  theme === 'dark' ? 'text-slate-200' : 'text-gray-900 font-medium'
+                                }`}>
+                                  {formatValue(item[column.key])}
+                                </span>
+                                <Calendar className={`h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+                                  theme === 'dark' ? 'text-slate-500' : 'text-blue-500'
+                                }`} />
+                              </div>
+                            );
+                          } else if (column.render) {
+                            console.log('🔧 Renderizando columna:', column.key, 'handleStackingClick existe:', !!handleStackingClick);
                             return column.render(item, handleStackingClick, theme);
                           } else {
                             return (
@@ -335,10 +364,8 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                                   column.key === 'hora_presentacion' ? 'time' :
                                   column.key === 'llegada_planta' ? 'time' :
                                   column.key === 'salida_planta' ? 'time' :
-                                  column.key === 'stacking' ? 'datetime' :
-                                  column.key === 'fin_stacking' ? 'datetime' :
+                                  column.key === 'llegada_puerto' ? 'time' :
                                   column.key === 'ingreso_stacking' ? 'datetime' :
-                                  column.key === 'cut_off' ? 'datetime' :
                                   'text'
                                 }
                                 options={column.key === 'planta' ? [] : undefined}
@@ -347,6 +374,22 @@ export default function TransportesTable({ transportes }: TransportesTableProps)
                             );
                           }
                         })()}
+                        {/* Debug info */}
+                        {process.env.NODE_ENV === 'development' && (
+                          <div className="text-xs mt-1 text-gray-400">
+                            {column.key}: {
+                              column.key === 'planta' ? 'select' :
+                              column.key === 'dia_presentacion' ? 'date' :
+                              column.key === 'hora_presentacion' ? 'time' :
+                              column.key === 'llegada_planta' ? 'time' :
+                              column.key === 'salida_planta' ? 'time' :
+                              column.key === 'llegada_puerto' ? 'time' :
+                              column.key === 'ingreso_stacking' ? 'datetime' :
+                              column.render ? 'custom-render' :
+                              'text'
+                            }
+                          </div>
+                        )}
                       </td>
                     ))}
                   </tr>

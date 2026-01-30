@@ -37,6 +37,7 @@ export type TransporteRecord = {
   retiro_deposito: string | null;
   hora_planta: string | null;
   fecha_salida: string | null;
+  llegada_puerto: string | null;
   patente_remolque: string | null;
   observaciones: string | null;
   deleted_at: string | null;
