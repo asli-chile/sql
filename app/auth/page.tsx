@@ -18,7 +18,7 @@ const AuthPage = () => {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const inputClasses = `w-full rounded-xl border px-12 py-3.5 text-sm shadow-sm transition-all focus:outline-none focus:ring-2 focus:shadow-md ${isDark
+  const inputClasses = `w-full border px-12 py-3.5 text-sm transition-all focus:outline-none focus:ring-2 ${isDark
     ? 'border-slate-600 bg-slate-800 text-slate-100 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
     : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500/20'
     }`;
@@ -280,14 +280,14 @@ const AuthPage = () => {
         )}
       </div>
 
-      <section className={`relative z-10 grid w-full max-w-6xl gap-0 rounded-3xl border shadow-2xl backdrop-blur-xl md:grid-cols-[1.2fr_1fr] overflow-hidden ${isDark
+      <section className={`relative z-10 grid w-full max-w-6xl gap-0 border backdrop-blur-xl md:grid-cols-[1.2fr_1fr] overflow-hidden ${isDark
         ? 'border-slate-700/80 bg-slate-800/80'
         : 'border-slate-200/80 bg-white/80'
         }`}>
         {/* Panel izquierdo - Información */}
-        <aside className="hidden flex-col justify-between rounded-l-3xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 text-white shadow-2xl md:flex overflow-y-auto">
+        <aside className="hidden flex-col justify-between bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 text-white md:flex overflow-y-auto">
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/20 backdrop-blur-sm px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white/95 shadow-lg">
+            <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white/95">
               Plataforma ASLI
             </div>
             <div className="space-y-3">
@@ -300,33 +300,33 @@ const AuthPage = () => {
             </div>
             <ul className="space-y-3 text-sm text-blue-50/90">
               <li className="flex items-start gap-4">
-                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
+                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 bg-white" aria-hidden="true" />
                 <span>Monitoreo continuo de embarques y documentación</span>
               </li>
               <li className="flex items-start gap-4">
-                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
+                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 bg-white" aria-hidden="true" />
                 <span>Flujos colaborativos con tu equipo y clientes</span>
               </li>
               <li className="flex items-start gap-4">
-                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-white shadow-lg" aria-hidden="true" />
+                <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 bg-white" aria-hidden="true" />
                 <span>Autenticación segura respaldada por Supabase</span>
               </li>
             </ul>
           </div>
-          <div className="mt-6 space-y-1 rounded-xl bg-white/10 backdrop-blur-sm p-4 border border-white/20">
+          <div className="mt-6 space-y-1 bg-white/10 backdrop-blur-sm p-4 border border-white/20">
             <p className="font-semibold text-sm text-white">Soporte dedicado</p>
             <p className="text-xs text-blue-50/90">Escríbenos a rodrigo.caceres@asli.cl</p>
           </div>
         </aside>
 
         {/* Panel derecho - Formulario */}
-        <div className={`rounded-r-3xl p-6 shadow-xl sm:p-8 overflow-y-auto ${isDark ? 'bg-slate-800' : 'bg-white'
+        <div className={`p-6 overflow-y-auto ${isDark ? 'bg-slate-800' : 'bg-white'
           }`}>
           <div className="mb-6 flex flex-col items-center gap-3 text-center md:items-start md:text-left">
             <div
-              className={`flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br shadow-lg ${isDark
-                ? 'from-blue-600 to-indigo-700 shadow-blue-500/30'
-                : 'from-blue-500 to-indigo-600 shadow-blue-500/30'
+              className={`flex h-20 w-20 items-center justify-center bg-gradient-to-br ${isDark
+                ? 'from-blue-600 to-indigo-700'
+                : 'from-blue-500 to-indigo-600'
                 }`}
               data-preserve-bg
             >
@@ -353,7 +353,7 @@ const AuthPage = () => {
             </div>
           </div>
 
-          <div className={`mb-6 flex rounded-xl p-1.5 text-sm font-medium shadow-inner ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'
+          <div className={`mb-6 flex p-1.5 text-sm font-medium ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'
             }`}>
             <button
               type="button"
@@ -361,10 +361,10 @@ const AuthPage = () => {
               aria-pressed={isLogin}
               aria-controls="auth-form"
               disabled={loading}
-              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${isLogin
+              className={`group flex-1 px-5 py-2.5 transition-all duration-200 ${isLogin
                 ? isDark
-                  ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
-                  : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
+                  ? 'bg-slate-700 text-blue-400 font-semibold'
+                  : 'bg-white text-blue-600 font-semibold'
                 : isDark
                   ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -381,10 +381,10 @@ const AuthPage = () => {
               aria-pressed={!isLogin}
               aria-controls="auth-form"
               disabled={loading}
-              className={`group flex-1 rounded-lg px-5 py-2.5 transition-all duration-200 ${!isLogin
+              className={`group flex-1 px-5 py-2.5 transition-all duration-200 ${!isLogin
                 ? isDark
-                  ? 'bg-slate-700 text-blue-400 shadow-md shadow-blue-500/20 font-semibold'
-                  : 'bg-white text-blue-600 shadow-md shadow-blue-500/20 font-semibold'
+                  ? 'bg-slate-700 text-blue-400 font-semibold'
+                  : 'bg-white text-blue-600 font-semibold'
                 : isDark
                   ? 'text-slate-300 hover:text-white hover:bg-slate-700/50'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
@@ -401,7 +401,7 @@ const AuthPage = () => {
             <div
               role="alert"
               aria-live="assertive"
-              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${isDark
+              className={`mb-4 flex flex-col gap-2 border-2 px-4 py-3 text-sm ${isDark
                 ? 'border-green-500/50 bg-green-900/30 text-green-300'
                 : 'border-green-200 bg-green-50 text-green-800'
                 }`}
@@ -417,7 +417,7 @@ const AuthPage = () => {
             <div
               role="alert"
               aria-live="assertive"
-              className={`mb-4 flex flex-col gap-2 rounded-xl border-2 px-4 py-3 text-sm shadow-sm ${error.startsWith('✅')
+              className={`mb-4 flex flex-col gap-2 border-2 px-4 py-3 text-sm ${error.startsWith('✅')
                 ? isDark
                   ? 'border-green-500/50 bg-green-900/30 text-green-300'
                   : 'border-green-200 bg-green-50 text-green-800'
@@ -538,7 +538,7 @@ const AuthPage = () => {
                     <button
                       type="button"
                       onClick={handleTogglePasswordVisibility}
-                      className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-lg transition ${isDark
+                      className={`absolute right-4 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center transition ${isDark
                         ? 'bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-slate-300'
                         : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-700'
                         }`}
@@ -555,9 +555,9 @@ const AuthPage = () => {
               type="submit"
               disabled={loading}
               aria-busy={loading}
-              className={`group relative flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r py-4 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:shadow-lg ${isDark
-                ? 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-500 hover:to-indigo-600 hover:shadow-blue-500/40 focus:ring-offset-slate-800'
-                : 'from-blue-600 to-indigo-600 shadow-blue-500/30 hover:from-blue-700 hover:to-indigo-700 hover:shadow-blue-500/40 focus:ring-offset-white'
+              className={`group relative flex w-full items-center justify-center gap-3 bg-gradient-to-r py-4 text-sm font-semibold text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:opacity-70 ${isDark
+                ? 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-600 focus:ring-offset-slate-800'
+                : 'from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:ring-offset-white'
                 }`}
             >
               {loading ? (
