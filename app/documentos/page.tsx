@@ -69,11 +69,11 @@ export default function DocumentosPage() {
   const { theme } = useTheme();
   const { currentUser, setCurrentUser, canEdit, canDelete } = useUser();
   const supabase = useMemo(() => createClient(), []);
-  
+
   // Estados de ordenamiento
   const [sortField, setSortField] = useState<'refCliente' | 'fechaIngreso' | 'nave' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -693,7 +693,7 @@ export default function DocumentosPage() {
 
       // Manejar ordenamiento para strings y números
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
+        return sortDirection === 'asc'
           ? aValue.localeCompare(bValue, 'es', { sensitivity: 'base' })
           : bValue.localeCompare(aValue, 'es', { sensitivity: 'base' });
       } else {
@@ -888,6 +888,7 @@ export default function DocumentosPage() {
         { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: pathname === '/dashboard/seguimiento', icon: Globe },
+        { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo
           ? [
             { label: 'Finanzas', id: '/finanzas', isActive: pathname === '/finanzas', icon: DollarSign },
@@ -1066,7 +1067,7 @@ export default function DocumentosPage() {
                     : 'bg-white/95 border-b border-gray-200 shadow-sm'
                     }`}>
                     <tr>
-                      <th 
+                      <th
                         className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
                           }`}
                         onClick={() => handleSort('nave')}
@@ -1080,7 +1081,7 @@ export default function DocumentosPage() {
                           )}
                         </div>
                       </th>
-                      <th 
+                      <th
                         className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
                           }`}
                         onClick={() => handleSort('refCliente')}
@@ -1094,7 +1095,7 @@ export default function DocumentosPage() {
                           )}
                         </div>
                       </th>
-                      <th 
+                      <th
                         className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
                           }`}
                         onClick={() => handleSort('fechaIngreso')}
@@ -1182,7 +1183,7 @@ export default function DocumentosPage() {
                             }`}>
                             {(() => {
                               const registro = registros.find(r => r.id === row.id);
-                              return registro?.ingresado 
+                              return registro?.ingresado
                                 ? new Date(registro.ingresado).toLocaleDateString('es-CL')
                                 : '—';
                             })()}
@@ -1421,7 +1422,7 @@ export default function DocumentosPage() {
                         {(() => {
                           const isPDF = docInfo.name?.toLowerCase().endsWith('.pdf');
                           const isExcel = docInfo.name?.toLowerCase().match(/\.(xlsx|xls)$/);
-                          
+
                           if (isPDF) {
                             // Vista previa de PDF
                             return (
@@ -1601,3 +1602,15 @@ export default function DocumentosPage() {
     </div>
   );
 }
+
+const Activity = (props: any) => (
+  <svg
+    {...props}
+    xmlns="http://www.w3.org/2000/svg"
+    width="24" height="24" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round"
+  >
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+  </svg>
+);

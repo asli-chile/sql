@@ -86,7 +86,7 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     id: supabaseData.id,
     ingresado: normalizeSupabaseDate(supabaseData.ingresado),
     refAsli: supabaseData.ref_asli,
-    refCliente: supabaseData.ref_cliente || undefined,
+    refCliente: supabaseData.ref_cliente || supabaseData.ref_externa || undefined,
     ejecutivo: supabaseData.ejecutivo,
     usuario: supabaseData.usuario || supabaseData.created_by || undefined,
     shipper: supabaseData.shipper,
@@ -139,18 +139,18 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
 export const migrateRegistros = async (firebaseData: any[]) => {
   try {
     console.log(`🔄 Iniciando migración de ${firebaseData.length} registros...`);
-    
+
     const supabaseData = firebaseData.map(convertFirebaseToSupabase);
-    
+
     const { data, error } = await supabase
       .from('registros')
       .insert(supabaseData);
-    
+
     if (error) {
       console.error('Error migrando registros:', error);
       throw error;
     }
-    
+
     console.log(`✅ ${firebaseData.length} registros migrados exitosamente`);
     return data;
   } catch (error) {
@@ -163,22 +163,22 @@ export const migrateRegistros = async (firebaseData: any[]) => {
 export const migrateCatalogos = async (catalogosData: any[]) => {
   try {
     console.log(`🔄 Iniciando migración de ${catalogosData.length} catálogos...`);
-    
+
     const supabaseData = catalogosData.map(cat => ({
       categoria: cat.categoria,
       valores: cat.valores || [],
       mapping: cat.mapping || null,
     }));
-    
+
     const { data, error } = await supabase
       .from('catalogos')
       .insert(supabaseData);
-    
+
     if (error) {
       console.error('Error migrando catálogos:', error);
       throw error;
     }
-    
+
     console.log(`✅ ${catalogosData.length} catálogos migrados exitosamente`);
     return data;
   } catch (error) {

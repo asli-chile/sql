@@ -110,11 +110,35 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   const loadUserFromSupabase = async () => {
     try {
-      // Limpiar localStorage para evitar datos obsoletos
-      localStorage.removeItem('currentUser');
+      setIsLoading(true);
+      const supabase = createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      // Solo inicializar como null - cada página cargará sus propios datos frescos
-      setCurrentUser(null);
+      if (authError || !user) {
+        setCurrentUser(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('auth_user_id', user.id)
+        .single();
+
+      if (!userError && userData) {
+        handleSetCurrentUser(userData);
+      } else {
+        // Fallback si no hay registro en la tabla usuarios
+        const fallbackUser: Usuario = {
+          id: user.id,
+          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
+          email: user.email || '',
+          rol: 'cliente',
+          activo: true
+        };
+        handleSetCurrentUser(fallbackUser);
+      }
       setIsLoading(false);
     } catch (error) {
       log.error('Error loading user from Supabase', error);

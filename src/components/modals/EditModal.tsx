@@ -9,6 +9,7 @@ import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
 import { syncTransportesFromRegistro } from '@/lib/sync-transportes';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
+import { refreshTrackingForRegistro } from '@/lib/auto-tracking-sync';
 
 interface EditModalProps {
   record: Registro | null;
@@ -357,6 +358,11 @@ export function EditModal({
         try {
           const appRegistro = convertSupabaseToApp(data);
           await syncTransportesFromRegistro(appRegistro, record.booking);
+          
+          // Actualizar tracking automáticamente
+          if (appRegistro.id) {
+            await refreshTrackingForRegistro(appRegistro.id);
+          }
         } catch (syncError) {
           console.warn('⚠️ Error al sincronizar transportes desde EditModal:', syncError);
         }
