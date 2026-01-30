@@ -114,14 +114,14 @@ export function EditModal({
   const viajeInputRef = useRef<HTMLInputElement>(null);
 
   const labelClasses =
-    'block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400';
+    'block text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400';
   const inputClasses =
-    'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30';
+    'w-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30';
   const selectClasses = inputClasses;
   const textAreaClasses =
-    'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30';
+    'w-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30';
   const summaryValueClasses =
-    'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold';
+    'inline-flex items-center gap-2 border px-3 py-1.5 text-xs font-medium';
   const tipoIngresoBadge: Record<string, string> = {
     NORMAL: 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200',
     EARLY: 'border-cyan-400/40 bg-cyan-500/15 text-cyan-200',
@@ -471,7 +471,7 @@ export function EditModal({
       role="presentation"
     >
       <div
-        className="relative flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-950 shadow-2xl shadow-slate-950/60"
+        className="relative flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden border border-slate-800/60 bg-slate-950"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-950/80 px-6 py-4">
@@ -479,13 +479,13 @@ export function EditModal({
             <p className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
               Editor de Registros
             </p>
-            <h2 className="text-lg font-semibold text-white">
+            <h2 className="text-lg font-medium text-white">
               {record.refAsli}
             </h2>
           </div>
           <button
             onClick={handleCloseModal}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-800/70 bg-slate-900/70 text-slate-300 transition hover:border-slate-600 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
+            className="inline-flex h-8 w-8 items-center justify-center border border-slate-800/70 bg-slate-900/70 text-slate-300 transition hover:border-slate-600 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40"
             aria-label="Cerrar editor"
           >
             <X className="h-4 w-4" />
@@ -498,14 +498,14 @@ export function EditModal({
           className="flex-1 overflow-y-auto px-6 py-5 space-y-6"
         >
           {error && (
-            <div className="flex items-center gap-2 rounded-2xl border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-xs text-rose-200">
+            <div className="flex items-center gap-2 border border-rose-500/50 bg-rose-500/10 px-4 py-3 text-xs text-rose-200">
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
             </div>
           )}
 
-          <section className="space-y-3 rounded-2xl border border-slate-800/60 bg-slate-900/60 p-4">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
+          <section className="space-y-3 border border-slate-800/60 bg-slate-900/60 p-4">
+            <h3 className="text-[11px] font-medium uppercase tracking-[0.22em] text-slate-400">
               Información del registro
             </h3>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -953,7 +953,7 @@ export function EditModal({
             <button
               type="button"
               onClick={handleCloseModal}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-800/70 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-slate-600 hover:text-white"
+              className="inline-flex items-center justify-center gap-2 border border-slate-800/70 px-4 py-2 text-xs font-medium text-slate-200 transition hover:border-slate-600 hover:text-white"
             >
               Cancelar
             </button>
@@ -961,11 +961,11 @@ export function EditModal({
               type="submit"
               form="edit-registro-form"
               disabled={loading}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-xs font-semibold text-white shadow-lg shadow-sky-500/20 transition hover:scale-[1.02] focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 bg-sky-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-sky-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>
-                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  <span className="h-3 w-3 animate-spin border-2 border-white/40 border-t-white" />
                   Guardando…
                 </>
               ) : (

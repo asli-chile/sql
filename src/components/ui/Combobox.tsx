@@ -102,13 +102,13 @@ export function Combobox({
 
   const baseStyles =
     theme === 'dark'
-      ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-base text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30'
-      : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
+      ? 'w-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-base text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30'
+      : 'w-full border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
 
   const dropdownStyles =
     theme === 'dark'
-      ? 'absolute z-50 mt-1 w-full rounded-xl border border-slate-800/60 bg-slate-900/95 backdrop-blur-xl shadow-2xl shadow-slate-950/40 max-h-60 overflow-auto'
-      : 'absolute z-50 mt-1 w-full rounded-xl border border-gray-300 bg-white shadow-lg max-h-60 overflow-auto';
+      ? 'absolute z-50 mt-1 w-full border border-slate-800/60 bg-slate-900/95 backdrop-blur-xl max-h-60 overflow-auto'
+      : 'absolute z-50 mt-1 w-full border border-gray-300 bg-white max-h-60 overflow-auto';
 
   const optionStyles =
     theme === 'dark'
@@ -136,7 +136,7 @@ export function Combobox({
             <button
               type="button"
               onClick={handleClear}
-              className="rounded p-0.5 hover:bg-slate-700/50 transition-colors"
+              className="p-0.5 hover:bg-slate-700/50 transition-colors"
               tabIndex={-1}
             >
               <X className="h-3.5 w-3.5 text-slate-400" />

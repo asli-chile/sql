@@ -112,8 +112,8 @@ export function AddModal({
   // Helper para obtener estilos de select según el tema
   const getSelectStyles = () => {
     return theme === 'dark'
-      ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 cursor-pointer pr-10'
-      : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30 cursor-pointer pr-10';
+      ? 'w-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30 cursor-pointer pr-10'
+      : 'w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30 cursor-pointer pr-10';
   };
 
   const getLabelStyles = () => {
@@ -122,8 +122,8 @@ export function AddModal({
 
   const getInputStyles = () => {
     return theme === 'dark'
-      ? 'w-full rounded-xl border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30'
-      : 'w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
+      ? 'w-full border border-slate-800/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30'
+      : 'w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30';
   };
 
 
@@ -806,11 +806,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
   return isOpen ? (
     <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto ${theme === 'dark' ? 'bg-slate-950/80' : 'bg-black/50'}`}>
-      <div className={`relative flex max-h-[95vh] my-auto w-full max-w-[98vw] 2xl:max-w-[1400px] flex-col rounded-3xl border shadow-2xl ${theme === 'dark'
-        ? 'border-slate-800/60 bg-slate-950/90 shadow-slate-950/40'
-        : 'border-gray-200 bg-white shadow-gray-900/20'
+      <div className={`relative flex max-h-[95vh] my-auto w-full max-w-[98vw] 2xl:max-w-[1400px] flex-col border ${theme === 'dark'
+        ? 'border-slate-800/60 bg-slate-950/90'
+        : 'border-gray-200 bg-white'
         }`}>
-        <div className={`flex items-center justify-between border-b px-6 py-4 sticky top-0 z-10 rounded-t-3xl ${theme === 'dark'
+        <div className={`flex items-center justify-between border-b px-6 py-4 sticky top-0 z-10 ${theme === 'dark'
           ? 'border-slate-800/60 bg-slate-950/80'
           : 'border-gray-200 bg-gray-50'
           }`}>
@@ -820,7 +820,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           </div>
           <button
             onClick={onClose}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition ${theme === 'dark'
+            className={`inline-flex h-9 w-9 items-center justify-center border transition ${theme === 'dark'
               ? 'border-slate-800/70 text-slate-300 hover:border-sky-500/60 hover:text-sky-200'
               : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
               }`}
@@ -837,7 +837,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               <React.Fragment key={step}>
                 <div className="flex items-center">
                   <div
-                    className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${currentStep === step
+                    className={`flex items-center justify-center w-10 h-10 border-2 transition-all ${currentStep === step
                       ? 'bg-sky-500 border-sky-500 text-white'
                       : currentStep > step
                         ? 'bg-green-500 border-green-500 text-white'
@@ -884,7 +884,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     value={formData.refAsli}
                     readOnly
                     disabled={generatingRef}
-                    className={`w-full cursor-not-allowed rounded-xl border px-3 py-2 text-sm ${theme === 'dark'
+                    className={`w-full cursor-not-allowed border px-3 py-2 text-sm ${theme === 'dark'
                       ? 'border-slate-800/60 bg-slate-900/50 text-slate-400'
                       : 'border-gray-300 bg-gray-100 text-gray-500'
                       }`}
@@ -892,7 +892,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   />
                   {generatingRef && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <div className="animate-spin h-4 w-4 border-b-2 border-blue-600"></div>
                     </div>
                   )}
                 </div>
@@ -913,7 +913,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     }
                   }}
                   disabled={generatingRef}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 disabled:opacity-50"
+                  className="inline-flex items-center gap-2 border border-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-300 hover:border-sky-500/60 hover:text-sky-200 disabled:opacity-50"
                 >
                   {generatingRef ? 'Generando…' : 'Regenerar REF ASLI'}
                 </button>
@@ -1067,7 +1067,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   onChange={handleChange}
                   required={!!formData.naveInicial}
                   disabled={!formData.naveInicial}
-                  className={`w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
+                  className={`w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
                   placeholder={formData.naveInicial ? "Ej: 001E" : "Primero selecciona una nave"}
                 />
                 {formData.naveInicial && !formData.viaje && error.includes('Viaje') && (
@@ -1283,7 +1283,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           {currentStep === 3 && (
             <div className="space-y-4">
               {/* Checkbox Atmósfera Controlada */}
-              <div className={`flex items-center space-x-3 p-4 rounded-xl border ${theme === 'dark'
+              <div className={`flex items-center space-x-3 p-4 border ${theme === 'dark'
                 ? 'border-slate-800/60 bg-slate-900/50'
                 : 'border-gray-300 bg-gray-50'
                 }`}>
@@ -1503,7 +1503,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           {/* Paso 5: Vista previa/revisión */}
           {currentStep === 5 && (
             <div className="space-y-6">
-              <div className={`rounded-2xl border ${theme === 'dark' ? 'border-slate-700/50 bg-gradient-to-br from-slate-900/90 to-slate-800/50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'} p-6 shadow-lg`}>
+              <div className={`border ${theme === 'dark' ? 'border-slate-700/50 bg-gradient-to-br from-slate-900/90 to-slate-800/50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'} p-6`}>
                 <div className="mb-6 pb-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}">
                   <h3 className={`text-2xl font-bold ${getLabelStyles()}`}>Vista Previa del Registro</h3>
                   <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -1517,24 +1517,24 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     Información Básica
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>REF ASLI</span>
                       <p className={`mt-1 text-base font-bold ${getLabelStyles()}`}>{formData.refAsli}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>REF Externa</span>
                       <p className={`mt-1 text-base ${formData.refCliente ? getLabelStyles() : 'text-red-500 font-medium'}`}>{formData.refCliente || 'No especificado'}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Ejecutivo</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.ejecutivo}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Cliente</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.shipper}</p>
                     </div>
                     {formData.contrato && (
-                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                      <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                         <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Contrato</span>
                         <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.contrato}</p>
                       </div>
@@ -1548,31 +1548,31 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     Ruta y Transporte
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Naviera</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.naviera}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Nave</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.naveInicial} {formData.viaje ? `[${formData.viaje}]` : ''}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>POL</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.pol}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>ETD</span>
                       <p className={`mt-1 text-base font-medium ${formData.etd ? getLabelStyles() : 'text-red-500'}`}>{formData.etd || 'No especificado'}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>POD</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.pod}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>ETA</span>
                       <p className={`mt-1 text-base font-medium ${formData.eta ? getLabelStyles() : 'text-red-500'}`}>{formData.eta || 'No especificado'}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Depósito</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.deposito}</p>
                     </div>
@@ -1584,17 +1584,17 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       const transitTimeDisplay = transitTime !== null ? `${transitTime} ${transitTime === 1 ? 'día' : 'días'}` : 'No especificado';
                       const transitTimeStyle = transitTime !== null ? getLabelStyles() : 'text-red-500';
                       return (
-                        <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                        <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                           <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Tiempo de Tránsito</span>
                           <p className={`mt-1 text-base font-medium ${transitTimeStyle}`}>{transitTimeDisplay}</p>
                         </div>
                       );
                     })()}
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Tipo de Ingreso</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.tipoIngreso}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Flete</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.flete}</p>
                     </div>
@@ -1607,38 +1607,38 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     Información de Carga
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Especie</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.especie}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Tratamiento de frío</span>
                       <p className={`mt-1 text-base font-medium ${formData.tratamientoFrio ? getLabelStyles() : 'text-red-500'}`}>{formData.tratamientoFrio || 'No especificado'}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Temperatura</span>
                       <p className={`mt-1 text-base font-medium ${formData.temperatura ? getLabelStyles() : 'text-red-500'}`}>{formData.temperatura ? `${formData.temperatura}°C` : 'No especificado'}</p>
                     </div>
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>CBM (Ventilación)</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.cbm || 'No especificado'}</p>
                     </div>
                     {atmosferaControlada && (
                       <>
-                        <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'} md:col-span-2`}>
+                        <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'} md:col-span-2`}>
                           <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Atmósfera Controlada</span>
                           <p className={`mt-1 text-base font-semibold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>Sí</p>
                         </div>
-                        <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                        <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                           <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>CO₂</span>
                           <p className={`mt-1 text-base font-medium ${formData.co2 ? getLabelStyles() : 'text-red-500'}`}>{formData.co2 ? `${formData.co2}%` : 'No especificado'}</p>
                         </div>
-                        <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                        <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                           <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>O₂</span>
                           <p className={`mt-1 text-base font-medium ${formData.o2 ? getLabelStyles() : 'text-red-500'}`}>{formData.o2 ? `${formData.o2}%` : 'No especificado'}</p>
                         </div>
                         {(formData.naviera?.includes('CMA') || formData.naviera?.includes('MSC')) && (
-                          <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                          <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                             <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Tipo de Atmósfera</span>
                             <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.naviera?.includes('CMA') ? 'DAIKIN' : formData.naviera?.includes('MSC') ? 'STARCOOL' : 'No especificado'}</p>
                           </div>
@@ -1654,7 +1654,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     Información Adicional
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Consignatario</span>
                       <p className={`mt-1 text-base font-medium ${formData.consignatario ? getLabelStyles() : 'text-red-500'}`}>{formData.consignatario || 'No especificado'}</p>
                     </div>
@@ -1675,7 +1675,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           )}
 
           {error && (
-            <div className={`rounded-2xl border px-4 py-3 text-xs ${theme === 'dark'
+            <div className={`border px-4 py-3 text-xs ${theme === 'dark'
               ? 'border-red-500/40 bg-red-500/10 text-red-200'
               : 'border-red-300 bg-red-50 text-red-700'
               }`}>
@@ -1685,19 +1685,19 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
             </div>
           )}
-          <div className={`flex flex-col gap-4 rounded-2xl border px-4 py-3 text-xs ${theme === 'dark'
+          <div className={`flex flex-col gap-4 border px-4 py-3 text-xs ${theme === 'dark'
             ? 'border-slate-800/60 bg-slate-900/40 text-slate-400'
             : 'border-gray-200 bg-gray-50 text-gray-600'
             }`}>
 
             {/* Indicador de estado de autenticación */}
             {currentStep === 5 && (
-              <div className={`mb-4 p-3 rounded-lg ${authStatus.includes('Autenticado')
+              <div className={`mb-4 p-3 border ${authStatus.includes('Autenticado')
                 ? theme === 'dark' ? 'bg-green-900/30 border border-green-500/50' : 'bg-green-50 border border-green-200'
                 : theme === 'dark' ? 'bg-red-900/30 border border-red-500/50' : 'bg-red-50 border border-red-200'
                 }`}>
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
+                  <div className={`w-2 h-2 ${authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
                     }`} />
                   <span className={`text-sm ${authStatus.includes('Autenticado')
                     ? theme === 'dark' ? 'text-green-300' : 'text-green-700'
@@ -1724,7 +1724,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
+                    className={`inline-flex items-center justify-center gap-2 border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
                       ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white'
                       : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
@@ -1736,9 +1736,9 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 <button
                   type="button"
                   onClick={onClose}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
+                  className={`inline-flex items-center justify-center gap-2 border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
                     ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white'
-                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+                    : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900'
                     }`}
                 >
                   Cancelar
@@ -1749,7 +1749,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02]"
+                    className="inline-flex items-center justify-center gap-2 bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors"
                   >
                     Siguiente
                     <ChevronRight className="h-4 w-4" />
@@ -1757,7 +1757,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 ) : (
                   <div className="space-y-3">
                     {isSaved && (
-                      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-green-900/50 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
+                      <div className={`p-4 border ${theme === 'dark' ? 'bg-green-900/50 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
                         <p className={`text-center font-semibold ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
                           ✅ Registro guardado exitosamente
                         </p>
@@ -1768,7 +1768,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       type="button"
                       onClick={isSaved ? sendReservationEmail : handleSave}
                       disabled={loading}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-6 py-3 text-lg font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] disabled:opacity-50"
+                      className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 px-6 py-3 text-lg font-semibold text-white transition-colors disabled:opacity-50"
                     >
                       {loading ? 'Guardando…' : isSaved ? '📧 Enviar Solicitud de Reserva' : 'Guardar registro'}
                     </button>
@@ -1777,7 +1777,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       <button
                         type="button"
                         onClick={onClose}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-gray-500 hover:bg-gray-600 px-6 py-3 text-lg font-semibold text-white transition-colors"
+                        className="w-full inline-flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 px-6 py-3 text-lg font-semibold text-white transition-colors"
                       >
                         Cerrar
                       </button>

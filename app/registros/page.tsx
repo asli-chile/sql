@@ -2694,7 +2694,7 @@ export default function RegistrosPage() {
 
   return (
     <EditingCellProvider>
-      <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+      <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
         {/* Overlay para móvil */}
         {isMobileMenuOpen && (
           <div
@@ -2718,56 +2718,56 @@ export default function RegistrosPage() {
           className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all"
           style={{ width: '100%', maxWidth: '100%' }}
         >
-          <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
+          <header className={`sticky top-0 z-40 border-b ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/95 backdrop-blur' : 'border-gray-200 bg-white/95 backdrop-blur'}`}>
             <div className="flex w-full flex-col gap-2 sm:gap-3 py-2 sm:py-2.5 md:py-3" style={{ paddingLeft: '8px', paddingRight: '4px' }}>
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between w-full">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
                   {/* Botón hamburguesa para móvil */}
                   <button
                     onClick={() => setIsMobileMenuOpen(true)}
-                    className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    className={`lg:hidden flex h-8 w-8 items-center justify-center transition-colors flex-shrink-0 ${theme === 'dark'
+                      ? 'text-slate-300 hover:bg-slate-700/60'
+                      : 'text-gray-600 hover:bg-gray-100/80'
                       }`}
                     aria-label="Abrir menú"
                   >
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-4 w-4" />
                   </button>
                   {isSidebarCollapsed && !isMobileMenuOpen && (
                     <button
                       onClick={toggleSidebar}
-                      className={`hidden lg:flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/80 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-100 text-gray-600 hover:border-blue-400 hover:text-blue-700'} transition`}
+                      className={`hidden lg:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300/60 bg-gray-100 text-gray-600 hover:border-blue-500 hover:text-blue-700'} transition`}
                       aria-label="Expandir menú lateral"
                     >
-                      <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <ChevronRight className="h-4 w-4 sm:h-4 sm:w-4" />
                     </button>
                   )}
                   <div className="space-y-0.5 flex-1 min-w-0 overflow-hidden">
-                    <p className={`text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Módulo Operativo</p>
-                    <h1 className={`text-sm sm:text-base md:text-lg lg:text-xl font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros de Embarques</h1>
+                    <p className={`text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Módulo Operativo</p>
+                    <h1 className={`text-sm sm:text-base md:text-lg lg:text-xl font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros de Embarques</h1>
                     <p className={`hidden text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'} md:block truncate`}>Gestión de contenedores y embarques</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0">
                   <button
                     onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-                    className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg border transition flex-shrink-0 ${isRightSidebarOpen
+                    className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border transition flex-shrink-0 ${isRightSidebarOpen
                       ? `${theme === 'dark' ? 'border-sky-500/60 bg-sky-500/10 text-sky-200' : 'border-blue-500 bg-blue-50 text-blue-600'}`
-                      : `${theme === 'dark' ? 'border-slate-700/60 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-700'}`
+                      : `${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'}`
                       }`}
                     aria-label={isRightSidebarOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros"}
                   >
-                    <Filter className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <Filter className="h-4 w-4 sm:h-4 sm:w-4" />
                   </button>
                   <div className="relative hidden sm:flex flex-shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowProfileModal(true)}
-                      className={`flex items-center gap-1.5 sm:gap-2 rounded-full border ${theme === 'dark' ? 'border-slate-600 bg-slate-700 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-gray-50 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-400 hover:text-blue-700'} shadow-sm transition`}
+                      className={`flex items-center gap-1.5 sm:gap-2 border ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-500 hover:text-blue-700'} transition`}
                       aria-haspopup="dialog"
                       title={currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
                     >
-                      <UserIcon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                      <UserIcon className="h-4 w-4 sm:h-4 sm:w-4 flex-shrink-0" />
                       <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
                         {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
                       </span>
@@ -2779,7 +2779,7 @@ export default function RegistrosPage() {
           </header>
 
           <main className="flex-1 min-w-0 min-h-0 w-full flex flex-col overflow-hidden">
-            <section className={`border-0 w-full h-full flex flex-col min-h-0 min-w-0 overflow-hidden ${theme === 'dark' ? 'bg-slate-950/60' : 'bg-white'}`}>
+            <section className={`border-0 w-full h-full flex flex-col min-h-0 min-w-0 overflow-hidden ${theme === 'dark' ? 'bg-slate-800/60' : 'bg-white'}`}>
               <DataTable
                 data={registrosVisibles}
                 columns={columns}
@@ -2825,11 +2825,11 @@ export default function RegistrosPage() {
             : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none'
             } w-80`}
         >
-          <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'}`}>
-            <h2 className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros y Configuración</h2>
+          <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-700/60' : 'border-gray-200'}`}>
+            <h2 className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros y Configuración</h2>
             <button
               onClick={() => setIsRightSidebarOpen(false)}
-              className={`flex h-8 w-8 items-center justify-center rounded-full border transition ${theme === 'dark' ? 'border-slate-700/60 bg-slate-950 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:text-blue-700'}`}
+              className={`flex h-8 w-8 items-center justify-center border transition ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'}`}
               aria-label="Cerrar panel de filtros"
             >
               <X className="h-4 w-4" />
@@ -3033,18 +3033,18 @@ export default function RegistrosPage() {
             role="presentation"
           >
             <div
-              className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-2xl"
+              className="w-full max-w-md border border-white/10 bg-slate-950/90 p-6"
               onClick={(event) => event.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-labelledby="delete-confirm-title"
             >
               <div className="flex items-start gap-4">
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-amber-400/40 bg-amber-500/10 text-amber-200">
+                <span className="inline-flex h-10 w-10 items-center justify-center border border-amber-400/40 bg-amber-500/10 text-amber-200">
                   <AlertTriangle className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <h3 id="delete-confirm-title" className="text-lg font-semibold text-white">
+                  <h3 id="delete-confirm-title" className="text-lg font-medium text-white">
                     {deleteConfirm.mode === 'bulk' ? 'Eliminar registros' : 'Eliminar registro'}
                   </h3>
                   <p className="mt-2 text-sm text-slate-300">
@@ -3060,7 +3060,7 @@ export default function RegistrosPage() {
                   type="button"
                   onClick={handleCancelDelete}
                   disabled={deleteProcessing}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 border border-slate-700/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   Cancelar
                 </button>
@@ -3068,7 +3068,7 @@ export default function RegistrosPage() {
                   type="button"
                   onClick={handleConfirmDelete}
                   disabled={deleteProcessing}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center gap-2 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {deleteProcessing ? (
                     <>

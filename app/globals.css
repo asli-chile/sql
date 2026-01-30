@@ -34,9 +34,56 @@
 
 /* Aplicar Fira Sans Italic Bold globalmente */
 * {
-  font-family: var(--font-fira-sans), sans-serif !important;
-  font-style: italic !important;
-  font-weight: 700 !important;
+  font-family: var(--font-fira-sans), sans-serif;
+}
+
+/* Excepción para tablas - usar Arial 14 normal con máxima prioridad */
+body table,
+body table td,
+body table th,
+body table div,
+html table,
+html table td,
+html table th,
+html table div {
+  font-family: Arial !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-size: 14px !important;
+}
+
+/* Forzar Arial en DataTable específicamente */
+[data-testid="table"],
+table[style*="tableLayout"],
+table[style*="borderCollapse"] {
+  font-family: Arial !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-size: 14px !important;
+}
+
+table[style*="tableLayout"] *,
+table[style*="borderCollapse"] * {
+  font-family: Arial !important;
+  font-style: normal !important;
+  font-weight: normal !important;
+  font-size: 14px !important;
+}
+
+/* Sobreescribir clases Tailwind de peso de fuente en tablas */
+table .font-medium,
+table .font-semibold,
+table .font-bold,
+table td .font-medium,
+table td .font-semibold,
+table td .font-bold,
+table th .font-medium,
+table th .font-semibold,
+table th .font-bold,
+table div .font-medium,
+table div .font-semibold,
+table div .font-bold {
+  font-weight: normal !important;
 }
 
 /* Logo con resplandor según tema */

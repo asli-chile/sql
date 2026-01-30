@@ -102,22 +102,22 @@ export function DataTable({
 
   const isDark = theme === 'dark';
   const panelClasses = isDark
-    ? 'border border-slate-800/60 bg-slate-950/60 shadow-lg shadow-slate-950/30'
-    : 'border border-gray-200 bg-white shadow-sm';
+    ? 'border border-slate-800/60 bg-slate-950/60'
+    : 'border border-gray-200 bg-white';
   const chipClasses = isDark
-    ? 'rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-200'
-    : 'rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700';
-  const controlButtonBase = 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full text-xs sm:text-sm font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+    ? 'border border-slate-800/70 bg-slate-900/70 px-3 py-1 text-xs font-medium text-slate-200'
+    : 'border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700';
+  const controlButtonBase = 'inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
   const controlButtonDefault = isDark
     ? `${controlButtonBase} border border-slate-800/70 bg-slate-900/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
-    : `${controlButtonBase} border border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
+    : `${controlButtonBase} border border-gray-300 bg-white text-gray-700 hover:border-blue-500 hover:text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
   const controlButtonActive = isDark
-    ? `${controlButtonBase} border border-sky-500/70 bg-sky-500/10 text-sky-200 shadow-[0_0_8px_rgba(14,165,233,0.15)] focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
+    ? `${controlButtonBase} border border-sky-500/70 bg-sky-500/10 text-sky-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950`
     : `${controlButtonBase} border border-blue-500 bg-blue-50 text-blue-600 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white`;
-  const toolbarButtonClasses = `${controlButtonDefault} shadow-inner shadow-slate-950/20`;
+  const toolbarButtonClasses = `${controlButtonDefault}`;
   const primaryActionClasses = isDark
-    ? 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 text-xs sm:text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition-transform hover:scale-[1.02] focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950'
-    : 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-blue-600 text-xs sm:text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:ring-offset-1 focus-visible:ring-offset-white';
+    ? 'inline-flex items-center gap-1.5 sm:gap-2 bg-sky-600 text-xs sm:text-sm font-medium text-white transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-sky-500/60 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950'
+    : 'inline-flex items-center gap-1.5 sm:gap-2 bg-blue-600 text-xs sm:text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus-visible:ring-1 focus-visible:ring-blue-400 focus-visible:ring-offset-1 focus-visible:ring-offset-white';
   const destructiveButtonClasses = isDark
     ? `${controlButtonBase} border border-red-500 bg-red-500 text-white hover:bg-red-600 focus-visible:ring-red-400/50 focus-visible:ring-offset-slate-950`
     : `${controlButtonBase} border border-red-500 bg-red-500 text-black hover:bg-red-600 focus-visible:ring-red-400/40 focus-visible:ring-offset-white`;
@@ -241,14 +241,14 @@ export function DataTable({
   // Helper function para calcular clases de fila (fuera del map para optimización)
   const getRowClasses = (theme: string, isSelected: boolean, isCancelado: boolean, isPendiente: boolean) => {
     if (theme === 'dark') {
-      if (isSelected) return { bg: 'bg-sky-500/15', hover: 'hover:bg-sky-500/25', text: 'text-sky-100 font-semibold', border: 'border-sky-500/40', refAsliBg: 'rgba(12,74,110,1)' };
-      if (isCancelado) return { bg: 'bg-rose-900/40', hover: 'hover:bg-rose-900/55', text: 'text-rose-200 font-medium', border: 'border-rose-500/40', refAsliBg: 'rgba(76,5,25,1)' };
-      if (isPendiente) return { bg: 'bg-amber-900/40', hover: 'hover:bg-amber-900/55', text: 'text-amber-100 font-medium', border: 'border-amber-500/30', refAsliBg: 'rgba(88,53,1,1)' };
+      if (isSelected) return { bg: 'bg-sky-500/15', hover: 'hover:bg-sky-500/25', text: 'text-sky-100', border: 'border-sky-500/40', refAsliBg: 'rgba(12,74,110,1)' };
+      if (isCancelado) return { bg: 'bg-rose-900/40', hover: 'hover:bg-rose-900/55', text: 'text-rose-200', border: 'border-rose-500/40', refAsliBg: 'rgba(76,5,25,1)' };
+      if (isPendiente) return { bg: 'bg-amber-900/40', hover: 'hover:bg-amber-900/55', text: 'text-amber-100', border: 'border-amber-500/30', refAsliBg: 'rgba(88,53,1,1)' };
       return { bg: 'bg-slate-950/40', hover: 'hover:bg-slate-900/55', text: 'text-slate-200', border: 'border-slate-800/50', refAsliBg: 'rgba(15,23,42,1)' };
     } else {
-      if (isSelected) return { bg: 'bg-blue-100', hover: 'hover:bg-blue-200', text: 'text-blue-800 font-semibold', border: 'border-blue-300', refAsliBg: '#bfdbfe' };
-      if (isCancelado) return { bg: 'bg-red-100', hover: 'hover:bg-red-200', text: 'text-red-900 font-medium', border: 'border-red-200', refAsliBg: '#fecaca' };
-      if (isPendiente) return { bg: 'bg-yellow-100', hover: 'hover:bg-yellow-200', text: 'text-yellow-900 font-medium', border: 'border-yellow-200', refAsliBg: '#fef08a' };
+      if (isSelected) return { bg: 'bg-blue-100', hover: 'hover:bg-blue-200', text: 'text-blue-800', border: 'border-blue-300', refAsliBg: '#bfdbfe' };
+      if (isCancelado) return { bg: 'bg-red-100', hover: 'hover:bg-red-200', text: 'text-red-900', border: 'border-red-200', refAsliBg: '#fecaca' };
+      if (isPendiente) return { bg: 'bg-yellow-100', hover: 'hover:bg-yellow-200', text: 'text-yellow-900', border: 'border-yellow-200', refAsliBg: '#fef08a' };
       return { bg: 'bg-white', hover: 'hover:bg-gray-50', text: 'text-gray-900', border: 'border-gray-200', refAsliBg: '#ffffff' };
     }
   };
@@ -973,7 +973,7 @@ export function DataTable({
                 value={globalFilter ?? ''}
                 onChange={handleGlobalSearchChange}
                 placeholder="Buscar..."
-                className={`w-full min-w-[120px] max-w-full rounded-full border pl-8 sm:pl-10 md:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
+                className={`w-full min-w-[120px] max-w-full border pl-8 sm:pl-10 md:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
                   ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
                   : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
                   }`}
@@ -992,27 +992,6 @@ export function DataTable({
               >
                 <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
                 <span className="hidden xl:inline whitespace-nowrap">{showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets</span>
-              </button>
-            )}
-            <button className={`${toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`} onClick={() => setShowReportGenerator(true)}>
-              <Download className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline whitespace-nowrap">Exportar</span>
-            </button>
-            <button
-              className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
-              onClick={handleResetTable}
-            >
-              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xl:inline whitespace-nowrap">Reset</span>
-            </button>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5">
-          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-1 min-w-0">
-            {onSelectAll && (
-              <button onClick={handleSelectAllClick} className={`${toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}>
-                <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden lg:inline whitespace-nowrap">Todo</span>
               </button>
             )}
             {onClearSelection && (
@@ -1035,7 +1014,7 @@ export function DataTable({
                 <span className={`hidden lg:inline whitespace-nowrap ${isDark ? 'text-white' : 'text-black'}`}>Eliminar</span>
                 {hasSelection && (
                   <span
-                    className={`ml-1.5 inline-flex items-center rounded-full px-1.5 sm:px-2 py-0.5 text-[10px] font-semibold ${isDark
+                    className={`ml-1.5 inline-flex items-center border px-1.5 sm:px-2 py-0.5 text-[10px] font-medium ${isDark
                       ? 'bg-white/20 text-white'
                       : 'bg-black/15 text-black'
                       }`}
@@ -1045,6 +1024,19 @@ export function DataTable({
                 )}
               </button>
             )}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 flex-shrink-0">
+            <button className={`${toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`} onClick={() => setShowReportGenerator(true)}>
+              <Download className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden sm:inline whitespace-nowrap">Exportar</span>
+            </button>
+            <button
+              className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
+              onClick={handleResetTable}
+            >
+              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
+              <span className="hidden xl:inline whitespace-nowrap">Reset</span>
+            </button>
           </div>
           {/* Tarjetas de estadísticas */}
           {viewMode === 'table' && (() => {
@@ -1063,10 +1055,10 @@ export function DataTable({
                   onClick={() => {
                     setColumnFilters(prev => prev.filter(f => f.id !== 'estado'));
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80 cursor-pointer active:scale-95 ${!estadoActivo
+                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80 cursor-pointer ${!estadoActivo
                     ? isDark
-                      ? 'bg-slate-800/60 border-slate-600/50 shadow-lg shadow-slate-900/50'
-                      : 'bg-gray-100 border-gray-300 shadow-md'
+                      ? 'bg-slate-800/60 border-slate-600/50'
+                      : 'bg-gray-100 border-gray-300'
                     : ''
                     }`}
                   aria-label="Mostrar todos los registros"
@@ -1075,7 +1067,7 @@ export function DataTable({
                     <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
                       Reservas
                     </span>
-                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
+                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
                       {estadisticas.total}
                     </span>
                   </div>
@@ -1089,10 +1081,10 @@ export function DataTable({
                       return [...filtered, { id: 'estado', value: 'CONFIRMADO' }];
                     });
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30 cursor-pointer active:scale-95 ${estadoActivo === 'CONFIRMADO'
+                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30 cursor-pointer ${estadoActivo === 'CONFIRMADO'
                     ? isDark
-                      ? 'bg-emerald-900/40 border-emerald-600/50 shadow-lg shadow-emerald-900/30'
-                      : 'bg-emerald-50 border-emerald-300 shadow-md'
+                      ? 'bg-emerald-900/40 border-emerald-600/50'
+                      : 'bg-emerald-50 border-emerald-300'
                     : ''
                     }`}
                   aria-label="Filtrar por confirmados"
@@ -1101,7 +1093,7 @@ export function DataTable({
                     <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
                       Confirmadas
                     </span>
-                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
                       {estadisticas.confirmadas}
                     </span>
                   </div>
@@ -1115,10 +1107,10 @@ export function DataTable({
                       return [...filtered, { id: 'estado', value: 'PENDIENTE' }];
                     });
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30 cursor-pointer active:scale-95 ${estadoActivo === 'PENDIENTE'
+                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30 cursor-pointer ${estadoActivo === 'PENDIENTE'
                     ? isDark
-                      ? 'bg-amber-900/40 border-amber-600/50 shadow-lg shadow-amber-900/30'
-                      : 'bg-amber-50 border-amber-300 shadow-md'
+                      ? 'bg-amber-900/40 border-amber-600/50'
+                      : 'bg-amber-50 border-amber-300'
                     : ''
                     }`}
                   aria-label="Filtrar por pendientes"
@@ -1127,7 +1119,7 @@ export function DataTable({
                     <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
                       Pendientes
                     </span>
-                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
                       {estadisticas.pendientes}
                     </span>
                   </div>
@@ -1141,10 +1133,10 @@ export function DataTable({
                       return [...filtered, { id: 'estado', value: 'CANCELADO' }];
                     });
                   }}
-                  className={`${cardBaseClasses} rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30 cursor-pointer active:scale-95 ${estadoActivo === 'CANCELADO'
+                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30 cursor-pointer ${estadoActivo === 'CANCELADO'
                     ? isDark
-                      ? 'bg-rose-900/40 border-rose-600/50 shadow-lg shadow-rose-900/30'
-                      : 'bg-rose-50 border-rose-300 shadow-md'
+                      ? 'bg-rose-900/40 border-rose-600/50'
+                      : 'bg-rose-50 border-rose-300'
                     : ''
                     }`}
                   aria-label="Filtrar por cancelados"
@@ -1153,7 +1145,7 @@ export function DataTable({
                     <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-rose-400/80' : 'text-rose-600'}`}>
                       Canceladas
                     </span>
-                    <span className={`text-sm sm:text-base font-semibold ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
+                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
                       {estadisticas.canceladas}
                     </span>
                   </div>
@@ -1259,8 +1251,10 @@ export function DataTable({
                 width: calculatedTableWidth > 0 ? `${calculatedTableWidth}px` : '100%',
                 minWidth: calculatedTableWidth > 0 ? `${calculatedTableWidth}px` : '100%',
                 borderCollapse: 'collapse',
-                fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                fontSize: '13px',
+                fontFamily: 'Arial',
+                fontSize: '14px',
+                fontWeight: 'normal',
+                fontStyle: 'normal',
               }}
             >
               <thead className="sticky top-0 z-[250] shadow-[0_10px_24px_rgba(8,15,30,0.45)]">
@@ -1343,7 +1337,7 @@ export function DataTable({
                                   : {})}
                                 className={`flex items-center justify-center gap-1.5 text-center ${canSort ? 'cursor-pointer text-slate-300 hover:text-white' : 'text-slate-200'}`}
                               >
-                                <span className={`block whitespace-nowrap text-xs font-semibold uppercase tracking-[0.08em] ${isDark ? 'text-slate-100' : 'text-slate-700'
+                                <span className={`block whitespace-nowrap text-xs uppercase tracking-[0.08em] ${isDark ? 'text-slate-100' : 'text-slate-700'
                                   }`}>
                                   {flexRender(header.column.columnDef.header, header.getContext())}
                                 </span>
@@ -1520,7 +1514,7 @@ export function DataTable({
                             style={cellStyles}
                           >
                             <div
-                              className={`flex h-full w-full items-center justify-center px-3 py-1.5 text-sm font-medium text-center`}
+                              className={`flex h-full w-full items-center justify-center px-3 py-1.5 text-sm text-center`}
                               style={{
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -1890,24 +1884,33 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
       {contextMenu && (
         <div
           ref={contextMenuRef}
-          className={`fixed z-[999] min-w-[220px] overflow-hidden rounded-2xl border shadow-2xl ${isDark
-            ? 'border-slate-800/70 bg-slate-950/95 text-slate-100'
-            : 'border-gray-200 bg-white text-gray-900'
-            }`}
+          className={`fixed z-[999] min-w-[260px] overflow-hidden border backdrop-blur-xl ${isDark
+            ? 'border-slate-700/80 bg-slate-950/90 text-slate-100'
+            : 'border-gray-300/80 bg-white/95 text-gray-900'
+          }`}
           style={{ top: contextMenu.y, left: contextMenu.x }}
         >
-          <div className={`border-b px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'border-slate-800/60 text-slate-400' : 'border-gray-200 text-gray-500'
-            }`}>
-            Acciones rápidas
+          <div className={`border-b px-4 py-3 bg-gradient-to-r ${isDark ? 'from-slate-900 to-slate-800 border-slate-700/60' : 'from-gray-50 to-white border-gray-200'}`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 ${isDark ? 'bg-sky-500' : 'bg-blue-500'}`}></div>
+              <span className={`text-xs font-bold uppercase tracking-[0.15em] ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
+                Acciones
+              </span>
+            </div>
           </div>
           <div className="flex flex-col py-1 text-sm">
             {(onEditNaveViaje || onBulkEditNaveViaje) && (
               <button
                 onClick={handleContextEditNaveViaje}
-                className={`flex w-full items-center gap-2 px-4 py-2 text-left transition-colors ${isDark ? 'hover:bg-sky-500/15 hover:text-sky-200' : 'hover:bg-blue-50 hover:text-blue-600'}`}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-all ${isDark ? 'hover:bg-sky-500/10 border-l-2 border-transparent hover:border-sky-500 hover:text-sky-100' : 'hover:bg-blue-50 border-l-2 border-transparent hover:border-blue-500 hover:text-blue-700'}`}
               >
-                <Send className="h-4 w-4" />
-                Editar Nave / Viaje
+                <div className={`flex items-center justify-center w-8 h-8 ${isDark ? 'bg-sky-500/20 text-sky-400' : 'bg-blue-100 text-blue-600'}`}>
+                  <Send className="h-4 w-4" />
+                </div>
+                <div className="flex-1">
+                  <div className={`font-medium ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>Editar Nave / Viaje</div>
+                  <div className={`text-xs ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>Modificar nave y viaje</div>
+                </div>
               </button>
             )}
             {onSendToTransportes && (() => {
@@ -1959,25 +1962,44 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
                 <button
                   onClick={allHavePdf ? handleContextSendToTransportes : undefined}
                   disabled={!allHavePdf}
-                  className={`flex w-full items-center justify-between gap-2 px-4 py-2 text-left transition-colors ${allHavePdf
+                  className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-all ${allHavePdf
                     ? isDark
-                      ? 'hover:bg-emerald-500/15 hover:text-emerald-200 cursor-pointer'
-                      : 'hover:bg-green-50 hover:text-green-600 cursor-pointer'
+                      ? 'hover:bg-emerald-500/10 border-l-2 border-transparent hover:border-emerald-500 hover:text-emerald-100 cursor-pointer'
+                      : 'hover:bg-green-50 border-l-2 border-transparent hover:border-green-500 hover:text-green-700 cursor-pointer'
                     : isDark
-                      ? 'opacity-50 cursor-not-allowed text-slate-500'
-                      : 'opacity-50 cursor-not-allowed text-gray-400'
+                      ? 'opacity-50 cursor-not-allowed border-l-2 border-transparent'
+                      : 'opacity-50 cursor-not-allowed border-l-2 border-transparent'
                     }`}
                   title={!allHavePdf ? 'El registro debe tener PDF de booking cargado para enviar a Transportes' : ''}
                 >
-                  <div className="flex items-center gap-2">
-                    <Truck className="h-4 w-4" />
-                    <span>Enviar a Transportes</span>
+                  <div className="flex items-center gap-3">
+                    <div className={`flex items-center justify-center w-8 h-8 ${allHavePdf
+                      ? isDark ? 'bg-emerald-500/20 text-emerald-400' : 'bg-green-100 text-green-600'
+                      : isDark ? 'bg-slate-700/50 text-slate-500' : 'bg-gray-200 text-gray-500'
+                    }`}>
+                      <Truck className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1">
+                      <div className={`font-medium ${allHavePdf
+                        ? isDark ? 'text-slate-100' : 'text-gray-900'
+                        : isDark ? 'text-slate-500' : 'text-gray-500'
+                      }`}>Enviar a Transportes</div>
+                      <div className={`text-xs ${allHavePdf
+                        ? isDark ? 'text-slate-500' : 'text-gray-500'
+                        : isDark ? 'text-slate-600' : 'text-gray-400'
+                      }`}>
+                        {hasSelection && selectedRecordsList.length > 0
+                          ? `${selectedRecordsList.length} registros seleccionados`
+                          : 'Enviar registro a transportes'
+                        }
+                      </div>
+                    </div>
                   </div>
                   {hasSelection && selectedRecordsList.length > 0 && (
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isDark
-                      ? allHavePdf ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700/50 text-slate-500'
-                      : allHavePdf ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'
-                      }`}>
+                    <span className={`text-xs font-bold px-2 py-1 ${isDark
+                      ? allHavePdf ? 'bg-emerald-500 text-white' : 'bg-slate-600 text-slate-300'
+                      : allHavePdf ? 'bg-green-500 text-white' : 'bg-gray-400 text-white'
+                    }`}>
                       {selectedRecordsList.length}
                     </span>
                   )}
@@ -1985,15 +2007,18 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
               );
             })()}
           </div>
-          <button
-            onClick={closeContextMenu}
-            className={`w-full border-t px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors ${isDark
-              ? 'border-slate-800/60 text-slate-500 hover:bg-slate-900/70'
-              : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+          <div className={`border-t px-4 py-2 ${isDark ? 'bg-slate-900/50 border-slate-800/60' : 'bg-gray-50 border-gray-200'}`}>
+            <button
+              onClick={closeContextMenu}
+              className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium uppercase tracking-[0.15em] transition-colors ${isDark
+                ? 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
               }`}
-          >
-            Cerrar
-          </button>
+            >
+              <X className="h-3 w-3" />
+              Cerrar
+            </button>
+          </div>
         </div>
       )}
     </div>

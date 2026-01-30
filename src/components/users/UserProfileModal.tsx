@@ -91,23 +91,23 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div 
-        className={`rounded-lg shadow-xl max-w-md w-full ${
-          isDark ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
+        className={`border max-w-md w-full ${
+          isDark ? 'bg-slate-800/95 border-slate-700/60' : 'bg-white/95 border-gray-200'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${
-          isDark ? 'border-slate-700' : 'border-gray-200'
+          isDark ? 'border-slate-700/60' : 'border-gray-200'
         }`}>
           <div className="flex items-center space-x-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-              isDark ? 'bg-blue-600' : 'bg-blue-600'
+            <div className={`w-10 h-10 border flex items-center justify-center ${
+              isDark ? 'bg-blue-600/20 border-blue-500/30' : 'bg-blue-50 border-blue-200'
             }`}>
-              <User className="w-5 h-5 text-white" />
+              <User className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
             <div>
-              <h2 className={`text-lg font-semibold ${
+              <h2 className={`text-lg font-medium ${
                 isDark ? 'text-white' : 'text-gray-900'
               }`}>
                 Perfil de Usuario
@@ -135,9 +135,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {/* Error message */}
           {error && (
-            <div className={`p-3 rounded-lg flex items-center border ${
+            <div className={`p-3 border flex items-center ${
               isDark
-                ? 'bg-red-900/20 border-red-800'
+                ? 'bg-red-900/20 border-red-800/60'
                 : 'bg-red-50 border-red-200'
             }`}>
               <AlertCircle className={`w-4 h-4 mr-2 ${
@@ -164,9 +164,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                className={`w-full pl-10 pr-4 py-2 border focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   isDark
-                    ? 'border-slate-600 bg-slate-700 text-white placeholder-slate-400'
+                    ? 'border-slate-600/60 bg-slate-700/60 text-white placeholder-slate-400'
                     : 'border-gray-300 bg-white text-gray-900 placeholder-gray-400'
                 }`}
                 placeholder="Tu nombre completo"
@@ -190,9 +190,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
                 type="email"
                 value={userInfo?.email || ''}
                 disabled
-                className={`w-full pl-10 pr-4 py-2 border rounded-lg cursor-not-allowed ${
+                className={`w-full pl-10 pr-4 py-2 border cursor-not-allowed ${
                   isDark
-                    ? 'border-slate-600 bg-slate-700/50 text-slate-400'
+                    ? 'border-slate-600/60 bg-slate-700/30 text-slate-400'
                     : 'border-gray-300 bg-gray-50 text-gray-500'
                 }`}
               />
@@ -211,9 +211,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
             }`}>
               Rol
             </label>
-            <div className={`px-3 py-2 border rounded-lg ${
+            <div className={`px-3 py-2 border ${
               isDark
-                ? 'border-slate-600 bg-slate-700'
+                ? 'border-slate-600/60 bg-slate-700/60'
                 : 'border-gray-300 bg-gray-50'
             }`}>
               <span className={`text-sm font-medium capitalize ${
@@ -239,14 +239,14 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
                 Clientes Asignados
               </label>
               <div className={`space-y-2 max-h-32 overflow-y-auto ${
-                isDark ? 'bg-slate-700/50' : 'bg-gray-50'
-              } rounded-lg p-3`}>
+                isDark ? 'bg-slate-700/30' : 'bg-gray-50'
+              } border p-3`}>
                 {clientesAsignados.map((cliente: string, index: number) => (
                   <div
                     key={index}
-                    className={`text-sm px-2 py-1 rounded ${
+                    className={`text-sm px-2 py-1 ${
                       isDark
-                        ? 'bg-slate-600 text-slate-200'
+                        ? 'bg-slate-600/60 text-slate-200'
                         : 'bg-white text-gray-700 border border-gray-200'
                     }`}
                   >
@@ -265,9 +265,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
               }`}>
                 Cliente
               </label>
-              <div className={`px-3 py-2 border rounded-lg ${
+              <div className={`px-3 py-2 border ${
                 isDark
-                  ? 'border-slate-600 bg-slate-700'
+                  ? 'border-slate-600/60 bg-slate-700/60'
                   : 'border-gray-300 bg-gray-50'
               }`}>
                 <span className={`text-sm font-medium ${
@@ -282,11 +282,11 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
 
         {/* Footer */}
         <div className={`flex items-center justify-between p-6 border-t ${
-          isDark ? 'border-slate-700' : 'border-gray-200'
+          isDark ? 'border-slate-700/60' : 'border-gray-200'
         }`}>
           <button
             onClick={handleLogout}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 transition-colors ${
               isDark
                 ? 'text-red-300 hover:bg-red-500/10 hover:text-red-200'
                 : 'text-red-600 hover:bg-red-50'
@@ -298,9 +298,9 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              className={`px-4 py-2 transition-colors ${
                 isDark
-                  ? 'text-slate-300 hover:text-slate-200 hover:bg-slate-700'
+                  ? 'text-slate-300 hover:text-slate-200 hover:bg-slate-700/60'
                   : 'text-gray-600 hover:text-gray-800 hover:bg-gray-100'
               }`}
             >
@@ -309,7 +309,7 @@ export function UserProfileModal({ isOpen, onClose, userInfo, onUserUpdate }: Us
             <button
               onClick={handleSave}
               disabled={loading || !nombre.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <>

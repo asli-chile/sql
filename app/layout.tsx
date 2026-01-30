@@ -6,8 +6,8 @@ import { UserProvider } from "@/hooks/useUser";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const firaSans = Fira_Sans({
-  weight: '700',
-  style: 'italic',
+  weight: '400',
+  style: 'normal',
   subsets: ["latin"],
   variable: "--font-fira-sans",
 });
@@ -41,7 +41,6 @@ export default function RootLayout({
       </head>
       <body
         className={`${firaSans.variable} antialiased`}
-        style={{ fontFamily: 'var(--font-fira-sans), sans-serif' }}
       >
         <ErrorBoundary>
           <ThemeProvider>
