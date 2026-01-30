@@ -703,47 +703,47 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
+        <header className={`sticky top-0 z-40 border-b ${theme === 'dark' ? 'border-slate-700/50 bg-slate-800/95 backdrop-blur' : 'border-gray-200 bg-white/95 backdrop-blur'}`}>
           <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 py-3 sm:py-4">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'text-slate-300 hover:bg-slate-700'
-                : 'text-gray-600 hover:bg-gray-100'
+              className={`lg:hidden flex h-8 w-8 items-center justify-center transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'text-slate-300 hover:bg-slate-700/60'
+                : 'text-gray-600 hover:bg-gray-100/80'
                 }`}
               aria-label="Abrir menú"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
             {/* Botón para expandir sidebar colapsado en desktop */}
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                className={`hidden lg:flex h-8 w-8 items-center justify-center transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700/60 border border-slate-700/50'
+                  : 'text-gray-600 hover:bg-gray-100/80 border border-gray-300/60'
                   }`}
                 aria-label="Expandir menú lateral"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-sky-500/15' : 'bg-blue-100'}`}>
+              <div className={`hidden sm:flex h-10 w-10 items-center justify-center ${theme === 'dark' ? 'bg-sky-500/10 border border-sky-500/20' : 'bg-blue-50 border border-blue-200'}`}>
                 <img
                   src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
                   alt="ASLI Logo"
-                  className="h-10 w-10 object-contain"
+                  className="h-8 w-8 object-contain"
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
                 />
               </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Panel General</p>
-                <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Panel General</p>
+                <h1 className={`text-xl sm:text-2xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
                 <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Coordinación integral de embarques y transportes</p>
               </div>
             </div>
@@ -752,9 +752,9 @@ export default function DashboardPage() {
               <select
                 value={selectedSeason ?? ''}
                 onChange={(event) => setSelectedSeason(event.target.value || null)}
-                className={`min-w-[180px] sm:min-w-[200px] rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                  ? 'border-slate-800 bg-slate-900/80 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                  : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30 shadow-sm'
+                className={`min-w-[180px] sm:min-w-[200px] border px-3 sm:px-4 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                  ? 'border-slate-700/60 bg-slate-800/80 text-slate-200 focus:border-sky-500 focus:ring-sky-500/20'
+                  : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/20'
                   }`}
               >
                 <option value="">Todas las temporadas</option>
@@ -766,9 +766,9 @@ export default function DashboardPage() {
               </select>
               <button
                 onClick={() => router.push('/registros')}
-                className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 ${theme === 'dark'
-                  ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20 focus:ring-sky-500/50'
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 focus:ring-blue-500/50'
+                className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white transition-colors focus:outline-none focus:ring-2 ${theme === 'dark'
+                  ? 'bg-sky-600 hover:bg-sky-700 focus:ring-sky-500/30'
+                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500/30'
                   }`}
               >
                 <Plus className="h-4 w-4" />
@@ -777,9 +777,9 @@ export default function DashboardPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                className={`hidden sm:flex items-center gap-2 border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 bg-slate-800/60'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-500 hover:text-blue-600 bg-white'
                   }`}
               >
                 <UserIcon className="h-4 w-4" />
@@ -789,80 +789,27 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8 space-y-6">
           {/* Sección de bienvenida simplificada */}
-          <section className={`rounded-2xl border p-4 sm:p-6 shadow-xl ${theme === 'dark'
-            ? 'border-slate-800/60 bg-gradient-to-br from-slate-950/80 to-slate-900/60'
-            : 'border-gray-200 bg-white shadow-md'
+          <section className={`border p-4 sm:p-6 ${theme === 'dark'
+            ? 'border-slate-700/60 bg-slate-800/60'
+            : 'border-gray-200 bg-white'
             }`}>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <p className={`text-xs sm:text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Bienvenido</p>
-                <h2 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {userInfo?.nombre || user.user_metadata?.full_name || 'Usuario'}
+                <h2 className={`text-lg sm:text-xl font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Bienvenido, {userInfo?.nombre || 'Usuario'}
                 </h2>
-                {displayedSeasonLabel && (
-                  <p className={`text-xs sm:text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Temporada: <span className={`font-medium ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`}>{displayedSeasonLabel}</span>
-                  </p>
-                )}
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Gestiona tus embarques y transportes de manera eficiente
+                </p>
               </div>
-              <div className="flex items-center gap-3 sm:gap-4">
-                <button
-                  onClick={() => router.push('/registros')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${isRegistrosPage && !activeEstadoFilter
-                    ? theme === 'dark'
-                      ? 'bg-slate-800/60 border border-slate-600/50 shadow-lg shadow-slate-900/50'
-                      : 'bg-gray-100 border border-gray-300 shadow-md'
-                    : ''
-                    }`}
-                  aria-label="Ver todos los embarques"
-                >
-                  <p className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{displayedStats.total}</p>
-                  <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Embarques</p>
-                </button>
-                <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
-                <button
-                  onClick={() => router.push('/registros?estado=CONFIRMADO')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${activeEstadoFilter === 'CONFIRMADO'
-                    ? theme === 'dark'
-                      ? 'bg-emerald-900/40 border border-emerald-600/50 shadow-lg shadow-emerald-900/30'
-                      : 'bg-emerald-50 border border-emerald-300 shadow-md'
-                    : ''
-                    }`}
-                  aria-label="Ver confirmados"
-                >
-                  <p className="text-xl sm:text-2xl font-bold text-emerald-500">{displayedStats.confirmados}</p>
-                  <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Confirmados</p>
-                </button>
-                <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
-                <button
-                  onClick={() => router.push('/registros?estado=PENDIENTE')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${activeEstadoFilter === 'PENDIENTE'
-                    ? theme === 'dark'
-                      ? 'bg-amber-900/40 border border-amber-600/50 shadow-lg shadow-amber-900/30'
-                      : 'bg-amber-50 border border-amber-300 shadow-md'
-                    : ''
-                    }`}
-                  aria-label="Ver pendientes"
-                >
-                  <p className="text-xl sm:text-2xl font-bold text-amber-500">{displayedStats.pendientes}</p>
-                  <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Pendientes</p>
-                </button>
-                <div className={`h-12 w-px ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'}`}></div>
-                <button
-                  onClick={() => router.push('/registros?estado=CANCELADO')}
-                  className={`text-center transition-all hover:scale-105 active:scale-95 cursor-pointer rounded-lg px-2 py-1 -mx-2 -my-1 ${activeEstadoFilter === 'CANCELADO'
-                    ? theme === 'dark'
-                      ? 'bg-red-900/40 border border-red-600/50 shadow-lg shadow-red-900/30'
-                      : 'bg-red-50 border border-red-300 shadow-md'
-                    : ''
-                    }`}
-                  aria-label="Ver cancelados"
-                >
-                  <p className="text-xl sm:text-2xl font-bold text-red-500">{displayedStats.cancelados}</p>
-                  <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Cancelados</p>
-                </button>
+              <div className="flex items-center gap-2">
+                <div className={`px-3 py-1 text-xs font-medium ${theme === 'dark' 
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/30' 
+                  : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                  {filteredByAll.length} embarques activos
+                </div>
               </div>
             </div>
           </section>
@@ -870,7 +817,7 @@ export default function DashboardPage() {
           {/* Módulos principales - Simplificados */}
           <section className="space-y-4">
             <div>
-              <h3 className={`text-base sm:text-lg font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accesos rápidos</h3>
+              <h3 className={`text-base sm:text-lg font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accesos rápidos</h3>
               <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Selecciona una opción para comenzar</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -887,39 +834,39 @@ export default function DashboardPage() {
                       }
                     }}
                     disabled={isDisabled}
-                    className={`group relative overflow-hidden rounded-xl border-2 p-4 sm:p-6 text-left transition-all ${theme === 'dark'
-                      ? `border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60 ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-sky-500/60 hover:shadow-xl hover:shadow-sky-900/30 hover:scale-[1.02] active:scale-[0.98]'}`
-                      : `border-gray-200 bg-white shadow-md ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-blue-500 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'}`
+                    className={`group relative overflow-hidden border p-4 sm:p-6 text-left transition-all ${theme === 'dark'
+                      ? `border-slate-700/60 bg-slate-800/60 ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-sky-500/60 hover:scale-[1.01] active:scale-[0.99]'}`
+                      : `border-gray-200 bg-white ${isDisabled ? 'opacity-60 cursor-not-allowed' : 'hover:border-blue-500 hover:scale-[1.01] active:scale-[0.99]'}`
                       }`}
                   >
                     <div className="flex items-start gap-3 sm:gap-4">
-                      <div className={`flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl border flex-shrink-0 ${theme === 'dark'
-                        ? 'bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border-sky-500/30'
-                        : 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-200'
+                      <div className={`flex h-10 w-10 items-center justify-center border flex-shrink-0 ${theme === 'dark'
+                        ? 'bg-sky-500/10 border-sky-500/30'
+                        : 'bg-blue-50 border-blue-200'
                         }`}>
-                        <IconComponent className={`h-6 w-6 sm:h-7 sm:w-7 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
+                        <IconComponent className={`h-5 w-5 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className={`text-lg sm:text-xl font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{module.title}</h4>
+                        <h4 className={`text-base sm:text-lg font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{module.title}</h4>
                         <p className={`text-xs sm:text-sm mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{module.description}</p>
                         {module.stats && (
                           <div className="flex items-center gap-3 sm:gap-4 text-xs">
                             <div className="flex items-center gap-1.5">
-                              <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                              <div className="h-1.5 w-1.5 bg-emerald-500"></div>
                               <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>{module.stats.confirmados} confirmados</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <div className="h-2 w-2 rounded-full bg-amber-500"></div>
+                              <div className="h-1.5 w-1.5 bg-amber-500"></div>
                               <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>{module.stats.pendientes} pendientes</span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                              <div className="h-1.5 w-1.5 bg-red-500"></div>
                               <span className={theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}>{module.stats.cancelados} cancelados</span>
                             </div>
                           </div>
                         )}
                       </div>
-                      <ArrowRight className={`h-5 w-5 transition flex-shrink-0 ${theme === 'dark' ? 'text-slate-500 group-hover:text-sky-300' : 'text-gray-400 group-hover:text-blue-600'}`} />
+                      <ArrowRight className={`h-4 w-4 transition flex-shrink-0 ${theme === 'dark' ? 'text-slate-500 group-hover:text-sky-300' : 'text-gray-400 group-hover:text-blue-600'}`} />
                     </div>
                   </button>
                 );
@@ -930,11 +877,11 @@ export default function DashboardPage() {
           {/* Mapa de embarques - Simplificado */}
           <section className="space-y-4">
             <div>
-              <h3 className={`text-base sm:text-lg font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ubicación de embarques</h3>
+              <h3 className={`text-base sm:text-lg font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Ubicación de embarques</h3>
               <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Visualiza el estado de tus embarques en tiempo real</p>
             </div>
-            <div className={`rounded-2xl border p-4 shadow-lg ${theme === 'dark'
-              ? 'border-slate-800/70 bg-slate-950/60'
+            <div className={`border p-4 ${theme === 'dark'
+              ? 'border-slate-700/60 bg-slate-800/60'
               : 'border-gray-200 bg-white'
               }`}>
               <ShipmentsMap registros={filteredRegistrosParaMapa} activeVessels={filteredActiveVessels} />
