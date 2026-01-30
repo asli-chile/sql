@@ -116,7 +116,7 @@ export function TransporteCard({
             <li><strong>Depósito:</strong> ${transporte.deposito || 'N/A'}</li>
             <li><strong>POL:</strong> ${transporte.pol || 'N/A'}</li>
             <li><strong>POD:</strong> ${transporte.pod || 'N/A'}</li>
-            <li><strong>Fecha de presentacion:</strong> ${transporte.dia_presentacion || 'N/A'}</li>
+            <li><strong>Fecha de presentacion:</strong> ${transporte.dia_presentacion ? new Date(transporte.dia_presentacion).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}</li>
             <li><strong>Hora de presentacion:</strong> ${transporte.hora_presentacion || 'N/A'}</li>
             <li><strong>Planta de presentacion:</strong> ${transporte.planta || 'N/A'}</li>
           </ul>
