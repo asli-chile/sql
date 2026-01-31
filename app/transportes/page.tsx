@@ -266,21 +266,29 @@ export default function TransportesPage() {
         return;
       }
 
-      if (isMounted) {
-        setIsLoading(true);
-      }
-      // Pasar información del usuario directamente (rol, cliente_nombre, clientes_asignados)
-      const userInfo = currentUser ? {
-        rol: currentUser.rol,
-        cliente_nombre: currentUser.cliente_nombre || null,
-        clientes_asignados: currentUser.clientes_asignados || []
-      } : null;
-      console.log('👤 Usuario actual:', currentUser);
-      console.log('🏢 Info para filtrar:', userInfo);
-      const data = await fetchTransportes(userInfo);
-      if (isMounted) {
-        setRecords(data || []);
-        setIsLoading(false);
+      try {
+        if (isMounted) {
+          setIsLoading(true);
+        }
+        // Pasar información del usuario directamente (rol, cliente_nombre, clientes_asignados)
+        const userInfo = currentUser ? {
+          rol: currentUser.rol,
+          cliente_nombre: currentUser.cliente_nombre || null,
+          clientes_asignados: currentUser.clientes_asignados || []
+        } : null;
+        console.log('👤 Usuario actual:', currentUser);
+        console.log('🏢 Info para filtrar:', userInfo);
+        const data = await fetchTransportes(userInfo);
+        if (isMounted) {
+          setRecords(data || []);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('❌ Error cargando transportes:', error);
+        if (isMounted) {
+          setRecords([]);
+          setIsLoading(false);
+        }
       }
     };
 

@@ -84,8 +84,11 @@ export async function fetchTransportes(userInfo?: UserInfo | null): Promise<Tran
     .select('*')
     .is('deleted_at', null);
 
-  // Si hay información del usuario, filtrar según su rol
-  if (userInfo) {
+  // Si no hay información del usuario, no mostrar nada por seguridad
+  if (!userInfo) {
+    console.log('⚠️ No hay información de usuario, sin acceso a transportes');
+    query = query.eq('id', 'NO_USER_INFO_' + Date.now());
+  } else {
     console.log('👤 Usuario info recibida:', userInfo);
     
     if (userInfo.rol === 'cliente') {
