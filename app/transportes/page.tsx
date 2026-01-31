@@ -114,43 +114,53 @@ export default function TransportesPage() {
       try {
         const supabase = createClient();
         const {
-          data: { user: currentUser },
+          data: { user: authUser },
           error,
         } = await supabase.auth.getUser();
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          setLoadingUser(false);
+          return;
+        }
 
         if (error) {
           if (error.message?.includes('Refresh Token') || error.message?.includes('JWT')) {
             await supabase.auth.signOut();
             router.push('/auth');
+            setLoadingUser(false);
             return;
           }
-          throw error;
-        }
-
-        if (!currentUser) {
-          router.push('/auth');
+          console.error('[Transportes] Error obteniendo usuario:', error);
+          setLoadingUser(false);
           return;
         }
 
-        setUser(currentUser);
+        if (!authUser) {
+          router.push('/auth');
+          setLoadingUser(false);
+          return;
+        }
+
+        setUser(authUser);
 
         const { data: userInfo } = await supabase
           .from('usuarios')
           .select('*')
-          .eq('auth_user_id', currentUser.id)
+          .eq('auth_user_id', authUser.id)
           .single();
 
         if (userInfo && isMounted) {
           setCurrentUser(userInfo);
         }
       } catch (error: any) {
-        if (!isMounted) return;
+        if (!isMounted) {
+          setLoadingUser(false);
+          return;
+        }
         if (!error?.message?.includes('Refresh Token') && !error?.message?.includes('JWT')) {
           console.error('[Transportes] Error comprobando usuario:', error);
         }
-        router.push('/auth');
+        // No redirigir automáticamente, dejar que useUser maneje la autenticación
       } finally {
         if (isMounted) {
           setLoadingUser(false);
@@ -158,10 +168,15 @@ export default function TransportesPage() {
       }
     };
 
-    void checkUser();
+    // Esperar un poco para que useUser cargue el usuario primero
+    const timeoutId = setTimeout(() => {
+      void checkUser();
+    }, 200);
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
+      setLoadingUser(false);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]); // setCurrentUser es estable desde useUser hook
