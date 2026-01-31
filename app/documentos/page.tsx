@@ -849,7 +849,7 @@ function DocumentosPage() {
           <button
             onClick={() => handleOpenDocumentModal(booking, docType, true)}
             disabled={isUploading || isDeleting}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
             aria-label="Ver documento"
           >
             {isUploading ? 'Subiendo...' : isDeleting ? 'Eliminando...' : buttonText}
@@ -858,13 +858,13 @@ function DocumentosPage() {
           <button
             onClick={() => fileInputRefs.current.get(cellKey)?.click()}
             disabled={isUploading || isDeleting}
-            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
+            className={`px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
             aria-label="Subir documento"
           >
             {isUploading ? 'Subiendo...' : buttonText}
           </button>
         ) : (
-          <span className={`px-3 py-1.5 text-xs font-medium rounded-lg ${buttonClass}`}>
+          <span className={`px-3 py-1.5 text-xs font-medium ${buttonClass}`}>
             {buttonText}
           </span>
         )}
@@ -932,14 +932,14 @@ function DocumentosPage() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
-          <div className="flex flex-wrap items-center gap-4 pl-4 pr-2 sm:px-6 py-3 sm:py-4">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 sm:py-2 py-2">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'text-slate-300 hover:bg-slate-700'
-                : 'text-gray-600 hover:bg-gray-100'
+              className={`lg:hidden flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                : 'text-gray-600 hover:bg-gray-100 border-gray-300'
                 }`}
               aria-label="Abrir menú"
             >
@@ -949,9 +949,9 @@ function DocumentosPage() {
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                className={`hidden lg:flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                  : 'text-gray-600 hover:bg-gray-100 border-gray-300'
                   }`}
                 aria-label="Expandir menú lateral"
               >
@@ -960,30 +960,30 @@ function DocumentosPage() {
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-sky-500/15' : 'bg-blue-100'}`}>
-                <FileText className={`h-7 w-7 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
+              <div className={`hidden sm:flex h-10 w-10 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/15 border-sky-500/20' : 'bg-blue-100 border-blue-200'}`}>
+                <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
               </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
-                <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Documentos</h1>
-                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gestión de documentos y facturas de embarques</p>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
+                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Documentos</h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gestión de documentos y facturas</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
               <button
                 onClick={() => setShowFilters(prev => !prev)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${showFilters
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors border ${showFilters
                   ? theme === 'dark'
-                    ? 'bg-sky-600 text-white border-sky-600'
-                    : 'bg-blue-600 text-white border-blue-600'
+                    ? 'bg-sky-600 text-white border-sky-500'
+                    : 'bg-blue-600 text-white border-blue-500'
                   : hasActiveFilters
                     ? theme === 'dark'
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-blue-600 text-white border-blue-600'
+                      ? 'bg-blue-600 text-white border-blue-500'
+                      : 'bg-blue-600 text-white border-blue-500'
                     : theme === 'dark'
-                      ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                      ? 'border-slate-700/60 text-slate-300 hover:border-sky-500 hover:text-sky-200 bg-slate-800/60'
+                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                   }`}
                 type="button"
                 aria-label="Mostrar/Ocultar filtros"
@@ -1010,9 +1010,9 @@ function DocumentosPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                className={`hidden sm:flex items-center gap-2 border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-400/60 hover:text-sky-200 bg-slate-800/60'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                   }`}
                 title={currentUser?.nombre || currentUser?.email}
               >
@@ -1024,7 +1024,7 @@ function DocumentosPage() {
         </header>
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
-          <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
+          <div className="mx-auto w-full max-w-full px-2 pt-2 sm:px-3 sm:pt-3 space-y-2">
             {/* Sidebar de Filtros */}
             <DocumentosFiltersPanel
               showFilters={showFilters}
@@ -1055,16 +1055,16 @@ function DocumentosPage() {
             />
 
             {/* Tabla de Documentos */}
-            <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden ${theme === 'dark'
-              ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-              : 'border-gray-200 bg-white shadow-md'
+            <section className={`flex-1 flex flex-col border overflow-hidden min-h-0 ${theme === 'dark'
+              ? 'border-slate-700/60 bg-slate-800/60'
+              : 'border-gray-200 bg-white'
               }`}>
-              <div className="overflow-x-auto max-h-[70vh]">
+              <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                 <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                   }`}>
-                  <thead className={`sticky top-0 z-20 backdrop-blur-sm ${theme === 'dark'
-                    ? 'bg-slate-900/95 border-b border-slate-800/60'
-                    : 'bg-white/95 border-b border-gray-200 shadow-sm'
+                  <thead className={`sticky top-0 z-20 ${theme === 'dark'
+                    ? 'bg-slate-900 border-b border-slate-800/60'
+                    : 'bg-white border-b border-gray-200'
                     }`}>
                     <tr>
                       <th
@@ -1246,12 +1246,12 @@ function DocumentosPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Overlay */}
             <div
-              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/50"
               onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
             />
 
             {/* Modal más grande */}
-            <div className={`relative z-10 w-full max-w-6xl max-h-[90vh] rounded-2xl border shadow-2xl overflow-hidden ${theme === 'dark'
+            <div className={`relative z-10 w-full max-w-6xl max-h-[90vh] border overflow-hidden ${theme === 'dark'
               ? 'border-slate-700 bg-slate-800'
               : 'border-gray-200 bg-white'
               }`}>
@@ -1259,7 +1259,7 @@ function DocumentosPage() {
               <div className={`flex items-center justify-between border-b px-6 py-4 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
                 }`}>
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${theme === 'dark' ? 'bg-sky-500/20' : 'bg-blue-100'
+                  <div className={`flex h-10 w-10 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/20 border-sky-500/20' : 'bg-blue-100 border-blue-200'
                     }`}>
                     <FileText className={`h-5 w-5 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
                       }`} />
@@ -1277,9 +1277,9 @@ function DocumentosPage() {
                 </div>
                 <button
                   onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
-                  className={`rounded-lg p-2 transition-colors ${theme === 'dark'
-                    ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+                  className={`p-2 transition-colors border ${theme === 'dark'
+                    ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200 border-slate-700/60'
+                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 border-gray-300'
                     }`}
                   aria-label="Cerrar"
                 >
@@ -1316,10 +1316,10 @@ function DocumentosPage() {
 
                     {/* Información del archivo */}
                     {documentModal.hasDocument && docInfo ? (
-                      <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
+                      <div className={`border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
                         }`}>
                         <div className="flex items-start gap-4">
-                          <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${theme === 'dark' ? 'bg-sky-500/20' : 'bg-blue-100'
+                          <div className={`flex h-12 w-12 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/20 border-sky-500/20' : 'bg-blue-100 border-blue-200'
                             }`}>
                             <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
                               }`} />
@@ -1365,10 +1365,10 @@ function DocumentosPage() {
                         </div>
                       </div>
                     ) : documentModal.file ? (
-                      <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
+                      <div className={`border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
                         }`}>
                         <div className="flex items-start gap-4">
-                          <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${theme === 'dark' ? 'bg-sky-500/20' : 'bg-blue-100'
+                          <div className={`flex h-12 w-12 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/20 border-sky-500/20' : 'bg-blue-100 border-blue-200'
                             }`}>
                             <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
                               }`} />
@@ -1418,7 +1418,7 @@ function DocumentosPage() {
                       <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-sm">
                         <p><strong>Debug:</strong> Cargando {docInfo.type || 'documento'} desde: {docInfo.path}</p>
                       </div>
-                      <div className="flex-1 bg-gray-100 dark:bg-slate-900 rounded-lg overflow-hidden">
+                      <div className="flex-1 bg-gray-100 dark:bg-slate-900 overflow-hidden">
                         {(() => {
                           const isPDF = docInfo.name?.toLowerCase().endsWith('.pdf');
                           const isExcel = docInfo.name?.toLowerCase().match(/\.(xlsx|xls)$/);
@@ -1444,7 +1444,7 @@ function DocumentosPage() {
                                 <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm">
                                   <p><strong>Excel:</strong> Cargando vista previa...</p>
                                 </div>
-                                <div className="flex-1 bg-white rounded-lg overflow-hidden">
+                                <div className="flex-1 bg-white overflow-hidden">
                                   <iframe
                                     src={`/api/bookings/excel-preview?documentPath=${encodeURIComponent(docInfo.path)}`}
                                     className="w-full h-full border-0"
@@ -1462,7 +1462,7 @@ function DocumentosPage() {
                             return (
                               <div className="w-full h-full flex items-center justify-center">
                                 <div className="text-center p-6">
-                                  <div className={`flex h-16 w-16 items-center justify-center rounded-full mx-auto mb-4 ${theme === 'dark' ? 'bg-slate-700' : 'bg-gray-100'
+                                  <div className={`flex h-16 w-16 items-center justify-center border mx-auto mb-4 ${theme === 'dark' ? 'bg-slate-700 border-slate-600' : 'bg-gray-100 border-gray-300'
                                     }`}>
                                     <FileText className={`h-8 w-8 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
                                       }`} />
@@ -1537,9 +1537,9 @@ function DocumentosPage() {
                         setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null });
                       }}
                       disabled={isDeleting || isUploading}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark'
-                        ? 'text-red-400 hover:bg-slate-700 hover:text-red-300'
-                        : 'text-red-600 hover:bg-red-50 hover:text-red-700'
+                      className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'
+                        ? 'text-red-400 hover:bg-slate-700 hover:text-red-300 border-slate-700/60'
+                        : 'text-red-600 hover:bg-red-50 hover:text-red-700 border-gray-300'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {isDeleting ? 'Eliminando...' : 'Eliminar documento'}
@@ -1551,14 +1551,14 @@ function DocumentosPage() {
                     <button
                       onClick={handleConfirmUpload}
                       disabled={isUploading || isDeleting}
-                      className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all transform hover:scale-105 ${theme === 'dark'
-                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700 shadow-lg shadow-green-500/25'
-                        : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25'
-                        } disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none`}>
+                      className={`px-6 py-3 text-sm font-semibold transition-colors border ${theme === 'dark'
+                        ? 'bg-green-600 text-white hover:bg-green-700 border-green-500/60'
+                        : 'bg-blue-600 text-white hover:bg-blue-700 border-blue-500/60'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}>
                       <div className="flex items-center gap-2">
                         {isUploading ? (
                           <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"></div>
                             Subiendo...
                           </>
                         ) : (
@@ -1574,9 +1574,9 @@ function DocumentosPage() {
                     <button
                       onClick={() => handleDownloadDocument(documentModal.booking, documentModal.docType)}
                       disabled={isDeleting || isUploading}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                      className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'
+                        ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                        : 'text-gray-700 hover:bg-gray-100 border-gray-300'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       Descargar
@@ -1584,9 +1584,9 @@ function DocumentosPage() {
                   )}
                   <button
                     onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-700'
-                      : 'text-gray-700 hover:bg-gray-100'
+                    className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'
+                      ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                      : 'text-gray-700 hover:bg-gray-100 border-gray-300'
                       }`}
                   >
                     Cerrar
