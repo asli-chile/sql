@@ -873,8 +873,8 @@ export default function TransportesPage() {
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as keyof TransporteRecord)}
                         className={`px-2 py-1 text-xs font-medium transition-colors border ${theme === 'dark'
-                          ? 'border-slate-700/60 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 focus:ring-1 focus:ring-sky-500/50'
-                          : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:ring-1 focus:ring-blue-500/50'
+                          ? 'border-slate-600 bg-slate-800 text-slate-100 hover:bg-slate-700 hover:border-slate-500 focus:ring-2 focus:ring-sky-500/50'
+                          : 'border-gray-400 bg-white text-gray-900 hover:bg-gray-50 hover:border-gray-500 focus:ring-2 focus:ring-blue-500/50'
                           }`}
                       >
                         <option value="exportacion">Cliente</option>
@@ -886,8 +886,8 @@ export default function TransportesPage() {
                       <button
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                         className={`p-1 text-xs font-medium transition-colors border ${theme === 'dark'
-                          ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
-                          : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
+                          ? 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700 hover:border-slate-500'
+                          : 'border-gray-400 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-500'
                           }`}
                         title={`Ordenar ${sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
                       >
@@ -900,7 +900,7 @@ export default function TransportesPage() {
                     </div>
 
                     {/* Botones de vista */}
-                    <div className={`flex items-center border ${theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'}`}>
+                    <div className={`flex items-center border ${theme === 'dark' ? 'border-slate-600' : 'border-gray-400'}`}>
                       <button
                         onClick={() => setViewMode('table')}
                         className={`px-2 py-1.5 text-xs font-medium transition-colors border-r ${viewMode === 'table'
@@ -908,8 +908,8 @@ export default function TransportesPage() {
                             ? 'bg-sky-600 text-white border-sky-500'
                             : 'bg-blue-600 text-white border-blue-500'
                           : theme === 'dark'
-                            ? 'text-slate-300 hover:bg-slate-800 border-slate-700/60'
-                            : 'text-gray-700 hover:bg-gray-100 border-gray-300'
+                            ? 'text-slate-100 hover:bg-slate-700 hover:text-white border-slate-600 bg-slate-800'
+                            : 'text-gray-900 hover:bg-gray-200 hover:text-gray-900 border-gray-400 bg-white'
                           }`}
                         title="Vista de tabla"
                       >
@@ -922,8 +922,8 @@ export default function TransportesPage() {
                             ? 'bg-sky-600 text-white'
                             : 'bg-blue-600 text-white'
                           : theme === 'dark'
-                            ? 'text-slate-300 hover:bg-slate-800'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'text-slate-100 hover:bg-slate-700 hover:text-white bg-slate-800'
+                            : 'text-gray-900 hover:bg-gray-200 hover:text-gray-900 bg-white'
                           }`}
                         title="Vista de tarjetas"
                       >
@@ -938,8 +938,8 @@ export default function TransportesPage() {
                           ? 'bg-sky-600 text-white hover:bg-sky-500 border-sky-500'
                           : 'bg-blue-600 text-white hover:bg-blue-500 border-blue-500'
                         : theme === 'dark'
-                          ? 'border-slate-700/60 text-slate-300 hover:border-sky-500 hover:text-sky-200 bg-slate-800/60'
-                          : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
+                          ? 'border-slate-600 text-slate-100 hover:border-sky-500 hover:text-sky-200 hover:bg-slate-700 bg-slate-800'
+                          : 'border-gray-400 text-gray-900 hover:border-blue-500 hover:text-blue-700 hover:bg-gray-100 bg-white'
                         }`}
                     >
                       <Filter className="h-3.5 w-3.5" />
@@ -1682,9 +1682,9 @@ export default function TransportesPage() {
                 onClick={() => setContextMenu(null)}
               />
               <div
-                  className={`fixed z-50 min-w-[200px] border ${theme === 'dark'
-                    ? 'border-slate-700/60 bg-slate-800/60'
-                    : 'border-gray-200 bg-white'
+                  className={`fixed z-50 min-w-[200px] border shadow-lg ${theme === 'dark'
+                    ? 'border-slate-600 bg-slate-800'
+                    : 'border-gray-300 bg-white shadow-md'
                     }`}
                   style={{
                     left: `${contextMenu.x}px`,
@@ -1693,12 +1693,26 @@ export default function TransportesPage() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="p-1">
-                    <div className={`mb-1 border-b px-2 py-1.5 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+                    <div className={`mb-1 border-b px-3 py-2 space-y-1 ${theme === 'dark' ? 'border-slate-600 bg-slate-900/50' : 'border-gray-200 bg-gray-50'
                       }`}>
-                      <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
-                        }`}>
-                        {contextMenu.record.booking || 'Transporte'}
-                      </p>
+                      {contextMenu.record.booking && (
+                        <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                          }`}>
+                          Booking: {contextMenu.record.booking}
+                        </p>
+                      )}
+                      {contextMenu.record.ref_cliente && (
+                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'
+                          }`}>
+                          Ref: {contextMenu.record.ref_cliente}
+                        </p>
+                      )}
+                      {!contextMenu.record.booking && !contextMenu.record.ref_cliente && (
+                        <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                          }`}>
+                          Transporte
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
@@ -1707,9 +1721,9 @@ export default function TransportesPage() {
                         setContextMenu(null);
                       }}
                       disabled={isDeleting}
-                      className={`flex w-full items-center gap-2 rounded px-3 py-2 text-sm transition-colors disabled:opacity-50 ${theme === 'dark'
-                        ? 'text-red-400 hover:bg-slate-800'
-                        : 'text-red-600 hover:bg-gray-100'
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors disabled:opacity-50 ${theme === 'dark'
+                        ? 'text-red-400 hover:bg-slate-700 hover:text-red-300'
+                        : 'text-red-600 hover:bg-red-50 hover:text-red-700'
                         }`}
                     >
                       <Trash2 className="h-4 w-4" />
