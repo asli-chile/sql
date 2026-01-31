@@ -41,6 +41,7 @@ export default function TrackingPage() {
     const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
     const [user, setUser] = useState<SupabaseUser | null>(null);
+    const [trackingCount, setTrackingCount] = useState<number>(0);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [shipments, setShipments] = useState<Registro[]>([]);
@@ -86,6 +87,45 @@ export default function TrackingPage() {
 
     // Listas para filtros (se podrían cargar de catálogos)
     const estadosPosibles = ['PENDIENTE', 'CONFIRMADO', 'CANCELADO'];
+
+    // Cargar contador de tracking
+    useEffect(() => {
+        const loadTrackingCount = async () => {
+            if (!currentUser) return;
+
+            try {
+                const supabase = createClient();
+                const isAdmin = currentUser.rol === 'admin';
+                const clienteNombre = currentUser.cliente_nombre?.trim();
+                const clientesAsignados = currentUser.clientes_asignados || [];
+
+                // Contar registros con tracking (todos los registros no cancelados)
+                let trackingQuery = supabase
+                    .from('registros')
+                    .select('*', { count: 'exact', head: true })
+                    .is('deleted_at', null)
+                    .neq('estado', 'CANCELADO');
+
+                if (!isAdmin) {
+                    if (currentUser.rol === 'cliente' && clienteNombre) {
+                        trackingQuery = trackingQuery.ilike('shipper', clienteNombre);
+                    } else if (clientesAsignados.length > 0) {
+                        trackingQuery = trackingQuery.in('shipper', clientesAsignados);
+                    } else {
+                        trackingQuery = trackingQuery.eq('id', 'NONE');
+                    }
+                }
+
+                const { count, error } = await trackingQuery;
+                setTrackingCount(error ? 0 : (count || 0));
+            } catch (error) {
+                console.error('Error loading tracking count:', error);
+                setTrackingCount(0);
+            }
+        };
+
+        loadTrackingCount();
+    }, [currentUser]);
 
     // Cargar lista inicial
     useEffect(() => {
@@ -179,7 +219,7 @@ export default function TrackingPage() {
                 { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' as const },
                 { label: 'Documentos', id: '/documentos', icon: FileText },
                 { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
-                { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true },
+                { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true, counter: trackingCount, tone: 'emerald' as const },
                 ...(isRodrigo
                     ? [
                         { label: 'Finanzas', id: '/finanzas', icon: DollarSign },

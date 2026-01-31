@@ -414,8 +414,8 @@ export default function ReportesPage() {
   // isRodrigo ya está definido más arriba en el componente
   if (!isRodrigo) {
     return (
-      <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-        <div className={`rounded-xl border p-8 text-center max-w-md ${theme === 'dark' ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white shadow-lg'}`}>
+      <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+        <div className={`border p-8 text-center max-w-md ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
           <AlertCircle className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
           <h2 className={`text-2xl font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             Acceso Restringido
@@ -442,7 +442,7 @@ export default function ReportesPage() {
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Overlay para móvil */}
       {isMobileMenuOpen && (
         <div
@@ -464,26 +464,26 @@ export default function ReportesPage() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
-          <div className="flex flex-wrap items-center gap-4 px-4 sm:px-6 py-3 sm:py-4">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'text-slate-300 hover:bg-slate-700'
-                : 'text-gray-600 hover:bg-gray-100'
+              className={`lg:hidden flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                 }`}
               aria-label="Abrir menú"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-4 w-4" />
             </button>
             {/* Botón para expandir sidebar colapsado en desktop */}
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                className={`hidden lg:flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                   }`}
                 aria-label="Expandir menú lateral"
               >
@@ -492,27 +492,17 @@ export default function ReportesPage() {
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-sky-500/15' : 'bg-blue-100'}`}>
-                <img
-                  src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                  alt="ASLI Logo"
-                  className="h-10 w-10 object-contain"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Análisis y Métricas</p>
-                <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reportes y KPIs</h1>
-                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Indicadores clave de rendimiento y análisis de operaciones</p>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Análisis y Métricas</p>
+                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Reportes y KPIs</h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Indicadores clave de rendimiento y análisis de operaciones</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
               <button
                 onClick={() => setShowFilters(prev => !prev)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${showFilters
+                className={`inline-flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors ${showFilters
                   ? theme === 'dark'
                     ? 'bg-sky-600 text-white border-sky-600'
                     : 'bg-blue-600 text-white border-blue-600'
@@ -522,7 +512,7 @@ export default function ReportesPage() {
                       : 'bg-blue-600 text-white border-blue-600'
                     : theme === 'dark'
                       ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                   }`}
                 type="button"
                 aria-label="Mostrar/Ocultar filtros"
@@ -531,7 +521,7 @@ export default function ReportesPage() {
                 <Filter className="h-4 w-4" />
                 <span className="hidden sm:inline">Filtros</span>
                 {hasActiveFilters && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
+                  <span className={`text-xs px-1.5 py-0.5 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
                     }`}>
                     {[
                       selectedSeason,
@@ -548,9 +538,9 @@ export default function ReportesPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                className={`hidden sm:flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 hover:border-sky-500/60 hover:text-sky-200'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-700'
                   }`}
               >
                 <UserIcon className="h-4 w-4" />
@@ -563,7 +553,7 @@ export default function ReportesPage() {
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
           {/* Panel de Filtros */}
           {showFilters ? (
-            <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+            <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
               <div className="flex items-center justify-between mb-4">
                 <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Filtros de Reportes
@@ -572,9 +562,9 @@ export default function ReportesPage() {
                   {hasActiveFilters && (
                     <button
                       onClick={handleClearFilters}
-                      className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      className={`text-xs px-3 py-1.5 border transition-colors ${theme === 'dark'
+                        ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                         }`}
                     >
                       Limpiar filtros
@@ -582,9 +572,9 @@ export default function ReportesPage() {
                   )}
                   <button
                     onClick={() => setShowFilters(false)}
-                    className={`p-1.5 rounded-lg transition-colors ${theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-700'
-                      : 'text-gray-600 hover:bg-gray-100'
+                    className={`p-1.5 border transition-colors ${theme === 'dark'
+                      ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                       }`}
                     aria-label="Cerrar filtros"
                   >
@@ -608,7 +598,7 @@ export default function ReportesPage() {
                         // Si se limpia, no hacer nada más
                       }
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -655,7 +645,7 @@ export default function ReportesPage() {
                       )}
                     </div>
                   </div>
-                  <div className={`max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2 ${theme === 'dark'
+                  <div className={`max-h-48 overflow-y-auto border p-3 space-y-2 ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800'
                     : 'border-gray-300 bg-white'
                     }`}>
@@ -715,7 +705,7 @@ export default function ReportesPage() {
                       const newValue = e.target.value || null;
                       setSelectedEjecutivo(newValue);
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -742,7 +732,7 @@ export default function ReportesPage() {
                   <select
                     value={selectedEstado ?? ''}
                     onChange={(e) => setSelectedEstado(e.target.value || null)}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -765,7 +755,7 @@ export default function ReportesPage() {
                       const newValue = e.target.value || null;
                       setSelectedNaviera(newValue);
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -795,7 +785,7 @@ export default function ReportesPage() {
                       const newValue = e.target.value || null;
                       setSelectedEspecie(newValue);
                     }}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -823,7 +813,7 @@ export default function ReportesPage() {
                     type="date"
                     value={fechaDesde}
                     onChange={(e) => setFechaDesde(e.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -839,7 +829,7 @@ export default function ReportesPage() {
                     type="date"
                     value={fechaHasta}
                     onChange={(e) => setFechaHasta(e.target.value)}
-                    className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
@@ -851,7 +841,7 @@ export default function ReportesPage() {
 
           {/* Mensaje cuando no hay datos */}
           {registros.length === 0 && allRegistros.length > 0 && (
-            <div className={`rounded-xl border p-6 text-center ${theme === 'dark' ? 'border-amber-800/70 bg-amber-900/20' : 'border-amber-200 bg-amber-50'}`}>
+            <div className={`border p-6 text-center ${theme === 'dark' ? 'border-amber-700/60 bg-amber-900/20' : 'border-amber-300 bg-amber-50'}`}>
               <AlertCircle className={`h-12 w-12 mx-auto mb-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
               <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 No hay datos con los filtros aplicados
@@ -861,9 +851,9 @@ export default function ReportesPage() {
               </p>
               <button
                 onClick={handleClearFilters}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${theme === 'dark'
-                  ? 'bg-amber-600 text-white hover:bg-amber-700'
-                  : 'bg-amber-500 text-white hover:bg-amber-600'
+                className={`px-4 py-2 border text-sm font-semibold transition-colors ${theme === 'dark'
+                  ? 'border-amber-600 bg-amber-600 text-white hover:bg-amber-700'
+                  : 'border-amber-500 bg-amber-500 text-white hover:bg-amber-600'
                   }`}
               >
                 Limpiar filtros
@@ -966,7 +956,7 @@ export default function ReportesPage() {
               {/* Tablas de distribución */}
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                 {/* Top Clientes */}
-                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+                <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Top Clientes por Contenedores
                   </h3>
@@ -974,7 +964,7 @@ export default function ReportesPage() {
                     {metrics.topClientes.map((cliente, index) => (
                       <div
                         key={cliente.cliente}
-                        className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
+                        className={`flex items-center justify-between p-3 border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/60' : 'bg-gray-50 border-gray-300'
                           }`}
                       >
                         <div className="flex items-center gap-3">
@@ -999,7 +989,7 @@ export default function ReportesPage() {
                 </div>
 
                 {/* Top Clientes Cancelados */}
-                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-red-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-red-200 bg-white'}`}>
+                <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-red-700/60 bg-slate-900' : 'border-red-300 bg-white'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Top Clientes Cancelados
                   </h3>
@@ -1008,7 +998,7 @@ export default function ReportesPage() {
                       metrics.topClientesCancelados.map((cliente, index) => (
                         <div
                           key={cliente.cliente}
-                          className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200'
+                          className={`flex items-center justify-between p-3 border ${theme === 'dark' ? 'bg-red-900/20 border-red-700/60' : 'bg-red-50 border-red-300'
                             }`}
                         >
                           <div className="flex items-center gap-3">
@@ -1038,7 +1028,7 @@ export default function ReportesPage() {
                 </div>
 
                 {/* Top Ejecutivos */}
-                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+                <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Top Ejecutivos
                   </h3>
@@ -1046,7 +1036,7 @@ export default function ReportesPage() {
                     {metrics.topEjecutivos.map((ejecutivo, index) => (
                       <div
                         key={ejecutivo.ejecutivo}
-                        className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
+                        className={`flex items-center justify-between p-3 border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/60' : 'bg-gray-50 border-gray-300'
                           }`}
                       >
                         <div className="flex items-center gap-3">
@@ -1071,7 +1061,7 @@ export default function ReportesPage() {
                 </div>
 
                 {/* Top Ejecutivos Cancelados */}
-                <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-red-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-red-200 bg-white'}`}>
+                <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-red-700/60 bg-slate-900' : 'border-red-300 bg-white'}`}>
                   <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Top Ejecutivos Cancelados
                   </h3>
@@ -1080,7 +1070,7 @@ export default function ReportesPage() {
                       metrics.topEjecutivosCancelados.map((ejecutivo, index) => (
                         <div
                           key={ejecutivo.ejecutivo}
-                          className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-red-900/20 border border-red-800/30' : 'bg-red-50 border border-red-200'
+                          className={`flex items-center justify-between p-3 border ${theme === 'dark' ? 'bg-red-900/20 border-red-700/60' : 'bg-red-50 border-red-300'
                             }`}
                         >
                           <div className="flex items-center gap-3">

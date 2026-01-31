@@ -70,7 +70,7 @@ export function MetricCard({
 
   return (
     <div
-      className={`rounded-xl border p-4 sm:p-6 transition-all hover:shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white shadow-md'} ${colors.border} ${className}`}
+      className={`border p-4 sm:p-5 transition-all ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'} ${colors.border} ${className}`}
     >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
