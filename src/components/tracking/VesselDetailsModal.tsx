@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, MapPin, Clock, Navigation, Ship } from 'lucide-react';
+import { X, MapPin, Clock, Navigation, Anchor } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
 import { createClient } from '@/lib/supabase-browser';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type VesselDetailRow = {
   id: string;
@@ -68,6 +69,7 @@ type VesselPositionData = {
 };
 
 export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsModalProps) {
+  const { theme } = useTheme();
   const [detailsState, setDetailsState] = useState<FetchState>('idle');
   const [detailRows, setDetailRows] = useState<VesselDetailRow[]>([]);
   const [positionData, setPositionData] = useState<VesselPositionData | null>(null);
@@ -287,26 +289,26 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4"
+      className={`fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 ${theme === 'dark' ? 'bg-black/60' : 'bg-black/40'}`}
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl border border-slate-800/60 bg-slate-950/95 shadow-2xl flex flex-col">
+      <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-hidden border flex flex-col ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800/60 px-4 py-3 sm:px-6 sm:py-4">
+        <div className={`flex items-center justify-between border-b px-4 py-3 sm:px-6 sm:py-4 ${theme === 'dark' ? 'border-slate-700/60' : 'border-gray-200'}`}>
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-sky-500/20 text-sky-400">
-              <Ship className="h-5 w-5" />
+            <div className={`flex h-10 w-10 shrink-0 items-center justify-center border ${theme === 'dark' ? 'border-sky-500/20 bg-sky-500/20 text-sky-400' : 'border-blue-200 bg-blue-100 text-blue-600'}`}>
+              <Anchor className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold text-white truncate sm:text-xl">
+              <h2 className={`text-lg font-semibold truncate sm:text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {vessel.vessel_name}
               </h2>
               {vessel.destination && (
-                <p className="text-xs text-slate-400 truncate sm:text-sm">
+                <p className={`text-xs truncate sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Destino: {vessel.destination}
                 </p>
               )}
@@ -315,7 +317,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           <button
             type="button"
             onClick={onClose}
-            className="ml-3 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700/80 text-slate-400 hover:border-slate-600 hover:text-slate-200 transition-colors"
+            className={`ml-3 inline-flex h-8 w-8 shrink-0 items-center justify-center border transition-colors ${theme === 'dark' ? 'border-slate-700/60 text-slate-400 hover:border-slate-600 hover:text-slate-200' : 'border-gray-300 text-gray-600 hover:border-gray-400 hover:text-gray-800'}`}
             aria-label="Cerrar"
           >
             <X className="h-4 w-4" />
@@ -327,7 +329,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {/* Imagen del buque - SIEMPRE VISIBLE SI EXISTE */}
           {positionData?.vesselImage && (
             <div className="w-full">
-              <div className="relative w-full h-64 sm:h-80 rounded-xl overflow-hidden border border-slate-800/60 bg-slate-900/50">
+              <div className="relative w-full h-64 sm:h-80 overflow-hidden border border-slate-700/60 bg-slate-900/50">
                 <img
                   src={positionData.vesselImage}
                   alt={`${vessel.vessel_name}`}
@@ -344,14 +346,18 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {/* Información principal de posición y navegación - SIEMPRE VISIBLE */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Posición - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+            <div className={`border p-4 ${vessel.last_lat != null && vessel.last_lon != null 
+              ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+              : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                <MapPin className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Posición
                 </p>
               </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
+              <p className={`text-sm font-semibold ${vessel.last_lat != null && vessel.last_lon != null
+                ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
                 {vessel.last_lat != null && vessel.last_lon != null
                   ? `${vessel.last_lat.toFixed(4)}°N, ${Math.abs(vessel.last_lon).toFixed(4)}°W`
                   : 'No disponible'}
@@ -359,118 +365,181 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
             </div>
 
             {/* Última actualización - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Última actualización
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {(positionData?.lastApiCallAt || positionData?.lastPositionAt || vessel.last_api_call_at || vessel.last_position_at)
-                  ? new Date(positionData?.lastApiCallAt || positionData?.lastPositionAt || vessel.last_api_call_at || vessel.last_position_at!).toLocaleString('es-CL', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })
-                  : 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasUpdate = !!(positionData?.lastApiCallAt || positionData?.lastPositionAt || vessel.last_api_call_at || vessel.last_position_at);
+              return (
+                <div className={`border p-4 ${hasUpdate
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Última actualización
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold ${hasUpdate
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {hasUpdate
+                      ? new Date(positionData?.lastApiCallAt || positionData?.lastPositionAt || vessel.last_api_call_at || vessel.last_position_at!).toLocaleString('es-CL', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                      : 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Velocidad - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Navigation className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Velocidad
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {positionData?.speed != null
-                  ? `${Number(positionData.speed).toFixed(1)} nudos`
-                  : 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasSpeed = positionData?.speed != null;
+              return (
+                <div className={`border p-4 ${hasSpeed
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Navigation className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Velocidad
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold ${hasSpeed
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {hasSpeed
+                      ? `${Number(positionData.speed).toFixed(1)} nudos`
+                      : 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Rumbo - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Navigation className="h-4 w-4 text-sky-400 rotate-45" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Rumbo
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {positionData?.course != null
-                  ? `${Math.round(Number(positionData.course))}°`
-                  : 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasCourse = positionData?.course != null;
+              return (
+                <div className={`border p-4 ${hasCourse
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Navigation className={`h-4 w-4 rotate-45 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Rumbo
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold ${hasCourse
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {hasCourse
+                      ? `${Math.round(Number(positionData.course))}°`
+                      : 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Información de navegación y destino */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {/* Último puerto - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Último puerto
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {positionData?.lastPort || 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasLastPort = !!positionData?.lastPort;
+              return (
+                <div className={`border p-4 ${hasLastPort
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Último puerto
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold ${hasLastPort
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {positionData?.lastPort || 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Destino AIS - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Destino AIS
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm truncate">
-                {positionData?.destination || 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasDestination = !!positionData?.destination;
+              return (
+                <div className={`border p-4 ${hasDestination
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <MapPin className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Destino AIS
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold truncate ${hasDestination
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {positionData?.destination || 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Estado de navegación - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Ship className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Estado
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {positionData?.navigationalStatus || 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasStatus = !!positionData?.navigationalStatus;
+              return (
+                <div className={`border p-4 ${hasStatus
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Anchor className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Estado
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold ${hasStatus
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {positionData?.navigationalStatus || 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
 
             {/* Distancia al destino - SIEMPRE VISIBLE */}
-            <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Navigation className="h-4 w-4 text-sky-400" />
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                  Distancia al destino
-                </p>
-              </div>
-              <p className="text-xs font-medium text-slate-200 sm:text-sm">
-                {positionData?.distance || 'No disponible'}
-              </p>
-            </div>
+            {(() => {
+              const hasDistance = !!positionData?.distance;
+              return (
+                <div className={`border p-4 ${hasDistance
+                  ? theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'
+                  : theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Navigation className={`h-4 w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                    <p className={`text-[10px] uppercase tracking-[0.2em] font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Distancia al destino
+                    </p>
+                  </div>
+                  <p className={`text-sm font-semibold ${hasDistance
+                    ? theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                    : theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    {positionData?.distance || 'No disponible'}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Identificadores del buque */}
           {(positionData?.imo || positionData?.mmsi || positionData?.callsign) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {positionData?.imo && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     IMO
                   </p>
@@ -481,7 +550,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.mmsi && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     MMSI
                   </p>
@@ -492,7 +561,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.callsign && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Callsign
                   </p>
@@ -508,7 +577,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {(positionData?.shipType || positionData?.country || positionData?.typeSpecific) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {positionData?.shipType && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Tipo de buque
                   </p>
@@ -519,7 +588,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.typeSpecific && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Tipo específico
                   </p>
@@ -530,7 +599,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.country && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     País
                   </p>
@@ -546,7 +615,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {(positionData?.length || positionData?.beam || positionData?.grossTonnage || positionData?.yearOfBuilt || positionData?.currentDraught || positionData?.deadweight || positionData?.teu) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {positionData?.length && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Longitud
                   </p>
@@ -557,7 +626,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.beam && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Manga
                   </p>
@@ -568,7 +637,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.currentDraught && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Calado actual
                   </p>
@@ -579,7 +648,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.grossTonnage && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Tonelaje bruto
                   </p>
@@ -590,7 +659,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.deadweight && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Peso muerto
                   </p>
@@ -601,7 +670,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.teu && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     TEU
                   </p>
@@ -612,7 +681,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.yearOfBuilt && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Año construcción
                   </p>
@@ -623,7 +692,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.timeRemaining && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Tiempo restante
                   </p>
@@ -639,7 +708,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {(positionData?.builder || positionData?.placeOfBuild || positionData?.hull || positionData?.material) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {positionData?.builder && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Astillero
                   </p>
@@ -650,7 +719,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.placeOfBuild && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Lugar de construcción
                   </p>
@@ -661,7 +730,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.hull && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Casco
                   </p>
@@ -672,7 +741,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.material && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Material
                   </p>
@@ -688,7 +757,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {(positionData?.ballastWater || positionData?.crudeOil || positionData?.freshWater || positionData?.gas || positionData?.grain || positionData?.bale) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               {positionData?.ballastWater && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Agua de lastre
                   </p>
@@ -699,7 +768,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.crudeOil && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Petróleo crudo
                   </p>
@@ -710,7 +779,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.freshWater && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Agua dulce
                   </p>
@@ -721,7 +790,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.gas && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Gas
                   </p>
@@ -732,7 +801,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.grain && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Grano
                   </p>
@@ -743,7 +812,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.bale && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Fardos
                   </p>
@@ -759,7 +828,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {(positionData?.lastPort || positionData?.distance || positionData?.predictedEta) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {positionData?.lastPort && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Último puerto
                   </p>
@@ -770,7 +839,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.distance && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     Distancia al destino
                   </p>
@@ -781,7 +850,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.predictedEta && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                     ETA predicho
                   </p>
@@ -797,11 +866,11 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
           {(vessel.etd || vessel.eta || positionData?.etaUtc || positionData?.atdUtc) && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {vessel.etd && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
+                <div className={`border p-4 ${theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.2em] font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Zarpe estimado (ETD)
                   </p>
-                  <p className="text-xs font-medium text-slate-200 sm:text-sm">
+                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>
                     {new Date(vessel.etd).toLocaleString('es-CL', {
                       timeZone: 'UTC',
                       day: '2-digit',
@@ -815,11 +884,11 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {vessel.eta && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
+                <div className={`border p-4 ${theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.2em] font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Arribo estimado (ETA)
                   </p>
-                  <p className="text-xs font-medium text-slate-200 sm:text-sm">
+                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>
                     {new Date(vessel.eta).toLocaleString('es-CL', {
                       timeZone: 'UTC',
                       day: '2-digit',
@@ -833,11 +902,11 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.atdUtc && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
+                <div className={`border p-4 ${theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.2em] font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Zarpe real (ATD)
                   </p>
-                  <p className="text-xs font-medium text-slate-200 sm:text-sm">
+                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>
                     {new Date(positionData.atdUtc).toLocaleString('es-CL', {
                       timeZone: 'UTC',
                       day: '2-digit',
@@ -851,11 +920,11 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               )}
 
               {positionData?.etaUtc && (
-                <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
+                <div className={`border p-4 ${theme === 'dark' ? 'border-sky-500/40 bg-slate-800' : 'border-blue-400 bg-blue-50'}`}>
+                  <p className={`text-[10px] uppercase tracking-[0.2em] font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Arribo AIS (ETA)
                   </p>
-                  <p className="text-xs font-medium text-slate-200 sm:text-sm">
+                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>
                     {new Date(positionData.etaUtc).toLocaleString('es-CL', {
                       timeZone: 'UTC',
                       day: '2-digit',
@@ -878,7 +947,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {positionData.engine.engineBuilder && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Fabricante
                     </p>
@@ -888,7 +957,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 )}
                 {positionData.engine.engineType && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Tipo
                     </p>
@@ -898,7 +967,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 )}
                 {positionData.engine['enginePower(kW)'] && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Potencia (kW)
                     </p>
@@ -908,7 +977,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 )}
                 {positionData.engine.fuelType && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Tipo de combustible
                     </p>
@@ -918,7 +987,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 )}
                 {positionData.engine.Propeller && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Hélice
                     </p>
@@ -937,7 +1006,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               <p className="text-[11px] uppercase tracking-[0.3em] text-slate-500 mb-3">
                 Historial de puertos ({positionData.ports.length} puertos)
               </p>
-              <div className="rounded-lg border border-slate-800/60 bg-slate-950/40">
+              <div className="border border-slate-700/60 bg-slate-900/50">
                 <div
                   className="max-h-[30vh] overflow-y-auto overflow-x-auto"
                   style={{
@@ -986,7 +1055,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {positionData.management.registeredOwner || positionData.management['Propietario registrado'] ? (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Propietario registrado
                     </p>
@@ -1001,7 +1070,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 ) : null}
                 {positionData.management.manager || positionData.management.Gerente ? (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Gerente
                     </p>
@@ -1011,7 +1080,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 ) : null}
                 {positionData.management.ism ? (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       ISM
                     </p>
@@ -1021,7 +1090,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 ) : null}
                 {positionData.management['P&I'] ? (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       P&I
                     </p>
@@ -1031,7 +1100,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
                   </div>
                 ) : null}
                 {positionData.management.ClassificationSociety ? (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/50 p-3">
+                  <div className="border border-slate-700/60 bg-slate-800/50 p-3">
                     <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 mb-1">
                       Sociedad de clasificación
                     </p>
@@ -1072,7 +1141,7 @@ export function VesselDetailsModal({ isOpen, vessel, onClose }: VesselDetailsMod
             )}
 
             {detailsState === 'success' && detailRows.length > 0 && (
-              <div className="rounded-lg border border-slate-800/60 bg-slate-950/40">
+              <div className="border border-slate-700/60 bg-slate-900/50">
                 <div
                   className="max-h-[40vh] overflow-y-auto overflow-x-auto"
                   style={{

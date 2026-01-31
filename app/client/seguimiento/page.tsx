@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import { Ship, Search, X, ChevronRight, RefreshCcw, Globe } from 'lucide-react';
+import { Anchor, Search, X, ChevronRight, RefreshCcw, Globe } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { VesselDetailsModal } from '@/components/tracking/VesselDetailsModal';
@@ -145,7 +145,7 @@ export default function ClientSeguimiento() {
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 min-w-0">
-                                        <Ship className={`h-4 w-4 shrink-0 ${focusedVesselName === v.vessel_name ? 'text-blue-600' : 'text-gray-400'}`} />
+                                        <Anchor className={`h-4 w-4 shrink-0 ${focusedVesselName === v.vessel_name ? 'text-blue-600' : 'text-gray-400'}`} />
                                         <div className="min-w-0">
                                             <p className="font-bold text-xs truncate">{v.vessel_name}</p>
                                             <p className="text-[10px] text-gray-500 truncate">{v.destination || 'N/A'}</p>

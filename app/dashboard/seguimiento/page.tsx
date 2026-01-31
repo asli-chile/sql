@@ -5,9 +5,8 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, RefreshCcw, Search, X, ChevronRight, ChevronLeft, LayoutDashboard, Ship, Truck, FileText, Globe, DollarSign, BarChart3, Users, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Search, X, ChevronRight, ChevronLeft, LayoutDashboard, Anchor, Truck, FileText, Globe, DollarSign, BarChart3, Users, User as UserIcon } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
-import LoadingScreen from '@/components/ui/LoadingScreen';
 import { VesselDetailsModal } from '@/components/tracking/VesselDetailsModal';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
@@ -103,20 +102,26 @@ const SeguimientoPage = () => {
       setFetchState('loading');
       setErrorMessage(null);
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const url = `${apiUrl}/api/vessels/active?t=${Date.now()}`;
+      // Usar ruta relativa (funciona tanto en desarrollo como en producción)
+      // Forzar ruta relativa para evitar problemas con NEXT_PUBLIC_API_URL
+      const url = `/api/vessels/active?t=${Date.now()}`;
       console.log('[Seguimiento] Cargando buques desde:', url);
+      console.log('[Seguimiento] window.location.origin:', typeof window !== 'undefined' ? window.location.origin : 'N/A');
 
       let response: Response;
       try {
         response = await fetch(url, {
-          cache: 'no-store',
-          next: { revalidate: 0 },
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
         });
       } catch (fetchError) {
         console.error('[Seguimiento] Error en fetch:', fetchError);
+        console.error('[Seguimiento] URL intentada:', url);
+        console.error('[Seguimiento] Tipo de error:', fetchError instanceof Error ? fetchError.constructor.name : typeof fetchError);
         throw new Error(
-          `Error de conexión: ${fetchError instanceof Error ? fetchError.message : 'Error desconocido'}. Verifica que el servidor esté corriendo.`,
+          `Error de conexión: ${fetchError instanceof Error ? fetchError.message : 'Error desconocido'}. Verifica que el servidor esté corriendo y que la ruta sea correcta.`,
         );
       }
 
@@ -160,8 +165,8 @@ const SeguimientoPage = () => {
 
   const handleRefreshPositions = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/vessels/update-positions`, {
+      const url = `/api/vessels/update-positions`;
+      const response = await fetch(url, {
         method: 'POST',
       });
 
@@ -260,7 +265,7 @@ const SeguimientoPage = () => {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', icon: Ship },
+        { label: 'Embarques', id: '/registros', icon: Anchor },
         { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: true, icon: Globe },
@@ -284,11 +289,7 @@ const SeguimientoPage = () => {
       : []),
   ];
 
-  if (loadingUser) {
-    return <LoadingScreen message="Cargando seguimiento de buques..." />;
-  }
-
-  if (!user) {
+  if (loadingUser || !user) {
     return null;
   }
 
@@ -316,14 +317,14 @@ const SeguimientoPage = () => {
       {/* Content Area */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full relative">
         {/* Header Estándar */}
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
-          <div className="flex flex-wrap items-center gap-4 pl-4 pr-2 sm:px-6 py-3 sm:py-4">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 sm:py-2 py-2">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'text-slate-300 hover:bg-slate-700'
-                : 'text-gray-600 hover:bg-gray-100'
+              className={`lg:hidden flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                : 'text-gray-600 hover:bg-gray-100 border-gray-300'
                 }`}
               aria-label="Abrir menú"
             >
@@ -334,9 +335,9 @@ const SeguimientoPage = () => {
             {isSidebarCollapsed && (
               <button
                 onClick={() => setIsSidebarCollapsed(false)}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                className={`hidden lg:flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                  : 'text-gray-600 hover:bg-gray-100 border-gray-300'
                   }`}
                 aria-label="Expandir menú lateral"
               >
@@ -345,13 +346,13 @@ const SeguimientoPage = () => {
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-sky-500/15' : 'bg-blue-100'}`}>
-                <Globe className={`h-7 w-7 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
+              <div className={`hidden sm:flex h-10 w-10 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/15 border-sky-500/20' : 'bg-blue-100 border-blue-200'}`}>
+                <Globe className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
               </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
-                <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Seguimiento Marítimo</h1>
-                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Mapa de buques activos y posiciones AIS</p>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
+                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Seguimiento Marítimo</h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Mapa de buques activos y posiciones AIS</p>
               </div>
             </div>
 
@@ -359,9 +360,9 @@ const SeguimientoPage = () => {
               <button
                 type="button"
                 onClick={handleRefreshPositions}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${theme === 'dark'
-                  ? 'border-slate-700 text-slate-300 hover:border-sky-400 hover:text-sky-200 bg-slate-800'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors border ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-500 hover:text-sky-200 bg-slate-800/60'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                   }`}
               >
                 <RefreshCcw className="h-4 w-4" />
@@ -370,9 +371,9 @@ const SeguimientoPage = () => {
 
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-700 text-slate-300 hover:border-sky-400 hover:text-sky-200 bg-slate-800'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                className={`hidden sm:flex items-center gap-2 border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-400 hover:text-sky-200 bg-slate-800/60'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                   }`}
                 title={userInfo?.nombre || user?.email}
               >
@@ -396,7 +397,7 @@ const SeguimientoPage = () => {
             className={`absolute top-4 left-4 z-30 h-[calc(100%-2rem)] w-full max-w-xs transform transition-transform duration-300 ease-in-out sm:max-w-sm ${isListSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%+1rem)]'
               }`}
           >
-            <div className={`h-full overflow-y-auto rounded-2xl border shadow-2xl ${theme === 'dark' ? 'border-slate-700 bg-slate-900/95 backdrop-blur-xl' : 'border-gray-200 bg-white/95 backdrop-blur-xl'}`}>
+            <div className={`h-full overflow-y-auto border ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-white'}`}>
               <div className={`sticky top-0 z-10 flex items-center justify-between border-b p-3 ${theme === 'dark' ? 'border-slate-700 bg-slate-900/95' : 'border-gray-100 bg-white/95'}`}>
                 <div>
                   <p className={`text-[10px] uppercase tracking-[0.25em] ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
@@ -409,9 +410,9 @@ const SeguimientoPage = () => {
                 <button
                   type="button"
                   onClick={() => setIsListSidebarOpen(false)}
-                  className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-800 text-slate-400 hover:text-slate-200'
-                    : 'border-gray-200 bg-gray-50 text-gray-500 hover:text-gray-700'
+                  className={`inline-flex h-7 w-7 items-center justify-center border transition-colors ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-slate-800 text-slate-400 hover:text-slate-200'
+                    : 'border-gray-300 bg-gray-50 text-gray-500 hover:text-gray-700'
                     }`}
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -427,15 +428,15 @@ const SeguimientoPage = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar buque, destino, booking..."
-                    className={`w-full rounded-lg border py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-200 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                    className={`w-full border py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700/60 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-gray-50 text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
                   />
                 </div>
 
                 {/* Información */}
-                <div className={`rounded-lg border p-3 ${theme === 'dark' ? 'border-slate-800 bg-slate-800/50' : 'border-gray-100 bg-gray-50/50'}`}>
+                <div className={`border p-3 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/50' : 'border-gray-300 bg-gray-50/50'}`}>
                   <p className={`mb-2 text-[10px] uppercase tracking-[0.25em] ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
                     Información
                   </p>
@@ -462,13 +463,13 @@ const SeguimientoPage = () => {
                           key={vessel.vessel_name}
                           type="button"
                           onClick={() => handleVesselSelect(vessel)}
-                          className={`w-full rounded-lg border p-2.5 text-left transition-colors ${selectedVessel?.vessel_name === vessel.vessel_name
+                          className={`w-full border p-2.5 text-left transition-colors ${selectedVessel?.vessel_name === vessel.vessel_name
                             ? theme === 'dark'
                               ? 'border-sky-500/60 bg-sky-500/10'
                               : 'border-blue-500/60 bg-blue-50/50'
                             : theme === 'dark'
-                              ? 'border-slate-800 bg-slate-800/50 hover:border-slate-700 hover:bg-slate-800'
-                              : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-gray-100'
+                              ? 'border-slate-700/60 bg-slate-800/50 hover:border-slate-700 hover:bg-slate-800'
+                              : 'border-gray-300 bg-gray-50 hover:border-gray-300 hover:bg-gray-100'
                             }`}
                         >
                           <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>
@@ -501,9 +502,9 @@ const SeguimientoPage = () => {
             <button
               type="button"
               onClick={() => setIsListSidebarOpen(true)}
-              className={`absolute top-4 left-0 z-30 flex h-10 w-10 items-center justify-center rounded-r-lg border shadow-lg backdrop-blur-sm transition-colors ${theme === 'dark'
-                ? 'border-slate-700 bg-slate-900/90 text-slate-300 hover:text-sky-200'
-                : 'border-gray-200 bg-white/90 text-gray-600 hover:text-blue-600'
+              className={`absolute top-4 left-0 z-30 flex h-10 w-10 items-center justify-center border-r border-t border-b transition-colors ${theme === 'dark'
+                ? 'border-slate-700/60 bg-slate-900 text-slate-300 hover:text-sky-200'
+                : 'border-gray-300 bg-white text-gray-600 hover:text-blue-600'
                 }`}
             >
               <ChevronRight className="h-5 w-5" />
