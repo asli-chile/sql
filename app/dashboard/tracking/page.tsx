@@ -42,6 +42,8 @@ export default function TrackingPage() {
     const [searching, setSearching] = useState(false);
     const [user, setUser] = useState<SupabaseUser | null>(null);
     const [trackingCount, setTrackingCount] = useState<number>(0);
+    const [localRegistrosCount, setLocalRegistrosCount] = useState<number>(0);
+    const [localTransportesCount, setLocalTransportesCount] = useState<number>(0);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [shipments, setShipments] = useState<Registro[]>([]);
@@ -88,16 +90,59 @@ export default function TrackingPage() {
     // Listas para filtros (se podrían cargar de catálogos)
     const estadosPosibles = ['PENDIENTE', 'CONFIRMADO', 'CANCELADO'];
 
-    // Cargar contador de tracking
+    // Cargar contadores cuando currentUser esté disponible
     useEffect(() => {
-        const loadTrackingCount = async () => {
-            if (!currentUser) return;
+        const loadCounts = async () => {
+            if (!currentUser) {
+                setLocalRegistrosCount(0);
+                setLocalTransportesCount(0);
+                setTrackingCount(0);
+                return;
+            }
 
             try {
                 const supabase = createClient();
                 const isAdmin = currentUser.rol === 'admin';
                 const clienteNombre = currentUser.cliente_nombre?.trim();
                 const clientesAsignados = currentUser.clientes_asignados || [];
+
+                // Contar registros
+                let registrosQuery = supabase
+                    .from('registros')
+                    .select('*', { count: 'exact', head: true })
+                    .is('deleted_at', null);
+
+                if (!isAdmin) {
+                    if (currentUser.rol === 'cliente' && clienteNombre) {
+                        registrosQuery = registrosQuery.ilike('shipper', clienteNombre);
+                    } else if (clientesAsignados.length > 0) {
+                        registrosQuery = registrosQuery.in('shipper', clientesAsignados);
+                    } else {
+                        registrosQuery = registrosQuery.eq('id', 'NONE');
+                    }
+                }
+
+                const { count: rCount, error: rError } = await registrosQuery;
+                setLocalRegistrosCount(rError ? 0 : (rCount || 0));
+
+                // Contar transportes
+                let transportesQuery = supabase
+                    .from('transportes')
+                    .select('*', { count: 'exact', head: true })
+                    .is('deleted_at', null);
+
+                if (!isAdmin) {
+                    if (currentUser.rol === 'cliente' && clienteNombre) {
+                        transportesQuery = transportesQuery.eq('exportacion', clienteNombre);
+                    } else if (clientesAsignados.length > 0) {
+                        transportesQuery = transportesQuery.in('exportacion', clientesAsignados);
+                    } else {
+                        transportesQuery = transportesQuery.eq('id', 'NONE');
+                    }
+                }
+
+                const { count: tCount, error: tError } = await transportesQuery;
+                setLocalTransportesCount(tError ? 0 : (tCount || 0));
 
                 // Contar registros con tracking (todos los registros no cancelados)
                 let trackingQuery = supabase
@@ -119,12 +164,14 @@ export default function TrackingPage() {
                 const { count, error } = await trackingQuery;
                 setTrackingCount(error ? 0 : (count || 0));
             } catch (error) {
-                console.error('Error loading tracking count:', error);
+                console.error('Error loading counts:', error);
+                setLocalRegistrosCount(0);
+                setLocalTransportesCount(0);
                 setTrackingCount(0);
             }
         };
 
-        loadTrackingCount();
+        loadCounts();
     }, [currentUser]);
 
     // Cargar lista inicial
@@ -215,8 +262,8 @@ export default function TrackingPage() {
         {
             title: 'Módulos',
             items: [
-                { label: 'Embarques', id: '/registros', icon: Anchor, counter: registrosCount, tone: 'violet' as const },
-                { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' as const },
+                { label: 'Embarques', id: '/registros', icon: Anchor, counter: localRegistrosCount || registrosCount, tone: 'violet' as const },
+                { label: 'Transportes', id: '/transportes', icon: Truck, counter: localTransportesCount || transportesCount, tone: 'sky' as const },
                 { label: 'Documentos', id: '/documentos', icon: FileText },
                 { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
                 { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true, counter: trackingCount, tone: 'emerald' as const },
