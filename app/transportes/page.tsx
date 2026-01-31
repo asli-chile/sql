@@ -269,11 +269,15 @@ export default function TransportesPage() {
       if (isMounted) {
         setIsLoading(true);
       }
-      // Obtener el nombre del cliente desde currentUser
-      const clientName = currentUser?.nombre || currentUser?.email?.split('@')[0] || null;
+      // Pasar información del usuario directamente (rol, cliente_nombre, clientes_asignados)
+      const userInfo = currentUser ? {
+        rol: currentUser.rol,
+        cliente_nombre: currentUser.cliente_nombre || null,
+        clientes_asignados: currentUser.clientes_asignados || []
+      } : null;
       console.log('👤 Usuario actual:', currentUser);
-      console.log('🏢 Cliente para filtrar:', clientName);
-      const data = await fetchTransportes(clientName);
+      console.log('🏢 Info para filtrar:', userInfo);
+      const data = await fetchTransportes(userInfo);
       if (isMounted) {
         setRecords(data || []);
         setIsLoading(false);
@@ -327,9 +331,13 @@ export default function TransportesPage() {
   const reload = async () => {
     try {
       setIsLoading(true);
-      // Obtener el nombre del cliente desde currentUser
-      const clientName = currentUser?.nombre || currentUser?.email?.split('@')[0] || null;
-      const data = await fetchTransportes(clientName);
+      // Pasar información del usuario directamente (rol, cliente_nombre, clientes_asignados)
+      const userInfo = currentUser ? {
+        rol: currentUser.rol,
+        cliente_nombre: currentUser.cliente_nombre || null,
+        clientes_asignados: currentUser.clientes_asignados || []
+      } : null;
+      const data = await fetchTransportes(userInfo);
       setRecords(data);
     } catch (error) {
       console.error('[Transportes] Error recargando transportes:', error);
