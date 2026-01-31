@@ -991,14 +991,14 @@ export function DataTable({
               {canAdd && onAdd && (
                 <button
                   onClick={onAdd}
-                  aria-label="Nuevo registro"
-                  className={`${primaryActionClasses} flex items-center justify-center gap-2 h-10 w-[120px] flex-shrink-0`}
+                  aria-label="Nueva reserva"
+                  className={`${primaryActionClasses} flex items-center justify-center gap-2 h-10 w-[140px] flex-shrink-0`}
                 >
                   <Plus className="h-4 w-4" />
-                  <span className="text-xs font-semibold uppercase whitespace-nowrap">Nuevo</span>
+                  <span className="text-xs font-semibold uppercase whitespace-nowrap">Nueva Reserva</span>
                 </button>
               )}
-              <div className="relative w-[100px]">
+              <div className="relative w-[500px]">
                 <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
                 <input
                   type="search"
@@ -1217,7 +1217,7 @@ export function DataTable({
                 <span className="text-xs font-semibold uppercase whitespace-nowrap">Nuevo</span>
               </button>
             )}
-            <div className="relative w-[100px]">
+            <div className="relative w-[500px]">
               <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
               <input
                 type="search"
