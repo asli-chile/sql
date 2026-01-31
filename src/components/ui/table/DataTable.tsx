@@ -15,7 +15,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink, Copy, Truck } from 'lucide-react';
+import { Search, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink, Copy, Truck, Menu, Check, Clock } from 'lucide-react';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -131,6 +131,8 @@ export function DataTable({
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const [showReportGenerator, setShowReportGenerator] = useState(false);
   const [showSheetsPreview, setShowSheetsPreview] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [iframeKey, setIframeKey] = useState(0);
   const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
   const columnSizingRef = useRef<ColumnSizingState>({});
@@ -291,16 +293,20 @@ export function DataTable({
       if (contextMenuRef.current && contextMenu && !contextMenuRef.current.contains(event.target as Node)) {
         setContextMenu(null);
       }
+      // Cerrar menú hamburguesa si se hace click fuera
+      if (menuRef.current && isMenuOpen && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
     };
 
-    if (contextMenu) {
+    if (contextMenu || isMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [contextMenu]);
+  }, [contextMenu, isMenuOpen]);
 
   // Calcular ancho de la tabla dinámicamente
   useEffect(() => {
@@ -950,210 +956,387 @@ export function DataTable({
   ]);
 
   const renderToolbar = () => {
+    // Preparar las clases base de las tarjetas KPI
+    const cardBaseClasses = isDark
+      ? 'border border-slate-800/50 bg-slate-950/40 backdrop-blur-sm'
+      : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm';
+
+    // Detectar qué filtro de estado está activo
+    const estadoFilter = columnFilters.find(f => f.id === 'estado');
+    const estadoActivo = estadoFilter?.value as string | undefined;
+
+    // Clases para el menú desplegable
+    const dropdownClasses = `
+      absolute top-full right-0 mt-1 z-50 min-w-[180px] rounded-lg shadow-lg border
+      ${isDark 
+        ? 'bg-slate-900 border-slate-700' 
+        : 'bg-white border-gray-200'
+      }
+    `;
+
+    const menuItemClasses = `
+      w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2
+      ${isDark 
+        ? 'hover:bg-slate-800 text-slate-200' 
+        : 'hover:bg-gray-100 text-gray-700'
+      }
+    `;
+
     return (
       <div className="flex flex-col gap-2 sm:gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+        {/* Primera fila de botones */}
+        {viewMode === 'table' ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {canAdd && onAdd && (
+                <button
+                  onClick={onAdd}
+                  aria-label="Nuevo registro"
+                  className={`${primaryActionClasses} flex items-center justify-center gap-2 h-10 w-[120px] flex-shrink-0`}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="text-xs font-semibold uppercase whitespace-nowrap">Nuevo</span>
+                </button>
+              )}
+              <div className="relative w-[100px]">
+                <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
+                <input
+                  type="search"
+                  value={globalFilter ?? ''}
+                  onChange={handleGlobalSearchChange}
+                  placeholder="Buscar..."
+                  className={`w-full h-10 border pl-8 pr-3 text-xs transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
+                    ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
+                    : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
+                    }`}
+                />
+              </div>
+              {/* Menú hamburguesa */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setIsMenuOpen(!isMenuOpen)}
+                  className={`${toolbarButtonClasses} flex items-center justify-center gap-2 h-10 w-[120px] flex-shrink-0`}
+                  aria-label="Menú de acciones"
+                  aria-expanded={isMenuOpen}
+                >
+                  <Menu className="h-4 w-4" />
+                  <span className="text-xs whitespace-nowrap">Más</span>
+                </button>
+                {isMenuOpen && (
+                  <div className={dropdownClasses}>
+                    <div className="py-1">
+                      {canPreviewSheets && (
+                        <button
+                          onClick={() => {
+                            setShowSheetsPreview((prev) => !prev);
+                            setIsMenuOpen(false);
+                          }}
+                          className={menuItemClasses}
+                        >
+                          <Eye className="h-4 w-4" />
+                          {showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets
+                        </button>
+                      )}
+                      {onClearSelection && (
+                        <button
+                          onClick={() => {
+                            handleClearSelectionClick();
+                            setIsMenuOpen(false);
+                          }}
+                          className={`${menuItemClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          disabled={!hasSelection}
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Limpiar
+                        </button>
+                      )}
+                      {canDelete && onBulkDelete && (
+                        <button
+                          onClick={() => {
+                            handleBulkDeleteClick();
+                            setIsMenuOpen(false);
+                          }}
+                          className={`${menuItemClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'}`}
+                          disabled={!hasSelection}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Eliminar
+                          {hasSelection && (
+                            <span
+                              className={`ml-auto inline-flex items-center border px-1.5 py-0.5 text-[10px] font-medium rounded ${isDark
+                                ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                                : 'bg-red-100 text-red-700 border-red-300'
+                                }`}
+                            >
+                              {selectedCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setShowReportGenerator(true);
+                          setIsMenuOpen(false);
+                        }}
+                        className={menuItemClasses}
+                      >
+                        <Download className="h-4 w-4" />
+                        Exportar
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleResetTable();
+                          setIsMenuOpen(false);
+                        }}
+                        className={menuItemClasses}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Reset
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleToggleViewMode();
+                          setIsMenuOpen(false);
+                        }}
+                        className={menuItemClasses}
+                      >
+                        {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                        {viewMode === 'table' ? 'Tarjetas' : 'Tabla'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Tarjeta Total/Reservas */}
+              <button
+                onClick={() => {
+                  setColumnFilters(prev => prev.filter(f => f.id !== 'estado'));
+                }}
+                className={`${cardBaseClasses} px-3 py-2 transition-all hover:border-opacity-80 cursor-pointer h-10 ${!estadoActivo
+                  ? isDark
+                    ? 'bg-slate-800/60 border-slate-600/50'
+                    : 'bg-gray-100 border-gray-300'
+                  : ''
+                  }`}
+                aria-label="Mostrar todos los registros"
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Reservas
+                  </span>
+                  <span className={`text-sm font-medium ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
+                    {estadisticas.total}
+                  </span>
+                </div>
+              </button>
+
+              {/* Tarjeta Confirmadas */}
+              <button
+                onClick={() => {
+                  setColumnFilters(prev => {
+                    const filtered = prev.filter(f => f.id !== 'estado');
+                    return [...filtered, { id: 'estado', value: 'CONFIRMADO' }];
+                  });
+                }}
+                className={`${cardBaseClasses} px-2 py-2 transition-all hover:border-emerald-500/30 cursor-pointer h-10 ${estadoActivo === 'CONFIRMADO'
+                  ? isDark
+                    ? 'bg-emerald-900/40 border-emerald-600/50'
+                    : 'bg-emerald-50 border-emerald-300'
+                  : ''
+                  }`}
+                aria-label="Filtrar por confirmados"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Check className={`h-4 w-4 ${isDark ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  <span className={`text-sm font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                    {estadisticas.confirmadas}
+                  </span>
+                </div>
+              </button>
+
+              {/* Tarjeta Pendientes */}
+              <button
+                onClick={() => {
+                  setColumnFilters(prev => {
+                    const filtered = prev.filter(f => f.id !== 'estado');
+                    return [...filtered, { id: 'estado', value: 'PENDIENTE' }];
+                  });
+                }}
+                className={`${cardBaseClasses} px-2 py-2 transition-all hover:border-amber-500/30 cursor-pointer h-10 ${estadoActivo === 'PENDIENTE'
+                  ? isDark
+                    ? 'bg-amber-900/40 border-amber-600/50'
+                    : 'bg-amber-50 border-amber-300'
+                  : ''
+                  }`}
+                aria-label="Filtrar por pendientes"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Clock className={`h-4 w-4 ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />
+                  <span className={`text-sm font-semibold ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
+                    {estadisticas.pendientes}
+                  </span>
+                </div>
+              </button>
+
+              {/* Tarjeta Canceladas */}
+              <button
+                onClick={() => {
+                  setColumnFilters(prev => {
+                    const filtered = prev.filter(f => f.id !== 'estado');
+                    return [...filtered, { id: 'estado', value: 'CANCELADO' }];
+                  });
+                }}
+                className={`${cardBaseClasses} px-2 py-2 transition-all hover:border-rose-500/30 cursor-pointer h-10 ${estadoActivo === 'CANCELADO'
+                  ? isDark
+                    ? 'bg-rose-900/40 border-rose-600/50'
+                    : 'bg-rose-50 border-rose-300'
+                  : ''
+                  }`}
+                aria-label="Filtrar por cancelados"
+              >
+                <div className="flex items-center gap-1.5">
+                  <X className={`h-4 w-4 ${isDark ? 'text-rose-400' : 'text-rose-600'}`} />
+                  <span className={`text-sm font-semibold ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
+                    {estadisticas.canceladas}
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
             {canAdd && onAdd && (
               <button
                 onClick={onAdd}
                 aria-label="Nuevo registro"
-                className={`${primaryActionClasses} flex-col justify-center flex-shrink-0 px-4 sm:px-5 md:px-6 py-3 sm:py-3.5 md:py-4 min-h-[60px] sm:min-h-[68px] md:min-h-[76px] min-w-[140px] sm:min-w-[160px] md:min-w-[180px]`}
+                className={`${primaryActionClasses} flex items-center justify-center gap-2 h-10 w-[120px] flex-shrink-0`}
               >
-                <span className="text-[11px] sm:text-xs md:text-sm font-semibold leading-tight tracking-wide !text-white text-center uppercase">
-                  <span className="block">+ NUEVO</span>
-                  <span className="block">REGISTRO</span>
-                </span>
+                <Plus className="h-4 w-4" />
+                <span className="text-xs font-semibold uppercase whitespace-nowrap">Nuevo</span>
               </button>
             )}
-            <div className="relative flex-1 min-w-0 max-w-full">
-              <Search className={`pointer-events-none absolute left-2.5 sm:left-3 top-1/2 h-4 w-4 sm:h-5 sm:w-5 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
+            <div className="relative w-[100px]">
+              <Search className={`pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDark ? 'text-slate-400' : 'text-gray-400'}`} />
               <input
                 type="search"
                 value={globalFilter ?? ''}
                 onChange={handleGlobalSearchChange}
                 placeholder="Buscar..."
-                className={`w-full min-w-[120px] max-w-full border pl-8 sm:pl-10 md:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 text-xs sm:text-sm transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
+                className={`w-full h-10 border pl-8 pr-3 text-xs transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-offset-1 ${isDark
                   ? 'bg-slate-950/70 border-slate-800/70 text-slate-200 focus-visible:ring-sky-500/40 focus-visible:ring-offset-slate-950'
                   : 'bg-white border-gray-300 text-gray-700 focus-visible:ring-blue-400/40 focus-visible:ring-offset-white'
                   }`}
               />
             </div>
-            <button onClick={handleToggleViewMode} className={`${toolbarButtonClasses} flex-shrink-0 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5`}>
-              {viewMode === 'table' ? <Grid className="h-4 w-4 sm:h-5 sm:w-5" /> : <List className="h-4 w-4 sm:h-5 sm:w-5" />}
-              <span className="hidden xl:inline whitespace-nowrap">{viewMode === 'table' ? 'Tarjetas' : 'Tabla'}</span>
-            </button>
-          </div>
-          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 flex-shrink-0">
-            {canPreviewSheets && (
+            {/* Menú hamburguesa */}
+            <div className="relative" ref={menuRef}>
               <button
-                className={`${showSheetsPreview ? controlButtonActive : toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
-                onClick={() => setShowSheetsPreview((prev) => !prev)}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className={`${toolbarButtonClasses} flex items-center justify-center gap-2 h-10 w-[120px] flex-shrink-0`}
+                aria-label="Menú de acciones"
+                aria-expanded={isMenuOpen}
               >
-                <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden xl:inline whitespace-nowrap">{showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets</span>
+                <Menu className="h-4 w-4" />
+                <span className="text-xs whitespace-nowrap">Más</span>
               </button>
-            )}
-            {onClearSelection && (
-              <button
-                onClick={handleClearSelectionClick}
-                className={`${toolbarButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
-                disabled={!hasSelection}
-              >
-                <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="hidden lg:inline whitespace-nowrap">Limpiar</span>
-              </button>
-            )}
-            {canDelete && onBulkDelete && (
-              <button
-                onClick={handleBulkDeleteClick}
-                className={`${destructiveButtonClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
-                disabled={!hasSelection}
-              >
-                <Trash2 className={`h-4 w-4 sm:h-5 sm:w-5 ${isDark ? 'text-white' : 'text-black'}`} />
-                <span className={`hidden lg:inline whitespace-nowrap ${isDark ? 'text-white' : 'text-black'}`}>Eliminar</span>
-                {hasSelection && (
-                  <span
-                    className={`ml-1.5 inline-flex items-center border px-1.5 sm:px-2 py-0.5 text-[10px] font-medium ${isDark
-                      ? 'bg-white/20 text-white'
-                      : 'bg-black/15 text-black'
-                      }`}
-                  >
-                    {selectedCount}
-                  </span>
-                )}
-              </button>
-            )}
+              {isMenuOpen && (
+                <div className={dropdownClasses}>
+                  <div className="py-1">
+                    {canPreviewSheets && (
+                      <button
+                        onClick={() => {
+                          setShowSheetsPreview((prev) => !prev);
+                          setIsMenuOpen(false);
+                        }}
+                        className={menuItemClasses}
+                      >
+                        <Eye className="h-4 w-4" />
+                        {showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets
+                      </button>
+                    )}
+                    {onClearSelection && (
+                      <button
+                        onClick={() => {
+                          handleClearSelectionClick();
+                          setIsMenuOpen(false);
+                        }}
+                        className={`${menuItemClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        disabled={!hasSelection}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        Limpiar
+                      </button>
+                    )}
+                    {canDelete && onBulkDelete && (
+                      <button
+                        onClick={() => {
+                          handleBulkDeleteClick();
+                          setIsMenuOpen(false);
+                        }}
+                        className={`${menuItemClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''} ${isDark ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'}`}
+                        disabled={!hasSelection}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Eliminar
+                        {hasSelection && (
+                          <span
+                            className={`ml-auto inline-flex items-center border px-1.5 py-0.5 text-[10px] font-medium rounded ${isDark
+                              ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                              : 'bg-red-100 text-red-700 border-red-300'
+                              }`}
+                          >
+                            {selectedCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowReportGenerator(true);
+                        setIsMenuOpen(false);
+                      }}
+                      className={menuItemClasses}
+                    >
+                      <Download className="h-4 w-4" />
+                      Exportar
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleResetTable();
+                        setIsMenuOpen(false);
+                      }}
+                      className={menuItemClasses}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Reset
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleToggleViewMode();
+                        setIsMenuOpen(false);
+                      }}
+                      className={menuItemClasses}
+                    >
+                      {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
+                      {viewMode === 'table' ? 'Tarjetas' : 'Tabla'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 flex-shrink-0">
-            <button className={`${toolbarButtonClasses} px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`} onClick={() => setShowReportGenerator(true)}>
-              <Download className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden sm:inline whitespace-nowrap">Exportar</span>
-            </button>
-            <button
-              className={`${toolbarButtonClasses} border-sky-500/60 text-sky-200 hover:bg-sky-500/10 px-2 sm:px-3 md:px-5 py-2 sm:py-2.5 flex-shrink-0`}
-              onClick={handleResetTable}
-            >
-              <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="hidden xl:inline whitespace-nowrap">Reset</span>
-            </button>
+        )}
+
+        {/* Segunda fila de botones - Vacía ahora que el buscador está en la primera fila */}
+        {viewMode === 'table' ? (
+          <div className="flex flex-wrap items-center gap-2">
           </div>
-          {/* Tarjetas de estadísticas */}
-          {viewMode === 'table' && (() => {
-            const cardBaseClasses = isDark
-              ? 'border border-slate-800/50 bg-slate-950/40 backdrop-blur-sm'
-              : 'border border-gray-200/60 bg-white/80 backdrop-blur-sm';
-
-            // Detectar qué filtro de estado está activo
-            const estadoFilter = columnFilters.find(f => f.id === 'estado');
-            const estadoActivo = estadoFilter?.value as string | undefined;
-
-            return (
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
-                {/* Tarjeta Total/Reservas */}
-                <button
-                  onClick={() => {
-                    setColumnFilters(prev => prev.filter(f => f.id !== 'estado'));
-                  }}
-                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-opacity-80 cursor-pointer ${!estadoActivo
-                    ? isDark
-                      ? 'bg-slate-800/60 border-slate-600/50'
-                      : 'bg-gray-100 border-gray-300'
-                    : ''
-                    }`}
-                  aria-label="Mostrar todos los registros"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
-                      Reservas
-                    </span>
-                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
-                      {estadisticas.total}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Tarjeta Confirmadas */}
-                <button
-                  onClick={() => {
-                    setColumnFilters(prev => {
-                      const filtered = prev.filter(f => f.id !== 'estado');
-                      return [...filtered, { id: 'estado', value: 'CONFIRMADO' }];
-                    });
-                  }}
-                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-emerald-500/30 cursor-pointer ${estadoActivo === 'CONFIRMADO'
-                    ? isDark
-                      ? 'bg-emerald-900/40 border-emerald-600/50'
-                      : 'bg-emerald-50 border-emerald-300'
-                    : ''
-                    }`}
-                  aria-label="Filtrar por confirmados"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-emerald-400/80' : 'text-emerald-600'}`}>
-                      Confirmadas
-                    </span>
-                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                      {estadisticas.confirmadas}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Tarjeta Pendientes */}
-                <button
-                  onClick={() => {
-                    setColumnFilters(prev => {
-                      const filtered = prev.filter(f => f.id !== 'estado');
-                      return [...filtered, { id: 'estado', value: 'PENDIENTE' }];
-                    });
-                  }}
-                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-amber-500/30 cursor-pointer ${estadoActivo === 'PENDIENTE'
-                    ? isDark
-                      ? 'bg-amber-900/40 border-amber-600/50'
-                      : 'bg-amber-50 border-amber-300'
-                    : ''
-                    }`}
-                  aria-label="Filtrar por pendientes"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-amber-400/80' : 'text-amber-600'}`}>
-                      Pendientes
-                    </span>
-                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-amber-300' : 'text-amber-700'}`}>
-                      {estadisticas.pendientes}
-                    </span>
-                  </div>
-                </button>
-
-                {/* Tarjeta Canceladas */}
-                <button
-                  onClick={() => {
-                    setColumnFilters(prev => {
-                      const filtered = prev.filter(f => f.id !== 'estado');
-                      return [...filtered, { id: 'estado', value: 'CANCELADO' }];
-                    });
-                  }}
-                  className={`${cardBaseClasses} px-3 sm:px-4 py-2 sm:py-2.5 transition-all hover:border-rose-500/30 cursor-pointer ${estadoActivo === 'CANCELADO'
-                    ? isDark
-                      ? 'bg-rose-900/40 border-rose-600/50'
-                      : 'bg-rose-50 border-rose-300'
-                    : ''
-                    }`}
-                  aria-label="Filtrar por cancelados"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] sm:text-xs font-medium uppercase tracking-wide ${isDark ? 'text-rose-400/80' : 'text-rose-600'}`}>
-                      Canceladas
-                    </span>
-                    <span className={`text-sm sm:text-base font-medium ${isDark ? 'text-rose-300' : 'text-rose-700'}`}>
-                      {estadisticas.canceladas}
-                    </span>
-                  </div>
-                </button>
-              </div>
-            );
-          })()}
-        </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+          </div>
+        )}
       </div>
     );
   };
@@ -1568,12 +1751,20 @@ export function DataTable({
                 const key = record.id ?? `registro-${record.refAsli ?? index}`;
                 const estado = record.estado ?? 'SIN ESTADO';
                 const estadoColor = estado === 'CONFIRMADO'
-                  ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'
+                  ? isDark
+                    ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-500/30'
+                    : 'bg-emerald-50 text-emerald-700 border border-emerald-300'
                   : estado === 'PENDIENTE'
-                    ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
+                    ? isDark
+                      ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
+                      : 'bg-amber-50 text-amber-700 border border-amber-300'
                     : estado === 'CANCELADO'
-                      ? 'bg-rose-500/15 text-rose-200 border border-rose-500/30'
-                      : 'bg-slate-500/15 text-slate-200 border border-slate-500/30';
+                      ? isDark
+                        ? 'bg-rose-500/15 text-rose-200 border border-rose-500/30'
+                        : 'bg-rose-50 text-rose-700 border border-rose-300'
+                      : isDark
+                        ? 'bg-slate-500/15 text-slate-200 border border-slate-500/30'
+                        : 'bg-gray-100 text-gray-700 border border-gray-300';
 
                 const handleCardContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
                   event.preventDefault();
@@ -1757,79 +1948,79 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Ref ASLI</p>
-                        <h3 className="text-base font-semibold text-slate-100 sm:text-lg">{record.refAsli || 'Sin referencia'}</h3>
+                        <p className={`text-[11px] uppercase tracking-[0.14em] ${isDark ? 'text-slate-500' : 'text-gray-500'}`}>Ref ASLI</p>
+                        <h3 className={`text-base font-semibold sm:text-lg ${isDark ? 'text-slate-100' : 'text-gray-900'}`}>{record.refAsli || 'Sin referencia'}</h3>
                       </div>
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold ${estadoColor}`}>
                         {estado}
                       </span>
                     </div>
 
-                    <div className="mt-3 grid gap-2.5 text-slate-300 text-[11px] sm:text-xs">
+                    <div className={`mt-3 grid gap-2.5 text-[11px] sm:text-xs ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">REF ASLI</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.refAsli || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>REF ASLI</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.refAsli || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">REF CLIENTE</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.refCliente || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>REF CLIENTE</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.refCliente || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">NAVIERA</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.naviera || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>NAVIERA</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.naviera || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">NAVE</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{formatNave()}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>NAVE</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatNave()}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">MERCANCIA</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.especie || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>MERCANCIA</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.especie || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">BOOKING</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.booking || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>BOOKING</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.booking || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">CONTENEDOR</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONTENEDOR</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">POL</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.pol || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>POL</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.pol || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">ETD</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{formatDate(record.etd)}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ETD</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.etd)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">POD</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{record.pod || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>POD</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.pod || '-'}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">ETA</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{formatDate(record.eta)}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ETA</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.eta)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">TRÁNSITO</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{calculateTransito()}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>TRÁNSITO</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{calculateTransito()}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-bold flex-shrink-0">CONSIGNATARIO</span>
-                        <span className="flex-1 border-b border-dotted border-slate-600"></span>
-                        <span className="font-semibold text-right text-slate-200">{(record as any).consignatario || '-'}</span>
+                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONSIGNATARIO</span>
+                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{(record as any).consignatario || '-'}</span>
                       </div>
                     </div>
 

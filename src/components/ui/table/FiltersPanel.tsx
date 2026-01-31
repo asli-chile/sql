@@ -69,23 +69,23 @@ export function FiltersPanel({
   const hasActiveFilters = columnFilters.length > 0 || normalizedExecutiveFilter !== '';
 
   const getFilterStyles = (hasFilter: boolean) => {
-    const baseStyles = "w-full px-3 py-2 text-sm border-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
+    const baseStyles = "w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all duration-200 shadow-sm";
     if (hasFilter) {
       return theme === 'dark'
-        ? `${baseStyles} border-blue-500 bg-blue-900/40 font-semibold text-white shadow-lg shadow-blue-900/30`
-        : `${baseStyles} border-blue-600 bg-blue-100 font-semibold text-gray-900 shadow-md`;
+        ? `${baseStyles} border-blue-500/60 bg-blue-900/30 font-medium text-white shadow-md shadow-blue-900/20 backdrop-blur-sm`
+        : `${baseStyles} border-blue-500/60 bg-blue-50/80 font-medium text-gray-900 shadow-sm backdrop-blur-sm`;
     } else {
       return theme === 'dark'
-        ? `${baseStyles} border-gray-600 bg-gray-700 text-white placeholder:text-gray-400`
-        : `${baseStyles} border-gray-300 bg-white text-gray-900 placeholder:text-gray-500`;
+        ? `${baseStyles} border-gray-600/50 bg-gray-800/50 text-gray-200 placeholder:text-gray-500 hover:border-gray-500/60 hover:bg-gray-700/50`
+        : `${baseStyles} border-gray-300/60 bg-white/80 text-gray-900 placeholder:text-gray-500 hover:border-gray-400/80 hover:bg-gray-50/50`;
     }
   };
 
   const getLabelStyles = (hasFilter: boolean) => {
     if (hasFilter) {
-      return theme === 'dark' ? 'text-blue-300 font-bold flex items-center gap-1.5' : 'text-blue-700 font-bold flex items-center gap-1.5';
+      return theme === 'dark' ? 'text-blue-300 font-semibold flex items-center gap-1.5 text-xs' : 'text-blue-700 font-semibold flex items-center gap-1.5 text-xs';
     } else {
-      return theme === 'dark' ? 'text-gray-400' : 'text-gray-600';
+      return theme === 'dark' ? 'text-gray-400 text-xs font-medium' : 'text-gray-600 text-xs font-medium';
     }
   };
 
@@ -213,23 +213,26 @@ export function FiltersPanel({
   const importantColumns = ['estado', 'naviera', 'shipper', 'pod', 'deposito', 'pol', 'especie', 'naveInicial'];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {!compact && (
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-gray-200/20 dark:border-gray-700/30 pb-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-100">Filtros por columna</h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Aplica filtros para refinar los resultados</p>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+              <Filter className="h-4 w-4 text-blue-500" />
+              Filtros Avanzados
+            </h3>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Refina tu búsqueda con filtros específicos</p>
           </div>
           {hasActiveFilters && (
             <button
               onClick={handleClearAll}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${theme === 'dark'
-                  ? 'border border-blue-500/70 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20'
-                  : 'border border-blue-500 bg-blue-50 text-blue-600 hover:bg-blue-100'
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all duration-200 hover:scale-105 ${theme === 'dark'
+                  ? 'border border-blue-500/50 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 shadow-sm shadow-blue-900/20'
+                  : 'border border-blue-500/50 bg-blue-50 text-blue-700 hover:bg-blue-100 shadow-sm'
                 }`}
             >
               <RotateCcw className="h-3 w-3" />
-              Limpiar
+              Limpiar todo
             </button>
           )}
         </div>
@@ -237,34 +240,41 @@ export function FiltersPanel({
 
       {/* Resumen de filtros activos */}
       {activeFiltersSummary.length > 0 && (
-        <div className={`rounded-lg border-2 p-3 space-y-2 ${theme === 'dark'
-            ? 'border-blue-500/50 bg-blue-900/20'
-            : 'border-blue-300 bg-blue-50'
+        <div className={`rounded-xl border p-3 space-y-3 backdrop-blur-sm ${theme === 'dark'
+            ? 'border-blue-500/30 bg-gradient-to-r from-blue-900/20 to-indigo-900/20 shadow-lg shadow-blue-900/10'
+            : 'border-blue-200/60 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 shadow-md'
           }`}>
           <div className="flex items-center gap-2">
-            <Filter className={`h-4 w-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-            <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>
-              Filtros activos ({activeFiltersSummary.length})
-            </span>
+            <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+              <Filter className={`h-3.5 w-3.5 ${theme === 'dark' ? 'text-blue-300' : 'text-blue-600'}`} />
+            </div>
+            <div>
+              <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'}`}>
+                Filtros activos
+              </span>
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${theme === 'dark' ? 'bg-blue-500/30 text-blue-200' : 'bg-blue-200 text-blue-800'}`}>
+                {activeFiltersSummary.length}
+              </span>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {activeFiltersSummary.map((filter: { label: string; value: string; onClear: () => void }, index: number) => (
               <div
                 key={index}
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${theme === 'dark'
-                    ? 'bg-blue-800/50 border border-blue-600/50 text-blue-200'
-                    : 'bg-blue-100 border border-blue-300 text-blue-700'
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 hover:scale-105 ${theme === 'dark'
+                    ? 'bg-blue-800/40 border border-blue-600/40 text-blue-200 hover:bg-blue-700/50'
+                    : 'bg-blue-100/80 border border-blue-300/60 text-blue-700 hover:bg-blue-200/80'
                   }`}
               >
-                <span className="font-semibold">{filter.label}:</span>
-                <span>{filter.value}</span>
+                <span className="font-semibold text-[10px] uppercase tracking-wide">{filter.label}:</span>
+                <span className="text-xs">{filter.value}</span>
                 <button
                   onClick={filter.onClear}
-                  className={`ml-1 hover:opacity-70 transition-opacity ${theme === 'dark' ? 'text-blue-300' : 'text-blue-600'
+                  className={`ml-1 p-0.5 rounded-full hover:bg-black/10 transition-colors ${theme === 'dark' ? 'text-blue-300 hover:bg-white/10' : 'text-blue-600'
                     }`}
                   aria-label={`Quitar filtro ${filter.label}`}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </div>
             ))}
@@ -272,12 +282,19 @@ export function FiltersPanel({
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Filtro de Ejecutivo (separado) */}
-        <div className="space-y-1">
-          <label className={`text-xs font-medium ${getLabelStyles(normalizedExecutiveFilter !== '')}`}>
-            {normalizedExecutiveFilter && <Filter className="h-3 w-3 inline" />}
-            Ejecutivo {normalizedExecutiveFilter && <span className="text-xs">(✓)</span>}
+        <div className="space-y-2">
+          <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(normalizedExecutiveFilter !== '')}`}>
+            {normalizedExecutiveFilter && <Filter className="h-3 w-3" />}
+            <span className="flex items-center gap-1">
+              Ejecutivo
+              {normalizedExecutiveFilter && (
+                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                  ✓
+                </span>
+              )}
+            </span>
           </label>
           <select
             value={normalizedExecutiveFilter}
@@ -287,7 +304,7 @@ export function FiltersPanel({
             }}
             className={getFilterStyles(normalizedExecutiveFilter !== '')}
           >
-            <option value="">Todos</option>
+            <option value="">Todos los ejecutivos</option>
             {ejecutivosUnicos.map((ejecutivo) => (
               <option key={ejecutivo} value={ejecutivo}>
                 {ejecutivo}
@@ -308,10 +325,17 @@ export function FiltersPanel({
 
           if (column.id === 'shipper') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Cliente {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Cliente
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -322,7 +346,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos los clientes</option>
                   {clientesUnicos.map((cliente) => (
                     <option key={cliente} value={cliente}>
                       {cliente}
@@ -349,10 +373,17 @@ export function FiltersPanel({
               : navesFiltrables;
 
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Nave {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Nave
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -363,7 +394,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todas</option>
+                  <option value="">Todas las naves</option>
                   {navesFiltradas.map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
@@ -376,10 +407,17 @@ export function FiltersPanel({
 
           if (column.id === 'pod') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Destino {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Destino
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -390,7 +428,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos los destinos</option>
                   {destinosUnicos.map((destino) => (
                     <option key={destino} value={destino}>
                       {destino}
@@ -403,10 +441,17 @@ export function FiltersPanel({
 
           if (column.id === 'deposito') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Depósito {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Depósito
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -417,7 +462,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos los depósitos</option>
                   {depositosUnicos.map((deposito) => (
                     <option key={deposito} value={deposito}>
                       {deposito}
@@ -430,10 +475,17 @@ export function FiltersPanel({
 
           if (column.id === 'pol') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Puerto de Salida (POL) {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Puerto de Salida (POL)
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -444,7 +496,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos los puertos</option>
                   {polsUnicos.map((pol) => (
                     <option key={pol} value={pol}>
                       {pol}
@@ -457,10 +509,17 @@ export function FiltersPanel({
 
           if (column.id === 'estado') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Estado {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Estado
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -471,7 +530,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todos</option>
+                  <option value="">Todos los estados</option>
                   <option value="PENDIENTE">PENDIENTE</option>
                   <option value="CONFIRMADO">CONFIRMADO</option>
                   <option value="CANCELADO">CANCELADO</option>
@@ -482,10 +541,17 @@ export function FiltersPanel({
 
           if (column.id === 'naviera') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Naviera {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Naviera
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -496,7 +562,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todas</option>
+                  <option value="">Todas las navieras</option>
                   {navierasUnicas.map((naviera) => (
                     <option key={naviera} value={naviera}>
                       {naviera}
@@ -509,10 +575,17 @@ export function FiltersPanel({
 
           if (column.id === 'especie') {
             return (
-              <div key={column.id} className="space-y-1">
-                <label className={`text-xs font-medium ${getLabelStyles(hasFilter)}`}>
-                  {hasFilter && <Filter className="h-3 w-3 inline" />}
-                  Especie {hasFilter && <span className="text-xs">(✓)</span>}
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Especie
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
                 </label>
                 <select
                   value={filterValue}
@@ -523,7 +596,7 @@ export function FiltersPanel({
                   }}
                   className={getFilterStyles(hasFilter)}
                 >
-                  <option value="">Todas</option>
+                  <option value="">Todas las especies</option>
                   {especiesUnicas.map((especie) => (
                     <option key={especie} value={especie}>
                       {especie}

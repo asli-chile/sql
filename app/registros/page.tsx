@@ -13,7 +13,6 @@ import { PageWrapper } from '@/components/PageWrapper';
 // Importar todos los componentes existentes
 import { DataTable } from '@/components/ui/table/DataTable';
 import { FiltersPanel } from '@/components/ui/table/FiltersPanel';
-import { ColumnToggleInline } from '@/components/ui/table/ColumnToggleInline';
 import { createRegistrosColumns } from '@/components/columns/registros-columns';
 import { EditModal } from '@/components/modals/EditModal';
 import { AddModal } from '@/components/modals/AddModal';
@@ -82,10 +81,6 @@ export default function RegistrosPage() {
   const handleTableInstanceReady = useCallback((table: any, states: {
     executiveFilter: string;
     setExecutiveFilter: (value: string) => void;
-    columnToggleOptions: Array<{ id: string; header: string; visible: boolean }>;
-    handleToggleColumn: (columnId: string) => void;
-    handleToggleAllColumns: (visible: boolean) => void;
-    alwaysVisibleColumns: string[];
     navesFiltrables: Array<[string, string]>;
   }) => {
     setTableInstance(table);
@@ -93,16 +88,25 @@ export default function RegistrosPage() {
     setTableStates((prevStates) => {
       // Si la tabla cambió, usar los nuevos estados
       if (prevStates === null || prevStates.executiveFilter !== states.executiveFilter) {
-        return states;
+        return {
+          ...states,
+          // Mantener valores anteriores para las propiedades que ya no se proporcionan
+          columnToggleOptions: prevStates?.columnToggleOptions || [],
+          handleToggleColumn: prevStates?.handleToggleColumn || (() => {}),
+          handleToggleAllColumns: prevStates?.handleToggleAllColumns || (() => {}),
+          alwaysVisibleColumns: prevStates?.alwaysVisibleColumns || [],
+        };
       }
-      // Si solo cambió executiveFilter, actualizar solo ese campo
+      // Si la tabla no cambió pero los estados sí, actualizar solo los estados necesarios
       return {
         ...prevStates,
         executiveFilter: states.executiveFilter,
         setExecutiveFilter: states.setExecutiveFilter,
+        navesFiltrables: states.navesFiltrables,
       };
     });
   }, []);
+
   // Estados existentes del sistema de registros
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
@@ -2881,19 +2885,7 @@ export default function RegistrosPage() {
               </div>
             )}
 
-            {/* Sección de Configuración de Columnas */}
-            {tableStates && (
-              <div className="space-y-4">
-                <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Columnas</h3>
-                <ColumnToggleInline
-                  columns={tableStates.columnToggleOptions}
-                  onToggleColumn={tableStates.handleToggleColumn}
-                  onToggleAll={tableStates.handleToggleAllColumns}
-                  alwaysVisibleColumns={tableStates.alwaysVisibleColumns}
-                />
-              </div>
-            )}
-          </div>
+            </div>
         </aside>
 
         {/* Modals */}
