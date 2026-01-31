@@ -715,7 +715,7 @@ export default function TransportesPage() {
       <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         <div className="text-center space-y-6 p-8 max-w-md">
           <div className="flex justify-center">
-            <div className={`p-6 rounded-3xl ${theme === 'dark' ? 'bg-amber-500/10' : 'bg-amber-50'}`}>
+            <div className={`p-6 border ${theme === 'dark' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'}`}>
               <AlertTriangle className={`h-16 w-16 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
             </div>
           </div>
@@ -725,14 +725,14 @@ export default function TransportesPage() {
               Estamos trabajando en mejoras importantes para el módulo de transportes.
             </p>
           </div>
-          <div className={`p-4 rounded-xl border ${theme === 'dark' ? 'border-sky-500/20 bg-sky-500/5' : 'border-blue-200 bg-blue-50'}`}>
+          <div className={`p-4 border ${theme === 'dark' ? 'border-sky-500/20 bg-sky-500/5' : 'border-blue-200 bg-blue-50'}`}>
             <p className="text-sm font-medium">Pronto estará disponible con nuevas funcionalidades de sincronización y navegación.</p>
           </div>
           <button
             onClick={() => router.push('/dashboard')}
-            className={`px-6 py-3 rounded-xl font-bold transition-all ${theme === 'dark'
-              ? 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
-              : 'bg-white hover:bg-gray-100 text-gray-900 border border-gray-200 shadow-sm'
+            className={`px-6 py-3 font-bold transition-all border ${theme === 'dark'
+              ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700'
+              : 'bg-white hover:bg-gray-100 text-gray-900 border-gray-200 shadow-sm'
               }`}
           >
             Volver al Dashboard
@@ -771,13 +771,13 @@ export default function TransportesPage() {
         {/* Content */}
         <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
           <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'}`}>
-            <div className="flex flex-wrap items-center gap-4 pl-4 pr-2 sm:px-6 py-3 sm:py-4">
+            <div className="flex flex-wrap items-center gap-3 pl-3 pr-2 sm:px-4 py-2">
               {/* Botón hamburguesa para móvil */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700'
-                  : 'text-gray-600 hover:bg-gray-100'
+                className={`lg:hidden flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                  : 'text-gray-600 hover:bg-gray-100 border-gray-300'
                   }`}
                 aria-label="Abrir menú"
               >
@@ -787,9 +787,9 @@ export default function TransportesPage() {
               {isSidebarCollapsed && (
                 <button
                   onClick={toggleSidebar}
-                  className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                    ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
-                    : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                  className={`hidden lg:flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                    ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
+                    : 'text-gray-600 hover:bg-gray-100 border-gray-300'
                     }`}
                   aria-label="Expandir menú lateral"
                 >
@@ -797,14 +797,14 @@ export default function TransportesPage() {
                 </button>
               )}
 
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-sky-500/15' : 'bg-blue-100'}`}>
-                  <Truck className={`h-7 w-7 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className={`hidden sm:flex h-10 w-10 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/15 border-sky-500/20' : 'bg-blue-100 border-blue-200'}`}>
+                  <Truck className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
                 </div>
                 <div>
-                  <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
-                  <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Transportes Terrestres</h1>
-                  <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Registro y coordinación de transportes de contenedores y mercancías</p>
+                  <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
+                  <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Transportes Terrestres</h1>
+                  <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Registro y coordinación de transportes</p>
                 </div>
               </div>
 
@@ -813,9 +813,9 @@ export default function TransportesPage() {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(true)}
-                    className={`inline-flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-lg transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20 focus:ring-sky-500/50'
-                      : 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 focus:ring-blue-500/50'
+                    className={`inline-flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold text-white border transition-colors focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'bg-sky-600 hover:bg-sky-500 border-sky-500/60 focus:ring-sky-500/50'
+                      : 'bg-blue-600 hover:bg-blue-500 border-blue-500/60 focus:ring-blue-500/50'
                       }`}
                   >
                     <Plus className="h-4 w-4" />
@@ -825,9 +825,9 @@ export default function TransportesPage() {
                 )}
                 <button
                   onClick={() => setShowProfileModal(true)}
-                  className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                    ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                  className={`hidden sm:flex items-center gap-2 border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
+                    ? 'border-slate-700/60 text-slate-300 hover:border-sky-400/60 hover:text-sky-200 bg-slate-800/60'
+                    : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                     }`}
                   title={currentUser?.nombre || user?.email}
                 >
@@ -838,25 +838,25 @@ export default function TransportesPage() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
-            <div className="mx-auto w-full max-w-[1600px] px-4 pb-10 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
-              {/* Búsqueda */}
-              <section className={`rounded-3xl border shadow-xl backdrop-blur-xl p-5 ${theme === 'dark'
-                ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-                : 'border-gray-200 bg-white shadow-md'
-                }`}>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <main className="flex-1 overflow-hidden min-w-0 w-full flex flex-col">
+            <div className="flex-1 overflow-hidden min-w-0 flex flex-col">
+              <div className="mx-auto w-full max-w-full px-2 pt-2 sm:px-3 sm:pt-3 flex-1 flex flex-col min-h-0">
+                {/* Búsqueda */}
+                <section className={`border p-3 flex-shrink-0 mb-2 ${theme === 'dark'
+                  ? 'border-slate-700/60 bg-slate-800/60'
+                  : 'border-gray-200 bg-white'
+                  }`}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex-1">
-                    <p className={`text-[11px] uppercase tracking-[0.25em] mb-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Búsqueda y Filtros</p>
                     <div className="relative">
-                      <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                      <Search className={`absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                       <input
                         type="text"
                         placeholder="Buscar por booking, contenedor, nave, naviera..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className={`w-full pl-10 pr-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors ${theme === 'dark'
-                          ? 'border-slate-700 bg-slate-800/50 text-slate-100 placeholder-slate-400 focus:ring-sky-500/50 focus:border-sky-500'
+                        className={`w-full pl-8 pr-3 py-2 text-sm border focus:outline-none focus:ring-2 focus:ring-offset-0 transition-colors ${theme === 'dark'
+                          ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 placeholder-slate-400 focus:ring-sky-500/50 focus:border-sky-500'
                           : 'border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:ring-blue-500/50 focus:border-blue-500'
                           }`}
                       />
@@ -864,14 +864,14 @@ export default function TransportesPage() {
                   </div>
 
                   {/* Botones de acción */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     {/* Controles de ordenamiento sutiles */}
                     <div className="flex items-center gap-1">
                       <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as keyof TransporteRecord)}
-                        className={`px-2 py-1.5 text-xs font-medium transition-colors rounded border ${theme === 'dark'
-                          ? 'border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 focus:ring-1 focus:ring-sky-500/50'
+                        className={`px-2 py-1 text-xs font-medium transition-colors border ${theme === 'dark'
+                          ? 'border-slate-700/60 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 focus:ring-1 focus:ring-sky-500/50'
                           : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50 focus:ring-1 focus:ring-blue-500/50'
                           }`}
                       >
@@ -883,8 +883,8 @@ export default function TransportesPage() {
                       </select>
                       <button
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                        className={`p-1.5 text-xs font-medium transition-colors rounded border ${theme === 'dark'
-                          ? 'border-slate-700 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
+                        className={`p-1 text-xs font-medium transition-colors border ${theme === 'dark'
+                          ? 'border-slate-700/60 bg-slate-800/50 text-slate-400 hover:bg-slate-700/50'
                           : 'border-gray-300 bg-white text-gray-500 hover:bg-gray-50'
                           }`}
                         title={`Ordenar ${sortOrder === 'asc' ? 'descendente' : 'ascendente'}`}
@@ -898,24 +898,24 @@ export default function TransportesPage() {
                     </div>
 
                     {/* Botones de vista */}
-                    <div className={`flex items-center rounded-lg border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+                    <div className={`flex items-center border ${theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'}`}>
                       <button
                         onClick={() => setViewMode('table')}
-                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-l-lg ${viewMode === 'table'
+                        className={`px-2 py-1.5 text-xs font-medium transition-colors border-r ${viewMode === 'table'
                           ? theme === 'dark'
-                            ? 'bg-sky-600 text-white'
-                            : 'bg-blue-600 text-white'
+                            ? 'bg-sky-600 text-white border-sky-500'
+                            : 'bg-blue-600 text-white border-blue-500'
                           : theme === 'dark'
-                            ? 'text-slate-300 hover:bg-slate-800'
-                            : 'text-gray-700 hover:bg-gray-100'
+                            ? 'text-slate-300 hover:bg-slate-800 border-slate-700/60'
+                            : 'text-gray-700 hover:bg-gray-100 border-gray-300'
                           }`}
                         title="Vista de tabla"
                       >
-                        <List className="h-4 w-4" />
+                        <List className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => setViewMode('cards')}
-                        className={`px-3 py-2 text-sm font-medium transition-colors rounded-r-lg ${viewMode === 'cards'
+                        className={`px-2 py-1.5 text-xs font-medium transition-colors ${viewMode === 'cards'
                           ? theme === 'dark'
                             ? 'bg-sky-600 text-white'
                             : 'bg-blue-600 text-white'
@@ -925,24 +925,24 @@ export default function TransportesPage() {
                           }`}
                         title="Vista de tarjetas"
                       >
-                        <Grid className="h-4 w-4" />
+                        <Grid className="h-3.5 w-3.5" />
                       </button>
                     </div>
 
                     <button
                       onClick={() => setShowFilters(!showFilters)}
-                      className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${showFilters
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors border ${showFilters
                         ? theme === 'dark'
-                          ? 'bg-sky-600 text-white hover:bg-sky-500'
-                          : 'bg-blue-600 text-white hover:bg-blue-500'
+                          ? 'bg-sky-600 text-white hover:bg-sky-500 border-sky-500'
+                          : 'bg-blue-600 text-white hover:bg-blue-500 border-blue-500'
                         : theme === 'dark'
-                          ? 'border-slate-700 text-slate-300 hover:border-sky-500 hover:text-sky-200'
+                          ? 'border-slate-700/60 text-slate-300 hover:border-sky-500 hover:text-sky-200 bg-slate-800/60'
                           : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
                         }`}
                     >
-                      <Filter className="h-4 w-4" />
+                      <Filter className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Filtros</span>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                     </button>
 
                     {selectedRows.size > 0 && (
@@ -953,9 +953,9 @@ export default function TransportesPage() {
                         <button
                           onClick={handleDeleteSelected}
                           disabled={isDeleting}
-                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
-                            ? 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
-                            : 'bg-red-600 hover:bg-red-500 focus:ring-2 focus:ring-red-500/50'
+                          className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${theme === 'dark'
+                            ? 'bg-red-600 hover:bg-red-500 border-red-500/60 focus:ring-2 focus:ring-red-500/50'
+                            : 'bg-red-600 hover:bg-red-500 border-red-500/60 focus:ring-2 focus:ring-red-500/50'
                             }`}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -963,9 +963,9 @@ export default function TransportesPage() {
                         </button>
                         <button
                           onClick={() => setSelectedRows(new Set())}
-                          className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${theme === 'dark'
-                            ? 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
-                            : 'bg-gray-600 hover:bg-gray-500 focus:ring-2 focus:ring-gray-500/50'
+                          className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white border transition-colors ${theme === 'dark'
+                            ? 'bg-gray-600 hover:bg-gray-500 border-gray-500/60 focus:ring-2 focus:ring-gray-500/50'
+                            : 'bg-gray-600 hover:bg-gray-500 border-gray-500/60 focus:ring-2 focus:ring-gray-500/50'
                             }`}
                         >
                           <X className="h-4 w-4" />
@@ -977,9 +977,9 @@ export default function TransportesPage() {
                     {filteredRecords.length > 0 && (
                       <button
                         onClick={handleSelectAll}
-                        className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-white shadow transition-colors ${theme === 'dark'
-                          ? 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
-                          : 'bg-blue-600 hover:bg-blue-500 focus:ring-2 focus:ring-blue-500/50'
+                        className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-semibold text-white border transition-colors ${theme === 'dark'
+                          ? 'bg-blue-600 hover:bg-blue-500 border-blue-500/60 focus:ring-2 focus:ring-blue-500/50'
+                          : 'bg-blue-600 hover:bg-blue-500 border-blue-500/60 focus:ring-2 focus:ring-blue-500/50'
                           }`}
                       >
                         {selectedRows.size === filteredRecords.length ? (
@@ -1000,8 +1000,8 @@ export default function TransportesPage() {
 
                 {/* Panel de filtros */}
                 {showFilters && (
-                  <div className={`mt-4 p-4 rounded-xl border ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-900/50'
+                  <div className={`mt-4 p-4 border ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-slate-800/60'
                     : 'border-gray-200 bg-gray-50'
                     }`}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -1012,8 +1012,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.booking}
                           onChange={(e) => setFilters(prev => ({ ...prev, booking: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar booking..."
@@ -1026,8 +1026,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.contenedor}
                           onChange={(e) => setFilters(prev => ({ ...prev, contenedor: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar contenedor..."
@@ -1040,8 +1040,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.nave}
                           onChange={(e) => setFilters(prev => ({ ...prev, nave: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar nave..."
@@ -1054,8 +1054,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.naviera}
                           onChange={(e) => setFilters(prev => ({ ...prev, naviera: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar naviera..."
@@ -1068,8 +1068,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.especie}
                           onChange={(e) => setFilters(prev => ({ ...prev, especie: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar especie..."
@@ -1082,8 +1082,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.deposito}
                           onChange={(e) => setFilters(prev => ({ ...prev, deposito: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar depósito..."
@@ -1096,8 +1096,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.conductor}
                           onChange={(e) => setFilters(prev => ({ ...prev, conductor: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar conductor..."
@@ -1110,8 +1110,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.transportista}
                           onChange={(e) => setFilters(prev => ({ ...prev, transportista: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar transportista..."
@@ -1124,8 +1124,8 @@ export default function TransportesPage() {
                           type="text"
                           value={filters.semana}
                           onChange={(e) => setFilters(prev => ({ ...prev, semana: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                           placeholder="Filtrar semana..."
@@ -1138,8 +1138,8 @@ export default function TransportesPage() {
                         <select
                           value={filters.atControlada}
                           onChange={(e) => setFilters(prev => ({ ...prev, atControlada: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                         >
@@ -1154,8 +1154,8 @@ export default function TransportesPage() {
                         <select
                           value={filters.late}
                           onChange={(e) => setFilters(prev => ({ ...prev, late: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                         >
@@ -1170,8 +1170,8 @@ export default function TransportesPage() {
                         <select
                           value={filters.extraLate}
                           onChange={(e) => setFilters(prev => ({ ...prev, extraLate: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                         >
@@ -1186,8 +1186,8 @@ export default function TransportesPage() {
                         <select
                           value={filters.porteo}
                           onChange={(e) => setFilters(prev => ({ ...prev, porteo: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                         >
@@ -1202,8 +1202,8 @@ export default function TransportesPage() {
                         <select
                           value={filters.ingresadoStacking}
                           onChange={(e) => setFilters(prev => ({ ...prev, ingresadoStacking: e.target.value }))}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                            ? 'border-slate-600 bg-slate-800 text-slate-100 focus:ring-sky-500/50'
+                          className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                            ? 'border-slate-700/60 bg-slate-800/50 text-slate-100 focus:ring-sky-500/50'
                             : 'border-gray-300 bg-white text-gray-900 focus:ring-blue-500/50'
                             }`}
                         >
@@ -1232,7 +1232,7 @@ export default function TransportesPage() {
                             porteo: '',
                             ingresadoStacking: ''
                           })}
-                          className={`w-full px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${theme === 'dark'
+                          className={`w-full px-3 py-2 border text-sm font-medium transition-colors ${theme === 'dark'
                             ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
                             : 'border-gray-300 text-gray-700 hover:bg-gray-100'
                             }`}
@@ -1243,15 +1243,15 @@ export default function TransportesPage() {
                     </div>
                   </div>
                 )}
-              </section>
+                </section>
 
-              {/* Tabla principal */}
-              {viewMode === 'table' ? (
-                <section className={`rounded-3xl border shadow-xl backdrop-blur-xl overflow-hidden w-full ${theme === 'dark'
-                  ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-                  : 'border-gray-200 bg-white shadow-md'
-                  }`}>
-                  <div className="max-h-[70vh] overflow-y-auto overflow-x-auto">
+                {/* Tabla principal */}
+                {viewMode === 'table' ? (
+                  <section className={`border overflow-hidden w-full flex-1 flex flex-col min-h-0 ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-slate-800/60'
+                    : 'border-gray-200 bg-white'
+                    }`}>
+                    <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
                     <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                       }`}>
                       <thead className={`sticky top-0 z-10 backdrop-blur-sm border-b ${theme === 'dark'
@@ -1562,16 +1562,16 @@ export default function TransportesPage() {
                             </tr>
                           ))
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                </section>
-              ) : (
-                /* Vista de tarjetas */
-                <section className={`rounded-3xl border shadow-xl backdrop-blur-xl p-6 ${theme === 'dark'
-                  ? 'border-slate-800/70 bg-slate-950/70 shadow-slate-950/30'
-                  : 'border-gray-200 bg-white shadow-md'
-                  }`}>
+                        </tbody>
+                      </table>
+                    </div>
+                  </section>
+                ) : (
+                  /* Vista de tarjetas */
+                  <section className={`border p-6 flex-1 overflow-y-auto min-h-0 ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-slate-800/60'
+                    : 'border-gray-200 bg-white'
+                    }`}>
                   {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="flex items-center gap-3">
@@ -1626,29 +1626,31 @@ export default function TransportesPage() {
                     </div>
                   )}
                 </section>
-              )}
+                )}
+              </div>
             </div>
           </main>
+        </div>
 
-          {/* Modal para agregar transporte */}
-          <AddTransporteModal
+        {/* Modal para agregar transporte */}
+        <AddTransporteModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onSuccess={reload}
-          />
+        />
 
-          {/* Modal de perfil de usuario */}
-          <UserProfileModal
+        {/* Modal de perfil de usuario */}
+        <UserProfileModal
             isOpen={showProfileModal}
             onClose={() => setShowProfileModal(false)}
             userInfo={currentUser}
             onUserUpdate={(updatedUser) => {
               setCurrentUser({ ...currentUser, ...updatedUser });
             }}
-          />
+        />
 
-          {/* Modal de papelera */}
-          <TrashModalTransportes
+        {/* Modal de papelera */}
+        <TrashModalTransportes
             isOpen={isTrashModalOpen}
             onClose={() => setIsTrashModalOpen(false)}
             onRestore={async () => {
@@ -1662,10 +1664,10 @@ export default function TransportesPage() {
             onError={(message) => {
               console.error(message);
             }}
-          />
+        />
 
-          {/* Modal para editar fechas de stacking */}
-          <SimpleStackingModal
+        {/* Modal para editar fechas de stacking */}
+        <SimpleStackingModal
             isOpen={isDateTimeModalOpen}
             onClose={() => {
               setIsDateTimeModalOpen(false);
@@ -1675,19 +1677,19 @@ export default function TransportesPage() {
             onSave={(updatedRecord: TransporteRecord) => {
               setRecords(prev => prev.map(r => r.id === updatedRecord.id ? updatedRecord : r));
             }}
-          />
+        />
 
-          {/* Menú contextual */}
-          {
-            contextMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setContextMenu(null)}
-                />
-                <div
-                  className={`fixed z-50 min-w-[200px] rounded-lg border shadow-xl ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-900'
+        {/* Menú contextual */}
+        {
+          contextMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setContextMenu(null)}
+              />
+              <div
+                  className={`fixed z-50 min-w-[200px] border ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-slate-800/60'
                     : 'border-gray-200 bg-white'
                     }`}
                   style={{
@@ -1720,34 +1722,34 @@ export default function TransportesPage() {
                       <span>{isDeleting ? 'Eliminando…' : 'Eliminar'}</span>
                     </button>
                   </div>
-                </div>
-              </>
-            )
-          }
+              </div>
+            </>
+          )
+        }
 
-          {/* Modal de confirmación de eliminación */}
-          {
-            deleteConfirm && (
+        {/* Modal de confirmación de eliminación */}
+        {
+          deleteConfirm && (
+            <div
+              className="fixed inset-0 z-[1300] flex items-center justify-center px-4 py-6 backdrop-blur-sm"
+              onClick={handleCancelDelete}
+              role="presentation"
+              style={{
+                backgroundColor: theme === 'dark' ? 'rgba(2, 6, 23, 0.8)' : 'rgba(0, 0, 0, 0.5)',
+              }}
+            >
               <div
-                className="fixed inset-0 z-[1300] flex items-center justify-center px-4 py-6 backdrop-blur-sm"
-                onClick={handleCancelDelete}
-                role="presentation"
-                style={{
-                  backgroundColor: theme === 'dark' ? 'rgba(2, 6, 23, 0.8)' : 'rgba(0, 0, 0, 0.5)',
-                }}
+                className={`w-full max-w-md border p-6 ${theme === 'dark'
+                  ? 'border-slate-700/60 bg-slate-800/60'
+                  : 'border-gray-200 bg-white'
+                  }`}
+                onClick={(event) => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="delete-confirm-title"
               >
-                <div
-                  className={`w-full max-w-md rounded-3xl border p-6 shadow-2xl ${theme === 'dark'
-                    ? 'border-white/10 bg-slate-950/90'
-                    : 'border-gray-200 bg-white'
-                    }`}
-                  onClick={(event) => event.stopPropagation()}
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="delete-confirm-title"
-                >
                   <div className="flex items-start gap-4">
-                    <span className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${theme === 'dark'
+                    <span className={`inline-flex h-12 w-12 items-center justify-center border ${theme === 'dark'
                       ? 'border-amber-400/40 bg-amber-500/10 text-amber-200'
                       : 'border-amber-400/60 bg-amber-50 text-amber-600'
                       }`}>
@@ -1775,9 +1777,9 @@ export default function TransportesPage() {
                       type="button"
                       onClick={handleCancelDelete}
                       disabled={isDeleting}
-                      className={`inline-flex items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-60 ${theme === 'dark'
-                        ? 'border-slate-700/70 text-slate-200 hover:border-slate-500 hover:text-white'
-                        : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900'
+                      className={`inline-flex items-center justify-center gap-2 border px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${theme === 'dark'
+                        ? 'border-slate-700/60 text-slate-200 hover:border-slate-500 hover:text-white bg-slate-800/60'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900 bg-white'
                         }`}
                     >
                       Cancelar
@@ -1786,7 +1788,7 @@ export default function TransportesPage() {
                       type="button"
                       onClick={handleConfirmDelete}
                       disabled={isDeleting}
-                      className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-rose-500 to-red-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 border border-red-500/60 px-4 py-2 text-sm font-semibold text-white transition-colors focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {isDeleting ? (
                         <>
@@ -1799,12 +1801,11 @@ export default function TransportesPage() {
                     </button>
                   </div>
                 </div>
-              </div>
-            )
-          }
-        </div >
-      </div >
-    </EditingCellProvider >
+            </div>
+          )
+        }
+      </div>
+    </EditingCellProvider>
   );
 }
 

@@ -210,7 +210,7 @@ export function TransporteCard({
   const hasPdf = bookingKey && bookingDocuments.has(bookingKey);
 
   return (
-    <div className={`relative rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${isSelected
+    <div className={`relative border-2 transition-all duration-200 ${isSelected
       ? theme === 'dark' ? 'border-sky-500 bg-slate-800/50' : 'border-blue-500 bg-blue-50'
       : theme === 'dark' ? 'border-slate-700 bg-slate-900/50 hover:border-slate-600' : 'border-gray-200 bg-white hover:border-gray-300'
       }`} onContextMenu={onContextMenu}>
@@ -234,7 +234,7 @@ export function TransporteCard({
             </span>
           </div>
           {transporte.atmosfera_controlada && (
-            <span className={`px-3 py-1 text-xs rounded-full font-bold ${theme === 'dark' ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+            <span className={`px-3 py-1 text-xs border font-bold ${theme === 'dark' ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-300'}`}>
               AT CONTROLADA
             </span>
           )}
@@ -244,7 +244,7 @@ export function TransporteCard({
       {/* Contenido principal */}
       <div className="p-3 space-y-3">
         {/* Información de reserva */}
-        <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'}`}>
+        <div className={`p-2 border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/60' : 'bg-gray-50 border-gray-200'}`}>
           <span className={`text-xs font-black uppercase tracking-wider block mb-2 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Información de Reserva
           </span>
@@ -287,13 +287,13 @@ export function TransporteCard({
               )}
               {(transporte.registro_id || transporte.booking) && (
                 <button onClick={() => router.push(transporte.registro_id ? `/registros?id=${transporte.registro_id}` : `/registros?booking=${transporte.booking}`)}
-                  className={`p-1 rounded-md ${theme === 'dark' ? 'hover:bg-slate-700 text-sky-400' : 'hover:bg-gray-100 text-blue-600'}`}>
+                  className={`p-1 border ${theme === 'dark' ? 'hover:bg-slate-700 text-sky-400 border-slate-700/60' : 'hover:bg-gray-100 text-blue-600 border-gray-300'}`}>
                   <ExternalLink className="h-3 w-3" />
                 </button>
               )}
               {hasPdf && (
                 <button onClick={() => onDownloadBooking(transporte.booking!)} disabled={downloadingBooking === transporte.booking}
-                  className={`p-1 rounded-sm ${theme === 'dark' ? 'hover:bg-slate-700 text-sky-400' : 'hover:bg-gray-100 text-blue-600'}`}>
+                  className={`p-1 border ${theme === 'dark' ? 'hover:bg-slate-700 text-sky-400 border-slate-700/60' : 'hover:bg-gray-100 text-blue-600 border-gray-300'}`}>
                   {downloadingBooking === transporte.booking ? <RefreshCcw className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                 </button>
               )}
@@ -385,7 +385,7 @@ export function TransporteCard({
         </div>
 
         {/* Planta */}
-        <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'}`}>
+        <div className={`p-2 border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/60' : 'bg-gray-50 border-gray-200'}`}>
           <span className={`text-xs font-black uppercase tracking-wider block mb-2 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Presentación en Planta</span>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1 text-center">
@@ -412,7 +412,7 @@ export function TransporteCard({
         </div>
 
         {/* Transportista */}
-        <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'}`}>
+        <div className={`p-2 border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700/60' : 'bg-gray-50 border-gray-200'}`}>
           <span className={`text-xs font-black uppercase tracking-wider block mb-2 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Información Transportista</span>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1 text-center">
@@ -440,11 +440,11 @@ export function TransporteCard({
         <button onClick={() => {
           const content = `📦 CONTENEDOR: ${transporte.contenedor || 'N/A'}\n🚢 Booking: ${transporte.booking || 'N/A'}`;
           navigator.clipboard.writeText(content).then(() => alert('Copiado!'));
-        }} className={`px-4 py-2 rounded-lg font-black text-sm ${theme === 'dark' ? 'bg-sky-600 text-white' : 'bg-blue-600 text-white'}`}>
+        }} className={`px-4 py-2 border font-black text-sm ${theme === 'dark' ? 'bg-sky-600 text-white border-sky-500/60' : 'bg-blue-600 text-white border-blue-500/60'}`}>
           📋 Copiar
         </button>
         <button onClick={handleSendEmail} disabled={sendingEmail || !canEdit}
-          className={`px-4 py-2 rounded-lg font-black text-sm ${theme === 'dark' ? 'bg-green-600 text-white' : 'bg-green-600 text-white'}`}>
+          className={`px-4 py-2 border font-black text-sm ${theme === 'dark' ? 'bg-green-600 text-white border-green-500/60' : 'bg-green-600 text-white border-green-500/60'}`}>
           {sendingEmail ? 'Enviando...' : 'Gmail'}
         </button>
       </div>
