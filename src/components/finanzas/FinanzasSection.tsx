@@ -221,7 +221,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
     return (
       <div className={`flex items-center justify-center py-12 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="animate-spin h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p>Cargando información financiera...</p>
         </div>
       </div>
@@ -262,7 +262,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
     <div className="space-y-6">
       {/* Tabs de Navegación */}
       <div className="flex justify-end mb-4">
-        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-lg p-1 border border-gray-200 dark:border-slate-700">
+        <div className={`flex items-center gap-2 p-1 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-gray-300'}`}>
           <button
             onClick={() => setActiveTab('resumen')}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${activeTab === 'resumen'
@@ -300,7 +300,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
         <>
           {/* Resumen de KPIs */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+            <div className={`border p-4 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className={`text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   Ingresos Totales
@@ -312,7 +312,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
               </p>
             </div>
 
-            <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+            <div className={`border p-4 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className={`text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   Costos Totales
@@ -324,7 +324,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
               </p>
             </div>
 
-            <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+            <div className={`border p-4 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className={`text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   Margen Total
@@ -339,7 +339,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
               </p>
             </div>
 
-            <div className={`rounded-xl border p-4 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+            <div className={`border p-4 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
               <div className="flex items-center justify-between mb-2">
                 <p className={`text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                   Total Embarques
@@ -353,7 +353,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
           </div>
 
           {/* Tabla de costos por embarque */}
-          <div className={`rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+          <div className={`border overflow-hidden ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
             <div className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
               <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 Costos e Ingresos por Embarque
@@ -452,7 +452,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
           {/* Reportes por cliente y naviera */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Ingresos por cliente */}
-            <div className={`rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+            <div className={`border overflow-hidden ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
               <div className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
                 <h2 className={`text-lg font-semibold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   <Users className="h-5 w-5" />
@@ -494,7 +494,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
             </div>
 
             {/* Costos por naviera */}
-            <div className={`rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+            <div className={`border overflow-hidden ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800' : 'border-gray-300 bg-white'}`}>
               <div className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
                 <h2 className={`text-lg font-semibold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   <Building2 className="h-5 w-5" />

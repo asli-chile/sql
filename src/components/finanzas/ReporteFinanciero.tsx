@@ -131,7 +131,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
             <div className="flex justify-end gap-3 print:hidden">
                 <button
                     onClick={handlePrint}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${isDark
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors border ${isDark
                         ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
                         : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                         }`}
@@ -142,14 +142,14 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                 <button
                     onClick={handleDownloadPDF}
                     disabled={downloading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${isDark
+                    className={`flex items-center gap-2 px-4 py-2 font-medium transition-colors border ${isDark
                         ? 'bg-blue-600 text-white hover:bg-blue-700'
                         : 'bg-blue-600 text-white hover:bg-blue-700'
                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                     {downloading ? (
                         <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            <div className="animate-spin h-4 w-4 border-b-2 border-white"></div>
                             <span>Generando PDF...</span>
                         </>
                     ) : (
@@ -166,7 +166,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
             {/* Report Content to Capture */}
             <div
                 ref={reportRef}
-                className={`p-8 rounded-xl space-y-8 ${isDark ? 'bg-slate-900 text-slate-100' : 'bg-white text-gray-900'
+                className={`p-8 space-y-8 ${isDark ? 'bg-slate-900 text-slate-100' : 'bg-white text-gray-900'
                     }`}
             >
                 {/* Report Header */}
@@ -179,7 +179,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                             </p>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm font-medium">ASLI Gestión Logística</p>
+                            <p className="text-sm font-medium">ASLI, Logística y Comercio Exterior</p>
                             <p className={`text-xs ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Departamento de Finanzas</p>
                         </div>
                     </div>
@@ -187,9 +187,9 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
 
                 {/* KPIs Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className={`p-4 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className={`p-4 border ${isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-gray-50 border-gray-300'}`}>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-green-500/10 text-green-500">
+                            <div className={`p-2 border ${isDark ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-green-50 border-green-200 text-green-600'}`}>
                                 <TrendingUp className="w-5 h-5" />
                             </div>
                             <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Ingresos Totales</span>
@@ -200,9 +200,9 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                         </p>
                     </div>
 
-                    <div className={`p-4 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className={`p-4 border ${isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-gray-50 border-gray-300'}`}>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
+                            <div className={`p-2 border ${isDark ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-red-50 border-red-200 text-red-600'}`}>
                                 <TrendingDown className="w-5 h-5" />
                             </div>
                             <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Costos Totales</span>
@@ -213,9 +213,9 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                         </p>
                     </div>
 
-                    <div className={`p-4 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className={`p-4 border ${isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-gray-50 border-gray-300'}`}>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                            <div className={`p-2 border ${isDark ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
                                 <DollarSign className="w-5 h-5" />
                             </div>
                             <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Margen Total</span>
@@ -228,9 +228,9 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                         </p>
                     </div>
 
-                    <div className={`p-4 rounded-lg border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className={`p-4 border ${isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-gray-50 border-gray-300'}`}>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="p-2 rounded-lg bg-purple-500/10 text-purple-500">
+                            <div className={`p-2 border ${isDark ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' : 'bg-purple-50 border-purple-200 text-purple-600'}`}>
                                 <PieChartIcon className="w-5 h-5" />
                             </div>
                             <span className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>Margen %</span>
@@ -245,7 +245,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                 {/* Charts Section 1: Income vs Costs & Breakdown */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Top Clients Chart */}
-                    <div className={`p-6 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                    <div className={`p-6 border ${isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-gray-300'}`}>
                         <h3 className="text-lg font-semibold mb-6">Ingresos por Cliente (Top 5)</h3>
                         <div className="h-[300px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
@@ -264,7 +264,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                     </div>
 
                     {/* Cost Breakdown Chart */}
-                    <div className={`p-6 rounded-xl border ${isDark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                    <div className={`p-6 border ${isDark ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-gray-300'}`}>
                         <h3 className="text-lg font-semibold mb-6">Desglose de Costos</h3>
                         <div className="h-[300px] w-full flex items-center justify-center">
                             <ResponsiveContainer width="100%" height="100%">
@@ -295,7 +295,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                     {/* Top Clients Table */}
                     <div>
                         <h3 className="text-lg font-semibold mb-4">Detalle por Cliente</h3>
-                        <div className={`overflow-hidden rounded-lg border ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+                        <div className={`overflow-hidden border ${isDark ? 'border-slate-700/60' : 'border-gray-300'}`}>
                             <table className="w-full text-sm text-left">
                                 <thead className={`text-xs uppercase ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
                                     <tr>
@@ -320,7 +320,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
                     {/* Top Navieras Table */}
                     <div>
                         <h3 className="text-lg font-semibold mb-4">Costos por Naviera</h3>
-                        <div className={`overflow-hidden rounded-lg border ${isDark ? 'border-slate-700' : 'border-gray-200'}`}>
+                        <div className={`overflow-hidden border ${isDark ? 'border-slate-700/60' : 'border-gray-300'}`}>
                             <table className="w-full text-sm text-left">
                                 <thead className={`text-xs uppercase ${isDark ? 'bg-slate-800 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
                                     <tr>
@@ -345,7 +345,7 @@ export function ReporteFinanciero({ reporte }: ReporteFinancieroProps) {
 
                 {/* Footer Note */}
                 <div className={`text-center text-xs pt-8 border-t ${isDark ? 'text-slate-500 border-slate-700' : 'text-gray-400 border-gray-200'}`}>
-                    <p>Este documento es confidencial y para uso interno exclusivo de ASLI Gestión Logística.</p>
+                    <p>Este documento es confidencial y para uso interno exclusivo de ASLI, Logística y Comercio Exterior.</p>
                 </div>
             </div>
         </div>

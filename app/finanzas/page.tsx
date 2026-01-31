@@ -434,7 +434,7 @@ export default function FinanzasPage() {
   if (!user || !isRodrigo) {
     return (
       <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-        <div className={`rounded-xl border p-8 text-center max-w-md ${theme === 'dark' ? 'border-slate-800 bg-slate-900' : 'border-gray-200 bg-white shadow-lg'}`}>
+        <div className={`border p-8 text-center max-w-md ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
           <AlertCircle className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
           <h2 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Acceso Restringido</h2>
           <p className={`mb-6 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -442,7 +442,7 @@ export default function FinanzasPage() {
           </p>
           <button
             onClick={() => router.push('/dashboard')}
-            className="px-6 py-3 rounded-lg text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+            className="px-6 py-3 border text-lg font-medium text-white bg-blue-600 border-blue-500 hover:bg-blue-700 transition-colors"
           >
             Volver al Dashboard
           </button>
@@ -452,7 +452,7 @@ export default function FinanzasPage() {
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Overlay para móvil */}
       {isMobileMenuOpen && (
         <div
@@ -474,14 +474,14 @@ export default function FinanzasPage() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white shadow-sm'} print:hidden`}>
-          <div className="flex flex-wrap items-center gap-4 pl-4 pr-2 sm:px-6 py-3 sm:py-4">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'} print:hidden`}>
+          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'text-slate-300 hover:bg-slate-700'
-                : 'text-gray-600 hover:bg-gray-100'
+              className={`lg:hidden flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                 }`}
               aria-label="Abrir menú"
             >
@@ -491,9 +491,9 @@ export default function FinanzasPage() {
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'text-gray-600 hover:bg-gray-100 border border-gray-300'
+                className={`hidden lg:flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                   }`}
                 aria-label="Expandir menú lateral"
               >
@@ -502,20 +502,17 @@ export default function FinanzasPage() {
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`hidden sm:flex h-12 w-12 items-center justify-center rounded-xl ${theme === 'dark' ? 'bg-green-500/15' : 'bg-green-100'}`}>
-                <DollarSign className={`h-7 w-7 ${theme === 'dark' ? 'text-green-300' : 'text-green-600'}`} />
-              </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.3em] sm:tracking-[0.4em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Financiero</p>
-                <h1 className={`text-xl sm:text-2xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Finanzas</h1>
-                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Control de costos, ingresos y márgenes por embarque</p>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Financiero</p>
+                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Finanzas</h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Control de costos, ingresos y márgenes por embarque</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
               <button
                 onClick={() => setShowFilters(prev => !prev)}
-                className={`inline-flex items-center gap-2 rounded-full border px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold transition-colors ${showFilters
+                className={`inline-flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors ${showFilters
                   ? theme === 'dark'
                     ? 'bg-sky-600 text-white border-sky-600'
                     : 'bg-blue-600 text-white border-blue-600'
@@ -534,7 +531,7 @@ export default function FinanzasPage() {
                 <Filter className="h-4 w-4" />
                 <span className="hidden sm:inline">Filtros</span>
                 {hasActiveFilters && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
+                  <span className={`text-xs px-1.5 py-0.5 ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
                     }`}>
                     {[
                       selectedSeason,
@@ -552,9 +549,9 @@ export default function FinanzasPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-800/70 text-slate-300 hover:border-sky-400/60 hover:text-sky-200'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white shadow-sm'
+                className={`hidden sm:flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 hover:border-sky-500/60 hover:text-sky-200'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-700'
                   }`}
                 title={userInfo?.nombre || userInfo?.email}
               >
@@ -569,7 +566,7 @@ export default function FinanzasPage() {
           <div className="mx-auto w-full max-w-[1600px] px-4 pt-4 space-y-4 sm:px-6 sm:pt-6 sm:space-y-6 lg:px-8 lg:space-y-6 xl:px-10 xl:space-y-8">
             {/* Panel de Filtros */}
             {showFilters && (
-              <div className={`rounded-xl border p-4 sm:p-6 shadow-lg ${theme === 'dark' ? 'border-slate-800/70 bg-gradient-to-br from-slate-950/80 to-slate-900/60' : 'border-gray-200 bg-white'}`}>
+              <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Filtros
@@ -578,9 +575,9 @@ export default function FinanzasPage() {
                     {hasActiveFilters && (
                       <button
                         onClick={handleClearFilters}
-                        className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${theme === 'dark'
-                          ? 'text-slate-300 hover:bg-slate-700'
-                          : 'text-gray-600 hover:bg-gray-100'
+                        className={`text-xs px-3 py-1.5 border transition-colors ${theme === 'dark'
+                          ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                           }`}
                       >
                         Limpiar filtros
@@ -588,9 +585,9 @@ export default function FinanzasPage() {
                     )}
                     <button
                       onClick={() => setShowFilters(false)}
-                      className={`p-1.5 rounded-lg transition-colors ${theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
+                      className={`p-1.5 border transition-colors ${theme === 'dark'
+                        ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                        : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                         }`}
                       aria-label="Cerrar filtros"
                     >
@@ -607,7 +604,7 @@ export default function FinanzasPage() {
                     <select
                       value={selectedSeason ?? ''}
                       onChange={(e) => setSelectedSeason(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -654,7 +651,7 @@ export default function FinanzasPage() {
                         )}
                       </div>
                     </div>
-                    <div className={`max-h-48 overflow-y-auto rounded-lg border p-3 space-y-2 ${theme === 'dark'
+                    <div className={`max-h-48 overflow-y-auto border p-3 space-y-2 ${theme === 'dark'
                       ? 'border-slate-700 bg-slate-800'
                       : 'border-gray-300 bg-white'
                       }`}>
@@ -710,7 +707,7 @@ export default function FinanzasPage() {
                     <select
                       value={selectedEjecutivo ?? ''}
                       onChange={(e) => setSelectedEjecutivo(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -733,7 +730,7 @@ export default function FinanzasPage() {
                     <select
                       value={selectedEstado ?? ''}
                       onChange={(e) => setSelectedEstado(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -753,7 +750,7 @@ export default function FinanzasPage() {
                     <select
                       value={selectedNaviera ?? ''}
                       onChange={(e) => setSelectedNaviera(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -776,7 +773,7 @@ export default function FinanzasPage() {
                     <select
                       value={selectedEspecie ?? ''}
                       onChange={(e) => setSelectedEspecie(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -799,7 +796,7 @@ export default function FinanzasPage() {
                     <select
                       value={selectedNave ?? ''}
                       onChange={(e) => setSelectedNave(e.target.value || null)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -823,7 +820,7 @@ export default function FinanzasPage() {
                       type="date"
                       value={fechaDesde}
                       onChange={(e) => setFechaDesde(e.target.value)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}
@@ -839,7 +836,7 @@ export default function FinanzasPage() {
                       type="date"
                       value={fechaHasta}
                       onChange={(e) => setFechaHasta(e.target.value)}
-                      className={`w-full rounded-lg border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
                         ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                         : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                         }`}

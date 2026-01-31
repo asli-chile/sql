@@ -79,7 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             >
                                 <img
                                     src="https://asli.cl/img/logo.png?v=1761679285274&t=1761679285274"
-                                    alt="ASLI Gestión Logística"
+                                    alt="ASLI, Logística y Comercio Exterior"
                                     className="h-6 w-6 object-contain"
                                     onError={(event) => {
                                         event.currentTarget.style.display = 'none';
@@ -91,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                     className={`text-xs sm:text-sm font-medium truncate ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
                                         }`}
                                 >
-                                    ASLI Gestión Logística
+                                    ASLI, Logística y Comercio Exterior
                                 </p>
                                 <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
                                     Plataforma Operativa

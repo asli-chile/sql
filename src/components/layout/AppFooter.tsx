@@ -84,7 +84,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
       className={`border border-slate-700/60 bg-slate-800/60 p-8 ${className}`}
     >
       <div className="grid gap-8 lg:grid-cols-4">
-        <FooterSection title="ASLI GESTIÓN LOGÍSTICA">
+        <FooterSection title="ASLI, LOGÍSTICA Y COMERCIO EXTERIOR">
           <p className="text-base text-slate-200 leading-relaxed">
             Coordinamos operaciones marítimas, terrestres y documentales para exportadores que necesitan visibilidad
             total y respuesta inmediata.
@@ -188,7 +188,7 @@ export const AppFooter = ({ className = '' }: AppFooterProps) => {
       </div>
 
       <div className="mt-8 flex flex-col gap-3 border-t border-slate-700/60 pt-6 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
-        <p>© {new Date().getFullYear()} ASLI Gestión Logística. Todos los derechos reservados.</p>
+        <p>© {new Date().getFullYear()} ASLI, Logística y Comercio Exterior. Todos los derechos reservados.</p>
         <div className="flex flex-wrap items-center gap-4 text-slate-400">
           <span>Operación 24/7</span>
           <span className="hidden h-1 w-1 bg-slate-600 md:inline-block" aria-hidden="true" />

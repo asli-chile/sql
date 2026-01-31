@@ -217,7 +217,7 @@ export const GlobalLoading = () => {
         {/* Título */}
         <div className="space-y-2">
           <h1 className={`text-xl font-semibold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            ASLI Gestión Logística
+            ASLI, Logística y Comercio Exterior
           </h1>
           <p className={`text-sm ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>
             {currentStep}

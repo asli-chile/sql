@@ -287,7 +287,7 @@ const AuthPage = () => {
         <aside className="hidden flex-col justify-between bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-6 text-white md:flex overflow-y-auto">
           <div className="space-y-5">
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-1.5 text-xs font-semibold uppercase tracking-wider text-white/95">
-              Plataforma ASLI
+              ASLI, Logística y Comercio Exterior
             </div>
             <div className="space-y-3">
               <h2 className="text-2xl sm:text-3xl font-bold leading-tight text-white">

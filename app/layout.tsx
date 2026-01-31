@@ -15,7 +15,7 @@ const firaSans = Fira_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "ASLI Gestión Logística",
+  title: "ASLI, Logística y Comercio Exterior",
   description: "Gestión logística para exportaciones marítimas y aéreas",
   icons: {
     icon: [

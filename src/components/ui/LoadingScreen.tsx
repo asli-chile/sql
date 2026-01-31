@@ -10,7 +10,7 @@ type LoadingScreenProps = {
 };
 
 const LoadingScreen: React.FC<LoadingScreenProps> = ({
-  title = "ASLI Gestión Logística",
+  title = "ASLI, Logística y Comercio Exterior",
   message = "Cargando...",
 }) => {
   const { theme } = useTheme();

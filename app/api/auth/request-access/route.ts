@@ -26,10 +26,10 @@ export async function POST(request: Request) {
     }
 
     // Preparar el contenido del email
-    const emailSubject = encodeURIComponent('Solicitud de acceso - Plataforma ASLI');
+    const emailSubject = encodeURIComponent('Solicitud de acceso - Plataforma ASLI, Logística y Comercio Exterior');
     const emailBody = encodeURIComponent(
       `Hola Rodrigo,\n\n` +
-      `Se ha recibido una nueva solicitud de acceso a la plataforma ASLI:\n\n` +
+      `Se ha recibido una nueva solicitud de acceso a la plataforma ASLI, Logística y Comercio Exterior:\n\n` +
       `Nombre de usuario: ${nombreUsuario.trim()}\n` +
       `Empresa: ${empresa.trim()}\n\n` +
       `Por favor, revisa la solicitud y procede con la creación de la cuenta.\n\n` +
