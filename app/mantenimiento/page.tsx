@@ -79,7 +79,7 @@ export default function MantenimientoPage() {
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
-  const canAccess = isRodrigo || isAdmin;
+  const canAccess = isRodrigo;
 
   // Obtener usuario de auth
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function MantenimientoPage() {
           : []),
       ],
     },
-    ...(isAdmin
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

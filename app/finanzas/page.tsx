@@ -414,7 +414,7 @@ export default function FinanzasPage() {
           : []),
       ],
     },
-    ...(userInfo?.rol === 'admin'
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

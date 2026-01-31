@@ -278,7 +278,7 @@ const SeguimientoPage = () => {
           : []),
       ],
     },
-    ...(isAdmin
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

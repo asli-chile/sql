@@ -2683,7 +2683,7 @@ export default function RegistrosPage() {
         { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet', icon: Trash2 },
       ],
     },
-    ...(currentUser?.rol === 'admin'
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

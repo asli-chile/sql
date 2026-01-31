@@ -719,7 +719,7 @@ export default function TransportesPage() {
         { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet', icon: Trash2 },
       ],
     },
-    ...(currentUser?.rol === 'admin'
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

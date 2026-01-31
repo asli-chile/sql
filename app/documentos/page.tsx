@@ -897,7 +897,7 @@ function DocumentosPage() {
           : []),
       ],
     },
-    ...(currentUser?.rol === 'admin'
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

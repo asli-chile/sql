@@ -669,7 +669,7 @@ function DashboardPage() {
           : []),
       ],
     },
-    ...(isAdmin
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',

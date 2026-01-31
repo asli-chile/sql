@@ -390,7 +390,7 @@ export default function ReportesPage() {
           : []),
       ],
     },
-    ...(userInfo?.rol === 'admin'
+    ...(isRodrigo
       ? [
         {
           title: 'Mantenimiento',
