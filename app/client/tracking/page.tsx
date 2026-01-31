@@ -3,41 +3,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/contexts/ThemeContext';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { useUser } from '@/hooks/useUser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import {
     Search,
-    MapPin,
-    Anchor,
     Box,
-    Calendar,
-    ChevronRight,
     Filter,
-    LayoutDashboard,
-    Truck,
-    FileText,
-    Globe,
-    BarChart3,
-    DollarSign,
-    Users,
-    Menu,
-    X,
-    FilterX,
     Activity,
     User as UserIcon
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { ShipmentHito } from '@/types/tracking';
-import { searchShipments, getShipmentTracking, updateTrackingEvent } from '@/lib/tracking-service';
-import { MovementCard, TimelineStep, MilestoneEditModal } from '@/components/tracking/TrackingComponents';
-import { MilestoneStatus } from '@/types/tracking';
+import { searchShipments, getShipmentTracking } from '@/lib/tracking-service';
+import { MovementCard, TimelineStep } from '@/components/tracking/TrackingComponents';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { UserProfileModal } from '@/components/users/UserProfileModal';
+import { convertSupabaseToApp } from '@/lib/migration-utils';
+import { useClientLayout } from '../layout';
 
-export default function TrackingPage() {
+export default function ClientTrackingPage() {
     const { theme } = useTheme();
-    const { currentUser, transportesCount, registrosCount, setCurrentUser } = useUser();
+    const { currentUser } = useUser();
+    const { setShowProfileModal } = useClientLayout();
     const [loading, setLoading] = useState(true);
     const [searching, setSearching] = useState(false);
     const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -47,12 +33,15 @@ export default function TrackingPage() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [tracking, setTracking] = useState<ShipmentHito[]>([]);
     const [loadingTracking, setLoadingTracking] = useState(false);
-    const [editingHito, setEditingHito] = useState<ShipmentHito | null>(null);
 
-    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [showProfileModal, setShowProfileModal] = useState(false);
-    const [userInfo, setUserInfo] = useState<any>(null);
+    // Estados de filtros
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+    const [filters, setFilters] = useState({
+        estado: ''
+    });
+
+    // Listas para filtros
+    const estadosPosibles = ['PENDIENTE', 'CONFIRMADO', 'CANCELADO'];
 
     // Obtener usuario de auth
     useEffect(() => {
@@ -60,58 +49,76 @@ export default function TrackingPage() {
             const supabase = createClient();
             const { data: { user } } = await supabase.auth.getUser();
             setUser(user);
-
-            // Obtener información del usuario desde la tabla usuarios
-            if (user) {
-                const { data: userData } = await supabase
-                    .from('usuarios')
-                    .select('*')
-                    .eq('auth_user_id', user.id)
-                    .single();
-                setUserInfo(userData || {
-                    nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-                    email: user.email || ''
-                });
-            }
         };
         fetchUser();
     }, []);
 
-    // Estados de filtros
-    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-    const [filters, setFilters] = useState({
-        estado: '',
-        shipper: ''
-    });
-
-    // Listas para filtros (se podrían cargar de catálogos)
-    const estadosPosibles = ['PENDIENTE', 'CONFIRMADO', 'CANCELADO'];
-
-    // Cargar lista inicial
+    // Cargar lista inicial filtrada por cliente
     useEffect(() => {
         const initFetch = async () => {
+            if (!currentUser?.cliente_nombre) {
+                setLoading(false);
+                return;
+            }
+
             setLoading(true);
-            const data = await searchShipments('');
-            setShipments(data);
-            if (data.length > 0) {
-                setSelectedId(data[0].id || null);
+            const supabase = createClient();
+
+            // Obtener registros del cliente
+            const { data: registrosData, error } = await supabase
+                .from('registros')
+                .select('*')
+                .eq('shipper', currentUser.cliente_nombre)
+                .is('deleted_at', null)
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching client shipments:', error);
+                setShipments([]);
+            } else {
+                const mappedData = (registrosData || []).map(convertSupabaseToApp);
+                setShipments(mappedData);
+                if (mappedData.length > 0) {
+                    setSelectedId(mappedData[0].id || null);
+                }
             }
             setLoading(false);
         };
         initFetch();
-    }, []);
+    }, [currentUser]);
 
     // Búsqueda con debounce
     useEffect(() => {
+        if (!currentUser?.cliente_nombre) return;
+
         const timer = setTimeout(async () => {
             setSearching(true);
-            const data = await searchShipments(searchTerm);
-            setShipments(data);
+            const supabase = createClient();
+
+            // Buscar registros del cliente
+            let query = supabase
+                .from('registros')
+                .select('*')
+                .eq('shipper', currentUser.cliente_nombre)
+                .is('deleted_at', null);
+
+            if (searchTerm.trim()) {
+                query = query.or(`booking.ilike.%${searchTerm}%,contenedor.ilike.%${searchTerm}%,ref_cliente.ilike.%${searchTerm}%,ref_asli.ilike.%${searchTerm}%`);
+            }
+
+            const { data: registrosData, error } = await query.order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error searching shipments:', error);
+            } else {
+                const mappedData = (registrosData || []).map(convertSupabaseToApp);
+                setShipments(mappedData);
+            }
             setSearching(false);
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [searchTerm, currentUser]);
 
     // Cargar tracking cuando cambia la selección
     useEffect(() => {
@@ -126,108 +133,26 @@ export default function TrackingPage() {
         setLoadingTracking(false);
     };
 
-    const handleUpdateHito = async (status: MilestoneStatus, date: string, observation: string) => {
-        if (!selectedId || !editingHito) return;
-
-        const { error } = await updateTrackingEvent(
-            selectedId,
-            editingHito.milestone,
-            status,
-            observation,
-            date
-        );
-
-        if (!error) {
-            await fetchTracking();
-            setEditingHito(null);
-        } else {
-            alert('Error al actualizar el hito: ' + error.message);
-        }
-    };
-
     const filteredShipments = useMemo(() => {
         return shipments.filter(s => {
             if (filters.estado && s.estado !== filters.estado) return false;
-            if (filters.shipper && s.shipper !== filters.shipper) return false;
             return true;
         });
     }, [shipments, filters]);
-
-    const shippersUnicos = useMemo(() => {
-        const set = new Set(shipments.map(s => s.shipper).filter(Boolean));
-        return Array.from(set).sort();
-    }, [shipments]);
 
     const selectedShipment = useMemo(() =>
         filteredShipments.find(s => s.id === selectedId) || (filteredShipments.length > 0 ? filteredShipments[0] : null),
         [filteredShipments, selectedId]);
 
-    const isAdmin = currentUser?.rol === 'admin';
-    const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
-
-    const sidebarNav = [
-        {
-            title: 'Inicio',
-            items: [
-                { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
-            ],
-        },
-        {
-            title: 'Módulos',
-            items: [
-                { label: 'Embarques', id: '/registros', icon: Anchor, counter: registrosCount, tone: 'violet' as const },
-                { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' as const },
-                { label: 'Documentos', id: '/documentos', icon: FileText },
-                { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
-                { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true },
-                ...(isRodrigo
-                    ? [
-                        { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
-                        { label: 'Reportes', id: '/reportes', icon: BarChart3 },
-                    ]
-                    : []),
-            ],
-        },
-        ...(isAdmin
-            ? [
-                {
-                    title: 'Mantenimiento',
-                    items: [
-                        { label: 'Usuarios', id: '/mantenimiento', icon: Users },
-                    ],
-                },
-            ]
-            : []),
-    ];
-
     if (loading && !shipments.length) return <LoadingScreen message="Cargando seguimiento..." />;
 
     return (
         <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-            <Sidebar
-                isSidebarCollapsed={isSidebarCollapsed}
-                setIsSidebarCollapsed={setIsSidebarCollapsed}
-                isMobileMenuOpen={isMobileMenuOpen}
-                setIsMobileMenuOpen={setIsMobileMenuOpen}
-                sections={sidebarNav}
-                currentUser={currentUser}
-                user={user}
-                setShowProfileModal={setShowProfileModal}
-            />
-
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Header */}
                 <header className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                            {/* Botón Menu (Sidebar Toggle) */}
-                            <button
-                                onClick={() => isSidebarCollapsed ? setIsSidebarCollapsed(false) : setIsMobileMenuOpen(true)}
-                                className={`p-2 border transition-colors ${theme === 'dark' ? 'hover:bg-slate-700 border-slate-700/60 text-slate-400' : 'hover:bg-gray-100 border-gray-300 text-gray-500'
-                                    } ${!isSidebarCollapsed && 'lg:hidden'}`}
-                            >
-                                <Menu className="h-5 w-5" />
-                            </button>
                             <div>
                                 <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
                                 <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -262,7 +187,7 @@ export default function TrackingPage() {
                             <div className="relative">
                                 <button
                                     onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-xs font-medium transition-colors ${isFiltersOpen || filters.estado || filters.shipper
+                                    className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-xs font-medium transition-colors ${isFiltersOpen || filters.estado
                                         ? 'bg-sky-600 border-sky-500 text-white'
                                         : theme === 'dark'
                                             ? 'bg-slate-800/60 border-slate-700/60 text-slate-300 hover:border-sky-500'
@@ -271,7 +196,7 @@ export default function TrackingPage() {
                                 >
                                     <Filter className="h-4 w-4" />
                                     <span className="hidden sm:inline">Filtros</span>
-                                    {(filters.estado || filters.shipper) && (
+                                    {filters.estado && (
                                         <span className="flex h-2 w-2 bg-white" />
                                     )}
                                 </button>
@@ -284,7 +209,7 @@ export default function TrackingPage() {
                                             <h3 className="font-bold text-sm">Filtros Avanzados</h3>
                                             <button
                                                 onClick={() => {
-                                                    setFilters({ estado: '', shipper: '' });
+                                                    setFilters({ estado: '' });
                                                     setIsFiltersOpen(false);
                                                 }}
                                                 className="text-[10px] uppercase tracking-wider font-bold text-sky-500 hover:text-sky-400"
@@ -307,20 +232,6 @@ export default function TrackingPage() {
                                                     ))}
                                                 </select>
                                             </div>
-
-                                            <div>
-                                                <label className={`block text-[10px] uppercase font-bold tracking-widest mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>Shipper / Exportador</label>
-                                                <select
-                                                    value={filters.shipper}
-                                                    onChange={(e) => setFilters({ ...filters, shipper: e.target.value })}
-                                                    className={`w-full p-2 text-sm border focus:outline-none focus:ring-1 ${theme === 'dark' ? 'bg-slate-800 border-slate-700/60 text-white focus:border-sky-500' : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-blue-500'}`}
-                                                >
-                                                    <option value="">Todos los clientes</option>
-                                                    {shippersUnicos.map(s => (
-                                                        <option key={s} value={s}>{s}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -333,11 +244,11 @@ export default function TrackingPage() {
                                     onClick={() => setShowProfileModal(true)}
                                     className={`flex items-center gap-1.5 sm:gap-2 border ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/60 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-500 hover:text-blue-700'} transition`}
                                     aria-haspopup="dialog"
-                                    title={currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                                    title={currentUser?.nombre || currentUser?.email || 'Usuario'}
                                 >
                                     <UserIcon className="h-4 w-4 sm:h-4 sm:w-4 flex-shrink-0" />
                                     <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
-                                        {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                                        {currentUser?.nombre || currentUser?.email || 'Usuario'}
                                     </span>
                                 </button>
                             </div>
@@ -402,8 +313,8 @@ export default function TrackingPage() {
                                                     hito={hito}
                                                     isLast={index === tracking.length - 1}
                                                     theme={theme}
-                                                    canEdit={isAdmin || isRodrigo}
-                                                    onEdit={(h) => setEditingHito(h)}
+                                                    canEdit={false}
+                                                    onEdit={undefined}
                                                 />
                                             ))}
                                         </div>
@@ -424,31 +335,6 @@ export default function TrackingPage() {
                     </div>
                 </div>
             </main>
-
-            {/* Modal de Edición */}
-            {editingHito && (
-                <MilestoneEditModal
-                    hito={editingHito}
-                    onClose={() => setEditingHito(null)}
-                    onSave={handleUpdateHito}
-                    theme={theme}
-                />
-            )}
-
-            {/* Modal de Perfil */}
-            {showProfileModal && userInfo && (
-                <UserProfileModal
-                    isOpen={showProfileModal}
-                    onClose={() => setShowProfileModal(false)}
-                    userInfo={userInfo}
-                    onUserUpdate={(updatedUser) => {
-                        setUserInfo(updatedUser);
-                        if (currentUser) {
-                            setCurrentUser({ ...currentUser, ...updatedUser });
-                        }
-                    }}
-                />
-            )}
         </div>
     );
 }

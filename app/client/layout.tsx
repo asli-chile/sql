@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
@@ -8,8 +8,18 @@ import { useUser } from '@/hooks/useUser';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
-import { LayoutDashboard, PlusCircle, FileText, Globe, LogOut } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, FileText, Globe, LogOut, Activity } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { UserProfileModal } from '@/components/users/UserProfileModal';
+
+// Contexto para compartir setShowProfileModal
+const ClientLayoutContext = createContext<{
+    setShowProfileModal: (show: boolean) => void;
+}>({
+    setShowProfileModal: () => {},
+});
+
+export const useClientLayout = () => useContext(ClientLayoutContext);
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
     const router = useRouter();
@@ -73,6 +83,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
             items: [
                 { label: 'Mis Documentos', id: '/client/documentos', icon: FileText },
                 { label: 'Seguimiento', id: '/client/seguimiento', icon: Globe },
+                { label: 'Tracking Movs', id: '/client/tracking', icon: Activity },
             ],
         },
     ];
@@ -94,11 +105,25 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
                 setShowProfileModal={setShowProfileModal}
             />
 
-            <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
-                <main className="flex-1 overflow-y-auto">
-                    {children}
-                </main>
-            </div>
+            <ClientLayoutContext.Provider value={{ setShowProfileModal }}>
+                <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
+                    <main className="flex-1 overflow-y-auto">
+                        {children}
+                    </main>
+                </div>
+            </ClientLayoutContext.Provider>
+
+            {/* Modal de Perfil */}
+            {showProfileModal && currentUser && (
+                <UserProfileModal
+                    isOpen={showProfileModal}
+                    onClose={() => setShowProfileModal(false)}
+                    userInfo={currentUser}
+                    onUserUpdate={(updatedUser) => {
+                        setCurrentUser(updatedUser);
+                    }}
+                />
+            )}
         </div>
     );
 }

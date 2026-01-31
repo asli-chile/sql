@@ -16,13 +16,13 @@ export const MovementCard: React.FC<MovementCardProps> = ({ registro, isSelected
     return (
         <div
             onClick={onClick}
-            className={`p-3 rounded-xl border-2 transition-all cursor-pointer mb-2 ${isSelected
+            className={`p-3 border transition-all cursor-pointer mb-2 ${isSelected
                 ? theme === 'dark'
                     ? 'border-sky-500 bg-sky-500/10'
                     : 'border-blue-500 bg-blue-50'
                 : theme === 'dark'
-                    ? 'border-slate-800 bg-slate-900/50 hover:border-slate-700'
-                    : 'border-gray-100 bg-white hover:border-gray-200'
+                    ? 'border-slate-700/60 bg-slate-900/50 hover:border-slate-600'
+                    : 'border-gray-300 bg-white hover:border-gray-400'
                 }`}
         >
             <div className="flex justify-between items-start mb-2">
@@ -130,7 +130,7 @@ export const TimelineStep: React.FC<TimelineStepProps> = ({ hito, isLast, theme,
                 )}
 
                 {isPendiente && (
-                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 rounded-full border ${theme === 'dark'
+                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 border ${theme === 'dark'
                         ? 'border-slate-800 bg-slate-900/50 text-slate-500'
                         : 'border-gray-200 bg-gray-50 text-gray-400'
                         }`}>
@@ -174,9 +174,9 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
             <div
-                className={`w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
+                className={`w-full max-w-md overflow-hidden border ${theme === 'dark' ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-gray-300'
                     }`}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -197,7 +197,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
                                 <button
                                     key={s}
                                     onClick={() => setStatus(s)}
-                                    className={`py-2 px-1 rounded-lg text-xs font-bold border-2 transition-all ${status === s
+                                    className={`py-2 px-1 text-xs font-bold border transition-all ${status === s
                                         ? s === 'SI' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-500' :
                                             s === 'NO' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
                                                 'bg-slate-500/20 border-slate-500 text-slate-500'
@@ -218,7 +218,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className={`w-full p-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 ${theme === 'dark'
+                            className={`w-full p-3 border text-sm transition-all focus:outline-none focus:ring-2 ${theme === 'dark'
                                 ? 'bg-slate-800 border-slate-700 text-white focus:ring-sky-500/30 focus:border-sky-500'
                                 : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-blue-500/20 focus:border-blue-500'
                                 }`}
@@ -245,7 +245,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
                 <div className={`p-6 flex gap-3 ${theme === 'dark' ? 'bg-slate-900/50' : 'bg-gray-50/50'}`}>
                     <button
                         onClick={onClose}
-                        className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all ${theme === 'dark' ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                        className={`flex-1 py-3 text-sm font-bold transition-all border ${theme === 'dark' ? 'bg-slate-800 border-slate-700/60 text-slate-300 hover:bg-slate-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                             }`}
                     >
                         Cancelar
@@ -253,7 +253,7 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
                     <button
                         onClick={handleSave}
                         disabled={loading}
-                        className={`flex-1 py-3 rounded-xl text-sm font-bold bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-50 transition-all shadow-lg shadow-sky-500/20`}
+                        className={`flex-1 py-3 text-sm font-bold bg-sky-600 border border-sky-500 text-white hover:bg-sky-700 disabled:opacity-50 transition-all`}
                     >
                         {loading ? 'Guardando...' : 'Guardar Hito'}
                     </button>
