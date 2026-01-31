@@ -736,7 +736,7 @@ export default function TransportesPage() {
   }
 
   // Modo Mantenimiento: Solo admins o entorno local pueden ver la página real
-  const isMaintenanceMode = true;
+  const isMaintenanceMode = false; // Desactivado - página disponible para todos
   const isDev = process.env.NODE_ENV === 'development';
   const isAdmin = currentUser?.rol === 'admin' || currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
