@@ -58,20 +58,25 @@ export async function syncTransportesFromRegistro(rawRegistro: any, oldBooking?:
 
     // 2. Link por Bookings (actual o anterior)
     if (bookingsToSearch.length > 0) {
-      // Usar comillas para bookings que puedan tener caracteres especiales
-      const bookingsStr = bookingsToSearch.map(b => `"${b}"`).join(',');
-      orConditions.push(`booking.in.(${bookingsStr})`);
+      // Escapar bookings para evitar problemas con caracteres especiales
+      const sanitizedBookings = bookingsToSearch.map(b => {
+        // Escapar comillas y caracteres especiales
+        const sanitized = b.replace(/"/g, '\\"');
+        return `"${sanitized}"`;
+      });
+      orConditions.push(`booking.in.(${sanitizedBookings.join(',')})`);
     }
 
     // 3. Link por Ref ASLI (para transportes que tengan esta referencia)
     if (refAsli) {
-      orConditions.push(`ref_asli.eq."${refAsli}"`);
+      const sanitizedRefAsli = refAsli.replace(/"/g, '\\"');
+      orConditions.push(`ref_asli.eq."${sanitizedRefAsli}"`);
     }
 
     // 4. Fallback: Link por Ref Cliente (solo para transportes que no tengan registro_id o que coincidan con la ref)
     if (refCliente) {
-      // Limpiar caracteres especiales que rompen la query .or()
-      const sanitizedRef = refCliente.replace(/[(),]/g, '');
+      // Escapar comillas y caracteres especiales
+      const sanitizedRef = refCliente.replace(/"/g, '\\"').trim();
       if (sanitizedRef) {
         orConditions.push(`ref_cliente.eq."${sanitizedRef}"`);
       }
@@ -85,8 +90,21 @@ export async function syncTransportesFromRegistro(rawRegistro: any, oldBooking?:
     const { data: transportes, error: fetchError } = await transportesQuery.or(orConditions.join(','));
 
     if (fetchError) {
-      console.error('❌ [Sync] Error al buscar transportes:', fetchError);
-      return { success: false, error: fetchError.message };
+      const errorMessage = fetchError.message 
+        || fetchError.details 
+        || fetchError.hint 
+        || JSON.stringify(fetchError)
+        || 'Error desconocido al buscar transportes';
+      
+      console.error('❌ [Sync] Error al buscar transportes:', {
+        message: errorMessage,
+        code: fetchError.code,
+        details: fetchError.details,
+        hint: fetchError.hint,
+        fullError: fetchError
+      });
+      
+      return { success: false, error: errorMessage };
     }
 
     if (!transportes || transportes.length === 0) {
@@ -95,6 +113,13 @@ export async function syncTransportesFromRegistro(rawRegistro: any, oldBooking?:
     }
 
     console.log(`🔍 [Sync] Encontrados ${transportes.length} transportes candidatos`);
+
+    // Validar que tenemos IDs válidos
+    const transporteIds = transportes.map(t => t.id).filter(Boolean);
+    if (transporteIds.length === 0) {
+      console.warn('⚠️ [Sync] No se encontraron IDs válidos en los transportes');
+      return { success: true, updated: 0 };
+    }
 
     // Preparar datos de actualización
     const updateData: any = {
@@ -120,12 +145,26 @@ export async function syncTransportesFromRegistro(rawRegistro: any, oldBooking?:
     const { data: updatedTransportes, error: updateError } = await supabase
       .from('transportes')
       .update(updateData)
-      .in('id', transportes.map(t => t.id))
+      .in('id', transporteIds)
       .select();
 
     if (updateError) {
-      console.error('❌ [Sync] Error al actualizar transportes:', updateError);
-      return { success: false, error: updateError.message };
+      // Extraer mensaje de error de manera robusta
+      const errorMessage = updateError.message 
+        || updateError.details 
+        || updateError.hint 
+        || JSON.stringify(updateError)
+        || 'Error desconocido al actualizar transportes';
+      
+      console.error('❌ [Sync] Error al actualizar transportes:', {
+        message: errorMessage,
+        code: updateError.code,
+        details: updateError.details,
+        hint: updateError.hint,
+        fullError: updateError
+      });
+      
+      return { success: false, error: errorMessage };
     }
 
     console.log(`✅ [Sync] Sincronización completada: ${updatedTransportes?.length || 0} transportes actualizados`);
