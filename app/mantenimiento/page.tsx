@@ -1,10 +1,28 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
+import { User } from '@supabase/supabase-js';
+import { UserProfileModal } from '@/components/users/UserProfileModal';
+import { Sidebar } from '@/components/layout/Sidebar';
+import { SidebarSection } from '@/types/layout';
+import {
+  LayoutDashboard,
+  Ship,
+  Truck,
+  FileText,
+  Globe,
+  DollarSign,
+  BarChart3,
+  Users,
+  User as UserIcon,
+  ChevronRight,
+  Anchor,
+  Activity,
+} from 'lucide-react';
 
 type RolUsuario = 'admin' | 'ejecutivo' | 'cliente';
 
@@ -31,8 +49,14 @@ type UsuarioRow = {
 
 export default function MantenimientoPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { theme } = useTheme();
-  const { currentUser } = useUser();
+  const { currentUser, transportesCount, registrosCount, setCurrentUser } = useUser();
+  const [user, setUser] = useState<User | null>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [clientes, setClientes] = useState<string[]>([]);
   const [loadingClientes, setLoadingClientes] = useState(true);
 
@@ -56,6 +80,65 @@ export default function MantenimientoPage() {
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
   const canAccess = isRodrigo || isAdmin;
+
+  // Obtener usuario de auth
+  useEffect(() => {
+    const fetchUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        const { data: userData } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('auth_user_id', user.id)
+          .single();
+        setUserInfo(userData || {
+          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
+          email: user.email || ''
+        });
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
+
+  const sidebarSections: SidebarSection[] = [
+    {
+      title: 'Inicio',
+      items: [
+        { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: 'Módulos',
+      items: [
+        { label: 'Embarques', id: '/registros', icon: Anchor, counter: registrosCount, tone: 'violet' },
+        { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
+        { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
+        { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
+        ...(isRodrigo
+          ? [
+            { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', icon: BarChart3 },
+          ]
+          : []),
+      ],
+    },
+    ...(isAdmin
+      ? [
+        {
+          title: 'Mantenimiento',
+          items: [
+            { label: 'Usuarios', id: '/mantenimiento', icon: Users, isActive: true },
+          ],
+        },
+      ]
+      : []),
+  ];
 
   useEffect(() => {
     if (!currentUser) {
@@ -253,32 +336,104 @@ export default function MantenimientoPage() {
     ? 'bg-slate-900/60 border-slate-700/70 text-slate-100 placeholder:text-slate-500 focus:border-sky-500/60 focus:ring-sky-500/30'
     : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500/60 focus:ring-blue-500/30';
 
-  if (currentUser && !isRodrigo) {
+  if (currentUser && !canAccess) {
     return (
       <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-        <div className={`rounded-2xl border px-6 py-4 text-center ${formTone}`}>
+        <div className={`border px-6 py-4 text-center ${formTone}`}>
           <p className="text-sm font-semibold">Acceso restringido</p>
-          <p className="text-xs opacity-70">Este módulo solo está disponible para Rodrigo.</p>
+          <p className="text-xs opacity-70">Este módulo solo está disponible para administradores.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-8">
-        <div className={`rounded-3xl border p-6 sm:p-8 shadow-xl ${formTone}`}>
-          <div className="flex flex-col gap-2 border-b pb-4 mb-6">
-            <h1 className="text-xl sm:text-2xl font-semibold">Mantenimiento de Usuarios</h1>
-            <p className="text-sm opacity-70">
-              Crea accesos con contraseña, define el rol y asigna clientes.
-            </p>
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+      {/* Overlay para móvil */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        sections={sidebarSections}
+        currentUser={userInfo || currentUser}
+        user={user}
+        setShowProfileModal={setShowProfileModal}
+      />
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
+            {/* Botón hamburguesa para móvil */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className={`lg:hidden flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                }`}
+              aria-label="Abrir menú"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            {/* Botón para expandir sidebar colapsado en desktop */}
+            {isSidebarCollapsed && (
+              <button
+                onClick={toggleSidebar}
+                className={`hidden lg:flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                  }`}
+                aria-label="Expandir menú lateral"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            )}
+
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Mantenimiento</p>
+                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Usuarios</h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gestiona usuarios, roles y permisos</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              <button
+                onClick={() => setShowProfileModal(true)}
+                className={`hidden sm:flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ${theme === 'dark'
+                  ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 hover:border-sky-500/60 hover:text-sky-200'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-700'
+                  }`}
+              >
+                <UserIcon className="h-4 w-4" />
+                {userInfo?.nombre || currentUser?.nombre || user?.email}
+              </button>
+            </div>
           </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8">
+          <div className="mx-auto max-w-5xl">
+            <div className={`border p-6 sm:p-8 ${formTone}`}>
+              <div className="flex flex-col gap-2 border-b pb-4 mb-6">
+                <h2 className="text-lg sm:text-xl font-semibold">Crear nuevo usuario</h2>
+                <p className="text-sm opacity-70">
+                  Crea accesos con contraseña, define el rol y asigna clientes.
+                </p>
+              </div>
 
           <form onSubmit={handleSubmit} className="grid gap-4">
             {!currentUser && (
               <>
-                <div className={`rounded-2xl border px-4 py-3 text-xs ${theme === 'dark' ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
+                <div className={`border px-4 py-3 text-xs ${theme === 'dark' ? 'border-amber-500/40 bg-amber-500/10 text-amber-200' : 'border-amber-300 bg-amber-50 text-amber-700'}`}>
                   <p className="font-semibold uppercase tracking-wide mb-1">Modo bootstrap</p>
                   <p>Si no existen usuarios, podrás crear a Rodrigo sin clave. Si configuraste `MAINTENANCE_BOOTSTRAP_KEY`, ingrésala aquí.</p>
                 </div>
@@ -288,7 +443,7 @@ export default function MantenimientoPage() {
                     type="password"
                     value={bootstrapKey}
                     onChange={(event) => setBootstrapKey(event.target.value)}
-                    className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                     placeholder="Clave de mantenimiento"
                   />
                 </label>
@@ -301,7 +456,7 @@ export default function MantenimientoPage() {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                   placeholder="cliente@empresa.com"
                   required
                 />
@@ -312,7 +467,7 @@ export default function MantenimientoPage() {
                   type="text"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                   placeholder="Contraseña inicial"
                   required
                 />
@@ -326,7 +481,7 @@ export default function MantenimientoPage() {
                   type="text"
                   value={nombre}
                   onChange={(event) => setNombre(event.target.value)}
-                  className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                   placeholder="Nombre del usuario"
                   required
                 />
@@ -336,7 +491,7 @@ export default function MantenimientoPage() {
                 <select
                   value={rol}
                   onChange={(event) => setRol(event.target.value as RolUsuario)}
-                  className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                 >
                   <option value="cliente">Cliente</option>
                   <option value="ejecutivo">Ejecutivo</option>
@@ -351,7 +506,7 @@ export default function MantenimientoPage() {
                 <select
                   value={clienteNombre}
                   onChange={(event) => setClienteNombre(event.target.value)}
-                  className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                 >
                   <option value="">Selecciona un cliente</option>
                   {clientes.map((cliente) => (
@@ -364,7 +519,7 @@ export default function MantenimientoPage() {
             )}
 
             {rol === 'ejecutivo' && (
-              <div className="rounded-2xl border p-4">
+              <div className="border p-4">
                 <p className="text-xs font-semibold uppercase tracking-wide mb-3">Clientes asignados</p>
                 {loadingClientes ? (
                   <p className="text-xs opacity-70">Cargando clientes...</p>
@@ -375,7 +530,7 @@ export default function MantenimientoPage() {
                       return (
                         <label
                           key={cliente}
-                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition ${checked ? 'border-emerald-400/70 bg-emerald-500/10' : 'border-transparent hover:border-slate-500/40'}`}
+                          className={`flex items-center gap-2 border px-3 py-2 text-xs cursor-pointer transition ${checked ? 'border-emerald-400/70 bg-emerald-500/10' : 'border-transparent hover:border-slate-500/40'}`}
                         >
                           <input
                             type="checkbox"
@@ -393,12 +548,12 @@ export default function MantenimientoPage() {
             )}
 
             {errorMessage && (
-              <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-500">
+              <div className="border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-500">
                 {errorMessage}
               </div>
             )}
             {successMessage && (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-500">
+              <div className="border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-500">
                 {successMessage}
               </div>
             )}
@@ -406,9 +561,9 @@ export default function MantenimientoPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className={`inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition ${theme === 'dark'
-                ? 'bg-sky-500 text-slate-950 hover:bg-sky-400'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+              className={`inline-flex items-center justify-center border px-5 py-2.5 text-sm font-semibold transition ${theme === 'dark'
+                ? 'bg-sky-500 border-sky-500 text-slate-950 hover:bg-sky-400'
+                : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
                 } ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? 'Creando usuario...' : 'Crear usuario'}
@@ -416,12 +571,12 @@ export default function MantenimientoPage() {
           </form>
         </div>
 
-        {currentUser && isRodrigo ? (
-          <div className={`mt-8 rounded-3xl border p-6 sm:p-8 shadow-xl ${formTone}`}>
-            <div className="flex flex-col gap-2 border-b pb-4 mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Usuarios existentes</h2>
-              <p className="text-sm opacity-70">Edita rol, asignaciones y resetea contraseña.</p>
-            </div>
+            {currentUser && canAccess ? (
+              <div className={`mt-8 border p-6 sm:p-8 ${formTone}`}>
+                <div className="flex flex-col gap-2 border-b pb-4 mb-6">
+                  <h2 className="text-lg sm:text-xl font-semibold">Usuarios existentes</h2>
+                  <p className="text-sm opacity-70">Edita rol, asignaciones y resetea contraseña.</p>
+                </div>
 
             {loadingUsuarios ? (
               <p className="text-sm opacity-70">Cargando usuarios...</p>
@@ -432,7 +587,7 @@ export default function MantenimientoPage() {
                 {usuarios.map((user) => {
                   const resetValue = resetPasswordValue[user.id] ?? '';
                   return (
-                    <div key={user.id} className={`rounded-2xl border p-4 ${theme === 'dark' ? 'border-slate-800/70 bg-slate-900/40' : 'border-gray-200 bg-white'}`}>
+                    <div key={user.id} className={`border p-4 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
                       <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr_1fr_0.8fr]">
                         <div>
                           <p className="text-xs uppercase tracking-wide opacity-60">Usuario</p>
@@ -456,7 +611,7 @@ export default function MantenimientoPage() {
                                   : item
                               )));
                             }}
-                            className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                            className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                           >
                             <option value="cliente">Cliente</option>
                             <option value="ejecutivo">Ejecutivo</option>
@@ -474,7 +629,7 @@ export default function MantenimientoPage() {
                                 item.id === user.id ? { ...item, cliente_nombre: value || null } : item
                               )));
                             }}
-                            className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone} ${user.rol !== 'cliente' ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone} ${user.rol !== 'cliente' ? 'opacity-60 cursor-not-allowed' : ''}`}
                           >
                             <option value="">Selecciona cliente</option>
                             {clientes.map((cliente) => (
@@ -494,7 +649,7 @@ export default function MantenimientoPage() {
                                 item.id === user.id ? { ...item, activo: nextActivo } : item
                               )));
                             }}
-                            className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                            className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                           >
                             <option value="true">Activo</option>
                             <option value="false">Inactivo</option>
@@ -503,7 +658,7 @@ export default function MantenimientoPage() {
                       </div>
 
                       {user.rol === 'ejecutivo' && (
-                        <div className="mt-4 rounded-2xl border p-4">
+                        <div className="mt-4 border p-4">
                           <p className="text-xs font-semibold uppercase tracking-wide mb-3">Clientes asignados</p>
                           {loadingClientes ? (
                             <p className="text-xs opacity-70">Cargando clientes...</p>
@@ -514,7 +669,7 @@ export default function MantenimientoPage() {
                                 return (
                                   <label
                                     key={cliente}
-                                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition ${checked ? 'border-emerald-400/70 bg-emerald-500/10' : 'border-transparent hover:border-slate-500/40'}`}
+                                    className={`flex items-center gap-2 border px-3 py-2 text-xs cursor-pointer transition ${checked ? 'border-emerald-400/70 bg-emerald-500/10' : 'border-transparent hover:border-slate-500/40'}`}
                                   >
                                     <input
                                       type="checkbox"
@@ -550,7 +705,7 @@ export default function MantenimientoPage() {
                                 const value = event.target.value;
                                 setResetPasswordValue((prev) => ({ ...prev, [user.id]: value }));
                               }}
-                              className={`mt-2 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                              className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                               placeholder="Nueva contraseña"
                             />
                           </label>
@@ -558,9 +713,9 @@ export default function MantenimientoPage() {
                             type="button"
                             onClick={() => handleResetPassword(user)}
                             disabled={resetPasswordUserId === user.id}
-                            className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold transition ${theme === 'dark'
-                              ? 'bg-rose-500 text-slate-950 hover:bg-rose-400'
-                              : 'bg-red-500 text-white hover:bg-red-600'
+                            className={`inline-flex items-center justify-center border px-4 py-2 text-xs font-semibold transition ${theme === 'dark'
+                              ? 'bg-rose-500 border-rose-500 text-slate-950 hover:bg-rose-400'
+                              : 'bg-red-500 border-red-500 text-white hover:bg-red-600'
                               } ${resetPasswordUserId === user.id ? 'opacity-60 cursor-not-allowed' : ''}`}
                           >
                             {resetPasswordUserId === user.id ? 'Reseteando...' : 'Resetear contraseña'}
@@ -570,9 +725,9 @@ export default function MantenimientoPage() {
                           type="button"
                           onClick={() => handleUpdateUser(user)}
                           disabled={savingUserId === user.id}
-                          className={`inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold transition ${theme === 'dark'
-                            ? 'bg-emerald-500 text-slate-950 hover:bg-emerald-400'
-                            : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          className={`inline-flex items-center justify-center border px-5 py-2.5 text-sm font-semibold transition ${theme === 'dark'
+                            ? 'bg-emerald-500 border-emerald-500 text-slate-950 hover:bg-emerald-400'
+                            : 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700'
                             } ${savingUserId === user.id ? 'opacity-60 cursor-not-allowed' : ''}`}
                         >
                           {savingUserId === user.id ? 'Guardando...' : 'Guardar cambios'}
@@ -584,12 +739,26 @@ export default function MantenimientoPage() {
               </div>
             )}
           </div>
-        ) : (
-          <div className={`mt-8 rounded-3xl border px-6 py-4 text-sm ${formTone}`}>
-            <p className="opacity-70">El listado y la edición estarán disponibles después de iniciar sesión como Rodrigo.</p>
+            ) : (
+              <div className={`mt-8 border px-6 py-4 text-sm ${formTone}`}>
+                <p className="opacity-70">El listado y la edición estarán disponibles después de iniciar sesión como administrador.</p>
+              </div>
+            )}
           </div>
-        )}
+        </main>
       </div>
+
+      <UserProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        userInfo={userInfo || currentUser}
+        onUserUpdate={(updatedUser) => {
+          setUserInfo(updatedUser);
+          if (currentUser) {
+            setCurrentUser({ ...currentUser, ...updatedUser });
+          }
+        }}
+      />
     </div>
   );
 }
