@@ -1319,8 +1319,8 @@ export function DataTable({
                       }}
                       className={menuItemClasses}
                     >
-                      {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
-                      {viewMode === 'table' ? 'Tarjetas' : 'Tabla'}
+                      {viewMode === 'cards' ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
+                      {viewMode === 'cards' ? 'Tabla' : 'Tarjetas'}
                     </button>
                   </div>
                 </div>
