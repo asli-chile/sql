@@ -88,8 +88,8 @@ const AuthPage = () => {
       const normalizedEmail = email.toLowerCase().trim();
 
       // Verificar si el email es secundario y obtener el email principal
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const fetchUrl = `${apiUrl}/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`;
+      // Usar ruta relativa (funciona tanto en desarrollo como en producción)
+      const fetchUrl = `/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`;
       console.log('[Resend] Fetching:', fetchUrl);
       const checkEmailResponse = await fetch(fetchUrl);
       let emailToUse = normalizedEmail;
@@ -137,10 +137,10 @@ const AuthPage = () => {
         console.log('[Login] Iniciando login con email:', normalizedEmail);
 
         // 1. Primero, verificar si el email es secundario y obtener el email principal
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-        const fetchUrl = `${apiUrl}/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`;
-        console.log('[Login] Fetching:', fetchUrl);
-        const checkEmailResponse = await fetch(fetchUrl);
+      // Usar ruta relativa (funciona tanto en desarrollo como en producción)
+      const fetchUrl = `/api/user/check-email?email=${encodeURIComponent(normalizedEmail)}`;
+      console.log('[Login] Fetching:', fetchUrl);
+      const checkEmailResponse = await fetch(fetchUrl);
 
         if (!checkEmailResponse.ok) {
           console.error('[Login] Error al verificar email:', checkEmailResponse.statusText);
@@ -210,8 +210,8 @@ const AuthPage = () => {
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-        const response = await fetch(`${apiUrl}/api/auth/request-access`, {
+        // Usar ruta relativa (funciona tanto en desarrollo como en producción)
+        const response = await fetch(`/api/auth/request-access`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -247,8 +247,7 @@ const AuthPage = () => {
       }
     } catch (authError: any) {
       console.error('[Auth] Error inesperado general:', authError);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'EMPTY';
-      setError(`${authError?.message || 'Error'} (API: ${apiUrl})`);
+      setError(authError?.message || 'Error de autenticación');
       setLoading(false);
     }
   };
