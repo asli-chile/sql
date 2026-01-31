@@ -159,11 +159,11 @@ export function ReporteDetalladoCostos({
     const headerStyle = {
       font: { bold: true, size: 12, color: { argb: 'FFFFFFFF' } },
       fill: {
-        type: 'pattern',
-        pattern: 'solid',
+        type: 'pattern' as const,
+        pattern: 'solid' as const,
         fgColor: { argb: 'FF1E40AF' }, // Azul oscuro
       },
-      alignment: { horizontal: 'center', vertical: 'middle' as const },
+      alignment: { horizontal: 'center' as const, vertical: 'middle' as const },
       border: {
         top: { style: 'thin' as const },
         left: { style: 'thin' as const },
