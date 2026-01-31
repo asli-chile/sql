@@ -30,7 +30,6 @@ import {
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { FinanzasSection } from '@/components/finanzas/FinanzasSection';
-import LoadingScreen from '@/components/ui/LoadingScreen';
 import { AppFooter } from '@/components/layout/AppFooter';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
@@ -428,7 +427,7 @@ export default function FinanzasPage() {
   ];
 
   if (loading) {
-    return <LoadingScreen message="Cargando finanzas..." />;
+    return null;
   }
 
   if (!user || !isRodrigo) {

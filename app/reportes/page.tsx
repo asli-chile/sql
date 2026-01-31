@@ -550,295 +550,9 @@ export default function ReportesPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8 space-y-6 sm:space-y-8">
-          {/* Panel de Filtros */}
-          {showFilters ? (
-            <div className={`border p-4 sm:p-5 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Filtros de Reportes
-                </h3>
-                <div className="flex items-center gap-2">
-                  {hasActiveFilters && (
-                    <button
-                      onClick={handleClearFilters}
-                      className={`text-xs px-3 py-1.5 border transition-colors ${theme === 'dark'
-                        ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
-                        : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                        }`}
-                    >
-                      Limpiar filtros
-                    </button>
-                  )}
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className={`p-1.5 border transition-colors ${theme === 'dark'
-                      ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    aria-label="Cerrar filtros"
-                  >
-                    <XIcon className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Filtro Temporada */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Temporada
-                  </label>
-                  <select
-                    value={selectedSeason ?? ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value || null;
-                      setSelectedSeason(newValue);
-                      // Si se cambia la temporada, limpiar otros filtros que puedan no ser válidos
-                      if (!newValue) {
-                        // Si se limpia, no hacer nada más
-                      }
-                    }}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                  >
-                    <option value="">Todas</option>
-                    {filterOptions.temporadas.map((temp) => (
-                      <option key={temp} value={temp}>
-                        Temporada {temp}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Filtro Cliente - Lista de Checkboxes */}
-                <div className="lg:col-span-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <label className={`block text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Clientes {selectedClientes.length > 0 && `(${selectedClientes.length} seleccionados)`}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSelectAllClientes}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${theme === 'dark'
-                          ? 'text-sky-400 hover:bg-slate-700'
-                          : 'text-blue-600 hover:bg-gray-100'
-                          }`}
-                      >
-                        {selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
-                          ? 'Desmarcar todos'
-                          : 'Seleccionar todos'}
-                      </button>
-                      {selectedClientes.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedClientes([])}
-                          className={`text-xs px-2 py-1 rounded transition-colors ${theme === 'dark'
-                            ? 'text-slate-400 hover:bg-slate-700'
-                            : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                        >
-                          Limpiar
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className={`max-h-48 overflow-y-auto border p-3 space-y-2 ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-800'
-                    : 'border-gray-300 bg-white'
-                    }`}>
-                    {filterOptions.clientes.length > 0 ? (
-                      filterOptions.clientes.map((cliente) => {
-                        const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
-                        return (
-                          <label
-                            key={cliente}
-                            className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-colors ${isChecked
-                              ? theme === 'dark'
-                                ? 'bg-sky-900/30 border border-sky-700/50'
-                                : 'bg-blue-50 border border-blue-200'
-                              : theme === 'dark'
-                                ? 'hover:bg-slate-700/50'
-                                : 'hover:bg-gray-50'
-                              }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                console.log('Checkbox onChange triggered for:', cliente, 'current checked:', isChecked, 'selectedClientes:', selectedClientes);
-                                handleToggleCliente(cliente);
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                              }}
-                              className={`h-4 w-4 rounded cursor-pointer flex-shrink-0 ${theme === 'dark'
-                                ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
-                                }`}
-                            />
-                            <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                              {cliente}
-                            </span>
-                          </label>
-                        );
-                      })
-                    ) : (
-                      <p className={`text-xs text-center py-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                        No hay clientes disponibles
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Filtro Ejecutivo */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Ejecutivo
-                  </label>
-                  <select
-                    value={selectedEjecutivo ?? ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value || null;
-                      setSelectedEjecutivo(newValue);
-                    }}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                    disabled={filterOptions.ejecutivos.length === 0}
-                  >
-                    <option value="">Todos</option>
-                    {filterOptions.ejecutivos.length > 0 ? (
-                      filterOptions.ejecutivos.map((ejecutivo) => (
-                        <option key={ejecutivo} value={ejecutivo}>
-                          {ejecutivo}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>No hay opciones disponibles</option>
-                    )}
-                  </select>
-                </div>
-
-                {/* Filtro Estado */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Estado
-                  </label>
-                  <select
-                    value={selectedEstado ?? ''}
-                    onChange={(e) => setSelectedEstado(e.target.value || null)}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                  >
-                    <option value="">Todos</option>
-                    <option value="PENDIENTE">Pendiente</option>
-                    <option value="CONFIRMADO">Confirmado</option>
-                    <option value="CANCELADO">Cancelado</option>
-                  </select>
-                </div>
-
-                {/* Filtro Naviera */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Naviera
-                  </label>
-                  <select
-                    value={selectedNaviera ?? ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value || null;
-                      setSelectedNaviera(newValue);
-                    }}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                    disabled={filterOptions.navieras.length === 0}
-                  >
-                    <option value="">Todas</option>
-                    {filterOptions.navieras.length > 0 ? (
-                      filterOptions.navieras.map((naviera) => (
-                        <option key={naviera} value={naviera}>
-                          {naviera}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>No hay opciones disponibles</option>
-                    )}
-                  </select>
-                </div>
-
-                {/* Filtro Especie */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Especie
-                  </label>
-                  <select
-                    value={selectedEspecie ?? ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value || null;
-                      setSelectedEspecie(newValue);
-                    }}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                    disabled={filterOptions.especies.length === 0}
-                  >
-                    <option value="">Todas</option>
-                    {filterOptions.especies.length > 0 ? (
-                      filterOptions.especies.map((especie) => (
-                        <option key={especie} value={especie}>
-                          {especie}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>No hay opciones disponibles</option>
-                    )}
-                  </select>
-                </div>
-
-                {/* Filtro Fecha Desde */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Fecha Desde (ETD)
-                  </label>
-                  <input
-                    type="date"
-                    value={fechaDesde}
-                    onChange={(e) => setFechaDesde(e.target.value)}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                  />
-                </div>
-
-                {/* Filtro Fecha Hasta */}
-                <div>
-                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                    Fecha Hasta (ETD)
-                  </label>
-                  <input
-                    type="date"
-                    value={fechaHasta}
-                    onChange={(e) => setFechaHasta(e.target.value)}
-                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
-                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
-                      }`}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-
+        <main className="flex flex-1 overflow-hidden h-full">
+          {/* Contenido principal */}
+          <div className={`flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8 space-y-6 sm:space-y-8 transition-all duration-300 ${showFilters ? 'lg:mr-80' : ''}`}>
           {/* Mensaje cuando no hay datos */}
           {registros.length === 0 && allRegistros.length > 0 && (
             <div className={`border p-6 text-center ${theme === 'dark' ? 'border-amber-700/60 bg-amber-900/20' : 'border-amber-300 bg-amber-50'}`}>
@@ -1103,6 +817,296 @@ export default function ReportesPage() {
               <AppFooter />
             </>
           )}
+          </div>
+
+          {/* Panel lateral de filtros */}
+          <aside
+            className={`fixed lg:relative right-0 top-0 z-50 lg:z-auto flex h-full lg:h-auto flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-700/60 bg-slate-900' : 'border-l border-gray-300 bg-white'} ${showFilters
+              ? 'translate-x-0 lg:w-80 lg:opacity-100 lg:pointer-events-auto'
+              : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none lg:min-w-0'
+              } w-80 lg:flex-shrink-0`}
+          >
+            {/* Overlay para móvil */}
+            {showFilters && (
+              <div
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+                onClick={() => setShowFilters(false)}
+              />
+            )}
+
+            <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-700/60' : 'border-gray-200'}`}>
+              <h2 className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros de Reportes</h2>
+              <button
+                onClick={() => setShowFilters(false)}
+                className={`flex h-8 w-8 items-center justify-center border transition ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'}`}
+                aria-label="Cerrar panel de filtros"
+              >
+                <XIcon className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+              {hasActiveFilters && (
+                <button
+                  onClick={handleClearFilters}
+                  className={`w-full text-xs px-3 py-2 border transition-colors ${theme === 'dark'
+                    ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
+                    : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                    }`}
+                >
+                  Limpiar filtros
+                </button>
+              )}
+              <div className="space-y-4">
+                {/* Filtro Temporada */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Temporada
+                  </label>
+                  <select
+                    value={selectedSeason ?? ''}
+                    onChange={(e) => {
+                      const newValue = e.target.value || null;
+                      setSelectedSeason(newValue);
+                    }}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                  >
+                    <option value="">Todas</option>
+                    {filterOptions.temporadas.map((temp) => (
+                      <option key={temp} value={temp}>
+                        Temporada {temp}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Filtro Cliente - Lista de Checkboxes */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className={`block text-xs font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Clientes {selectedClientes.length > 0 && `(${selectedClientes.length} seleccionados)`}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllClientes}
+                        className={`text-xs px-2 py-1 border transition-colors ${theme === 'dark'
+                          ? 'border-slate-700/60 text-sky-400 hover:bg-slate-700'
+                          : 'border-gray-300 text-blue-600 hover:bg-gray-100'
+                          }`}
+                      >
+                        {selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
+                          ? 'Desmarcar todos'
+                          : 'Seleccionar todos'}
+                      </button>
+                      {selectedClientes.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedClientes([])}
+                          className={`text-xs px-2 py-1 border transition-colors ${theme === 'dark'
+                            ? 'border-slate-700/60 text-slate-400 hover:bg-slate-700'
+                            : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                            }`}
+                        >
+                          Limpiar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className={`max-h-48 overflow-y-auto border p-3 space-y-2 ${theme === 'dark'
+                    ? 'border-slate-700 bg-slate-800'
+                    : 'border-gray-300 bg-white'
+                    }`}>
+                    {filterOptions.clientes.length > 0 ? (
+                      filterOptions.clientes.map((cliente) => {
+                        const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
+                        return (
+                          <label
+                            key={cliente}
+                            className={`flex items-center gap-2 p-2 cursor-pointer transition-colors ${isChecked
+                              ? theme === 'dark'
+                                ? 'bg-sky-900/30 border border-sky-700/50'
+                                : 'bg-blue-50 border border-blue-200'
+                              : theme === 'dark'
+                                ? 'hover:bg-slate-700/50'
+                                : 'hover:bg-gray-50'
+                              }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleToggleCliente(cliente);
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                              className={`h-4 w-4 cursor-pointer flex-shrink-0 ${theme === 'dark'
+                                ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                }`}
+                            />
+                            <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                              {cliente}
+                            </span>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <p className={`text-xs text-center py-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        No hay clientes disponibles
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Filtro Ejecutivo */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Ejecutivo
+                  </label>
+                  <select
+                    value={selectedEjecutivo ?? ''}
+                    onChange={(e) => {
+                      const newValue = e.target.value || null;
+                      setSelectedEjecutivo(newValue);
+                    }}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    disabled={filterOptions.ejecutivos.length === 0}
+                  >
+                    <option value="">Todos</option>
+                    {filterOptions.ejecutivos.length > 0 ? (
+                      filterOptions.ejecutivos.map((ejecutivo) => (
+                        <option key={ejecutivo} value={ejecutivo}>
+                          {ejecutivo}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No hay opciones disponibles</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* Filtro Estado */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Estado
+                  </label>
+                  <select
+                    value={selectedEstado ?? ''}
+                    onChange={(e) => setSelectedEstado(e.target.value || null)}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                  >
+                    <option value="">Todos</option>
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="CONFIRMADO">Confirmado</option>
+                    <option value="CANCELADO">Cancelado</option>
+                  </select>
+                </div>
+
+                {/* Filtro Naviera */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Naviera
+                  </label>
+                  <select
+                    value={selectedNaviera ?? ''}
+                    onChange={(e) => {
+                      const newValue = e.target.value || null;
+                      setSelectedNaviera(newValue);
+                    }}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    disabled={filterOptions.navieras.length === 0}
+                  >
+                    <option value="">Todas</option>
+                    {filterOptions.navieras.length > 0 ? (
+                      filterOptions.navieras.map((naviera) => (
+                        <option key={naviera} value={naviera}>
+                          {naviera}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No hay opciones disponibles</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* Filtro Especie */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Especie
+                  </label>
+                  <select
+                    value={selectedEspecie ?? ''}
+                    onChange={(e) => {
+                      const newValue = e.target.value || null;
+                      setSelectedEspecie(newValue);
+                    }}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                    disabled={filterOptions.especies.length === 0}
+                  >
+                    <option value="">Todas</option>
+                    {filterOptions.especies.length > 0 ? (
+                      filterOptions.especies.map((especie) => (
+                        <option key={especie} value={especie}>
+                          {especie}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>No hay opciones disponibles</option>
+                    )}
+                  </select>
+                </div>
+
+                {/* Filtro Fecha Desde */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Fecha Desde (ETD)
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                  />
+                </div>
+
+                {/* Filtro Fecha Hasta */}
+                <div>
+                  <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Fecha Hasta (ETD)
+                  </label>
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                      }`}
+                  />
+                </div>
+              </div>
+            </div>
+          </aside>
         </main>
       </div>
 
