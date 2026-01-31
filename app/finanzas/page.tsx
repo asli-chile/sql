@@ -57,6 +57,7 @@ export default function FinanzasPage() {
   const [selectedNaviera, setSelectedNaviera] = useState<string | null>(null);
   const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
   const [selectedNave, setSelectedNave] = useState<string | null>(null);
+  const [selectedContrato, setSelectedContrato] = useState<string | null>(null);
   const [fechaDesde, setFechaDesde] = useState<string>('');
   const [fechaHasta, setFechaHasta] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
@@ -105,6 +106,7 @@ export default function FinanzasPage() {
         especies: [],
         temporadas: [],
         naves: [],
+        contratos: [],
       };
     }
 
@@ -157,6 +159,13 @@ export default function FinanzasPage() {
       });
     }
 
+    if (selectedContrato) {
+      registrosFiltrados = registrosFiltrados.filter((r) => {
+        const contrato = (r.contrato || '').trim().toUpperCase();
+        return contrato === selectedContrato.toUpperCase();
+      });
+    }
+
     if (fechaDesde) {
       const desde = new Date(fechaDesde);
       registrosFiltrados = registrosFiltrados.filter((r) => {
@@ -183,6 +192,7 @@ export default function FinanzasPage() {
     const especies = new Set<string>();
     const temporadas = new Set<string>();
     const naves = new Set<string>();
+    const contratos = new Set<string>();
 
     registrosFiltrados.forEach((r) => {
       if (r.shipper) clientes.add(r.shipper.trim());
@@ -190,6 +200,7 @@ export default function FinanzasPage() {
       if (r.naviera) navieras.add(r.naviera.trim());
       if (r.especie) especies.add(r.especie.trim());
       if (r.naveInicial) naves.add(r.naveInicial.trim());
+      if (r.contrato) contratos.add(r.contrato.trim());
       if (r.temporada) {
         const season = normalizeSeasonLabel(r.temporada);
         if (season) temporadas.add(season);
@@ -203,8 +214,9 @@ export default function FinanzasPage() {
       especies: Array.from(especies).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
       temporadas: Array.from(temporadas).sort().reverse(),
       naves: Array.from(naves).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
+      contratos: Array.from(contratos).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })),
     };
-  }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
+  }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, selectedContrato, fechaDesde, fechaHasta]);
 
   // Aplicar filtros a los registros
   const filteredRegistros = useMemo(() => {
@@ -260,6 +272,13 @@ export default function FinanzasPage() {
       });
     }
 
+    if (selectedContrato) {
+      filtered = filtered.filter((r) => {
+        const contrato = (r.contrato || '').trim().toUpperCase();
+        return contrato === selectedContrato.toUpperCase();
+      });
+    }
+
     if (fechaDesde) {
       const desde = new Date(fechaDesde);
       filtered = filtered.filter((r) => {
@@ -280,7 +299,7 @@ export default function FinanzasPage() {
     }
 
     return filtered;
-  }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, fechaDesde, fechaHasta]);
+  }, [allRegistros, selectedSeason, selectedClientes, selectedEjecutivo, selectedEstado, selectedNaviera, selectedEspecie, selectedNave, selectedContrato, fechaDesde, fechaHasta]);
 
   // Actualizar registros cuando cambian los filtros
   useEffect(() => {
@@ -358,6 +377,7 @@ export default function FinanzasPage() {
     setSelectedNaviera(null);
     setSelectedEspecie(null);
     setSelectedNave(null);
+    setSelectedContrato(null);
     setFechaDesde('');
     setFechaHasta('');
   };
@@ -387,7 +407,7 @@ export default function FinanzasPage() {
     }
   };
 
-  const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta;
+  const hasActiveFilters = selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || selectedContrato || fechaDesde || fechaHasta;
 
   const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
 
@@ -540,6 +560,7 @@ export default function FinanzasPage() {
                       selectedNaviera,
                       selectedEspecie,
                       selectedNave,
+                      selectedContrato,
                       fechaDesde,
                       fechaHasta,
                     ].filter(Boolean).length}
@@ -805,6 +826,29 @@ export default function FinanzasPage() {
                       {filterOptions.naves.map((nave) => (
                         <option key={nave} value={nave}>
                           {nave}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro Contrato */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Contrato
+                    </label>
+                    <select
+                      value={selectedContrato ?? ''}
+                      onChange={(e) => setSelectedContrato(e.target.value || null)}
+                      className={`w-full border px-3 py-2 text-xs sm:text-sm focus:outline-none focus:ring-2 ${theme === 'dark'
+                        ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
+                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
+                        }`}
+                      disabled={filterOptions.contratos.length === 0}
+                    >
+                      <option value="">Todos</option>
+                      {filterOptions.contratos.map((contrato) => (
+                        <option key={contrato} value={contrato}>
+                          {contrato}
                         </option>
                       ))}
                     </select>

@@ -10,7 +10,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
 import { CostosModal } from './CostosModal';
 import { ReporteFinanciero as ReporteFinancieroComponent } from './ReporteFinanciero';
-import { FileText } from 'lucide-react';
+import { ReporteDetalladoCostos } from './ReporteDetalladoCostos';
+import { FileText, FileSpreadsheet } from 'lucide-react';
 
 interface FinanzasSectionProps {
   registros: Registro[];
@@ -32,6 +33,7 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
   const [activeTab, setActiveTab] = useState<'resumen' | 'detalle' | 'reporte'>('resumen');
   const [tableExists, setTableExists] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showReporteDetallado, setShowReporteDetallado] = useState(false);
 
   // Debug
   useEffect(() => {
@@ -261,7 +263,17 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
   return (
     <div className="space-y-6">
       {/* Tabs de Navegación */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between items-center mb-4">
+        <button
+          onClick={() => setShowReporteDetallado(true)}
+          className={`flex items-center gap-2 px-4 py-2 border transition-colors ${theme === 'dark'
+            ? 'border-slate-700 text-slate-300 hover:bg-slate-700'
+            : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span>Reporte Detallado de Costos</span>
+        </button>
         <div className={`flex items-center gap-2 p-1 border ${theme === 'dark' ? 'bg-slate-800 border-slate-700/60' : 'bg-white border-gray-300'}`}>
           <button
             onClick={() => setActiveTab('resumen')}
@@ -551,6 +563,14 @@ export function FinanzasSection({ registros, canEdit }: FinanzasSectionProps) {
           onSave={handleSave}
         />
       )}
+
+      {/* Modal de Reporte Detallado */}
+      <ReporteDetalladoCostos
+        registros={registros}
+        costosEmbarques={costosEmbarques}
+        isOpen={showReporteDetallado}
+        onClose={() => setShowReporteDetallado(false)}
+      />
     </div>
   );
 }
