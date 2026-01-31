@@ -172,54 +172,6 @@ export function ReporteDetalladoCostos({
       },
     };
 
-    const refExternaStyle = {
-      font: { bold: true, size: 11, color: { argb: 'FFFFFFFF' } },
-      fill: {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF374151' }, // Gris oscuro
-      },
-      alignment: { horizontal: 'left', vertical: 'middle' as const },
-      border: {
-        top: { style: 'thin' as const },
-        left: { style: 'thin' as const },
-        bottom: { style: 'thin' as const },
-        right: { style: 'thin' as const },
-      },
-    };
-
-    const contenedorStyle = {
-      font: { bold: true, size: 10 },
-      fill: {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFE5E7EB' }, // Gris claro
-      },
-      alignment: { horizontal: 'left', vertical: 'middle' as const },
-      border: {
-        top: { style: 'thin' as const },
-        left: { style: 'thin' as const },
-        bottom: { style: 'thin' as const },
-        right: { style: 'thin' as const },
-      },
-    };
-
-    const reservaStyle = {
-      font: { bold: true, size: 10 },
-      fill: {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FFF3F4F6' }, // Gris muy claro
-      },
-      alignment: { horizontal: 'left', vertical: 'middle' as const },
-      border: {
-        top: { style: 'thin' as const },
-        left: { style: 'thin' as const },
-        bottom: { style: 'thin' as const },
-        right: { style: 'thin' as const },
-      },
-    };
-
     const dataStyle = {
       border: {
         top: { style: 'thin' as const },
@@ -243,207 +195,162 @@ export function ReporteDetalladoCostos({
 
     let currentRow = 1;
 
-    // Encabezado de totales
-    worksheet.mergeCells(`A${currentRow}:Z${currentRow}`);
-    worksheet.getCell(`A${currentRow}`).value = 'RESUMEN GENERAL';
-    worksheet.getCell(`A${currentRow}`).style = {
-      ...headerStyle,
-      alignment: { horizontal: 'left' as const, vertical: 'middle' as const },
-    };
-    currentRow++;
-
-    const totalesRow = currentRow;
-    worksheet.getCell(`A${totalesRow}`).value = 'Total Registros:';
-    worksheet.getCell(`B${totalesRow}`).value = totales.totalRegistros;
-    worksheet.getCell(`C${totalesRow}`).value = 'Ingresos Totales:';
-    worksheet.getCell(`D${totalesRow}`).value = totales.totalIngresos;
-    worksheet.getCell(`D${totalesRow}`).style = currencyStyle;
-    worksheet.getCell(`E${totalesRow}`).value = 'Costos Totales:';
-    worksheet.getCell(`F${totalesRow}`).value = totales.totalCostos;
-    worksheet.getCell(`F${totalesRow}`).style = currencyStyle;
-    worksheet.getCell(`G${totalesRow}`).value = 'Margen Total:';
-    worksheet.getCell(`H${totalesRow}`).value = totales.totalMargen;
-    worksheet.getCell(`H${totalesRow}`).style = {
-      ...currencyStyle,
-      font: {
-        color: { argb: totales.totalMargen >= 0 ? 'FF10B981' : 'FFEF4444' },
-      },
-    };
-    worksheet.getCell(`I${totalesRow}`).value = 'Margen %:';
-    worksheet.getCell(`J${totalesRow}`).value = totales.totalMargenPorcentaje / 100;
-    worksheet.getCell(`J${totalesRow}`).style = {
-      ...numberStyle,
-      numFmt: '0.00%',
-      font: {
-        color: { argb: totales.totalMargenPorcentaje >= 0 ? 'FF10B981' : 'FFEF4444' },
-      },
-    };
-    currentRow += 2;
-
-    // Encabezados de la tabla
+    // Encabezados según el formato solicitado
     const headers = [
-      'Cliente',
-      'Naviera',
-      'Ingresos',
-      'Costo Total',
-      'Margen',
-      'Margen %',
-      'TT Flete',
-      'TT Sobre Estadia',
-      'TT Porteo',
-      'TT Almacenamiento',
-      'Coord Adm Espacio',
-      'Coord Comex',
-      'Coord AGA',
-      'Nav Gate Out',
-      'Nav Seguridad Contenedor',
-      'Nav Matriz Fuera Plazo',
-      'Nav Correcciones',
-      'Nav Extra Late',
-      'Nav Telex Release',
-      'Nav Courier',
-      'Nav Pago SAG CF Extra',
-      'Nav Pago UCCO CO Extra',
-      'Rebates',
+      'REF EXTERNA',
+      'CONTENEDOR',
+      'RESERVA',
+      'CLIENTE',
+      'NAVIERA',
+      'COSTO TOTAL',
+      'TT FLETE',
+      'TT SOBRE ESTADIA',
+      'TT PORTEO',
+      'TT ALMACENAMIENTO',
+      'COORDINACION ESPACIO NAVIERO',
+      'COORDINACION COMEX',
+      'COORDINACION AGA',
+      'NAV GATE OUT',
+      'NAV SEGURIDAD CONTENEDOR',
+      'NAV MATRIZ FUERA PLAZO',
+      'NAV CORRECCIONES',
+      'NAV EXTRA LATE',
+      'NAV TELEX RELEASE',
+      'NAV COURIER',
+      'NAV PAGO SAG CER.FITO EXTRA',
+      'NAV PAGO CERT.OR EXTRA',
+      'REBATES',
     ];
 
-    // Agregar datos agrupados
-    datosAgrupados.forEach((refData, refIndex) => {
-      const refStartRow = currentRow;
+    // Agregar encabezados
+    headers.forEach((header, colIndex) => {
+      const col = String.fromCharCode(65 + colIndex); // A, B, C, etc.
+      worksheet.getCell(`${col}${currentRow}`).value = header;
+      worksheet.getCell(`${col}${currentRow}`).style = headerStyle;
+    });
+    currentRow++;
 
-      // Fila de Ref Externa
-      worksheet.mergeCells(`A${currentRow}:Z${currentRow}`);
-      worksheet.getCell(`A${currentRow}`).value = `Ref Externa: ${refData.refExterna}`;
-      worksheet.getCell(`A${currentRow}`).style = refExternaStyle;
-      currentRow++;
+    // Recopilar todos los datos en formato plano
+    const allRows: Array<{
+      refExterna: string;
+      contenedor: string;
+      reserva: string;
+      cliente: string;
+      naviera: string;
+      costoTotal: number;
+      ttFlete: number;
+      ttSobreEstadia: number;
+      ttPorteo: number;
+      ttAlmacenamiento: number;
+      coordAdmEspacio: number;
+      coordComex: number;
+      coordAga: number;
+      navGateOut: number;
+      navSeguridadContenedor: number;
+      navMatrizFueraPlazo: number;
+      navCorrecciones: number;
+      navExtraLate: number;
+      navTelexRelease: number;
+      navCourier: number;
+      navPagoSagCfExtra: number;
+      navPagoUccoCoExtra: number;
+      rebates: number;
+    }> = [];
 
-      refData.contenedores.forEach((contenedorData, contIndex) => {
-        const contStartRow = currentRow;
-
-        // Fila de Contenedor
-        worksheet.mergeCells(`A${currentRow}:Z${currentRow}`);
-        worksheet.getCell(`A${currentRow}`).value = `  Contenedor: ${contenedorData.contenedor}`;
-        worksheet.getCell(`A${currentRow}`).style = contenedorStyle;
-        currentRow++;
-
+    datosAgrupados.forEach((refData) => {
+      refData.contenedores.forEach((contenedorData) => {
         contenedorData.reservas.forEach((costos, reserva) => {
-          const reservaStartRow = currentRow;
-
-          // Fila de Reserva
-          worksheet.mergeCells(`A${currentRow}:Z${currentRow}`);
-          worksheet.getCell(`A${currentRow}`).value = `    Reserva: ${reserva}`;
-          worksheet.getCell(`A${currentRow}`).style = reservaStyle;
-          currentRow++;
-
-          // Encabezados de la tabla (solo la primera vez por reserva)
-          if (costos.length > 0) {
-            headers.forEach((header, colIndex) => {
-              const col = String.fromCharCode(65 + colIndex); // A, B, C, etc.
-              worksheet.getCell(`${col}${currentRow}`).value = header;
-              worksheet.getCell(`${col}${currentRow}`).style = headerStyle;
+          costos.forEach((costo) => {
+            const costoData = costo.costo;
+            allRows.push({
+              refExterna: refData.refExterna,
+              contenedor: contenedorData.contenedor,
+              reserva: reserva,
+              cliente: costo.registro.shipper || '',
+              naviera: costo.registro.naviera || '',
+              costoTotal: costo.costoTotal,
+              ttFlete: costoData?.tt_flete || 0,
+              ttSobreEstadia: costoData?.tt_sobre_estadia || 0,
+              ttPorteo: costoData?.tt_porteo || 0,
+              ttAlmacenamiento: costoData?.tt_almacenamiento || 0,
+              coordAdmEspacio: costoData?.coord_adm_espacio || 0,
+              coordComex: costoData?.coord_comex || 0,
+              coordAga: costoData?.coord_aga || 0,
+              navGateOut: costoData?.nav_gate_out || 0,
+              navSeguridadContenedor: costoData?.nav_seguridad_contenedor || 0,
+              navMatrizFueraPlazo: costoData?.nav_matriz_fuera_plazo || 0,
+              navCorrecciones: costoData?.nav_correcciones || 0,
+              navExtraLate: costoData?.nav_extra_late || 0,
+              navTelexRelease: costoData?.nav_telex_release || 0,
+              navCourier: costoData?.nav_courier || 0,
+              navPagoSagCfExtra: costoData?.nav_pago_sag_cf_extra || 0,
+              navPagoUccoCoExtra: costoData?.nav_pago_ucco_co_extra || 0,
+              rebates: costoData?.rebates || 0,
             });
-            currentRow++;
-
-            // Filas de datos
-            costos.forEach((costo) => {
-              const costoData = costo.costo;
-              const rowData = [
-                costo.registro.shipper || '',
-                costo.registro.naviera || '',
-                costo.ingresos,
-                costo.costoTotal,
-                costo.margen,
-                costo.margenPorcentaje / 100,
-                costoData?.tt_flete || 0,
-                costoData?.tt_sobre_estadia || 0,
-                costoData?.tt_porteo || 0,
-                costoData?.tt_almacenamiento || 0,
-                costoData?.coord_adm_espacio || 0,
-                costoData?.coord_comex || 0,
-                costoData?.coord_aga || 0,
-                costoData?.nav_gate_out || 0,
-                costoData?.nav_seguridad_contenedor || 0,
-                costoData?.nav_matriz_fuera_plazo || 0,
-                costoData?.nav_correcciones || 0,
-                costoData?.nav_extra_late || 0,
-                costoData?.nav_telex_release || 0,
-                costoData?.nav_courier || 0,
-                costoData?.nav_pago_sag_cf_extra || 0,
-                costoData?.nav_pago_ucco_co_extra || 0,
-                costoData?.rebates || 0,
-              ];
-
-              rowData.forEach((value, colIndex) => {
-                const col = String.fromCharCode(65 + colIndex);
-                const cell = worksheet.getCell(`${col}${currentRow}`);
-                cell.value = value;
-
-                if (colIndex === 0 || colIndex === 1) {
-                  // Cliente y Naviera - texto
-                  cell.style = dataStyle;
-                } else if (colIndex === 2 || colIndex === 3 || colIndex === 4) {
-                  // Ingresos, Costo Total, Margen - moneda
-                  cell.style = currencyStyle;
-                  if (colIndex === 4) {
-                    // Margen con color
-                    cell.style = {
-                      ...currencyStyle,
-                      font: {
-                        color: { argb: costo.margen >= 0 ? 'FF10B981' : 'FFEF4444' },
-                      },
-                    };
-                  }
-                } else if (colIndex === 5) {
-                  // Margen % - porcentaje
-                  cell.style = {
-                    ...numberStyle,
-                    numFmt: '0.00%',
-                    font: {
-                      color: { argb: costo.margenPorcentaje >= 0 ? 'FF10B981' : 'FFEF4444' },
-                    },
-                  };
-                } else {
-                  // Resto - moneda
-                  cell.style = currencyStyle;
-                }
-              });
-              currentRow++;
-            });
-          }
+          });
         });
+      });
+    });
 
-        // Agrupar filas de contenedor (se hará manualmente con outlineLevel en las filas)
-        if (currentRow > contStartRow + 1) {
-          for (let r = contStartRow; r < currentRow; r++) {
-            const row = worksheet.getRow(r);
-            if (row) {
-              row.outlineLevel = 2;
-            }
-          }
+    // Agregar todas las filas de datos
+    allRows.forEach((row) => {
+      const rowData = [
+        row.refExterna,
+        row.contenedor,
+        row.reserva,
+        row.cliente,
+        row.naviera,
+        row.costoTotal,
+        row.ttFlete,
+        row.ttSobreEstadia,
+        row.ttPorteo,
+        row.ttAlmacenamiento,
+        row.coordAdmEspacio,
+        row.coordComex,
+        row.coordAga,
+        row.navGateOut,
+        row.navSeguridadContenedor,
+        row.navMatrizFueraPlazo,
+        row.navCorrecciones,
+        row.navExtraLate,
+        row.navTelexRelease,
+        row.navCourier,
+        row.navPagoSagCfExtra,
+        row.navPagoUccoCoExtra,
+        row.rebates,
+      ];
+
+      rowData.forEach((value, colIndex) => {
+        const col = String.fromCharCode(65 + colIndex);
+        const cell = worksheet.getCell(`${col}${currentRow}`);
+        cell.value = value;
+
+        if (colIndex < 5) {
+          // REF EXTERNA, CONTENEDOR, RESERVA, CLIENTE, NAVIERA - texto
+          cell.style = dataStyle;
+          cell.alignment = { horizontal: 'left' as const, vertical: 'middle' as const };
+        } else {
+          // Resto - moneda
+          cell.style = currencyStyle;
         }
       });
-
-      // Agrupar filas de ref externa
-      if (currentRow > refStartRow + 1) {
-        for (let r = refStartRow; r < currentRow; r++) {
-          const row = worksheet.getRow(r);
-          if (row) {
-            row.outlineLevel = 1;
-          }
-        }
-      }
-
-      currentRow++; // Espacio entre refs externas
+      currentRow++;
     });
 
     // Ajustar ancho de columnas
     worksheet.columns.forEach((column, index) => {
-      if (index === 0 || index === 1) {
-        column.width = 20; // Cliente y Naviera
+      if (index < 5) {
+        column.width = 20; // Columnas de texto
       } else {
-        column.width = 15; // Resto de columnas
+        column.width = 18; // Columnas numéricas
       }
     });
+
+    // Congelar primera fila (encabezados)
+    worksheet.views = [{
+      state: 'frozen',
+      ySplit: 1,
+    }];
 
     // Generar archivo
     const buffer = await workbook.xlsx.writeBuffer();
