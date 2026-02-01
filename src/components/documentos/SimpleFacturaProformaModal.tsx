@@ -162,28 +162,28 @@ export function SimpleFacturaProformaModal({
         email: '',
       },
       consignatario: {
-        nombre: reg.consignatario || '',
+        nombre: '', // Se llenará desde el selector de consignatarios
         direccion: '',
-        pais: reg.paisDestino || '',
+        pais: reg.pod || '', // puerto destino
       },
       notifyParty: {
-        nombre: reg.consignatario || '',
+        nombre: '',
         direccion: '',
       },
       embarque: {
         numeroInvoice: reg.refAsli || '',
         numeroEmbarque: reg.booking || '',
-        fechaEmbarque: reg.fechaEmbarque || now.toISOString().split('T')[0],
+        fechaEmbarque: reg.etd ? reg.etd.toISOString().split('T')[0] : now.toISOString().split('T')[0],
         fechaFactura: now.toISOString().split('T')[0],
-        motonave: reg.nave || '',
-        numeroViaje: '',
+        motonave: reg.naveInicial || '',
+        numeroViaje: reg.viaje || '',
         clausulaVenta: 'FOB',
         paisOrigen: 'CHILE',
-        puertoEmbarque: reg.puertoOrigen || 'VALPARAISO',
-        puertoDestino: reg.puertoDestino || '',
-        paisDestinoFinal: reg.paisDestino || '',
+        puertoEmbarque: reg.pol || 'VALPARAISO',
+        puertoDestino: reg.pod || '',
+        paisDestinoFinal: reg.pod || '',
         formaPago: 'T/T',
-        contenedor: reg.contenedor || '',
+        contenedor: Array.isArray(reg.contenedor) ? reg.contenedor.join(', ') : reg.contenedor || '',
         pesoNetoTotal: 0,
         pesoBrutoTotal: 0,
       },
@@ -191,10 +191,10 @@ export function SimpleFacturaProformaModal({
         {
           cantidad: 1,
           tipoEnvase: 'CASES',
-          variedad: reg.variedad || '',
-          categoria: reg.categoria || '',
-          etiqueta: reg.etiqueta || '',
-          calibre: reg.calibre || '',
+          variedad: '', // No está en Registro
+          categoria: '', // No está en Registro
+          etiqueta: '', // No está en Registro
+          calibre: '', // No está en Registro
           kgNetoUnidad: 0,
           kgBrutoUnidad: 0,
           precioPorCaja: 0,
