@@ -441,6 +441,23 @@ export function FacturaCreator({
     }
   };
 
+  const handleGenerarProforma = async () => {
+    if (!onGenerateProforma) {
+      showError('No se ha configurado el generador de proformas');
+      return;
+    }
+
+    try {
+      const facturaCompleta = { ...factura, totales: totalesCalculados };
+      await onGenerateProforma(facturaCompleta, plantillaSeleccionada);
+      success('Proforma generada exitosamente');
+      onClose();
+    } catch (err: any) {
+      console.error('Error generando proforma:', err);
+      showError('Error al generar proforma: ' + err.message);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -1503,7 +1520,7 @@ function FormularioFactura({
             </label>
             <input
               type="number"
-              step="0.01"
+              step="any"
               value={factura.embarque.pesoNetoTotal || ''}
               onChange={e => updateFactura('embarque.pesoNetoTotal', e.target.value ? parseFloat(e.target.value) : undefined)}
               className={`w-full px-3 py-2 rounded border ${
@@ -1520,7 +1537,7 @@ function FormularioFactura({
             </label>
             <input
               type="number"
-              step="0.01"
+              step="any"
               value={factura.embarque.pesoBrutoTotal || ''}
               onChange={e => updateFactura('embarque.pesoBrutoTotal', e.target.value ? parseFloat(e.target.value) : undefined)}
               className={`w-full px-3 py-2 rounded border ${
@@ -1677,8 +1694,8 @@ function FormularioFactura({
                 </label>
                 <input
                   type="number"
-                  step="0.01"
-                  value={producto.kgNetoUnidad}
+                  step="any"
+                  value={producto.kgNetoUnidad || ''}
                   onChange={e => updateProducto(index, 'kgNetoUnidad', parseFloat(e.target.value) || 0)}
                   placeholder="KG Neto"
                   className={`w-full px-2 py-1 rounded border ${
@@ -1695,8 +1712,8 @@ function FormularioFactura({
                   </label>
                   <input
                     type="number"
-                    step="0.01"
-                    value={producto.precioPorKilo}
+                    step="any"
+                    value={producto.precioPorKilo || ''}
                     onChange={e => updateProducto(index, 'precioPorKilo', parseFloat(e.target.value) || 0)}
                     placeholder="US$/KG"
                     className={`w-full px-2 py-1 rounded border ${
@@ -1712,8 +1729,8 @@ function FormularioFactura({
                   </label>
                   <input
                     type="number"
-                    step="0.01"
-                    value={producto.precioPorCaja}
+                    step="any"
+                    value={producto.precioPorCaja || ''}
                     onChange={e => updateProducto(index, 'precioPorCaja', parseFloat(e.target.value) || 0)}
                     placeholder="US$/Caja"
                     className={`w-full px-2 py-1 rounded border ${
