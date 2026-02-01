@@ -36,7 +36,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
-import { SimpleFacturaProformaModal } from '@/components/documentos/SimpleFacturaProformaModal';
 import { FacturaCreator } from '@/components/facturas/FacturaCreator';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
@@ -162,7 +161,6 @@ export default function RegistrosPage() {
   const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
   const [registroSeleccionadoProforma, setRegistroSeleccionadoProforma] = useState<Registro | null>(null);
   const [isProformaCreatorOpen, setIsProformaCreatorOpen] = useState(false);
-  const [isFullEditorOpen, setIsFullEditorOpen] = useState(false);
 
   // Estado para selección múltiple
   const [selectionMode, setSelectionMode] = useState(false);
@@ -2971,20 +2969,11 @@ export default function RegistrosPage() {
         />
 
         {isProformaCreatorOpen && registroSeleccionadoProforma && (
-          <SimpleFacturaProformaModal
+          <FacturaCreator
             registro={registroSeleccionadoProforma}
             isOpen={isProformaCreatorOpen}
             onClose={handleCloseProformaCreator}
-            onOpenFullEditor={() => setIsFullEditorOpen(true)}
-          />
-        )}
-
-        {isFullEditorOpen && registroSeleccionadoProforma && (
-          <FacturaCreator
-            registro={registroSeleccionadoProforma}
-            isOpen={isFullEditorOpen}
-            onClose={() => setIsFullEditorOpen(false)}
-            onSave={() => setIsFullEditorOpen(false)}
+            onSave={handleCloseProformaCreator}
             mode="proforma"
             onGenerateProforma={handleGenerateProforma}
           />

@@ -34,7 +34,6 @@ import {
 import { SidebarSection } from '@/types/layout';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { InstructivoEmbarqueModal } from '@/components/documentos/InstructivoEmbarqueModal';
-import { SimpleFacturaProformaModal } from '@/components/documentos/SimpleFacturaProformaModal';
 import { FacturaCreator } from '@/components/facturas/FacturaCreator';
 import { Factura } from '@/types/factura';
 import { generarProformaCompleta, subirProforma } from '@/lib/proforma-generator';
@@ -70,7 +69,6 @@ export default function GenerarDocumentosPage() {
   const [selectedContenedor, setSelectedContenedor] = useState<ContenedorInfo | null>(null);
   const [showInstructivoModal, setShowInstructivoModal] = useState(false);
   const [showProformaModal, setShowProformaModal] = useState(false);
-  const [showFullEditor, setShowFullEditor] = useState(false);
   const [expandedNaves, setExpandedNaves] = useState<Set<string>>(new Set());
   const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
   
@@ -1042,20 +1040,11 @@ export default function GenerarDocumentosPage() {
       )}
 
       {showProformaModal && selectedContenedor && selectedBooking && (
-        <SimpleFacturaProformaModal
-          isOpen={showProformaModal}
-          onClose={handleCloseProformaModal}
-          registro={selectedContenedor.registro}
-          onOpenFullEditor={() => setShowFullEditor(true)}
-        />
-      )}
-
-      {showFullEditor && selectedContenedor && (
         <FacturaCreator
           registro={selectedContenedor.registro}
-          isOpen={showFullEditor}
-          onClose={() => setShowFullEditor(false)}
-          onSave={() => setShowFullEditor(false)}
+          isOpen={showProformaModal}
+          onClose={handleCloseProformaModal}
+          onSave={handleCloseProformaModal}
           mode="proforma"
           onGenerateProforma={handleGenerateProformaFromEditor}
         />
