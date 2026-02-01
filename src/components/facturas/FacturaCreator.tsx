@@ -730,22 +730,24 @@ function FormularioFactura({
         </h4>
         
         {/* Selector de consignatarios */}
-        <div>
-          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Seleccionar Consignatario
+        <div className={`p-3 rounded border ${
+          theme === 'dark' ? 'bg-gray-900 border-gray-600' : 'bg-blue-50 border-blue-300'
+        }`}>
+          <label className={`block text-xs font-semibold mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+            📋 Seleccionar Consignatario Guardado
           </label>
           <select
             value={selectedConsignatarioId}
             onChange={(e) => handleSelectConsignatario(e.target.value)}
             disabled={loadingConsignatarios}
-            className={`w-full px-3 py-2 rounded border ${
+            className={`w-full px-3 py-2.5 rounded border font-medium ${
               theme === 'dark'
                 ? 'bg-gray-800 border-gray-700 text-white'
                 : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
             <option value="">
-              {loadingConsignatarios ? 'Cargando...' : 'Ingresar manualmente'}
+              {loadingConsignatarios ? '⏳ Cargando...' : '✏️ Ingresar manualmente'}
             </option>
             {consignatarios.map((c) => (
               <option key={c.id} value={c.id}>
@@ -754,12 +756,21 @@ function FormularioFactura({
             ))}
           </select>
           {consignatarios.length === 0 && !loadingConsignatarios && (
-            <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
-              No hay consignatarios. Puedes agregar uno en Mantenimiento.
+            <p className={`text-xs mt-2 p-2 rounded ${theme === 'dark' ? 'bg-yellow-900/20 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
+              ℹ️ No hay consignatarios registrados. Puedes agregar uno en <strong>Mantenimiento → Consignatarios</strong>.
+            </p>
+          )}
+          {selectedConsignatarioId && (
+            <p className={`text-xs mt-2 p-2 rounded ${theme === 'dark' ? 'bg-green-900/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
+              ✅ Datos cargados automáticamente
             </p>
           )}
         </div>
 
+        <div className={`pt-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Company
+          </label>
         <input
           type="text"
           value={factura.consignatario.nombre}
@@ -771,6 +782,11 @@ function FormularioFactura({
           }`}
           placeholder="Company"
         />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Address
+          </label>
         <textarea
           value={factura.consignatario.direccion}
           onChange={e => updateFactura('consignatario.direccion', e.target.value)}
@@ -782,6 +798,11 @@ function FormularioFactura({
           placeholder="Address"
           rows={3}
         />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Attn
+          </label>
         <input
           type="text"
           value={factura.consignatario.contacto || ''}
@@ -793,6 +814,11 @@ function FormularioFactura({
           }`}
           placeholder="Attn"
         />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            USCC
+          </label>
         <input
           type="text"
           value={factura.consignatario.usci || ''}
@@ -804,6 +830,11 @@ function FormularioFactura({
           }`}
           placeholder="USCC"
         />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Mobile
+          </label>
         <input
           type="text"
           value={factura.consignatario.telefono || factura.consignatario.telefonoContacto || ''}
@@ -818,6 +849,11 @@ function FormularioFactura({
           }`}
           placeholder="Mobile"
         />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            E-mail
+          </label>
         <input
           type="text"
           value={factura.consignatario.email || ''}
@@ -829,6 +865,11 @@ function FormularioFactura({
           }`}
           placeholder="E-mail"
         />
+        </div>
+        <div>
+          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            ZIP
+          </label>
         <input
           type="text"
           value={factura.consignatario.codigoPostal || ''}
@@ -840,6 +881,7 @@ function FormularioFactura({
           }`}
           placeholder="ZIP"
         />
+        </div>
       </section>
 
       {/* Embarque */}
