@@ -298,18 +298,21 @@ export class PlantillaExcelProcessor {
       return '<div class="p-4 text-gray-500">No hay datos para mostrar</div>';
     }
 
-    let html = '<div class="excel-preview" style="font-family: Arial, sans-serif; font-size: 11px;">';
-    html += '<table style="border-collapse: collapse; width: 100%; table-layout: fixed;">';
+    let html = '<div class="excel-preview" style="font-family: Arial, sans-serif; font-size: 11px; overflow-x: auto; padding: 20px;">';
+    html += '<table style="border-collapse: collapse; width: 100%; max-width: 1400px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
     
-    // Obtener anchos de columnas
+    // Obtener anchos de columnas y calcular ancho total
     const colWidths: number[] = [];
+    let totalWidth = 0;
     worksheet.columns.forEach((col, idx) => {
       const width = col.width || 10;
-      colWidths[idx + 1] = width * 7; // Convertir a pixeles aproximados
+      const pixelWidth = width * 7;
+      colWidths[idx + 1] = pixelWidth;
+      totalWidth += pixelWidth;
     });
     
     worksheet.eachRow((row, rowNumber) => {
-      const height = row.height || 15;
+      const height = row.height || 18;
       html += `<tr style="height: ${height}px;">`;
       
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -330,28 +333,39 @@ export class PlantillaExcelProcessor {
         }
 
         // Construir estilos inline
-        const stylesParts: string[] = [];
+        const stylesParts: string[] = [
+          'padding: 6px 8px',
+          'box-sizing: border-box',
+          'overflow: hidden',
+          'text-overflow: ellipsis'
+        ];
         
-        // Ancho de columna
-        if (colWidths[colNumber]) {
-          stylesParts.push(`width: ${colWidths[colNumber]}px`);
+        // Ancho de columna proporcional
+        if (colWidths[colNumber] && totalWidth > 0) {
+          const percentage = (colWidths[colNumber] / totalWidth) * 100;
+          stylesParts.push(`width: ${percentage}%`);
         }
         
-        // Alineación
+        // Alineación por defecto
+        let textAlign = 'left';
+        let verticalAlign = 'middle';
+        
+        // Alineación del Excel
         if (cell.alignment) {
           if (cell.alignment.horizontal) {
-            stylesParts.push(`text-align: ${cell.alignment.horizontal}`);
+            textAlign = cell.alignment.horizontal;
           }
           if (cell.alignment.vertical) {
             const vAlign = cell.alignment.vertical;
-            // Convertir valores de ExcelJS a CSS
-            const cssVAlign = vAlign === 'middle' ? 'center' : vAlign;
-            stylesParts.push(`vertical-align: ${cssVAlign}`);
+            verticalAlign = vAlign === 'middle' ? 'middle' : vAlign;
           }
           if (cell.alignment.wrapText) {
             stylesParts.push('white-space: pre-wrap');
           }
         }
+        
+        stylesParts.push(`text-align: ${textAlign}`);
+        stylesParts.push(`vertical-align: ${verticalAlign}`);
         
         // Fuente
         if (cell.font) {
@@ -375,26 +389,29 @@ export class PlantillaExcelProcessor {
           }
         }
         
-        // Bordes
-        const borderParts: string[] = [];
+        // Bordes simétricos
         if (cell.border) {
+          const borderStyles: string[] = [];
           if (cell.border.top && cell.border.top.style) {
-            borderParts.push(`border-top: 1px solid #000`);
+            borderStyles.push(`border-top: 1px solid #333`);
           }
           if (cell.border.bottom && cell.border.bottom.style) {
-            borderParts.push(`border-bottom: 1px solid #000`);
+            borderStyles.push(`border-bottom: 1px solid #333`);
           }
           if (cell.border.left && cell.border.left.style) {
-            borderParts.push(`border-left: 1px solid #000`);
+            borderStyles.push(`border-left: 1px solid #333`);
           }
           if (cell.border.right && cell.border.right.style) {
-            borderParts.push(`border-right: 1px solid #000`);
+            borderStyles.push(`border-right: 1px solid #333`);
           }
+          if (borderStyles.length > 0) {
+            stylesParts.push(...borderStyles);
+          } else {
+            stylesParts.push('border: 1px solid #e0e0e0');
+          }
+        } else {
+          stylesParts.push('border: 1px solid #e0e0e0');
         }
-        stylesParts.push(...borderParts);
-        
-        // Padding
-        stylesParts.push('padding: 2px 4px');
         
         const cellStyle = stylesParts.join('; ');
         
