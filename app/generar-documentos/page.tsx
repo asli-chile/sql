@@ -153,12 +153,13 @@ export default function GenerarDocumentosPage() {
           return fileBooking === normalizedBooking;
         }) || false;
         
-        setExistingDocs({
+        setExistingDocs(prev => ({
+          ...prev,
           [booking]: {
             instructivo: hasInstructivo,
             proforma: hasProforma,
           }
-        });
+        }));
       } catch (error) {
         console.error('Error verificando documentos existentes:', error);
       }
@@ -166,6 +167,67 @@ export default function GenerarDocumentosPage() {
     
     checkExistingDocuments();
   }, [selectedBooking]);
+
+  // Verificar TODOS los documentos existentes cuando se cargan los registros
+  useEffect(() => {
+    if (registros.length === 0) return;
+
+    const checkAllExistingDocuments = async () => {
+      try {
+        const supabase = createClient();
+        
+        // Obtener todos los archivos de instructivos y proformas
+        const { data: instructivoData } = await supabase.storage
+          .from('documentos')
+          .list('instructivo-embarque', { limit: 1000 });
+        
+        const { data: proformaData } = await supabase.storage
+          .from('documentos')
+          .list('factura-proforma', { limit: 1000 });
+
+        // Crear un mapa de bookings únicos de los registros
+        const bookingsMap = new Map<string, boolean>();
+        registros.forEach(registro => {
+          const booking = registro.booking?.trim();
+          if (booking) {
+            bookingsMap.set(booking, true);
+          }
+        });
+
+        // Verificar cada booking
+        const newExistingDocs: {[booking: string]: {instructivo: boolean, proforma: boolean}} = {};
+        
+        bookingsMap.forEach((_, booking) => {
+          const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+          
+          const hasInstructivo = instructivoData?.some(file => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return false;
+            const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+            return fileBooking === normalizedBooking;
+          }) || false;
+          
+          const hasProforma = proformaData?.some(file => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return false;
+            const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+            return fileBooking === normalizedBooking;
+          }) || false;
+          
+          newExistingDocs[booking] = {
+            instructivo: hasInstructivo,
+            proforma: hasProforma,
+          };
+        });
+        
+        setExistingDocs(newExistingDocs);
+      } catch (error) {
+        console.error('Error verificando todos los documentos existentes:', error);
+      }
+    };
+    
+    checkAllExistingDocuments();
+  }, [registros]);
 
   // Generar opciones de filtro
   const filterOptions = useMemo(() => {
@@ -398,12 +460,13 @@ export default function GenerarDocumentosPage() {
             return fileBooking === normalizedBooking;
           }) || false;
           
-          setExistingDocs({
+          setExistingDocs(prev => ({
+            ...prev,
             [booking]: {
               instructivo: hasInstructivo,
               proforma: hasProforma,
             }
-          });
+          }));
         } catch (error) {
           console.error('Error verificando documentos existentes:', error);
         }
@@ -444,12 +507,13 @@ export default function GenerarDocumentosPage() {
             return fileBooking === normalizedBooking;
           }) || false;
           
-          setExistingDocs({
+          setExistingDocs(prev => ({
+            ...prev,
             [booking]: {
               instructivo: hasInstructivo,
               proforma: hasProforma,
             }
-          });
+          }));
         } catch (error) {
           console.error('Error verificando documentos existentes:', error);
         }
