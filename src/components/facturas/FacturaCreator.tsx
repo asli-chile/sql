@@ -101,7 +101,6 @@ export function FacturaCreator({
         const { data, error } = await supabase
           .from('plantillas_proforma')
           .select('*')
-          .eq('tipo_factura', 'proforma')
           .eq('activa', true)
           .or(`cliente.eq.${clienteNombre},cliente.is.null`)
           .order('es_default', { ascending: false })
@@ -205,7 +204,6 @@ export function FacturaCreator({
               .from('plantillas_proforma')
               .select('*')
               .eq('cliente', clienteNombre)
-              .eq('tipo_factura', 'proforma')
               .eq('es_default', true)
               .eq('activa', true)
               .single();
@@ -215,7 +213,6 @@ export function FacturaCreator({
                 .from('plantillas_proforma')
                 .select('*')
                 .is('cliente', null)
-                .eq('tipo_factura', 'proforma')
                 .eq('es_default', true)
                 .eq('activa', true)
                 .single();
