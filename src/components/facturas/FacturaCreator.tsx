@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { X, Save, Download } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { Factura, ProductoFactura } from '@/types/factura';
+import { Consignatario } from '@/types/consignatarios';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import { useToast } from '@/hooks/useToast';
@@ -535,6 +536,67 @@ function FormularioFactura({
   setFactura: React.Dispatch<React.SetStateAction<Factura>>;
 }) {
   const { theme } = useTheme();
+  const supabase = createClient();
+  const [consignatarios, setConsignatarios] = useState<Consignatario[]>([]);
+  const [selectedConsignatarioId, setSelectedConsignatarioId] = useState<string>('');
+  const [loadingConsignatarios, setLoadingConsignatarios] = useState(true);
+
+  // Cargar consignatarios activos
+  useEffect(() => {
+    const loadConsignatarios = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('consignatarios')
+          .select('*')
+          .eq('activo', true)
+          .order('nombre', { ascending: true });
+
+        if (error) throw error;
+        setConsignatarios(data || []);
+      } catch (error) {
+        console.error('Error cargando consignatarios:', error);
+      } finally {
+        setLoadingConsignatarios(false);
+      }
+    };
+
+    loadConsignatarios();
+  }, [supabase]);
+
+  // Aplicar datos del consignatario seleccionado
+  const handleSelectConsignatario = (consignatarioId: string) => {
+    setSelectedConsignatarioId(consignatarioId);
+    
+    if (!consignatarioId) return;
+
+    const consignatario = consignatarios.find(c => c.id === consignatarioId);
+    if (!consignatario) return;
+
+    setFactura(prev => ({
+      ...prev,
+      consignatario: {
+        ...prev.consignatario,
+        nombre: consignatario.consignee_company,
+        direccion: consignatario.consignee_address || '',
+        email: consignatario.consignee_email || '',
+        telefono: consignatario.consignee_mobile || '',
+        telefonoContacto: consignatario.consignee_mobile || '',
+        contacto: consignatario.consignee_attn || '',
+        codigoPostal: consignatario.consignee_zip || '',
+        usci: consignatario.consignee_uscc || '',
+      },
+      notifyParty: {
+        ...prev.notifyParty,
+        nombre: consignatario.notify_company,
+        direccion: consignatario.notify_address || '',
+        email: consignatario.notify_email || '',
+        telefono: consignatario.notify_mobile || '',
+        contacto: consignatario.notify_attn || '',
+        codigoPostal: consignatario.notify_zip || '',
+        usci: consignatario.notify_uscc || '',
+      },
+    }));
+  };
 
   const updateFactura = (path: string, value: any) => {
     setFactura(prev => {
@@ -666,6 +728,38 @@ function FormularioFactura({
         <h4 className={`font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
           Consignatario
         </h4>
+        
+        {/* Selector de consignatarios */}
+        <div>
+          <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+            Seleccionar Consignatario
+          </label>
+          <select
+            value={selectedConsignatarioId}
+            onChange={(e) => handleSelectConsignatario(e.target.value)}
+            disabled={loadingConsignatarios}
+            className={`w-full px-3 py-2 rounded border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900'
+            }`}
+          >
+            <option value="">
+              {loadingConsignatarios ? 'Cargando...' : 'Ingresar manualmente'}
+            </option>
+            {consignatarios.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} - {c.cliente} ({c.destino})
+              </option>
+            ))}
+          </select>
+          {consignatarios.length === 0 && !loadingConsignatarios && (
+            <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+              No hay consignatarios. Puedes agregar uno en Mantenimiento.
+            </p>
+          )}
+        </div>
+
         <input
           type="text"
           value={factura.consignatario.nombre}
@@ -675,7 +769,7 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Nombre"
+          placeholder="Company"
         />
         <textarea
           value={factura.consignatario.direccion}
@@ -685,19 +779,30 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Dirección"
+          placeholder="Address"
           rows={3}
         />
         <input
           type="text"
-          value={factura.consignatario.email || ''}
-          onChange={e => updateFactura('consignatario.email', e.target.value)}
+          value={factura.consignatario.contacto || ''}
+          onChange={e => updateFactura('consignatario.contacto', e.target.value)}
           className={`w-full px-3 py-2 rounded border ${
             theme === 'dark'
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Email"
+          placeholder="Attn"
+        />
+        <input
+          type="text"
+          value={factura.consignatario.usci || ''}
+          onChange={e => updateFactura('consignatario.usci', e.target.value)}
+          className={`w-full px-3 py-2 rounded border ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-700 text-white'
+              : 'bg-white border-gray-300 text-gray-900'
+          }`}
+          placeholder="USCC"
         />
         <input
           type="text"
@@ -711,18 +816,18 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Teléfono"
+          placeholder="Mobile"
         />
         <input
           type="text"
-          value={factura.consignatario.contacto || ''}
-          onChange={e => updateFactura('consignatario.contacto', e.target.value)}
+          value={factura.consignatario.email || ''}
+          onChange={e => updateFactura('consignatario.email', e.target.value)}
           className={`w-full px-3 py-2 rounded border ${
             theme === 'dark'
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="ATTN"
+          placeholder="E-mail"
         />
         <input
           type="text"
@@ -733,18 +838,7 @@ function FormularioFactura({
               ? 'bg-gray-800 border-gray-700 text-white'
               : 'bg-white border-gray-300 text-gray-900'
           }`}
-          placeholder="Postal Code"
-        />
-        <input
-          type="text"
-          value={factura.consignatario.usci || ''}
-          onChange={e => updateFactura('consignatario.usci', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="USCI"
+          placeholder="ZIP"
         />
       </section>
 

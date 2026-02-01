@@ -9,6 +9,7 @@ import { User } from '@supabase/supabase-js';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
+import ConsignatariosManager from '@/components/consignatarios/ConsignatariosManager';
 import {
   LayoutDashboard,
   Ship,
@@ -23,6 +24,7 @@ import {
   ChevronRight,
   Anchor,
   Activity,
+  Building2,
 } from 'lucide-react';
 
 type RolUsuario = 'admin' | 'ejecutivo' | 'cliente';
@@ -77,6 +79,7 @@ export default function MantenimientoPage() {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState<Record<string, string>>({});
   const [bootstrapKey, setBootstrapKey] = useState('');
+  const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios'>('usuarios');
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
@@ -404,8 +407,12 @@ export default function MantenimientoPage() {
             <div className="flex items-center gap-3 sm:gap-4">
               <div>
                 <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Mantenimiento</p>
-                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Usuarios</h1>
-                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gestiona usuarios, roles y permisos</p>
+                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {activeTab === 'usuarios' ? 'Usuarios' : 'Consignatarios'}
+                </h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  {activeTab === 'usuarios' ? 'Gestiona usuarios, roles y permisos' : 'Gestiona información de consignatarios'}
+                </p>
               </div>
             </div>
 
@@ -422,9 +429,46 @@ export default function MantenimientoPage() {
               </button>
             </div>
           </div>
+
+          {/* Tabs */}
+          <div className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+            <div className="flex gap-4 px-4 sm:px-6">
+              <button
+                onClick={() => setActiveTab('usuarios')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'usuarios'
+                    ? theme === 'dark'
+                      ? 'border-sky-500 text-sky-400'
+                      : 'border-blue-600 text-blue-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-200'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                <span>Usuarios</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('consignatarios')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'consignatarios'
+                    ? theme === 'dark'
+                      ? 'border-sky-500 text-sky-400'
+                      : 'border-blue-600 text-blue-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-200'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Building2 className="h-4 w-4" />
+                <span>Consignatarios</span>
+              </button>
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8">
+          {activeTab === 'usuarios' ? (
           <div className="mx-auto max-w-5xl">
             <div className={`border p-6 sm:p-8 ${formTone}`}>
               <div className="flex flex-col gap-2 border-b pb-4 mb-6">
@@ -749,6 +793,11 @@ export default function MantenimientoPage() {
               </div>
             )}
           </div>
+          ) : (
+            <div className="mx-auto max-w-6xl">
+              <ConsignatariosManager currentUser={currentUser} />
+            </div>
+          )}
         </main>
       </div>
 
