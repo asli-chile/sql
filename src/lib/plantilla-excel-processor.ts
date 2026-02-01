@@ -267,8 +267,9 @@ export class PlantillaExcelProcessor {
   /**
    * Genera el archivo Excel procesado como buffer
    */
-  async generarBuffer(): Promise<Buffer> {
-    return await this.workbook.xlsx.writeBuffer() as Buffer;
+  async generarBuffer(): Promise<ArrayBuffer> {
+    const buffer = await this.workbook.xlsx.writeBuffer();
+    return buffer as ArrayBuffer;
   }
 
   /**
