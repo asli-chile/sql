@@ -67,9 +67,9 @@ export function FacturaCreator({
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewExcelUrl, setPreviewExcelUrl] = useState<string | null>(null); // URL del Excel para Google Viewer
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null); // Mensaje informativo
   
   // Plantillas disponibles (nuevo)
   const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
@@ -165,7 +165,7 @@ export function FacturaCreator({
         }
         return null;
       });
-      setPreviewExcelUrl(null);
+      setPreviewMessage(null);
       return;
     }
 
@@ -177,101 +177,24 @@ export function FacturaCreator({
     const debounceTimer = setTimeout(async () => {
       setIsPreviewLoading(true);
       setPreviewError(null);
+      setPreviewMessage(null);
       try {
         const facturaCompleta = { ...factura, totales: totalesCalculados };
         const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
         const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
         
-        // Si hay una plantilla seleccionada (y no es tradicional), generar Excel y subirlo temporalmente
+        // Si hay una plantilla seleccionada (y no es tradicional), mostrar mensaje
         if (plantillaSeleccionada && plantillaSeleccionada !== 'tradicional') {
-          const supabase = createClient();
-          let plantilla = null;
+          // Obtener nombre de la plantilla
+          const plantillaActual = plantillasDisponibles.find(p => p.id === plantillaSeleccionada);
+          const nombrePlantilla = plantillaActual?.nombre || 'plantilla personalizada';
           
-          // Obtener la plantilla
-          if (plantillaSeleccionada !== 'auto') {
-            const { data } = await supabase
-              .from('plantillas_proforma')
-              .select('*')
-              .eq('id', plantillaSeleccionada)
-              .single();
-            plantilla = data;
-          } else {
-            // Auto: buscar plantilla default del cliente
-            const clienteNombre = registro.shipper;
-            const { data: clienteTemplate } = await supabase
-              .from('plantillas_proforma')
-              .select('*')
-              .eq('cliente', clienteNombre)
-              .eq('tipo_factura', 'proforma')
-              .eq('es_default', true)
-              .eq('activa', true)
-              .single();
-            
-            if (!clienteTemplate) {
-              const { data: genericTemplate } = await supabase
-                .from('plantillas_proforma')
-                .select('*')
-                .is('cliente', null)
-                .eq('tipo_factura', 'proforma')
-                .eq('es_default', true)
-                .eq('activa', true)
-                .single();
-              plantilla = genericTemplate;
-            } else {
-              plantilla = clienteTemplate;
-            }
-          }
-          
-          if (plantilla) {
-            // Cargar y procesar la plantilla
-            const { PlantillaExcelProcessor, facturaADatosPlantilla } = await import('@/lib/plantilla-excel-processor');
-            const { data: urlData } = await supabase.storage
-              .from('documentos')
-              .createSignedUrl(plantilla.archivo_url, 60);
-            
-            if (urlData?.signedUrl) {
-              const datos = facturaADatosPlantilla(facturaCompleta);
-              const processor = new PlantillaExcelProcessor(datos);
-              await processor.cargarPlantilla(urlData.signedUrl);
-              await processor.procesar();
-              
-              // Generar blob del Excel
-              const excelBlob = await processor.generarBlob();
-              
-              // Subir temporalmente a Supabase Storage para preview
-              const tempFileName = `preview-temp/${Date.now()}-${safeRef}.xlsx`;
-              const { error: uploadError } = await supabase.storage
-                .from('documentos')
-                .upload(tempFileName, excelBlob, {
-                  contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                  upsert: true,
-                });
-              
-              if (!uploadError) {
-                // Obtener URL pública para Google Viewer
-                const { data: publicUrlData } = supabase.storage
-                  .from('documentos')
-                  .getPublicUrl(tempFileName);
-                
-                if (publicUrlData?.publicUrl && !isCancelled) {
-                  setPreviewUrl(null); // Limpiar URL del PDF
-                  setPreviewExcelUrl(publicUrlData.publicUrl);
-                  
-                  // Eliminar archivo temporal después de 2 minutos
-                  setTimeout(async () => {
-                    await supabase.storage
-                      .from('documentos')
-                      .remove([tempFileName]);
-                  }, 120000);
-                  
-                  return; // Salir temprano
-                }
-              }
-            }
-          }
+          setPreviewMessage(
+            `Vista previa del PDF estándar. Al generar, se creará el Excel con la plantilla "${nombrePlantilla}".`
+          );
         }
         
-        // Fallback: generar PDF tradicional
+        // Siempre generar PDF tradicional para la vista previa
         const pdfResult = await generarFacturaPDF(facturaCompleta, {
           returnBlob: true,
           fileNameBase: `Proforma_${safeRef}_${safeInvoice}`,
@@ -285,7 +208,6 @@ export function FacturaCreator({
           URL.revokeObjectURL(url);
           return;
         }
-        setPreviewExcelUrl(null); // Limpiar Excel URL
         setPreviewUrl(current => {
           if (current) {
             URL.revokeObjectURL(current);
@@ -604,32 +526,18 @@ export function FacturaCreator({
             {mode === 'proforma' ? (
               <div className="relative h-full w-full bg-gray-100">
                 {/* Nota informativa sobre plantilla */}
-                {plantillaSeleccionada && plantillaSeleccionada !== 'tradicional' && (() => {
-                  const plantillaActual = plantillasDisponibles.find(p => p.id === plantillaSeleccionada);
-                  const nombrePlantilla = plantillaActual?.nombre || 'plantilla personalizada';
-                  
-                  return (
-                    <div className="absolute top-2 left-2 right-2 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
-                      <div className="flex items-start gap-2">
-                        <span className="text-base">📋</span>
-                        <div>
-                          <strong>Vista previa con plantilla</strong>
-                          <br />
-                          Mostrando: <strong className="text-blue-800">"{nombrePlantilla}"</strong>. Al hacer clic en "Generar Proforma", se creará el archivo Excel con este formato.
-                        </div>
+                {previewMessage && (
+                  <div className="absolute top-2 left-2 right-2 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
+                    <div className="flex items-start gap-2">
+                      <span className="text-base">📋</span>
+                      <div>
+                        {previewMessage}
                       </div>
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
                 
-                {/* Vista previa Excel con Google Docs Viewer */}
-                {previewExcelUrl ? (
-                  <iframe
-                    title="Vista previa Excel con plantilla"
-                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewExcelUrl)}&embedded=true`}
-                    className="h-full w-full border-0"
-                  />
-                ) : previewUrl ? (
+                {previewUrl ? (
                   <iframe
                     title="Vista previa PDF de la proforma"
                     src={previewUrl}
