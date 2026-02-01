@@ -36,7 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
-import { FacturaCreator } from '@/components/facturas/FacturaCreator';
+import { FacturaProformaModal } from '@/components/documentos/FacturaProformaModal';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
 import { parseStoredDocumentName, formatFileDisplayName, sanitizeFileName } from '@/utils/documentUtils';
@@ -2990,13 +2990,11 @@ export default function RegistrosPage() {
         />
 
         {isProformaCreatorOpen && registroSeleccionadoProforma && (
-          <FacturaCreator
+          <FacturaProformaModal
             registro={registroSeleccionadoProforma}
             isOpen={isProformaCreatorOpen}
             onClose={handleCloseProformaCreator}
-            onSave={handleCloseProformaCreator}
-            mode="proforma"
-            onGenerateProforma={handleGenerateProforma}
+            contenedor={registroSeleccionadoProforma.contenedor || ''}
           />
         )}
 
