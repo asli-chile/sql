@@ -829,7 +829,7 @@ export default function GenerarDocumentosPage() {
           </div>
 
           {/* Panel derecho - Contenedores y Acciones */}
-          <div className={`flex-1 flex flex-col overflow-hidden transition-all ${showFilters ? 'lg:mr-80' : ''} ${
+          <div className={`flex-1 flex flex-col overflow-hidden ${
             (mobileView !== 'contenedores' && mobileView !== 'acciones') ? 'hidden lg:flex' : 'flex'
           }`}>
             {selectedBooking ? (
@@ -985,7 +985,6 @@ export default function GenerarDocumentosPage() {
               </div>
             )}
           </div>
-          </div>
 
           {/* Overlay para móvil de filtros */}
           {showFilters && (
@@ -1132,6 +1131,7 @@ export default function GenerarDocumentosPage() {
               </div>
             </div>
           </aside>
+          </div>
         </div>
       </main>
 
