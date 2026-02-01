@@ -448,33 +448,34 @@ export function FacturaCreator({
       <ToastContainer toasts={toasts} onRemove={removeToast} />
       <div
         className={`absolute inset-0 w-full h-full shadow-xl overflow-hidden flex flex-col ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+          theme === 'dark' ? 'bg-gray-900' : 'bg-white'
         }`}
       >
-        {/* Header */}
+        {/* Header Compacto y Moderno */}
         <div
-          className={`flex items-center justify-between p-4 border-b ${
-            theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+          className={`flex items-center justify-between px-4 py-2.5 border-b ${
+            theme === 'dark' ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-gray-50/80'
           }`}
         >
-          <div>
-            <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {mode === 'proforma' ? 'Generar Proforma' : 'Crear Factura'}
+          <div className="flex items-center gap-4">
+            <h2 className={`text-base font-semibold flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {mode === 'proforma' ? '📄 Proforma Invoice' : '🧾 Factura Comercial'}
             </h2>
             {factura.refAsli && (
-              <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                REF ASLI: <span className="font-semibold">{factura.refAsli}</span>
-              </p>
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                theme === 'dark' ? 'bg-gray-700 text-gray-300' : 'bg-gray-200 text-gray-700'
+              }`}>
+                {factura.refAsli}
+              </span>
             )}
             {mode === 'proforma' && (
-              <div className="mt-2">
-                <label className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  📋 Plantilla Excel
+              <div className="flex items-center gap-2">
+                <label className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Plantilla:
                 </label>
                 {cargandoPlantillas ? (
-                  <div className="flex items-center gap-2 mt-1 text-xs">
+                  <div className="flex items-center gap-2 text-xs">
                     <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-500 border-t-transparent" />
-                    <span>Cargando...</span>
                   </div>
                 ) : (
                   <select
@@ -482,88 +483,94 @@ export function FacturaCreator({
                     onChange={(event) => {
                       setPlantillaSeleccionada(event.target.value);
                     }}
-                    className={`mt-1 w-full max-w-xs rounded-lg border px-2 py-1.5 text-xs outline-none transition ${
+                    className={`text-xs px-2 py-1 rounded border ${
                       theme === 'dark'
-                        ? 'border-gray-700 bg-gray-900 text-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30'
-                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
                     }`}
                   >
-                    <option value="auto">🤖 Auto (plantilla default del cliente)</option>
-                    <option value="tradicional">📄 Formato Tradicional (sin plantilla)</option>
-                    
+                    <option value="auto">🤖 Auto</option>
+                    <option value="tradicional">📄 Tradicional</option>
                     {plantillasDisponibles.length > 0 && (
                       <>
-                        {plantillasDisponibles
-                          .filter(p => p.cliente === registro.shipper)
-                          .map(plantilla => (
-                            <option key={plantilla.id} value={plantilla.id}>
-                              ✨ {plantilla.nombre}
-                              {plantilla.es_default ? ' (Default)' : ''}
-                              {' - ' + plantilla.cliente}
-                            </option>
-                          ))
-                        }
-                        
-                        {plantillasDisponibles
-                          .filter(p => !p.cliente)
-                          .map(plantilla => (
-                            <option key={plantilla.id} value={plantilla.id}>
-                              🌐 {plantilla.nombre} (Genérica)
-                            </option>
-                          ))
-                        }
+                        <optgroup label="Plantillas del Cliente">
+                          {plantillasDisponibles
+                            .filter(p => p.cliente === registro.shipper)
+                            .map((plantilla) => (
+                              <option key={plantilla.id} value={plantilla.id}>
+                                ✨ {plantilla.nombre}
+                              </option>
+                            ))}
+                        </optgroup>
+                        <optgroup label="Plantillas Genéricas">
+                          {plantillasDisponibles
+                            .filter(p => !p.cliente)
+                            .map((plantilla) => (
+                              <option key={plantilla.id} value={plantilla.id}>
+                                🌐 {plantilla.nombre}
+                              </option>
+                            ))}
+                        </optgroup>
                       </>
                     )}
                   </select>
                 )}
-                
-                {plantillasDisponibles.length === 0 && !cargandoPlantillas && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    No hay plantillas personalizadas. Se usará el formato tradicional.
-                  </p>
-                )}
               </div>
             )}
           </div>
-          <div className="flex items-center space-x-2">
+          
+          <div className="flex items-center gap-2">
+            {mode === 'proforma' && (
+              <button
+                onClick={handleGenerarProforma}
+                disabled={!puedeGenerar || verificandoDocumentos}
+                className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
+                  !puedeGenerar || verificandoDocumentos
+                    ? 'cursor-not-allowed bg-gray-300 text-gray-500'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                <Download className="h-4 w-4" />
+                Generar
+              </button>
+            )}
             {mode !== 'proforma' && (
               <>
                 <button
                   onClick={handleDownloadPDF}
                   disabled={descargandoPDF}
-                  className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                  className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
                     descargandoPDF
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-red-600 text-white hover:bg-red-700'
                   }`}
                 >
-                  <Download className="w-4 h-4" />
-                  <span>PDF</span>
+                  <Download className="h-4 w-4" />
+                  PDF
                 </button>
                 <button
                   onClick={handleDownloadExcel}
                   disabled={descargandoExcel}
-                  className={`px-3 py-2 rounded-lg transition-colors flex items-center space-x-2 ${
+                  className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-sm font-medium transition-colors ${
                     descargandoExcel
-                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700'
                   }`}
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Excel</span>
+                  <Download className="h-4 w-4" />
+                  Excel
                 </button>
               </>
             )}
             <button
               onClick={onClose}
-              aria-label="Cerrar"
-              className={`p-1 rounded hover:bg-opacity-20 transition-colors ${
+              className={`rounded p-1.5 transition-colors ${
                 theme === 'dark'
-                  ? 'text-gray-400 hover:bg-white'
-                  : 'text-gray-600 hover:bg-gray-200'
+                  ? 'hover:bg-gray-700 text-gray-400'
+                  : 'hover:bg-gray-200 text-gray-600'
               }`}
             >
-              <X className="w-5 h-5" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         </div>
@@ -572,8 +579,8 @@ export function FacturaCreator({
         <div className="flex-1 overflow-hidden flex">
           {/* Formulario lateral (30%) */}
           <div
-            className={`w-[30%] border-r overflow-y-auto p-4 ${
-              theme === 'dark' ? 'border-gray-700 bg-gray-900' : 'border-gray-200 bg-gray-50'
+            className={`w-[30%] border-r overflow-y-auto p-3 ${
+              theme === 'dark' ? 'border-gray-700 bg-gray-900/50' : 'border-gray-200 bg-gray-50'
             }`}
           >
             <FormularioFactura factura={factura} setFactura={setFactura} />
