@@ -6,7 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import { useToast } from '@/hooks/useToast';
 import { normalizeBooking } from '@/utils/documentUtils';
-import { X, AlertCircle, FileText, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, AlertCircle, FileText, CheckCircle2, Sparkles, Edit3 } from 'lucide-react';
 import { PlantillaExcelProcessor, facturaADatosPlantilla } from '@/lib/plantilla-excel-processor';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
@@ -17,12 +17,14 @@ interface SimpleFacturaProformaModalProps {
   isOpen: boolean;
   onClose: () => void;
   registro: Registro;
+  onOpenFullEditor?: () => void; // Callback para abrir el editor completo
 }
 
 export function SimpleFacturaProformaModal({
   isOpen,
   onClose,
   registro,
+  onOpenFullEditor,
 }: SimpleFacturaProformaModalProps) {
   const { theme } = useTheme();
   const { success, error: showError } = useToast();
@@ -495,7 +497,7 @@ export function SimpleFacturaProformaModal({
         </div>
 
         {/* Footer */}
-        <div className={`flex items-center justify-end gap-3 p-6 border-t ${
+        <div className={`flex items-center justify-between gap-3 p-6 border-t ${
           theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
         }`}>
           <button
@@ -508,29 +510,50 @@ export function SimpleFacturaProformaModal({
           >
             Cancelar
           </button>
-          <button
-            onClick={handleGenerar}
-            disabled={!puedeGenerar || generando}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-              puedeGenerar && !generando
-                ? theme === 'dark'
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-                : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-            }`}
-          >
-            {generando ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                <span>Generando...</span>
-              </>
-            ) : (
-              <>
-                <FileText className="h-4 w-4" />
-                <span>Generar Proforma</span>
-              </>
+          
+          <div className="flex items-center gap-3">
+            {onOpenFullEditor && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onOpenFullEditor();
+                }}
+                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 ${
+                  theme === 'dark'
+                    ? 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50 border border-purple-700'
+                    : 'bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200'
+                }`}
+                title="Abrir editor avanzado para editar productos, precios, etc."
+              >
+                <Edit3 className="h-4 w-4" />
+                <span>Editor Avanzado</span>
+              </button>
             )}
-          </button>
+            
+            <button
+              onClick={handleGenerar}
+              disabled={!puedeGenerar || generando}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                puedeGenerar && !generando
+                  ? theme === 'dark'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  : 'bg-gray-400 text-gray-200 cursor-not-allowed'
+              }`}
+            >
+              {generando ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  <span>Generando...</span>
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4" />
+                  <span>Generar Rápido</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -37,6 +37,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Factura } from '@/types/factura';
 import { FacturaViewer } from '@/components/facturas/FacturaViewer';
 import { SimpleFacturaProformaModal } from '@/components/documentos/SimpleFacturaProformaModal';
+import { FacturaCreator } from '@/components/facturas/FacturaCreator';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
 import { parseStoredDocumentName, formatFileDisplayName, sanitizeFileName } from '@/utils/documentUtils';
@@ -160,6 +161,7 @@ export default function RegistrosPage() {
   const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
   const [registroSeleccionadoProforma, setRegistroSeleccionadoProforma] = useState<Registro | null>(null);
   const [isProformaCreatorOpen, setIsProformaCreatorOpen] = useState(false);
+  const [isFullEditorOpen, setIsFullEditorOpen] = useState(false);
 
   // Estado para selección múltiple
   const [selectionMode, setSelectionMode] = useState(false);
@@ -2994,6 +2996,17 @@ export default function RegistrosPage() {
             registro={registroSeleccionadoProforma}
             isOpen={isProformaCreatorOpen}
             onClose={handleCloseProformaCreator}
+            onOpenFullEditor={() => setIsFullEditorOpen(true)}
+          />
+        )}
+
+        {isFullEditorOpen && registroSeleccionadoProforma && (
+          <FacturaCreator
+            registro={registroSeleccionadoProforma}
+            isOpen={isFullEditorOpen}
+            onClose={() => setIsFullEditorOpen(false)}
+            onSave={() => setIsFullEditorOpen(false)}
+            mode="proforma"
           />
         )}
 
