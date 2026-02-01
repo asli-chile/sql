@@ -6,12 +6,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import { useToast } from '@/hooks/useToast';
 import { normalizeBooking } from '@/utils/documentUtils';
-import { X, AlertCircle, FileText, Package, CheckCircle2 } from 'lucide-react';
-import { obtenerPlantillaCliente } from '@/lib/plantilla-helpers';
+import { X, AlertCircle, FileText, CheckCircle2, Sparkles } from 'lucide-react';
 import { PlantillaExcelProcessor, facturaADatosPlantilla } from '@/lib/plantilla-excel-processor';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
 import { Factura } from '@/types/factura';
+import { PlantillaProforma } from '@/types/plantillas-proforma';
 
 interface SimpleFacturaProformaModalProps {
   isOpen: boolean;
@@ -35,6 +35,56 @@ export function SimpleFacturaProformaModal({
     packingList: boolean;
   }>({ guiaDespacho: false, packingList: false });
   const [yaExisteProforma, setYaExisteProforma] = useState(false);
+  
+  // Plantillas disponibles
+  const [plantillasDisponibles, setPlantillasDisponibles] = useState<PlantillaProforma[]>([]);
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string>('tradicional');
+  const [cargandoPlantillas, setCargandoPlantillas] = useState(false);
+
+  // Cargar plantillas disponibles
+  useEffect(() => {
+    const cargarPlantillas = async () => {
+      if (!isOpen) return;
+      
+      setCargandoPlantillas(true);
+      try {
+        const clienteNombre = registro.shipper;
+        
+        // Obtener plantillas del cliente y plantillas genéricas
+        const { data, error } = await supabase
+          .from('plantillas_proforma')
+          .select('*')
+          .eq('tipo_factura', 'proforma')
+          .eq('activa', true)
+          .or(`cliente.eq.${clienteNombre},cliente.is.null`)
+          .order('es_default', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error cargando plantillas:', error);
+          setPlantillasDisponibles([]);
+        } else {
+          setPlantillasDisponibles(data || []);
+          
+          // Auto-seleccionar la plantilla default del cliente
+          const plantillaDefault = (data || []).find(p => 
+            p.cliente === clienteNombre && p.es_default
+          );
+          if (plantillaDefault) {
+            setPlantillaSeleccionada(plantillaDefault.id);
+          }
+        }
+      } catch (err) {
+        console.error('Error:', err);
+        setPlantillasDisponibles([]);
+      } finally {
+        setCargandoPlantillas(false);
+      }
+    };
+
+    cargarPlantillas();
+  }, [isOpen, registro.shipper, supabase]);
+
 
   // Verificar documentos requeridos
   useEffect(() => {
@@ -188,17 +238,16 @@ export function SimpleFacturaProformaModal({
       const fileBaseName = `${safeBaseName} PROFORMA ${contenedor}`;
       const bookingSegment = encodeURIComponent(booking);
 
-      // Intentar usar plantilla personalizada
-      const clienteNombre = registro.shipper;
-      let plantilla = null;
+      // Usar plantilla seleccionada
+      let plantillaUsada: PlantillaProforma | null = null;
       let excelBlob = null;
       let excelFileName = '';
 
-      if (clienteNombre) {
-        try {
-          plantilla = await obtenerPlantillaCliente(clienteNombre, 'proforma');
-          
-          if (plantilla) {
+      if (plantillaSeleccionada && plantillaSeleccionada !== 'tradicional') {
+        const plantilla = plantillasDisponibles.find(p => p.id === plantillaSeleccionada);
+        
+        if (plantilla) {
+          try {
             console.log(`✅ Usando plantilla: ${plantilla.nombre}`);
             
             // Obtener URL firmada
@@ -214,16 +263,20 @@ export function SimpleFacturaProformaModal({
               
               excelBlob = await processor.generarBlob();
               excelFileName = `${fileBaseName}.xlsx`;
+              plantillaUsada = plantilla;
             }
+          } catch (err) {
+            console.error('Error con plantilla:', err);
+            showError(`Error procesando plantilla: ${err}`);
+            setGenerando(false);
+            return;
           }
-        } catch (err) {
-          console.warn('Error con plantilla, usando tradicional:', err);
-          plantilla = null;
         }
       }
 
-      // Fallback a método tradicional
+      // Fallback a método tradicional si es "tradicional" o no hay plantilla
       if (!excelBlob) {
+        console.log('📄 Usando generador tradicional de Excel');
         const excelResult = await generarFacturaExcel(factura, {
           returnBlob: true,
           fileNameBase: fileBaseName,
@@ -269,9 +322,9 @@ export function SimpleFacturaProformaModal({
 
       if (excelError) throw new Error(`Error subiendo Excel: ${excelError.message}`);
 
-      const mensaje = plantilla 
-        ? `✨ Proforma generada con plantilla "${plantilla.nombre}"`
-        : 'Proforma generada correctamente';
+      const mensaje = plantillaUsada 
+        ? `✨ Proforma generada con plantilla "${plantillaUsada.nombre}"`
+        : '📄 Proforma generada con formato tradicional';
       
       success(mensaje);
       onClose();
@@ -329,6 +382,63 @@ export function SimpleFacturaProformaModal({
                 <span className="font-semibold">Cliente:</span> {registro.shipper}
               </div>
             </div>
+          </div>
+
+          {/* Selector de Plantilla */}
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              <Sparkles className="inline h-4 w-4 mr-1" />
+              Plantilla a usar:
+            </label>
+            
+            {cargandoPlantillas ? (
+              <div className="flex items-center gap-2 text-sm">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-500 border-t-transparent" />
+                <span>Cargando plantillas...</span>
+              </div>
+            ) : (
+              <select
+                value={plantillaSeleccionada}
+                onChange={(e) => setPlantillaSeleccionada(e.target.value)}
+                className={`w-full px-3 py-2 rounded-lg border text-sm ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900'
+                }`}
+              >
+                <option value="tradicional">📄 Formato Tradicional (sin plantilla)</option>
+                
+                {plantillasDisponibles.length > 0 && (
+                  <>
+                    {plantillasDisponibles
+                      .filter(p => p.cliente === registro.shipper)
+                      .map(plantilla => (
+                        <option key={plantilla.id} value={plantilla.id}>
+                          ✨ {plantilla.nombre}
+                          {plantilla.es_default ? ' (Default)' : ''}
+                          {' - ' + plantilla.cliente}
+                        </option>
+                      ))
+                    }
+                    
+                    {plantillasDisponibles
+                      .filter(p => !p.cliente)
+                      .map(plantilla => (
+                        <option key={plantilla.id} value={plantilla.id}>
+                          🌐 {plantilla.nombre} (Genérica)
+                        </option>
+                      ))
+                    }
+                  </>
+                )}
+              </select>
+            )}
+            
+            {plantillasDisponibles.length === 0 && !cargandoPlantillas && (
+              <p className="text-xs text-gray-500 mt-1">
+                No hay plantillas disponibles. Se usará el formato tradicional.
+              </p>
+            )}
           </div>
 
           {/* Estado de documentos */}
