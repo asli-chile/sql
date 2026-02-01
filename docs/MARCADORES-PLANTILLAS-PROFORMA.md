@@ -2,6 +2,21 @@
 
 Este documento lista todos los marcadores disponibles para usar en plantillas Excel de facturas proforma.
 
+## 🎯 **Formatos Soportados**
+
+Puedes usar los marcadores en **DOS formatos diferentes**:
+1. **Con llaves dobles**: `{{MARCADOR}}` ← Recomendado
+2. **Con comillas**: `"MARCADOR"` ← Alternativo
+
+**Ejemplos:**
+- `{{EXPORTADOR_NOMBRE}}` o `"EXPORTADOR_NOMBRE"` ✅
+- `{{CONSIGNEE_COMPANY}}` o `"CONSIGNEE_COMPANY"` ✅
+- `{{PRODUCTO_CANTIDAD}}` o `"PRODUCTO_CANTIDAD"` ✅
+
+**Ambos formatos funcionan exactamente igual**, elige el que prefieras para tu plantilla.
+
+---
+
 ## 📋 Marcadores Básicos
 
 ### Información del Exportador/Shipper

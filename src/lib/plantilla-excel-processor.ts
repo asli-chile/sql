@@ -58,6 +58,7 @@ export class PlantillaExcelProcessor {
 
   /**
    * Encuentra la fila que contiene marcadores de productos
+   * Soporta ambos formatos: {{PRODUCTO_*}} y "PRODUCTO_*"
    */
   private encontrarFilaProductos(worksheet: ExcelJS.Worksheet): number | null {
     let filaEncontrada: number | null = null;
@@ -68,7 +69,9 @@ export class PlantillaExcelProcessor {
       row.eachCell((cell) => {
         if (cell.value && typeof cell.value === 'string') {
           if (cell.value.includes('{{PRODUCTO_CANTIDAD}}') || 
-              cell.value.includes('{{PRODUCTO_VARIEDAD}}')) {
+              cell.value.includes('{{PRODUCTO_VARIEDAD}}') ||
+              cell.value.includes('"PRODUCTO_CANTIDAD"') || 
+              cell.value.includes('"PRODUCTO_VARIEDAD"')) {
             filaEncontrada = rowNumber;
           }
         }
@@ -146,91 +149,93 @@ export class PlantillaExcelProcessor {
 
   /**
    * Reemplaza todos los marcadores en un texto
+   * Soporta dos formatos: {{MARCADOR}} y "MARCADOR"
    */
   private reemplazarMarcadores(texto: string): string {
     let resultado = texto;
 
     // Exportador
-    resultado = resultado.replace(/\{\{EXPORTADOR_NOMBRE\}\}/g, this.datos.exportador_nombre);
-    resultado = resultado.replace(/\{\{EXPORTADOR_RUT\}\}/g, this.datos.exportador_rut);
-    resultado = resultado.replace(/\{\{EXPORTADOR_GIRO\}\}/g, this.datos.exportador_giro);
-    resultado = resultado.replace(/\{\{EXPORTADOR_DIRECCION\}\}/g, this.datos.exportador_direccion);
-    resultado = resultado.replace(/\{\{EXPORTADOR_EMAIL\}\}/g, this.datos.exportador_email);
+    resultado = resultado.replace(/\{\{EXPORTADOR_NOMBRE\}\}|"EXPORTADOR_NOMBRE"/g, this.datos.exportador_nombre);
+    resultado = resultado.replace(/\{\{EXPORTADOR_RUT\}\}|"EXPORTADOR_RUT"/g, this.datos.exportador_rut);
+    resultado = resultado.replace(/\{\{EXPORTADOR_GIRO\}\}|"EXPORTADOR_GIRO"/g, this.datos.exportador_giro);
+    resultado = resultado.replace(/\{\{EXPORTADOR_DIRECCION\}\}|"EXPORTADOR_DIRECCION"/g, this.datos.exportador_direccion);
+    resultado = resultado.replace(/\{\{EXPORTADOR_EMAIL\}\}|"EXPORTADOR_EMAIL"/g, this.datos.exportador_email);
 
     // Consignee
-    resultado = resultado.replace(/\{\{CONSIGNEE_COMPANY\}\}/g, this.datos.consignee_company);
-    resultado = resultado.replace(/\{\{CONSIGNEE_ADDRESS\}\}/g, this.datos.consignee_address);
-    resultado = resultado.replace(/\{\{CONSIGNEE_ATTN\}\}/g, this.datos.consignee_attn);
-    resultado = resultado.replace(/\{\{CONSIGNEE_USCC\}\}/g, this.datos.consignee_uscc);
-    resultado = resultado.replace(/\{\{CONSIGNEE_MOBILE\}\}/g, this.datos.consignee_mobile);
-    resultado = resultado.replace(/\{\{CONSIGNEE_EMAIL\}\}/g, this.datos.consignee_email);
-    resultado = resultado.replace(/\{\{CONSIGNEE_ZIP\}\}/g, this.datos.consignee_zip);
-    resultado = resultado.replace(/\{\{CONSIGNEE_PAIS\}\}/g, this.datos.consignee_pais);
+    resultado = resultado.replace(/\{\{CONSIGNEE_COMPANY\}\}|"CONSIGNEE_COMPANY"/g, this.datos.consignee_company);
+    resultado = resultado.replace(/\{\{CONSIGNEE_ADDRESS\}\}|"CONSIGNEE_ADDRESS"/g, this.datos.consignee_address);
+    resultado = resultado.replace(/\{\{CONSIGNEE_ATTN\}\}|"CONSIGNEE_ATTN"/g, this.datos.consignee_attn);
+    resultado = resultado.replace(/\{\{CONSIGNEE_USCC\}\}|"CONSIGNEE_USCC"/g, this.datos.consignee_uscc);
+    resultado = resultado.replace(/\{\{CONSIGNEE_MOBILE\}\}|"CONSIGNEE_MOBILE"/g, this.datos.consignee_mobile);
+    resultado = resultado.replace(/\{\{CONSIGNEE_EMAIL\}\}|"CONSIGNEE_EMAIL"/g, this.datos.consignee_email);
+    resultado = resultado.replace(/\{\{CONSIGNEE_ZIP\}\}|"CONSIGNEE_ZIP"/g, this.datos.consignee_zip);
+    resultado = resultado.replace(/\{\{CONSIGNEE_PAIS\}\}|"CONSIGNEE_PAIS"/g, this.datos.consignee_pais);
 
     // Notify Party
-    resultado = resultado.replace(/\{\{NOTIFY_COMPANY\}\}/g, this.datos.notify_company || '');
-    resultado = resultado.replace(/\{\{NOTIFY_ADDRESS\}\}/g, this.datos.notify_address || '');
-    resultado = resultado.replace(/\{\{NOTIFY_ATTN\}\}/g, this.datos.notify_attn || '');
-    resultado = resultado.replace(/\{\{NOTIFY_USCC\}\}/g, this.datos.notify_uscc || '');
-    resultado = resultado.replace(/\{\{NOTIFY_MOBILE\}\}/g, this.datos.notify_mobile || '');
-    resultado = resultado.replace(/\{\{NOTIFY_EMAIL\}\}/g, this.datos.notify_email || '');
-    resultado = resultado.replace(/\{\{NOTIFY_ZIP\}\}/g, this.datos.notify_zip || '');
+    resultado = resultado.replace(/\{\{NOTIFY_COMPANY\}\}|"NOTIFY_COMPANY"/g, this.datos.notify_company || '');
+    resultado = resultado.replace(/\{\{NOTIFY_ADDRESS\}\}|"NOTIFY_ADDRESS"/g, this.datos.notify_address || '');
+    resultado = resultado.replace(/\{\{NOTIFY_ATTN\}\}|"NOTIFY_ATTN"/g, this.datos.notify_attn || '');
+    resultado = resultado.replace(/\{\{NOTIFY_USCC\}\}|"NOTIFY_USCC"/g, this.datos.notify_uscc || '');
+    resultado = resultado.replace(/\{\{NOTIFY_MOBILE\}\}|"NOTIFY_MOBILE"/g, this.datos.notify_mobile || '');
+    resultado = resultado.replace(/\{\{NOTIFY_EMAIL\}\}|"NOTIFY_EMAIL"/g, this.datos.notify_email || '');
+    resultado = resultado.replace(/\{\{NOTIFY_ZIP\}\}|"NOTIFY_ZIP"/g, this.datos.notify_zip || '');
 
     // Embarque
-    resultado = resultado.replace(/\{\{FECHA_FACTURA\}\}/g, this.datos.fecha_factura);
-    resultado = resultado.replace(/\{\{INVOICE_NUMBER\}\}/g, this.datos.invoice_number);
-    resultado = resultado.replace(/\{\{EMBARQUE_NUMBER\}\}/g, this.datos.embarque_number);
-    resultado = resultado.replace(/\{\{CSP\}\}/g, this.datos.csp || '');
-    resultado = resultado.replace(/\{\{CSG\}\}/g, this.datos.csg || '');
-    resultado = resultado.replace(/\{\{FECHA_EMBARQUE\}\}/g, this.datos.fecha_embarque);
-    resultado = resultado.replace(/\{\{MOTONAVE\}\}/g, this.datos.motonave);
-    resultado = resultado.replace(/\{\{VIAJE\}\}/g, this.datos.viaje);
-    resultado = resultado.replace(/\{\{MODALIDAD_VENTA\}\}/g, this.datos.modalidad_venta || '');
-    resultado = resultado.replace(/\{\{CLAUSULA_VENTA\}\}/g, this.datos.clausula_venta);
-    resultado = resultado.replace(/\{\{PAIS_ORIGEN\}\}/g, this.datos.pais_origen);
-    resultado = resultado.replace(/\{\{PUERTO_EMBARQUE\}\}/g, this.datos.puerto_embarque);
-    resultado = resultado.replace(/\{\{PUERTO_DESTINO\}\}/g, this.datos.puerto_destino);
-    resultado = resultado.replace(/\{\{PAIS_DESTINO\}\}/g, this.datos.pais_destino);
-    resultado = resultado.replace(/\{\{FORMA_PAGO\}\}/g, this.datos.forma_pago);
-    resultado = resultado.replace(/\{\{CONTENEDOR\}\}/g, this.datos.contenedor || '');
+    resultado = resultado.replace(/\{\{FECHA_FACTURA\}\}|"FECHA_FACTURA"/g, this.datos.fecha_factura);
+    resultado = resultado.replace(/\{\{INVOICE_NUMBER\}\}|"INVOICE_NUMBER"/g, this.datos.invoice_number);
+    resultado = resultado.replace(/\{\{EMBARQUE_NUMBER\}\}|"EMBARQUE_NUMBER"/g, this.datos.embarque_number);
+    resultado = resultado.replace(/\{\{CSP\}\}|"CSP"/g, this.datos.csp || '');
+    resultado = resultado.replace(/\{\{CSG\}\}|"CSG"/g, this.datos.csg || '');
+    resultado = resultado.replace(/\{\{FECHA_EMBARQUE\}\}|"FECHA_EMBARQUE"/g, this.datos.fecha_embarque);
+    resultado = resultado.replace(/\{\{MOTONAVE\}\}|"MOTONAVE"/g, this.datos.motonave);
+    resultado = resultado.replace(/\{\{VIAJE\}\}|"VIAJE"/g, this.datos.viaje);
+    resultado = resultado.replace(/\{\{MODALIDAD_VENTA\}\}|"MODALIDAD_VENTA"/g, this.datos.modalidad_venta || '');
+    resultado = resultado.replace(/\{\{CLAUSULA_VENTA\}\}|"CLAUSULA_VENTA"/g, this.datos.clausula_venta);
+    resultado = resultado.replace(/\{\{PAIS_ORIGEN\}\}|"PAIS_ORIGEN"/g, this.datos.pais_origen);
+    resultado = resultado.replace(/\{\{PUERTO_EMBARQUE\}\}|"PUERTO_EMBARQUE"/g, this.datos.puerto_embarque);
+    resultado = resultado.replace(/\{\{PUERTO_DESTINO\}\}|"PUERTO_DESTINO"/g, this.datos.puerto_destino);
+    resultado = resultado.replace(/\{\{PAIS_DESTINO\}\}|"PAIS_DESTINO"/g, this.datos.pais_destino);
+    resultado = resultado.replace(/\{\{FORMA_PAGO\}\}|"FORMA_PAGO"/g, this.datos.forma_pago);
+    resultado = resultado.replace(/\{\{CONTENEDOR\}\}|"CONTENEDOR"/g, this.datos.contenedor || '');
 
     // Referencias
-    resultado = resultado.replace(/\{\{REF_ASLI\}\}/g, this.datos.ref_asli);
-    resultado = resultado.replace(/\{\{BOOKING\}\}/g, this.datos.booking);
-    resultado = resultado.replace(/\{\{REF_CLIENTE\}\}/g, this.datos.ref_cliente || '');
+    resultado = resultado.replace(/\{\{REF_ASLI\}\}|"REF_ASLI"/g, this.datos.ref_asli);
+    resultado = resultado.replace(/\{\{BOOKING\}\}|"BOOKING"/g, this.datos.booking);
+    resultado = resultado.replace(/\{\{REF_CLIENTE\}\}|"REF_CLIENTE"/g, this.datos.ref_cliente || '');
 
     // Totales
-    resultado = resultado.replace(/\{\{CANTIDAD_TOTAL\}\}/g, this.datos.cantidad_total.toString());
-    resultado = resultado.replace(/\{\{PESO_NETO_TOTAL\}\}/g, this.datos.peso_neto_total.toString());
-    resultado = resultado.replace(/\{\{PESO_BRUTO_TOTAL\}\}/g, this.datos.peso_bruto_total.toString());
-    resultado = resultado.replace(/\{\{VALOR_TOTAL\}\}/g, this.datos.valor_total.toFixed(2));
-    resultado = resultado.replace(/\{\{VALOR_TOTAL_TEXTO\}\}/g, this.datos.valor_total_texto);
+    resultado = resultado.replace(/\{\{CANTIDAD_TOTAL\}\}|"CANTIDAD_TOTAL"/g, this.datos.cantidad_total.toString());
+    resultado = resultado.replace(/\{\{PESO_NETO_TOTAL\}\}|"PESO_NETO_TOTAL"/g, this.datos.peso_neto_total.toString());
+    resultado = resultado.replace(/\{\{PESO_BRUTO_TOTAL\}\}|"PESO_BRUTO_TOTAL"/g, this.datos.peso_bruto_total.toString());
+    resultado = resultado.replace(/\{\{VALOR_TOTAL\}\}|"VALOR_TOTAL"/g, this.datos.valor_total.toFixed(2));
+    resultado = resultado.replace(/\{\{VALOR_TOTAL_TEXTO\}\}|"VALOR_TOTAL_TEXTO"/g, this.datos.valor_total_texto);
 
     // Fecha/Hora
-    resultado = resultado.replace(/\{\{FECHA_HOY\}\}/g, this.datos.fecha_hoy);
-    resultado = resultado.replace(/\{\{FECHA_HOY_LARGO\}\}/g, this.datos.fecha_hoy_largo);
-    resultado = resultado.replace(/\{\{HORA_ACTUAL\}\}/g, this.datos.hora_actual);
+    resultado = resultado.replace(/\{\{FECHA_HOY\}\}|"FECHA_HOY"/g, this.datos.fecha_hoy);
+    resultado = resultado.replace(/\{\{FECHA_HOY_LARGO\}\}|"FECHA_HOY_LARGO"/g, this.datos.fecha_hoy_largo);
+    resultado = resultado.replace(/\{\{HORA_ACTUAL\}\}|"HORA_ACTUAL"/g, this.datos.hora_actual);
 
     return resultado;
   }
 
   /**
    * Reemplaza marcadores específicos de un producto
+   * Soporta ambos formatos: {{PRODUCTO_*}} y "PRODUCTO_*"
    */
   private reemplazarMarcadoresProducto(texto: string, producto: ProductoPlantilla): string {
     let resultado = texto;
 
-    resultado = resultado.replace(/\{\{PRODUCTO_CANTIDAD\}\}/g, producto.cantidad.toString());
-    resultado = resultado.replace(/\{\{PRODUCTO_TIPO_ENVASE\}\}/g, producto.tipo_envase);
-    resultado = resultado.replace(/\{\{PRODUCTO_ESPECIE\}\}/g, producto.especie || '');
-    resultado = resultado.replace(/\{\{PRODUCTO_VARIEDAD\}\}/g, producto.variedad);
-    resultado = resultado.replace(/\{\{PRODUCTO_CATEGORIA\}\}/g, producto.categoria);
-    resultado = resultado.replace(/\{\{PRODUCTO_ETIQUETA\}\}/g, producto.etiqueta);
-    resultado = resultado.replace(/\{\{PRODUCTO_CALIBRE\}\}/g, producto.calibre);
-    resultado = resultado.replace(/\{\{PRODUCTO_KG_NETO_UNIDAD\}\}/g, producto.kg_neto_unidad.toString());
-    resultado = resultado.replace(/\{\{PRODUCTO_KG_BRUTO_UNIDAD\}\}/g, producto.kg_bruto_unidad.toString());
-    resultado = resultado.replace(/\{\{PRODUCTO_PRECIO_CAJA\}\}/g, producto.precio_caja.toFixed(2));
-    resultado = resultado.replace(/\{\{PRODUCTO_TOTAL\}\}/g, producto.total.toFixed(2));
+    resultado = resultado.replace(/\{\{PRODUCTO_CANTIDAD\}\}|"PRODUCTO_CANTIDAD"/g, producto.cantidad.toString());
+    resultado = resultado.replace(/\{\{PRODUCTO_TIPO_ENVASE\}\}|"PRODUCTO_TIPO_ENVASE"/g, producto.tipo_envase);
+    resultado = resultado.replace(/\{\{PRODUCTO_ESPECIE\}\}|"PRODUCTO_ESPECIE"/g, producto.especie || '');
+    resultado = resultado.replace(/\{\{PRODUCTO_VARIEDAD\}\}|"PRODUCTO_VARIEDAD"/g, producto.variedad);
+    resultado = resultado.replace(/\{\{PRODUCTO_CATEGORIA\}\}|"PRODUCTO_CATEGORIA"/g, producto.categoria);
+    resultado = resultado.replace(/\{\{PRODUCTO_ETIQUETA\}\}|"PRODUCTO_ETIQUETA"/g, producto.etiqueta);
+    resultado = resultado.replace(/\{\{PRODUCTO_CALIBRE\}\}|"PRODUCTO_CALIBRE"/g, producto.calibre);
+    resultado = resultado.replace(/\{\{PRODUCTO_KG_NETO_UNIDAD\}\}|"PRODUCTO_KG_NETO_UNIDAD"/g, producto.kg_neto_unidad.toString());
+    resultado = resultado.replace(/\{\{PRODUCTO_KG_BRUTO_UNIDAD\}\}|"PRODUCTO_KG_BRUTO_UNIDAD"/g, producto.kg_bruto_unidad.toString());
+    resultado = resultado.replace(/\{\{PRODUCTO_PRECIO_CAJA\}\}|"PRODUCTO_PRECIO_CAJA"/g, producto.precio_caja.toFixed(2));
+    resultado = resultado.replace(/\{\{PRODUCTO_TOTAL\}\}|"PRODUCTO_TOTAL"/g, producto.total.toFixed(2));
 
     return resultado;
   }

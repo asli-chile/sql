@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.plantillas_proforma (
     -- Auditoría
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by UUID REFERENCES auth.users(id),
+    created_by UUID, -- Sin foreign key constraint para evitar problemas
     
     -- Restricciones
     CONSTRAINT unique_plantilla_cliente_nombre UNIQUE (cliente, nombre)
