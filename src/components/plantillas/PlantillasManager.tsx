@@ -19,6 +19,7 @@ import {
   Copy,
   Info,
 } from 'lucide-react';
+import { previsualizarPlantilla } from '@/lib/plantilla-helpers';
 
 interface PlantillasManagerProps {
   currentUser: any;
@@ -253,6 +254,28 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
     }
   };
 
+  const handlePreview = async (plantilla: PlantillaProforma) => {
+    try {
+      alert('⏳ Generando vista previa con datos de ejemplo...');
+      const { blob, fileName } = await previsualizarPlantilla(plantilla.id);
+      
+      // Descargar el archivo de preview
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      alert('✅ Vista previa generada y descargada');
+    } catch (error) {
+      console.error('Error generando preview:', error);
+      alert('❌ Error al generar vista previa');
+    }
+  };
+
   const toggleDefault = async (plantilla: PlantillaProforma) => {
     try {
       const { error } = await supabase
@@ -397,13 +420,24 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
 
               <div className="flex gap-2">
                 <button
+                  onClick={() => handlePreview(plantilla)}
+                  className={`flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-xs rounded transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-violet-900/30 text-violet-400 hover:bg-violet-900/40'
+                      : 'bg-violet-50 text-violet-700 hover:bg-violet-100'
+                  }`}
+                  title="Vista previa con datos de ejemplo"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </button>
+                <button
                   onClick={() => handleDownload(plantilla)}
                   className={`flex-1 inline-flex items-center justify-center gap-1 px-3 py-2 text-xs rounded transition-colors ${
                     theme === 'dark'
                       ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
-                  title="Descargar"
+                  title="Descargar plantilla original"
                 >
                   <Download className="h-3.5 w-3.5" />
                 </button>
