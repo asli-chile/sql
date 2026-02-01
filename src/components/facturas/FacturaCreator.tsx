@@ -179,6 +179,9 @@ export function FacturaCreator({
         const facturaCompleta = { ...factura, totales: totalesCalculados };
         const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
         const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
+        
+        // El preview siempre muestra el PDF tradicional
+        // La plantilla de Excel se aplicará al hacer clic en "Generar Proforma"
         const pdfResult = await generarFacturaPDF(facturaCompleta, {
           returnBlob: true,
           fileNameBase: `Proforma_${safeRef}_${safeInvoice}`,
@@ -186,6 +189,7 @@ export function FacturaCreator({
         if (!pdfResult || !('blob' in pdfResult)) {
           throw new Error('No se pudo generar el PDF de la proforma.');
         }
+        
         const url = URL.createObjectURL(pdfResult.blob);
         if (isCancelled) {
           URL.revokeObjectURL(url);
@@ -508,6 +512,12 @@ export function FacturaCreator({
           <div className="flex-1 overflow-hidden bg-white">
             {mode === 'proforma' ? (
               <div className="relative h-full w-full bg-gray-100">
+                {/* Nota informativa sobre plantilla */}
+                {plantillaSeleccionada && plantillaSeleccionada !== 'tradicional' && (
+                  <div className="absolute top-2 left-2 right-2 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
+                    📋 <strong>Vista previa en PDF</strong> - El archivo Excel se generará con la plantilla seleccionada al hacer clic en "Generar Proforma"
+                  </div>
+                )}
                 {previewUrl ? (
                   <iframe
                     title="Vista previa PDF de la proforma"
