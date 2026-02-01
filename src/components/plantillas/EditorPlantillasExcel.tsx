@@ -182,9 +182,11 @@ export function EditorPlantillasExcel() {
   
   // Actualizar ancho de columna
   const actualizarAnchoColumna = useCallback((colIdx: number, width: number) => {
+    // Validar que esté entre 5 y 1000
+    const validWidth = Math.max(5, Math.min(1000, width || 5));
     setColumns(prev => {
       const newCols = [...prev];
-      newCols[colIdx] = { ...newCols[colIdx], width };
+      newCols[colIdx] = { ...newCols[colIdx], width: validWidth };
       return newCols;
     });
   }, []);
@@ -209,9 +211,11 @@ export function EditorPlantillasExcel() {
   
   // Actualizar altura de fila
   const actualizarAlturaFila = useCallback((rowIdx: number, height: number) => {
+    // Validar que esté entre 5 y 1000
+    const validHeight = Math.max(5, Math.min(1000, height || 5));
     setRowHeights(prev => {
       const newHeights = [...prev];
-      newHeights[rowIdx] = height;
+      newHeights[rowIdx] = validHeight;
       return newHeights;
     });
   }, []);
@@ -1021,7 +1025,12 @@ export function EditorPlantillasExcel() {
                       min="5"
                       max="1000"
                       value={rowHeights[selectedRow] || 30}
-                      onChange={(e) => actualizarAlturaFila(selectedRow, parseInt(e.target.value) || 30)}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (!isNaN(value)) {
+                          actualizarAlturaFila(selectedRow, value);
+                        }
+                      }}
                       className={`w-full mt-1 px-2 py-1 rounded border ${
                         theme === 'dark'
                           ? 'bg-gray-900 border-gray-700'
@@ -1046,7 +1055,12 @@ export function EditorPlantillasExcel() {
                       min="5"
                       max="1000"
                       value={columns[selectedColumn].width}
-                      onChange={(e) => actualizarAnchoColumna(selectedColumn, parseInt(e.target.value) || 100)}
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        if (!isNaN(value)) {
+                          actualizarAnchoColumna(selectedColumn, value);
+                        }
+                      }}
                       className={`w-full mt-1 px-2 py-1 rounded border ${
                         theme === 'dark'
                           ? 'bg-gray-900 border-gray-700'
