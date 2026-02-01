@@ -844,7 +844,7 @@ export default function MantenimientoPage() {
             <div className="mx-auto max-w-7xl">
               <PlantillasManager currentUser={currentUser} />
             </div>
-          ) : activeTab === 'editor-plantillas' ? (
+          ) : isEditorTab ? (
             <div className="h-[calc(100vh-4rem)]">
               <EditorPlantillasExcel />
             </div>
