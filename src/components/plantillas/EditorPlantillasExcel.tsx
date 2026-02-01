@@ -816,7 +816,10 @@ export function EditorPlantillasExcel() {
                           : 'border-gray-300 bg-gray-100'
                       }`}
                       style={{ width: col.width }}
-                      onClick={() => handleColumnHeaderClick(colIdx)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleColumnHeaderClick(colIdx);
+                      }}
                     >
                       <div className="flex items-center justify-center px-1">
                         <span className="text-xs font-semibold">{String.fromCharCode(65 + colIdx)}</span>
@@ -838,7 +841,10 @@ export function EditorPlantillasExcel() {
                           ? 'border-gray-700 bg-gray-800'
                           : 'border-gray-300 bg-gray-100'
                       }`}
-                      onClick={() => handleRowHeaderClick(rowIdx)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRowHeaderClick(rowIdx);
+                      }}
                     >
                       <span className="font-semibold">{rowIdx + 1}</span>
                     </td>
@@ -879,10 +885,20 @@ export function EditorPlantillasExcel() {
                             ? (theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(191, 219, 254, 0.5)')
                             : cell.style?.backgroundColor,
                         }}
-                        onMouseDown={(e) => handleMouseDown(rowIdx, colIdx, e)}
-                        onMouseEnter={() => handleMouseMove(rowIdx, colIdx)}
-                        onClick={() => {
-                          if (!isDragging) {
+                        onMouseDown={(e) => {
+                          // Solo activar drag si no se hace click en el input
+                          if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                            handleMouseDown(rowIdx, colIdx, e);
+                          }
+                        }}
+                        onMouseEnter={() => {
+                          if (isDragging) {
+                            handleMouseMove(rowIdx, colIdx);
+                          }
+                        }}
+                        onClick={(e) => {
+                          // Solo seleccionar si no se hace click en el input
+                          if ((e.target as HTMLElement).tagName !== 'INPUT' && !isDragging) {
                             setSelectedCell({ row: rowIdx, col: colIdx });
                             setSelectedRange({ start: { row: rowIdx, col: colIdx }, end: { row: rowIdx, col: colIdx } });
                             setSelectedRow(null);
@@ -894,6 +910,25 @@ export function EditorPlantillasExcel() {
                           type="text"
                           value={cell.value}
                           onChange={(e) => actualizarCelda(rowIdx, colIdx, e.target.value)}
+                          onMouseDown={(e) => {
+                            // Detener propagación para que el td no capture el evento
+                            e.stopPropagation();
+                          }}
+                          onClick={(e) => {
+                            // Detener propagación y seleccionar la celda
+                            e.stopPropagation();
+                            setSelectedCell({ row: rowIdx, col: colIdx });
+                            setSelectedRange({ start: { row: rowIdx, col: colIdx }, end: { row: rowIdx, col: colIdx } });
+                            setSelectedRow(null);
+                            setSelectedColumn(null);
+                          }}
+                          onFocus={() => {
+                            // Seleccionar la celda cuando el input recibe foco
+                            setSelectedCell({ row: rowIdx, col: colIdx });
+                            setSelectedRange({ start: { row: rowIdx, col: colIdx }, end: { row: rowIdx, col: colIdx } });
+                            setSelectedRow(null);
+                            setSelectedColumn(null);
+                          }}
                           className={`w-full h-full px-2 py-1 bg-transparent outline-none text-sm ${
                             cell.isMarker ? 'font-mono text-blue-600 dark:text-blue-400' : ''
                           }`}
