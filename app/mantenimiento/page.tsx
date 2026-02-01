@@ -10,6 +10,7 @@ import { UserProfileModal } from '@/components/users/UserProfileModal';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
 import ConsignatariosManager from '@/components/consignatarios/ConsignatariosManager';
+import { PlantillasManager } from '@/components/plantillas/PlantillasManager';
 import {
   LayoutDashboard,
   Ship,
@@ -25,6 +26,7 @@ import {
   Anchor,
   Activity,
   Building2,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 type RolUsuario = 'admin' | 'ejecutivo' | 'cliente';
@@ -79,7 +81,7 @@ export default function MantenimientoPage() {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState<Record<string, string>>({});
   const [bootstrapKey, setBootstrapKey] = useState('');
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios'>('usuarios');
+  const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios' | 'plantillas'>('usuarios');
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
@@ -408,10 +410,14 @@ export default function MantenimientoPage() {
               <div>
                 <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Mantenimiento</p>
                 <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {activeTab === 'usuarios' ? 'Usuarios' : 'Consignatarios'}
+                  {activeTab === 'usuarios' ? 'Usuarios' : activeTab === 'consignatarios' ? 'Consignatarios' : 'Plantillas Proforma'}
                 </h1>
                 <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  {activeTab === 'usuarios' ? 'Gestiona usuarios, roles y permisos' : 'Gestiona información de consignatarios'}
+                  {activeTab === 'usuarios' 
+                    ? 'Gestiona usuarios, roles y permisos' 
+                    : activeTab === 'consignatarios'
+                      ? 'Gestiona información de consignatarios'
+                      : 'Gestiona plantillas Excel personalizadas'}
                 </p>
               </div>
             </div>
@@ -462,6 +468,21 @@ export default function MantenimientoPage() {
               >
                 <Building2 className="h-4 w-4" />
                 <span>Consignatarios</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('plantillas')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'plantillas'
+                    ? theme === 'dark'
+                      ? 'border-sky-500 text-sky-400'
+                      : 'border-blue-600 text-blue-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-200'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                <span>Plantillas</span>
               </button>
             </div>
           </div>
@@ -797,7 +818,11 @@ export default function MantenimientoPage() {
             <div className="mx-auto max-w-6xl">
               <ConsignatariosManager currentUser={currentUser} />
             </div>
-          )}
+          ) : activeTab === 'plantillas' ? (
+            <div className="mx-auto max-w-7xl">
+              <PlantillasManager currentUser={currentUser} />
+            </div>
+          ) : null}
         </main>
       </div>
 
