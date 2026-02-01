@@ -10,6 +10,8 @@ import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
 import { useToast } from '@/hooks/useToast';
 import { normalizeBooking } from '@/utils/documentUtils';
+import { obtenerPlantillaCliente } from '@/lib/plantilla-helpers';
+import { PlantillaExcelProcessor, facturaADatosPlantilla } from '@/lib/plantilla-excel-processor';
 
 interface FacturaProformaModalProps {
   isOpen: boolean;
@@ -158,22 +160,57 @@ export function FacturaProformaModal({
       const fileBaseName = `${safeBaseName} PROFORMA ${contenedor}`;
       const bookingSegment = encodeURIComponent(booking);
 
-      // Generar PDF
+      // Intentar obtener plantilla personalizada del cliente
+      const clienteNombre = factura.exportador?.nombre || registro.shipper || factura.clientePlantilla;
+      let plantilla = null;
+      let excelBlob = null;
+      let excelFileName = '';
+
+      if (clienteNombre) {
+        try {
+          plantilla = await obtenerPlantillaCliente(clienteNombre, 'proforma');
+          
+          if (plantilla) {
+            console.log(`✅ Usando plantilla personalizada: ${plantilla.nombre}`);
+            
+            // Generar Excel usando plantilla personalizada
+            const datos = facturaADatosPlantilla(factura);
+            const processor = new PlantillaExcelProcessor(datos);
+            await processor.cargarPlantilla(plantilla.archivo_url);
+            await processor.procesar();
+            
+            excelBlob = await processor.generarBlob();
+            excelFileName = `${fileBaseName}.xlsx`;
+          }
+        } catch (plantillaError) {
+          console.warn('⚠️ Error con plantilla personalizada, usando método tradicional:', plantillaError);
+          plantilla = null;
+        }
+      }
+
+      // Si no hay plantilla o falló, usar método tradicional
+      if (!plantilla || !excelBlob) {
+        console.log('📄 Usando generador tradicional de Excel');
+        const excelResult = await generarFacturaExcel(factura, {
+          returnBlob: true,
+          fileNameBase: fileBaseName,
+        });
+        
+        if (!excelResult || !('blob' in excelResult)) {
+          throw new Error('No se pudo generar el Excel de la proforma.');
+        }
+        
+        excelBlob = excelResult.blob;
+        excelFileName = excelResult.fileName;
+      }
+
+      // Generar PDF (siempre con el generador tradicional)
       const pdfResult = await generarFacturaPDF(factura, {
         returnBlob: true,
         fileNameBase: fileBaseName,
       });
       if (!pdfResult || !('blob' in pdfResult)) {
         throw new Error('No se pudo generar el PDF de la proforma.');
-      }
-
-      // Generar Excel
-      const excelResult = await generarFacturaExcel(factura, {
-        returnBlob: true,
-        fileNameBase: fileBaseName,
-      });
-      if (!excelResult || !('blob' in excelResult)) {
-        throw new Error('No se pudo generar el Excel de la proforma.');
       }
 
       // Subir PDF a storage
@@ -190,10 +227,10 @@ export function FacturaProformaModal({
       }
 
       // Subir Excel a storage
-      const excelPath = `factura-proforma/${bookingSegment}__${contenedor}__${excelResult.fileName}`;
+      const excelPath = `factura-proforma/${bookingSegment}__${contenedor}__${excelFileName}`;
       const { error: excelError } = await supabase.storage
         .from('documentos')
-        .upload(excelPath, excelResult.blob, {
+        .upload(excelPath, excelBlob, {
           contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           upsert: true,
         });
@@ -202,7 +239,11 @@ export function FacturaProformaModal({
         throw new Error(`Error subiendo Excel: ${excelError.message}`);
       }
 
-      success('Proforma generada y subida correctamente (PDF + Excel).');
+      const mensaje = plantilla 
+        ? `✨ Proforma generada con plantilla "${plantilla.nombre}" (PDF + Excel personalizado)`
+        : 'Proforma generada correctamente (PDF + Excel)';
+      
+      success(mensaje);
       onClose();
     } catch (error: any) {
       console.error('Error generando proforma:', error);
