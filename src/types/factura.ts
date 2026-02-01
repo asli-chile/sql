@@ -89,8 +89,9 @@ export interface ProductoFactura {
   calibre: string; // "2J", "3J", "J"
   kgNetoUnidad: number; // 2.50
   kgBrutoUnidad: number; // 3.00
-  precioPorCaja: number; // 35.00
-  total: number; // Calculado: cantidad * precioPorCaja
+  precioPorKilo: number; // 2.00 (precio por kilogramo)
+  precioPorCaja: number; // 10.00 (precio por caja, calculado: kgNetoUnidad * precioPorKilo)
+  total: number; // Calculado: cantidad * kgNetoUnidad * precioPorKilo
 }
 
 // Plantilla de factura

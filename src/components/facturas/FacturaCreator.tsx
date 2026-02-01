@@ -823,6 +823,7 @@ function FormularioFactura({
           calibre: '',
           kgNetoUnidad: 0,
           kgBrutoUnidad: 0,
+          precioPorKilo: 0,
           precioPorCaja: 0,
           total: 0,
         },
@@ -841,19 +842,42 @@ function FormularioFactura({
   const updateProducto = (index: number, field: keyof ProductoFactura, value: any) => {
     setFactura(prev => {
       const newProductos = [...prev.productos];
-      newProductos[index] = { ...newProductos[index], [field]: value };
+      const producto = { ...newProductos[index] };
+      
+      // Actualizar el campo modificado
+      (producto as any)[field] = value;
       
       // Si se cambia el tipo de caja, actualizar automáticamente kgNetoUnidad
       if (field === 'tipoEnvase') {
         if (value === '5KG') {
-          newProductos[index].kgNetoUnidad = 5.0;
+          producto.kgNetoUnidad = 5.0;
         } else if (value === '2.5KG') {
-          newProductos[index].kgNetoUnidad = 2.5;
+          producto.kgNetoUnidad = 2.5;
         }
       }
       
-      // Recalcular total
-      newProductos[index].total = newProductos[index].cantidad * newProductos[index].precioPorCaja;
+      // Conversión automática entre precio por kilo y precio por caja
+      if (field === 'precioPorKilo') {
+        // Si cambia precio por kilo, calcular precio por caja
+        if (producto.kgNetoUnidad > 0) {
+          producto.precioPorCaja = producto.precioPorKilo * producto.kgNetoUnidad;
+        }
+      } else if (field === 'precioPorCaja') {
+        // Si cambia precio por caja, calcular precio por kilo
+        if (producto.kgNetoUnidad > 0) {
+          producto.precioPorKilo = producto.precioPorCaja / producto.kgNetoUnidad;
+        }
+      } else if (field === 'kgNetoUnidad') {
+        // Si cambia kg neto, recalcular precio por caja basado en precio por kilo
+        if (producto.precioPorKilo > 0) {
+          producto.precioPorCaja = producto.precioPorKilo * producto.kgNetoUnidad;
+        }
+      }
+      
+      // Recalcular total: cantidad × kg neto × precio por kilo
+      producto.total = producto.cantidad * producto.kgNetoUnidad * producto.precioPorKilo;
+      
+      newProductos[index] = producto;
       return { ...prev, productos: newProductos };
     });
   };
@@ -1657,25 +1681,52 @@ function FormularioFactura({
                   }`}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={producto.precioPorCaja}
-                  onChange={e => updateProducto(index, 'precioPorCaja', parseFloat(e.target.value) || 0)}
-                  placeholder="Precio/Caja"
-                  className={`px-2 py-1 rounded border ${
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Precio/Kilo
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={producto.precioPorKilo}
+                    onChange={e => updateProducto(index, 'precioPorKilo', parseFloat(e.target.value) || 0)}
+                    placeholder="US$/KG"
+                    className={`w-full px-2 py-1 rounded border ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Precio/Caja
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={producto.precioPorCaja}
+                    onChange={e => updateProducto(index, 'precioPorCaja', parseFloat(e.target.value) || 0)}
+                    placeholder="US$/Caja"
+                    className={`w-full px-2 py-1 rounded border ${
+                      theme === 'dark'
+                        ? 'bg-gray-700 border-gray-600 text-white'
+                        : 'bg-gray-50 border-gray-300 text-gray-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Total
+                  </label>
+                  <div className={`w-full px-2 py-1 rounded border flex items-center ${
                     theme === 'dark'
-                      ? 'bg-gray-700 border-gray-600 text-white'
+                      ? 'bg-gray-700 border-gray-600 text-gray-300'
                       : 'bg-gray-50 border-gray-300 text-gray-900'
-                  }`}
-                />
-                <div className={`px-2 py-1 rounded border flex items-center ${
-                  theme === 'dark'
-                    ? 'bg-gray-700 border-gray-600 text-gray-300'
-                    : 'bg-gray-50 border-gray-300 text-gray-900'
-                }`}>
-                  Total: US${producto.total.toFixed(2)}
+                  }`}>
+                    US${producto.total.toFixed(2)}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1768,6 +1819,7 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
         calibre: '',
         kgNetoUnidad: 0,
         kgBrutoUnidad: 0,
+        precioPorKilo: 0,
         precioPorCaja: 0,
         total: 0,
       },
