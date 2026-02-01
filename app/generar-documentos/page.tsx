@@ -20,17 +20,16 @@ import {
   BarChart3,
   Users,
   Menu,
-  X,
-  ChevronRight,
   User as UserIcon,
   FileCheck,
-  Receipt,
   Search,
   Filter,
   CheckCircle2,
-  ChevronLeft,
   Anchor,
   Package,
+  Receipt,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { SidebarSection } from '@/types/layout';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -52,7 +51,7 @@ interface BookingInfo {
 
 interface NaveInfo {
   nave: string;
-  naveCompleta: string; // Nombre con viaje
+  naveCompleta: string;
   bookings: BookingInfo[];
 }
 
@@ -68,9 +67,9 @@ export default function GenerarDocumentosPage() {
   const [selectedContenedor, setSelectedContenedor] = useState<ContenedorInfo | null>(null);
   const [showInstructivoModal, setShowInstructivoModal] = useState(false);
   const [showProformaModal, setShowProformaModal] = useState(false);
+  const [expandedNaves, setExpandedNaves] = useState<Set<string>>(new Set());
+  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
   
-  // Estados para navegación móvil
-  const [mobileView, setMobileView] = useState<'naves' | 'bookings' | 'contenedores' | 'acciones'>('naves');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -98,18 +97,20 @@ export default function GenerarDocumentosPage() {
   useEffect(() => {
     const loadRegistros = async () => {
       try {
+        setLoading(true);
         const supabase = createClient();
-        const { data, error } = await supabase
-          .from('registros')
-          .select('*')
-          .is('deleted_at', null)
-          .not('ref_asli', 'is', null)
-          .order('ref_asli', { ascending: false });
+        const { data: sessionData } = await supabase.auth.getSession();
+        
+        if (sessionData?.session?.user) {
+          setUser(sessionData.session.user);
+        }
+
+        const { data, error } = await supabase.from('registros').select('*').order('ingresado', { ascending: false });
 
         if (error) throw error;
 
-        const registrosList = (data || []).map((registro: any) => convertSupabaseToApp(registro));
-        setRegistros(registrosList);
+        const convertedData = data.map(convertSupabaseToApp);
+        setRegistros(convertedData);
       } catch (error) {
         console.error('Error cargando registros:', error);
       } finally {
@@ -120,48 +121,16 @@ export default function GenerarDocumentosPage() {
     loadRegistros();
   }, []);
 
-  // Obtener usuario
-  useEffect(() => {
-    const fetchUser = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: userData } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('auth_user_id', user.id)
-          .single();
-        
-        const userDataObj = userData || {
-          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-          email: user.email || '',
-          rol: 'usuario'
-        };
-        
-        setUserInfo(userDataObj);
-        
-        // Redirigir si es cliente
-        if (userDataObj.rol === 'cliente') {
-          router.push('/dashboard');
-        }
-      }
-    };
-    fetchUser();
-  }, [router]);
-
-  // Verificar documentos existentes cuando se selecciona un booking
+  // Verificar documentos existentes para el booking seleccionado
   useEffect(() => {
     if (!selectedBooking) return;
-    
+
     const checkExistingDocuments = async () => {
       try {
         const supabase = createClient();
         const booking = selectedBooking.booking;
         const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
         
-        // Verificar instructivo
         const { data: instructivoData } = await supabase.storage
           .from('documentos')
           .list('instructivo-embarque', { limit: 100 });
@@ -173,7 +142,6 @@ export default function GenerarDocumentosPage() {
           return fileBooking === normalizedBooking;
         }) || false;
         
-        // Verificar proforma
         const { data: proformaData } = await supabase.storage
           .from('documentos')
           .list('factura-proforma', { limit: 100 });
@@ -214,7 +182,6 @@ export default function GenerarDocumentosPage() {
         navierasSet.add(registro.naviera.trim().toUpperCase());
       }
       if (registro.naveInicial?.trim()) {
-        // Extraer solo el nombre de la nave sin el viaje
         const naveMatch = registro.naveInicial.trim().match(/^(.+?)\s*\[/);
         const naveName = naveMatch ? naveMatch[1].trim() : registro.naveInicial.trim();
         if (naveName) {
@@ -239,7 +206,6 @@ export default function GenerarDocumentosPage() {
     const navesMap = new Map<string, NaveInfo>();
 
     registros.forEach(registro => {
-      // Extraer nombre de la nave
       const naveInicial = registro.naveInicial?.trim();
       if (!naveInicial) return;
       
@@ -266,7 +232,6 @@ export default function GenerarDocumentosPage() {
       const booking = registro.booking?.trim();
       if (!booking) return;
 
-      // Crear o obtener nave
       if (!navesMap.has(naveName)) {
         navesMap.set(naveName, {
           nave: naveName,
@@ -277,7 +242,6 @@ export default function GenerarDocumentosPage() {
 
       const naveInfo = navesMap.get(naveName)!;
       
-      // Buscar o crear booking dentro de la nave
       let bookingInfo = naveInfo.bookings.find(b => b.booking === booking);
       if (!bookingInfo) {
         bookingInfo = {
@@ -290,7 +254,6 @@ export default function GenerarDocumentosPage() {
         naveInfo.bookings.push(bookingInfo);
       }
 
-      // Agregar contenedores
       const contenedores = Array.isArray(registro.contenedor)
         ? registro.contenedor
         : registro.contenedor
@@ -308,7 +271,6 @@ export default function GenerarDocumentosPage() {
       });
     });
 
-    // Ordenar naves alfabéticamente
     return Array.from(navesMap.values()).sort((a, b) => 
       a.nave.localeCompare(b.nave)
     );
@@ -369,33 +331,38 @@ export default function GenerarDocumentosPage() {
       : []),
   ];
 
-  const handleSelectNave = (nave: NaveInfo) => {
-    setSelectedNave(nave);
-    setSelectedBooking(null);
-    setSelectedContenedor(null);
-    setMobileView('bookings'); // Cambiar a vista de bookings en móvil
+  const toggleNave = (naveName: string) => {
+    setExpandedNaves(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(naveName)) {
+        newSet.delete(naveName);
+      } else {
+        newSet.add(naveName);
+      }
+      return newSet;
+    });
   };
 
-  const handleSelectBooking = (booking: BookingInfo) => {
+  const toggleBooking = (bookingName: string) => {
+    setExpandedBookings(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(bookingName)) {
+        newSet.delete(bookingName);
+      } else {
+        newSet.add(bookingName);
+      }
+      return newSet;
+    });
+  };
+
+  const handleGenerarInstructivo = (booking: BookingInfo) => {
     setSelectedBooking(booking);
-    setSelectedContenedor(null);
-    setMobileView('contenedores'); // Cambiar a vista de contenedores en móvil
-  };
-
-  const handleSelectContenedor = (contenedor: ContenedorInfo) => {
-    setSelectedContenedor(contenedor);
-    setMobileView('acciones'); // Cambiar a vista de acciones en móvil
-  };
-
-  const handleGenerarInstructivo = () => {
-    // Requiere al menos un booking seleccionado
-    if (!selectedBooking) return;
     setShowInstructivoModal(true);
   };
 
-  const handleGenerarProforma = () => {
-    // La proforma requiere contenedor
-    if (!selectedContenedor) return;
+  const handleGenerarProforma = (contenedor: ContenedorInfo, booking: BookingInfo) => {
+    setSelectedBooking(booking);
+    setSelectedContenedor(contenedor);
     setShowProformaModal(true);
   };
 
@@ -409,7 +376,6 @@ export default function GenerarDocumentosPage() {
           const booking = selectedBooking.booking;
           const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
           
-          // Verificar instructivo
           const { data: instructivoData } = await supabase.storage
             .from('documentos')
             .list('instructivo-embarque', { limit: 100 });
@@ -421,7 +387,6 @@ export default function GenerarDocumentosPage() {
             return fileBooking === normalizedBooking;
           }) || false;
           
-          // Verificar proforma
           const { data: proformaData } = await supabase.storage
             .from('documentos')
             .list('factura-proforma', { limit: 100 });
@@ -450,7 +415,6 @@ export default function GenerarDocumentosPage() {
 
   const handleCloseProformaModal = () => {
     setShowProformaModal(false);
-    // Recargar estado de documentos (usar la misma lógica que arriba)
     if (selectedBooking) {
       const checkExistingDocuments = async () => {
         try {
@@ -458,7 +422,6 @@ export default function GenerarDocumentosPage() {
           const booking = selectedBooking.booking;
           const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
           
-          // Verificar instructivo
           const { data: instructivoData } = await supabase.storage
             .from('documentos')
             .list('instructivo-embarque', { limit: 100 });
@@ -470,7 +433,6 @@ export default function GenerarDocumentosPage() {
             return fileBooking === normalizedBooking;
           }) || false;
           
-          // Verificar proforma
           const { data: proformaData } = await supabase.storage
             .from('documentos')
             .list('factura-proforma', { limit: 100 });
@@ -523,7 +485,6 @@ export default function GenerarDocumentosPage() {
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-      {/* Overlay para móvil */}
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -544,12 +505,12 @@ export default function GenerarDocumentosPage() {
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
-        <header className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
+        <header className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => isSidebarCollapsed ? setIsSidebarCollapsed(false) : setIsMobileMenuOpen(true)}
-                className={`p-2 border transition-colors ${theme === 'dark'
+                className={`p-2 border transition-colors rounded-lg ${theme === 'dark'
                   ? 'hover:bg-slate-700 border-slate-700 text-slate-400'
                   : 'hover:bg-gray-100 border-gray-300 text-gray-500'
                   } ${!isSidebarCollapsed && 'lg:hidden'}`}
@@ -557,21 +518,19 @@ export default function GenerarDocumentosPage() {
                 <Menu className="h-5 w-5" />
               </button>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo de Documentos</p>
-                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Generar Documentos
                 </h1>
-                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Instructivo de Embarque y Factura Proforma por contenedor
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Selecciona nave → booking → contenedor paso a paso
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Botón de filtros */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors border ${showFilters
+                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${showFilters
                   ? theme === 'dark'
                     ? 'bg-sky-600 text-white hover:bg-sky-500 border-sky-500'
                     : 'bg-blue-600 text-white hover:bg-blue-500 border-blue-500'
@@ -580,32 +539,31 @@ export default function GenerarDocumentosPage() {
                     : 'border-gray-300 text-gray-900 hover:border-blue-500 hover:text-blue-700 hover:bg-gray-100 bg-white'
                   }`}
               >
-                <Filter className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Filtros</span>
+                <Filter className="h-4 w-4" />
+                Filtros
                 {hasActiveFilters && (
-                  <span className={`text-xs px-1.5 py-0.5 ${showFilters
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${showFilters
                     ? 'bg-white/20'
                     : theme === 'dark'
                       ? 'bg-sky-500/30'
                       : 'bg-blue-500/20'
                     }`}>
-                    {selectedClientes.length + (selectedNaviera ? 1 : 0) + (selectedNave ? 1 : 0) + (selectedEspecie ? 1 : 0)}
+                    {selectedClientes.length + (selectedNaviera ? 1 : 0) + (filterNave ? 1 : 0) + (selectedEspecie ? 1 : 0)}
                   </span>
                 )}
               </button>
               
-              {/* Botón de usuario */}
               <button
                 type="button"
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-1.5 border ${theme === 'dark'
-                  ? 'border-slate-700 bg-slate-800 px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500 hover:text-sky-200'
-                  : 'border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-500 hover:text-blue-700'
-                  } transition`}
+                className={`hidden sm:flex items-center gap-2 border rounded-lg px-4 py-2 transition ${theme === 'dark'
+                  ? 'border-slate-700 bg-slate-800 text-slate-200 hover:border-sky-500 hover:text-sky-200'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 hover:text-blue-700'
+                  }`}
                 title={currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
               >
-                <UserIcon className="h-4 w-4 sm:h-4 sm:w-4 flex-shrink-0" />
-                <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
+                <UserIcon className="h-4 w-4" />
+                <span className="max-w-[160px] truncate font-medium text-sm">
                   {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
                 </span>
               </button>
@@ -613,104 +571,19 @@ export default function GenerarDocumentosPage() {
           </div>
         </header>
 
-        <div className="flex-1 flex flex-col overflow-hidden relative">
-          {/* Navegación breadcrumb móvil */}
-          <div className={`lg:hidden w-full border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-            <div className="flex items-center gap-1.5 p-2 overflow-x-auto scrollbar-hide">
-              <button
-                onClick={() => setMobileView('naves')}
-                className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
-                  mobileView === 'naves'
-                    ? theme === 'dark'
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-blue-600 text-white'
-                    : theme === 'dark'
-                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                <Anchor className="h-3 w-3" />
-                <span className="hidden sm:inline">Naves</span>
-                <span className="sm:hidden">N</span>
-              </button>
-              {selectedNave && (
-                <>
-                  <ChevronRight className={`h-3 w-3 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                  <button
-                    onClick={() => setMobileView('bookings')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
-                      mobileView === 'bookings'
-                        ? theme === 'dark'
-                          ? 'bg-sky-600 text-white'
-                          : 'bg-blue-600 text-white'
-                        : theme === 'dark'
-                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    <FileText className="h-3 w-3" />
-                    <span className="hidden sm:inline">Bookings</span>
-                    <span className="sm:hidden">B</span>
-                  </button>
-                </>
-              )}
-              {selectedBooking && (
-                <>
-                  <ChevronRight className={`h-3 w-3 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                  <button
-                    onClick={() => setMobileView('contenedores')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
-                      mobileView === 'contenedores'
-                        ? theme === 'dark'
-                          ? 'bg-sky-600 text-white'
-                          : 'bg-blue-600 text-white'
-                        : theme === 'dark'
-                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    <Package className="h-3 w-3" />
-                    <span className="hidden sm:inline">Contenedores</span>
-                    <span className="sm:hidden">C</span>
-                  </button>
-                  <ChevronRight className={`h-3 w-3 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
-                  <button
-                    onClick={() => setMobileView('acciones')}
-                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
-                      mobileView === 'acciones'
-                        ? theme === 'dark'
-                          ? 'bg-sky-600 text-white'
-                          : 'bg-blue-600 text-white'
-                        : theme === 'dark'
-                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                  >
-                    <FileCheck className="h-3 w-3" />
-                    <span className="hidden sm:inline">Acciones</span>
-                    <span className="sm:hidden">A</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Contenedor flex horizontal para los paneles */}
-          <div className="flex-1 flex overflow-hidden">
-          {/* Panel izquierdo - Lista de naves */}
-          <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
-            mobileView !== 'naves' ? 'hidden lg:flex' : 'flex'
-          } ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Panel Principal - Lista Vertical */}
+          <div className="flex-1 flex flex-col overflow-hidden">
             {/* Búsqueda */}
-            <div className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-              <div className="relative">
-                <Search className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+            <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <div className="relative max-w-2xl">
+                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
                 <input
                   type="text"
-                  placeholder="Buscar nave, booking..."
+                  placeholder="Buscar nave, booking, contenedor..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border text-xs sm:text-sm ${theme === 'dark'
+                  className={`w-full pl-12 pr-4 py-3 border rounded-lg text-sm ${theme === 'dark'
                     ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400'
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                     }`}
@@ -718,455 +591,354 @@ export default function GenerarDocumentosPage() {
               </div>
             </div>
 
-            {/* Lista de naves */}
-            <div className="flex-1 overflow-y-auto p-2">
-              {filteredNaves.length === 0 ? (
-                <div className="text-center py-8 sm:py-10">
-                  <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                    {searchTerm ? 'No se encontraron naves' : 'No hay naves disponibles'}
-                  </p>
-                </div>
-              ) : (
-                filteredNaves.map((nave) => (
-                  <div
-                    key={nave.nave}
-                    className={`mb-2 border cursor-pointer transition-colors rounded ${selectedNave?.nave === nave.nave
-                      ? theme === 'dark'
-                        ? 'bg-sky-900/30 border-sky-600'
-                        : 'bg-blue-50 border-blue-400'
-                      : theme === 'dark'
-                        ? 'border-slate-700 hover:bg-slate-800'
-                        : 'border-gray-300 hover:bg-gray-50'
-                      }`}
-                    onClick={() => handleSelectNave(nave)}
-                  >
-                    <div className="p-2.5 sm:p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className={`font-semibold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {nave.nave}
-                        </p>
-                        <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                          {nave.bookings.length} {nave.bookings.length === 1 ? 'reserva' : 'reservas'}
-                        </span>
-                      </div>
-                      <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {nave.naveCompleta}
-                      </p>
-                    </div>
+            {/* Lista de Naves - Expandible */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="max-w-4xl mx-auto space-y-3">
+                {filteredNaves.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Anchor className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`} />
+                    <p className={`text-lg font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {searchTerm ? 'No se encontraron naves' : 'No hay naves disponibles'}
+                    </p>
                   </div>
-                ))
-              )}
+                ) : (
+                  filteredNaves.map((nave) => (
+                    <div
+                      key={nave.nave}
+                      className={`border rounded-lg overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}
+                    >
+                      {/* Header de Nave */}
+                      <button
+                        onClick={() => toggleNave(nave.nave)}
+                        className={`w-full p-4 flex items-center justify-between hover:bg-opacity-50 transition-colors ${
+                          expandedNaves.has(nave.nave)
+                            ? theme === 'dark'
+                              ? 'bg-sky-900/20'
+                              : 'bg-blue-50'
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Anchor className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                          <div className="text-left">
+                            <p className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {nave.nave}
+                            </p>
+                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              {nave.naveCompleta}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-sm px-3 py-1 rounded-full ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                            {nave.bookings.length} {nave.bookings.length === 1 ? 'reserva' : 'reservas'}
+                          </span>
+                          {expandedNaves.has(nave.nave) ? (
+                            <ChevronDown className={`h-5 w-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
+                          ) : (
+                            <ChevronRight className={`h-5 w-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Lista de Bookings */}
+                      {expandedNaves.has(nave.nave) && (
+                        <div className={`border-t ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'}`}>
+                          {nave.bookings.map((booking) => {
+                            const hasInstructivo = existingDocs[booking.booking]?.instructivo;
+                            const hasProforma = existingDocs[booking.booking]?.proforma;
+
+                            return (
+                              <div
+                                key={booking.booking}
+                                className={`border-b last:border-b-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}
+                              >
+                                {/* Header de Booking */}
+                                <button
+                                  onClick={() => toggleBooking(booking.booking)}
+                                  className={`w-full p-4 pl-12 flex items-center justify-between hover:bg-opacity-50 transition-colors ${
+                                    expandedBookings.has(booking.booking)
+                                      ? theme === 'dark'
+                                        ? 'bg-slate-800'
+                                        : 'bg-white'
+                                      : ''
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <FileText className={`h-5 w-5 ${theme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`} />
+                                    <div className="text-left">
+                                      <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                        {booking.booking}
+                                      </p>
+                                      <div className="flex gap-2 mt-1">
+                                        {booking.refAsli && (
+                                          <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                                            ASLI: {booking.refAsli}
+                                          </span>
+                                        )}
+                                        {booking.refCliente && (
+                                          <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                                            Cliente: {booking.refCliente}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                                      {booking.contenedores.length} {booking.contenedores.length === 1 ? 'contenedor' : 'contenedores'}
+                                    </span>
+                                    {expandedBookings.has(booking.booking) ? (
+                                      <ChevronDown className={`h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
+                                    ) : (
+                                      <ChevronRight className={`h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
+                                    )}
+                                  </div>
+                                </button>
+
+                                {/* Acciones y Contenedores */}
+                                {expandedBookings.has(booking.booking) && (
+                                  <div className={`p-4 pl-16 space-y-3 ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+                                    {/* Botón Instructivo */}
+                                    <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                            Instructivo de Embarque
+                                          </p>
+                                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                                            Documento para coordinación de transporte
+                                          </p>
+                                        </div>
+                                        <button
+                                          onClick={() => handleGenerarInstructivo(booking)}
+                                          disabled={hasInstructivo}
+                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                                            hasInstructivo
+                                              ? theme === 'dark'
+                                                ? 'bg-green-900/30 text-green-400 border border-green-700'
+                                                : 'bg-green-50 text-green-700 border border-green-200'
+                                              : theme === 'dark'
+                                                ? 'bg-sky-600 text-white hover:bg-sky-500'
+                                                : 'bg-blue-600 text-white hover:bg-blue-500'
+                                          }`}
+                                        >
+                                          {hasInstructivo ? (
+                                            <>
+                                              <CheckCircle2 className="h-4 w-4" />
+                                              Ya existe
+                                            </>
+                                          ) : (
+                                            <>
+                                              <Receipt className="h-4 w-4" />
+                                              Generar
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Lista de Contenedores */}
+                                    <div className="space-y-2">
+                                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                                        Contenedores ({booking.contenedores.length})
+                                      </p>
+                                      {booking.contenedores.map((contenedor) => (
+                                        <div
+                                          key={contenedor.contenedor}
+                                          className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}
+                                        >
+                                          <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                              <Package className={`h-5 w-5 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
+                                              <p className={`font-mono font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                                {contenedor.contenedor}
+                                              </p>
+                                            </div>
+                                            <button
+                                              onClick={() => handleGenerarProforma(contenedor, booking)}
+                                              disabled={hasProforma}
+                                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                                                hasProforma
+                                                  ? theme === 'dark'
+                                                    ? 'bg-green-900/30 text-green-400 border border-green-700'
+                                                    : 'bg-green-50 text-green-700 border border-green-200'
+                                                  : theme === 'dark'
+                                                    ? 'bg-violet-600 text-white hover:bg-violet-500'
+                                                    : 'bg-violet-600 text-white hover:bg-violet-500'
+                                              }`}
+                                            >
+                                              {hasProforma ? (
+                                                <>
+                                                  <CheckCircle2 className="h-4 w-4" />
+                                                  Proforma existe
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Receipt className="h-4 w-4" />
+                                                  Generar Proforma
+                                                </>
+                                              )}
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Panel central - Bookings de la nave seleccionada */}
-          <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
-            mobileView !== 'bookings' ? 'hidden lg:flex' : 'flex'
-          } ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-            {selectedNave ? (
-              <>
-                <div className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
-                  <h3 className={`font-semibold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Reservas - {selectedNave.nave}
-                  </h3>
-                  <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {selectedNave.bookings.length} {selectedNave.bookings.length === 1 ? 'reserva' : 'reservas'}
-                  </p>
-                </div>
-                <div className="flex-1 overflow-y-auto p-2">
-                  {selectedNave.bookings.length === 0 ? (
-                    <div className="text-center py-8 sm:py-10">
-                      <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                        No hay reservas para esta nave
-                      </p>
-                    </div>
-                  ) : (
-                    selectedNave.bookings.map((booking) => (
-                      <div
-                        key={booking.booking}
-                        className={`mb-2 border cursor-pointer transition-colors rounded ${selectedBooking?.booking === booking.booking
-                          ? theme === 'dark'
-                            ? 'bg-sky-900/30 border-sky-600'
-                            : 'bg-blue-50 border-blue-400'
-                          : theme === 'dark'
-                            ? 'border-slate-700 hover:bg-slate-800'
-                            : 'border-gray-300 hover:bg-gray-50'
+          {/* Panel de Filtros */}
+          {showFilters && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/50 z-[60] lg:hidden"
+                onClick={() => setShowFilters(false)}
+              />
+              <aside className={`fixed lg:relative top-0 right-0 h-full w-80 flex-shrink-0 border-l overflow-y-auto z-[70] ${
+                theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+              }`}>
+                <div className="p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Filtros</h3>
+                    {hasActiveFilters && (
+                      <button
+                        onClick={handleClearFilters}
+                        className={`text-xs px-2 py-1 rounded ${theme === 'dark'
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                           }`}
-                        onClick={() => handleSelectBooking(booking)}
                       >
-                        <div className="p-2.5 sm:p-3">
-                          <p className={`font-medium text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {booking.booking}
-                          </p>
-                          {booking.refAsli && (
-                            <p className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              Ref ASLI: {booking.refAsli}
-                            </p>
-                          )}
-                          {booking.refCliente && (
-                            <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              Ref Cliente: {booking.refCliente}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-2 mt-1.5 sm:mt-2">
-                            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                              {booking.contenedores.length} {booking.contenedores.length === 1 ? 'contenedor' : 'contenedores'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center p-4">
-                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                  Selecciona una nave
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Panel derecho - Contenedores y Acciones */}
-          <div className={`flex-1 flex flex-col overflow-hidden ${
-            (mobileView !== 'contenedores' && mobileView !== 'acciones') ? 'hidden lg:flex' : 'flex'
-          }`}>
-            {selectedBooking ? (
-              <div className="flex flex-col lg:flex-row h-full">
-                {/* Subpanel izquierdo - Contenedores */}
-                <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
-                  mobileView !== 'contenedores' ? 'hidden lg:flex' : 'flex'
-                } ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-                  <div className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
-                    <h3 className={`font-semibold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Contenedores
-                    </h3>
-                    <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                      Booking: {selectedBooking.booking}
-                    </p>
-                  </div>
-                  <div className="flex-1 overflow-y-auto p-2">
-                    {selectedBooking.contenedores.length === 0 ? (
-                      <div className="text-center py-8 sm:py-10">
-                        <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                          No hay contenedores
-                        </p>
-                      </div>
-                    ) : (
-                      selectedBooking.contenedores.map((cont) => (
-                        <div
-                          key={cont.contenedor}
-                          className={`mb-2 border cursor-pointer transition-colors rounded ${selectedContenedor?.contenedor === cont.contenedor
-                            ? theme === 'dark'
-                              ? 'bg-sky-900/30 border-sky-600'
-                              : 'bg-blue-50 border-blue-400'
-                            : theme === 'dark'
-                              ? 'border-slate-700 hover:bg-slate-800'
-                              : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                          onClick={() => handleSelectContenedor(cont)}
-                        >
-                          <div className="p-2.5 sm:p-3">
-                            <p className={`font-medium text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                              {cont.contenedor}
-                            </p>
-                          </div>
-                        </div>
-                      ))
+                        Limpiar
+                      </button>
                     )}
                   </div>
                 </div>
 
-                {/* Subpanel derecho - Acciones */}
-                <div className={`flex-1 p-4 lg:p-6 overflow-y-auto ${
-                  mobileView !== 'acciones' ? 'hidden lg:block' : 'block'
-                }`}>
-                  <div className="max-w-2xl mx-auto">
-                    <div className={`border p-4 lg:p-6 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
-                      <h2 className={`text-lg lg:text-xl font-bold mb-3 lg:mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        Generar Documentos
-                      </h2>
-                      <div className="mb-4 space-y-1">
-                        <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Nave: <span className="font-semibold">{selectedNave?.nave}</span>
-                        </p>
-                        <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Booking: <span className="font-semibold">{selectedBooking.booking}</span>
-                        </p>
-                        {selectedBooking.refAsli && (
-                          <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            Ref ASLI: <span className="font-semibold">{selectedBooking.refAsli}</span>
-                          </p>
-                        )}
-                        {selectedContenedor && (
-                          <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            Contenedor: <span className="font-semibold">{selectedContenedor.contenedor}</span>
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
-                        <button
-                          onClick={handleGenerarInstructivo}
-                          disabled={!selectedBooking}
-                          className={`flex flex-col items-center justify-center p-4 lg:p-6 border transition-colors relative ${!selectedBooking
-                            ? 'opacity-50 cursor-not-allowed'
-                            : theme === 'dark'
-                              ? 'border-slate-700 hover:bg-slate-800'
-                              : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                        >
-                          {selectedBooking && existingDocs[selectedBooking.booking]?.instructivo && (
-                            <div className="absolute top-2 right-2">
-                              <CheckCircle2 className={`h-4 w-4 lg:h-5 lg:w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                            </div>
-                          )}
-                          <FileCheck className={`h-10 w-10 lg:h-12 lg:w-12 mb-2 lg:mb-3 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
-                          <p className={`font-semibold text-xs lg:text-sm text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            Instructivo de Embarque
-                          </p>
-                          <p className={`text-[10px] lg:text-xs mt-1 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {selectedContenedor ? 'Para contenedor específico' : 'Para toda la reserva'}
-                          </p>
-                          {selectedBooking && existingDocs[selectedBooking.booking]?.instructivo && (
-                            <p className={`text-[10px] lg:text-xs mt-1 font-medium text-center ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                              ✓ Ya existe en documentos
-                            </p>
-                          )}
-                        </button>
-
-                        <button
-                          onClick={handleGenerarProforma}
-                          disabled={!selectedContenedor}
-                          className={`flex flex-col items-center justify-center p-4 lg:p-6 border transition-colors relative ${!selectedContenedor
-                            ? 'opacity-50 cursor-not-allowed'
-                            : theme === 'dark'
-                              ? 'border-slate-700 hover:bg-slate-800'
-                              : 'border-gray-300 hover:bg-gray-50'
-                            }`}
-                        >
-                          {selectedContenedor && selectedBooking && existingDocs[selectedBooking.booking]?.proforma && (
-                            <div className="absolute top-2 right-2">
-                              <CheckCircle2 className={`h-4 w-4 lg:h-5 lg:w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                            </div>
-                          )}
-                          <Receipt className={`h-10 w-10 lg:h-12 lg:w-12 mb-2 lg:mb-3 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                          <p className={`font-semibold text-xs lg:text-sm text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            Factura Proforma
-                          </p>
-                          <p className={`text-[10px] lg:text-xs mt-1 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            {selectedContenedor ? 'Generar factura proforma' : 'Requiere contenedor'}
-                          </p>
-                          {selectedContenedor && selectedBooking && existingDocs[selectedBooking.booking]?.proforma && (
-                            <p className={`text-[10px] lg:text-xs mt-1 font-medium text-center ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                              ✓ Ya existe en documentos
-                            </p>
-                          )}
-                        </button>
-                      </div>
+                <div className="p-4 space-y-4">
+                  {/* Filtro de Clientes */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Clientes
+                    </label>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {filterOptions.clientes.map((cliente) => (
+                        <label key={cliente} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedClientes.includes(cliente)}
+                            onChange={() => handleToggleCliente(cliente)}
+                            className="rounded"
+                          />
+                          <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            {cliente}
+                          </span>
+                        </label>
+                      ))}
                     </div>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className={`flex-1 flex items-center justify-center p-4 ${
-                mobileView !== 'acciones' ? 'hidden lg:flex' : 'flex'
-              }`}>
-                <div className="text-center">
-                  <FileText className={`h-12 w-12 lg:h-16 lg:w-16 mx-auto mb-3 lg:mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <p className={`text-base lg:text-lg font-semibold mb-1 lg:mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Selecciona un booking
-                  </p>
-                  <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Elige una nave y luego un booking para generar documentos
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* Overlay para móvil de filtros */}
-          {showFilters && (
-            <div
-              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] lg:hidden"
-              onClick={() => setShowFilters(false)}
-            />
-          )}
-
-          {/* Panel lateral de filtros */}
-          <aside
-            className={`fixed lg:relative right-0 top-0 z-[70] lg:z-auto flex h-full lg:h-auto flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-700 bg-slate-900' : 'border-l border-gray-200 bg-white'} ${showFilters
-              ? 'translate-x-0 w-80 lg:w-80 lg:opacity-100'
-              : 'translate-x-full w-80 lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:min-w-0'
-              } lg:flex-shrink-0`}
-          >
-            <div className={`flex items-center justify-between px-4 py-3 lg:py-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'} relative z-[71]`}>
-              <h2 className={`text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros</h2>
-              <button
-                onClick={() => setShowFilters(false)}
-                className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center border transition ${theme === 'dark'
-                  ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-sky-500 hover:text-sky-200'
-                  : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'
-                  }`}
-                aria-label="Cerrar panel de filtros"
-              >
-                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 relative z-[71]">
-              {/* Botón limpiar filtros */}
-              {hasActiveFilters && (
-                <button
-                  onClick={handleClearFilters}
-                  className={`w-full px-3 py-2 text-xs sm:text-sm font-medium border transition-colors rounded ${theme === 'dark'
-                    ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
-                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
-                    }`}
-                >
-                  Limpiar filtros
-                </button>
-              )}
-
-              {/* Filtro de Clientes */}
-              <div>
-                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Clientes
-                </label>
-                <div className="space-y-1.5 sm:space-y-2 max-h-48 overflow-y-auto">
-                  {filterOptions.clientes.map((cliente) => (
-                    <label
-                      key={cliente}
-                      className={`flex items-center gap-2 cursor-pointer p-1.5 sm:p-2 border transition-colors rounded ${selectedClientes.includes(cliente)
-                        ? theme === 'dark'
-                          ? 'bg-sky-900/30 border-sky-600'
-                          : 'bg-blue-50 border-blue-400'
-                        : theme === 'dark'
-                          ? 'border-slate-700 hover:bg-slate-800'
-                          : 'border-gray-300 hover:bg-gray-50'
+                  {/* Filtro de Naviera */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Naviera
+                    </label>
+                    <select
+                      value={selectedNaviera || ''}
+                      onChange={(e) => setSelectedNaviera(e.target.value || null)}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
                         }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={selectedClientes.includes(cliente)}
-                        onChange={() => handleToggleCliente(cliente)}
-                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${theme === 'dark'
-                          ? 'text-sky-600 bg-slate-800 border-slate-600'
-                          : 'text-blue-600 bg-white border-gray-300'
-                          }`}
-                      />
-                      <span className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                        {cliente}
-                      </span>
+                      <option value="">Todas</option>
+                      {filterOptions.navieras.map((naviera) => (
+                        <option key={naviera} value={naviera}>{naviera}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro de Nave */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Nave
                     </label>
-                  ))}
+                    <select
+                      value={filterNave || ''}
+                      onChange={(e) => setFilterNave(e.target.value || null)}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                    >
+                      <option value="">Todas</option>
+                      {filterOptions.naves.map((nave) => (
+                        <option key={nave} value={nave}>{nave}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filtro de Especie */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Especie
+                    </label>
+                    <select
+                      value={selectedEspecie || ''}
+                      onChange={(e) => setSelectedEspecie(e.target.value || null)}
+                      className={`w-full px-3 py-2 border rounded-lg text-sm ${theme === 'dark'
+                        ? 'bg-slate-700 border-slate-600 text-white'
+                        : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                    >
+                      <option value="">Todas</option>
+                      {filterOptions.especies.map((especie) => (
+                        <option key={especie} value={especie}>{especie}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
-
-              {/* Filtro de Naviera */}
-              <div>
-                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Naviera
-                </label>
-                <select
-                  value={selectedNaviera || ''}
-                  onChange={(e) => setSelectedNaviera(e.target.value || null)}
-                  className={`w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-800 text-white'
-                    : 'border-gray-300 bg-white text-gray-900'
-                    }`}
-                >
-                  <option value="">Todas las navieras</option>
-                  {filterOptions.navieras.map((naviera) => (
-                    <option key={naviera} value={naviera}>
-                      {naviera}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtro de Nave */}
-              <div>
-                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Nave
-                </label>
-                <select
-                  value={filterNave || ''}
-                  onChange={(e) => setFilterNave(e.target.value || null)}
-                  className={`w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-800 text-white'
-                    : 'border-gray-300 bg-white text-gray-900'
-                    }`}
-                >
-                  <option value="">Todas las naves</option>
-                  {filterOptions.naves.map((nave) => (
-                    <option key={nave} value={nave}>
-                      {nave}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Filtro de Especie */}
-              <div>
-                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Especie
-                </label>
-                <select
-                  value={selectedEspecie || ''}
-                  onChange={(e) => setSelectedEspecie(e.target.value || null)}
-                  className={`w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${theme === 'dark'
-                    ? 'border-slate-700 bg-slate-800 text-white'
-                    : 'border-gray-300 bg-white text-gray-900'
-                    }`}
-                >
-                  <option value="">Todas las especies</option>
-                  {filterOptions.especies.map((especie) => (
-                    <option key={especie} value={especie}>
-                      {especie}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </aside>
-          </div>
+              </aside>
+            </>
+          )}
         </div>
       </main>
 
       {/* Modales */}
-      {selectedBooking && (
-        <>
-          <InstructivoEmbarqueModal
-            isOpen={showInstructivoModal}
-            onClose={handleCloseInstructivoModal}
-            contenedor={selectedContenedor?.contenedor}
-            registro={selectedBooking.registro}
-          />
-          {selectedContenedor && (
-            <FacturaProformaModal
-              isOpen={showProformaModal}
-              onClose={handleCloseProformaModal}
-              contenedor={selectedContenedor.contenedor}
-              registro={selectedContenedor.registro}
-            />
-          )}
-        </>
-      )}
-
-      {/* Modal de Perfil */}
-      {showProfileModal && userInfo && (
+      {showProfileModal && currentUser && (
         <UserProfileModal
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
-          userInfo={userInfo}
-          onUserUpdate={(updatedUser) => {
-            setUserInfo(updatedUser);
-            if (currentUser) {
-              setCurrentUser({ ...currentUser, ...updatedUser });
-            }
-          }}
+          userInfo={currentUser}
+          onUserUpdate={setCurrentUser}
+        />
+      )}
+
+      {showInstructivoModal && selectedBooking && (
+        <InstructivoEmbarqueModal
+          isOpen={showInstructivoModal}
+          onClose={handleCloseInstructivoModal}
+          contenedor=""
+          registro={selectedBooking.registro}
+        />
+      )}
+
+      {showProformaModal && selectedContenedor && selectedBooking && (
+        <FacturaProformaModal
+          isOpen={showProformaModal}
+          onClose={handleCloseProformaModal}
+          contenedor={selectedContenedor.contenedor}
+          registro={selectedContenedor.registro}
         />
       )}
     </div>
