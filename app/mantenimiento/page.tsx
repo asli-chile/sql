@@ -83,6 +83,9 @@ export default function MantenimientoPage() {
   const [resetPasswordValue, setResetPasswordValue] = useState<Record<string, string>>({});
   const [bootstrapKey, setBootstrapKey] = useState('');
   const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios' | 'plantillas' | 'editor-plantillas'>('usuarios');
+  
+  // Helper para evitar problemas de type narrowing
+  const isEditorTab = activeTab === 'editor-plantillas';
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
@@ -381,7 +384,7 @@ export default function MantenimientoPage() {
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
         {/* Header - oculto en editor-plantillas para máximo espacio */}
-        {activeTab !== 'editor-plantillas' && (
+        {!isEditorTab && (
         <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
           <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
             {/* Botón hamburguesa para móvil */}
@@ -490,7 +493,7 @@ export default function MantenimientoPage() {
               <button
                 onClick={() => setActiveTab('editor-plantillas')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  (activeTab as string) === 'editor-plantillas'
+                  isEditorTab
                     ? theme === 'dark'
                       ? 'border-sky-500 text-sky-400'
                       : 'border-blue-600 text-blue-600'
@@ -507,7 +510,7 @@ export default function MantenimientoPage() {
         </header>
         )}
 
-        <main className={`flex-1 overflow-y-auto ${activeTab !== 'editor-plantillas' ? 'px-4 sm:px-6 pb-10 pt-6 sm:pt-8' : 'p-0'}`}>
+        <main className={`flex-1 overflow-y-auto ${!isEditorTab ? 'px-4 sm:px-6 pb-10 pt-6 sm:pt-8' : 'p-0'}`}>
           {activeTab === 'usuarios' ? (
           <div className="mx-auto max-w-5xl">
             <div className={`border p-6 sm:p-8 ${formTone}`}>
