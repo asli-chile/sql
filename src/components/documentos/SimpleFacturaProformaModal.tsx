@@ -152,6 +152,7 @@ export function SimpleFacturaProformaModal({
     const now = new Date();
     
     return {
+      registroId: reg.id || '',
       refAsli: reg.refAsli || '',
       clientePlantilla: reg.shipper || '',
       exportador: {
