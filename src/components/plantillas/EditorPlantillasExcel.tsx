@@ -218,11 +218,13 @@ export function EditorPlantillasExcel() {
               color: cell.style.color ? { argb: cell.style.color.replace('#', 'FF') } : undefined
             };
             
-            excelCell.fill = cell.style.backgroundColor ? {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: cell.style.backgroundColor.replace('#', 'FF') }
-            } : undefined;
+            if (cell.style.backgroundColor) {
+              excelCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: cell.style.backgroundColor.replace('#', 'FF') }
+              };
+            }
             
             excelCell.alignment = {
               horizontal: cell.style.textAlign || 'left',
