@@ -193,7 +193,7 @@ function DashboardPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme } = useTheme();
-  const { transportesCount, registrosCount, setCurrentUser } = useUser();
+  const { transportesCount, registrosCount, setCurrentUser, currentUser } = useUser();
 
   // Detectar si estamos en la página de registros y qué filtro está activo
   const isRegistrosPage = pathname === '/registros';
@@ -660,7 +660,9 @@ function DashboardPage() {
         { label: 'Embarques', id: '/registros', icon: Ship, counter: registrosCount, tone: 'violet' },
         { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
+        ...(currentUser && currentUser.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
+          : []),
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

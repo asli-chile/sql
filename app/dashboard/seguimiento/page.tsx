@@ -268,7 +268,9 @@ const SeguimientoPage = () => {
         { label: 'Embarques', id: '/registros', icon: Anchor },
         { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
+        ...(userInfo && userInfo.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
+          : []),
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: true, icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

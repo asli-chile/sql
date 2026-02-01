@@ -887,7 +887,9 @@ function DocumentosPage() {
         { label: 'Embarques', id: '/registros', isActive: pathname === '/registros', icon: Ship },
         { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText },
-        { label: 'Generar Documentos', id: '/generar-documentos', isActive: pathname === '/generar-documentos', icon: FileCheck },
+        ...(currentUser && currentUser.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', isActive: pathname === '/generar-documentos', icon: FileCheck }]
+          : []),
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: pathname === '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

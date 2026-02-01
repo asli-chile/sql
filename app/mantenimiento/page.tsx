@@ -119,7 +119,9 @@ export default function MantenimientoPage() {
         { label: 'Embarques', id: '/registros', icon: Anchor, counter: registrosCount, tone: 'violet' },
         { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
+        ...(currentUser && currentUser.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
+          : []),
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

@@ -266,7 +266,9 @@ export default function TrackingPage() {
                 { label: 'Embarques', id: '/registros', icon: Anchor, counter: localRegistrosCount || registrosCount, tone: 'violet' as const },
                 { label: 'Transportes', id: '/transportes', icon: Truck, counter: localTransportesCount || transportesCount, tone: 'sky' as const },
                 { label: 'Documentos', id: '/documentos', icon: FileText },
-                { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
+                ...(currentUser && currentUser.rol !== 'cliente'
+                  ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
+                  : []),
                 { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
                 { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true, counter: trackingCount, tone: 'emerald' as const },
                 ...(isRodrigo

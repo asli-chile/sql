@@ -87,6 +87,13 @@ export default function GenerarDocumentosPage() {
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
+  // Redirigir clientes al dashboard
+  useEffect(() => {
+    if (currentUser && currentUser.rol === 'cliente') {
+      router.push('/dashboard');
+    }
+  }, [currentUser, router]);
+
   // Cargar registros
   useEffect(() => {
     const loadRegistros = async () => {
@@ -126,14 +133,23 @@ export default function GenerarDocumentosPage() {
           .select('*')
           .eq('auth_user_id', user.id)
           .single();
-        setUserInfo(userData || {
+        
+        const userDataObj = userData || {
           nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-          email: user.email || ''
-        });
+          email: user.email || '',
+          rol: 'usuario'
+        };
+        
+        setUserInfo(userDataObj);
+        
+        // Redirigir si es cliente
+        if (userDataObj.rol === 'cliente') {
+          router.push('/dashboard');
+        }
       }
     };
     fetchUser();
-  }, []);
+  }, [router]);
 
   // Verificar documentos existentes cuando se selecciona un booking
   useEffect(() => {
@@ -328,7 +344,9 @@ export default function GenerarDocumentosPage() {
         { label: 'Embarques', id: '/registros', icon: Ship, counter: registrosCount, tone: 'violet' },
         { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
+        ...(currentUser && currentUser.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
+          : []),
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo
@@ -677,6 +695,8 @@ export default function GenerarDocumentosPage() {
             </div>
           </div>
 
+          {/* Contenedor flex horizontal para los paneles */}
+          <div className="flex-1 flex overflow-hidden">
           {/* Panel izquierdo - Lista de naves */}
           <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
             mobileView !== 'naves' ? 'hidden lg:flex' : 'flex'
@@ -965,42 +985,43 @@ export default function GenerarDocumentosPage() {
               </div>
             )}
           </div>
+          </div>
+
+          {/* Overlay para móvil de filtros */}
+          {showFilters && (
+            <div
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] lg:hidden"
+              onClick={() => setShowFilters(false)}
+            />
+          )}
 
           {/* Panel lateral de filtros */}
           <aside
-            className={`fixed lg:relative right-0 top-0 z-50 lg:z-auto flex h-full lg:h-auto flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-700 bg-slate-900' : 'border-l border-gray-200 bg-white'} ${showFilters
-              ? 'translate-x-0 lg:w-80 lg:opacity-100 lg:pointer-events-auto'
-              : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none lg:min-w-0'
-              } w-80 lg:flex-shrink-0`}
+            className={`fixed lg:relative right-0 top-0 z-[70] lg:z-auto flex h-full lg:h-auto flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-700 bg-slate-900' : 'border-l border-gray-200 bg-white'} ${showFilters
+              ? 'translate-x-0 w-80 lg:w-80 lg:opacity-100'
+              : 'translate-x-full w-80 lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:min-w-0'
+              } lg:flex-shrink-0`}
           >
-            {/* Overlay para móvil */}
-            {showFilters && (
-              <div
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
-                onClick={() => setShowFilters(false)}
-              />
-            )}
-
-            <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-              <h2 className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros</h2>
+            <div className={`flex items-center justify-between px-4 py-3 lg:py-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'} relative z-[71]`}>
+              <h2 className={`text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros</h2>
               <button
                 onClick={() => setShowFilters(false)}
-                className={`flex h-8 w-8 items-center justify-center border transition ${theme === 'dark'
+                className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center border transition ${theme === 'dark'
                   ? 'border-slate-700 bg-slate-800 text-slate-300 hover:border-sky-500 hover:text-sky-200'
                   : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'
                   }`}
                 aria-label="Cerrar panel de filtros"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+            <div className="flex-1 overflow-y-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 relative z-[71]">
               {/* Botón limpiar filtros */}
               {hasActiveFilters && (
                 <button
                   onClick={handleClearFilters}
-                  className={`w-full px-3 py-2 text-sm font-medium border transition-colors ${theme === 'dark'
+                  className={`w-full px-3 py-2 text-xs sm:text-sm font-medium border transition-colors rounded ${theme === 'dark'
                     ? 'border-slate-700 text-slate-300 hover:bg-slate-800'
                     : 'border-gray-300 text-gray-700 hover:bg-gray-100'
                     }`}
@@ -1011,14 +1032,14 @@ export default function GenerarDocumentosPage() {
 
               {/* Filtro de Clientes */}
               <div>
-                <label className={`block text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Clientes
                 </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
+                <div className="space-y-1.5 sm:space-y-2 max-h-48 overflow-y-auto">
                   {filterOptions.clientes.map((cliente) => (
                     <label
                       key={cliente}
-                      className={`flex items-center gap-2 cursor-pointer p-2 border transition-colors ${selectedClientes.includes(cliente)
+                      className={`flex items-center gap-2 cursor-pointer p-1.5 sm:p-2 border transition-colors rounded ${selectedClientes.includes(cliente)
                         ? theme === 'dark'
                           ? 'bg-sky-900/30 border-sky-600'
                           : 'bg-blue-50 border-blue-400'
@@ -1031,12 +1052,12 @@ export default function GenerarDocumentosPage() {
                         type="checkbox"
                         checked={selectedClientes.includes(cliente)}
                         onChange={() => handleToggleCliente(cliente)}
-                        className={`w-4 h-4 ${theme === 'dark'
+                        className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${theme === 'dark'
                           ? 'text-sky-600 bg-slate-800 border-slate-600'
                           : 'text-blue-600 bg-white border-gray-300'
                           }`}
                       />
-                      <span className={`text-xs ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                      <span className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
                         {cliente}
                       </span>
                     </label>
@@ -1046,13 +1067,13 @@ export default function GenerarDocumentosPage() {
 
               {/* Filtro de Naviera */}
               <div>
-                <label className={`block text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Naviera
                 </label>
                 <select
                   value={selectedNaviera || ''}
                   onChange={(e) => setSelectedNaviera(e.target.value || null)}
-                  className={`w-full px-3 py-2 text-sm border ${theme === 'dark'
+                  className={`w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800 text-white'
                     : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -1068,13 +1089,13 @@ export default function GenerarDocumentosPage() {
 
               {/* Filtro de Nave */}
               <div>
-                <label className={`block text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Nave
                 </label>
                 <select
                   value={filterNave || ''}
                   onChange={(e) => setFilterNave(e.target.value || null)}
-                  className={`w-full px-3 py-2 text-sm border ${theme === 'dark'
+                  className={`w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800 text-white'
                     : 'border-gray-300 bg-white text-gray-900'
                     }`}
@@ -1090,13 +1111,13 @@ export default function GenerarDocumentosPage() {
 
               {/* Filtro de Especie */}
               <div>
-                <label className={`block text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                <label className={`block text-[11px] sm:text-xs font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   Especie
                 </label>
                 <select
                   value={selectedEspecie || ''}
                   onChange={(e) => setSelectedEspecie(e.target.value || null)}
-                  className={`w-full px-3 py-2 text-sm border ${theme === 'dark'
+                  className={`w-full px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border rounded ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800 text-white'
                     : 'border-gray-300 bg-white text-gray-900'
                     }`}

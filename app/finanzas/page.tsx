@@ -425,7 +425,9 @@ export default function FinanzasPage() {
         { label: 'Embarques', id: '/registros', icon: Ship },
         { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
+        ...(userInfo && userInfo.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
+          : []),
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo
