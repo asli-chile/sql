@@ -226,6 +226,17 @@ export default function ReportesPage() {
 
   // Generar opciones para los filtros basadas en los filtros ya seleccionados (filtrado en cascada)
   const filterOptions = useMemo(() => {
+    // Si no hay registros, retornar opciones vacías
+    if (!allRegistros || allRegistros.length === 0) {
+      return {
+        clientes: [],
+        ejecutivos: [],
+        navieras: [],
+        especies: [],
+        temporadas: [],
+      };
+    }
+
     // Primero, filtrar los registros según los filtros ya seleccionados (excepto el que estamos generando)
     let registrosFiltrados = [...allRegistros];
 
@@ -352,6 +363,7 @@ export default function ReportesPage() {
   };
 
   const handleSelectAllClientes = () => {
+    if (!filterOptions || !filterOptions.clientes || filterOptions.clientes.length === 0) return;
     if (selectedClientes.length === filterOptions.clientes.length) {
       setSelectedClientes([]);
     } else {
@@ -846,11 +858,11 @@ export default function ReportesPage() {
                 <XIcon className="h-4 w-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               {hasActiveFilters && (
                 <button
                   onClick={handleClearFilters}
-                  className={`w-full text-xs px-3 py-2 border transition-colors ${theme === 'dark'
+                  className={`w-full text-xs px-3 py-2 mb-4 border transition-colors ${theme === 'dark'
                     ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
                     : 'border-gray-300 text-gray-600 hover:bg-gray-100'
                     }`}
@@ -876,11 +888,15 @@ export default function ReportesPage() {
                       }`}
                   >
                     <option value="">Todas</option>
-                    {filterOptions.temporadas.map((temp) => (
-                      <option key={temp} value={temp}>
-                        Temporada {temp}
-                      </option>
-                    ))}
+                    {filterOptions && filterOptions.temporadas && filterOptions.temporadas.length > 0 ? (
+                      filterOptions.temporadas.map((temp) => (
+                        <option key={temp} value={temp}>
+                          Temporada {temp}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="" disabled>Cargando...</option>
+                    )}
                   </select>
                 </div>
 
@@ -899,7 +915,7 @@ export default function ReportesPage() {
                           : 'border-gray-300 text-blue-600 hover:bg-gray-100'
                           }`}
                       >
-                        {selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
+                        {filterOptions && filterOptions.clientes && selectedClientes.length === filterOptions.clientes.length && filterOptions.clientes.length > 0
                           ? 'Desmarcar todos'
                           : 'Seleccionar todos'}
                       </button>
@@ -917,46 +933,48 @@ export default function ReportesPage() {
                       )}
                     </div>
                   </div>
-                  <div className={`max-h-48 overflow-y-auto border p-3 space-y-2 ${theme === 'dark'
+                  <div className={`max-h-48 overflow-y-auto border p-2 ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800'
                     : 'border-gray-300 bg-white'
                     }`}>
-                    {filterOptions.clientes.length > 0 ? (
-                      filterOptions.clientes.map((cliente) => {
-                        const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
-                        return (
-                          <label
-                            key={cliente}
-                            className={`flex items-center gap-2 p-2 cursor-pointer transition-colors ${isChecked
-                              ? theme === 'dark'
-                                ? 'bg-sky-900/30 border border-sky-700/50'
-                                : 'bg-blue-50 border border-blue-200'
-                              : theme === 'dark'
-                                ? 'hover:bg-slate-700/50'
-                                : 'hover:bg-gray-50'
-                              }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleToggleCliente(cliente);
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                              }}
-                              className={`h-4 w-4 cursor-pointer flex-shrink-0 ${theme === 'dark'
-                                ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
-                                : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                    {filterOptions && filterOptions.clientes && filterOptions.clientes.length > 0 ? (
+                      <div className="space-y-1">
+                        {filterOptions.clientes.map((cliente) => {
+                          const isChecked = selectedClientes.some(c => c.toUpperCase() === cliente.toUpperCase());
+                          return (
+                            <label
+                              key={cliente}
+                              className={`flex items-center gap-2 p-1.5 cursor-pointer transition-colors rounded ${isChecked
+                                ? theme === 'dark'
+                                  ? 'bg-sky-900/30 border border-sky-700/50'
+                                  : 'bg-blue-50 border border-blue-200'
+                                : theme === 'dark'
+                                  ? 'hover:bg-slate-700/50'
+                                  : 'hover:bg-gray-50'
                                 }`}
-                            />
-                            <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
-                              {cliente}
-                            </span>
-                          </label>
-                        );
-                      })
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleCliente(cliente);
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                className={`h-4 w-4 cursor-pointer flex-shrink-0 ${theme === 'dark'
+                                  ? 'border-slate-600 bg-slate-800 text-sky-500 focus:ring-sky-500/50'
+                                  : 'border-gray-300 bg-white text-blue-600 focus:ring-blue-500/50'
+                                  }`}
+                              />
+                              <span className={`text-xs sm:text-sm flex-1 ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                                {cliente}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     ) : (
                       <p className={`text-xs text-center py-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                         No hay clientes disponibles
@@ -980,10 +998,10 @@ export default function ReportesPage() {
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
-                    disabled={filterOptions.ejecutivos.length === 0}
+                    disabled={!filterOptions || !filterOptions.ejecutivos || filterOptions.ejecutivos.length === 0}
                   >
                     <option value="">Todos</option>
-                    {filterOptions.ejecutivos.length > 0 ? (
+                    {filterOptions && filterOptions.ejecutivos && filterOptions.ejecutivos.length > 0 ? (
                       filterOptions.ejecutivos.map((ejecutivo) => (
                         <option key={ejecutivo} value={ejecutivo}>
                           {ejecutivo}
@@ -1030,10 +1048,10 @@ export default function ReportesPage() {
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
-                    disabled={filterOptions.navieras.length === 0}
+                    disabled={!filterOptions || !filterOptions.navieras || filterOptions.navieras.length === 0}
                   >
                     <option value="">Todas</option>
-                    {filterOptions.navieras.length > 0 ? (
+                    {filterOptions && filterOptions.navieras && filterOptions.navieras.length > 0 ? (
                       filterOptions.navieras.map((naviera) => (
                         <option key={naviera} value={naviera}>
                           {naviera}
@@ -1060,10 +1078,10 @@ export default function ReportesPage() {
                       ? 'border-slate-700 bg-slate-800 text-slate-200 focus:border-sky-500 focus:ring-sky-500/30'
                       : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/30'
                       }`}
-                    disabled={filterOptions.especies.length === 0}
+                    disabled={!filterOptions || !filterOptions.especies || filterOptions.especies.length === 0}
                   >
                     <option value="">Todas</option>
-                    {filterOptions.especies.length > 0 ? (
+                    {filterOptions && filterOptions.especies && filterOptions.especies.length > 0 ? (
                       filterOptions.especies.map((especie) => (
                         <option key={especie} value={especie}>
                           {especie}

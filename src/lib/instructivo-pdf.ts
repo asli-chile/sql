@@ -8,7 +8,7 @@ export interface InstructivoPDFData {
   exportador: string;
   naviera: string;
   booking: string;
-  contenedor: string;
+  contenedor?: string; // Opcional: puede no tener contenedor aún
   tipoContenedor: string;
   temperatura?: string;
   pol: string;
@@ -65,7 +65,7 @@ export async function generarInstructivoPDF(data: InstructivoPDFData): Promise<v
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   const containerInfo = [
-    { label: 'Contenedor:', value: data.contenedor },
+    { label: 'Contenedor:', value: data.contenedor || 'PENDIENTE ASIGNACIÓN' },
     { label: 'Tipo:', value: data.tipoContenedor },
     { label: 'Booking:', value: data.booking },
   ];
@@ -209,7 +209,8 @@ export async function generarInstructivoPDF(data: InstructivoPDFData): Promise<v
   });
 
   // Generar nombre del archivo
-  const fileName = `Instructivo_Embarque_${data.contenedor}_${formatDate(data.fechaEmision).replace(/-/g, '')}.pdf`;
+  const contenedorNombre = data.contenedor || 'PENDIENTE';
+  const fileName = `Instructivo_Embarque_${contenedorNombre}_${formatDate(data.fechaEmision).replace(/-/g, '')}.pdf`;
   
   // Descargar PDF
   doc.save(fileName);

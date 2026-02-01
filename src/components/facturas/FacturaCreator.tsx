@@ -20,6 +20,12 @@ interface FacturaCreatorProps {
   onSave: () => void;
   mode?: 'factura' | 'proforma';
   onGenerateProforma?: (factura: Factura) => Promise<void>;
+  documentosRequeridos?: {
+    guiaDespacho: boolean;
+    packingList: boolean;
+  };
+  verificandoDocumentos?: boolean;
+  puedeGenerar?: boolean;
 }
 
 const TEMPLATE_OPTIONS = [
@@ -42,6 +48,9 @@ export function FacturaCreator({
   onSave,
   mode = 'factura',
   onGenerateProforma,
+  documentosRequeridos,
+  verificandoDocumentos = false,
+  puedeGenerar = true,
 }: FacturaCreatorProps) {
   const { theme } = useTheme();
   const { success, error: showError, warning, toasts, removeToast } = useToast();
@@ -448,37 +457,69 @@ export function FacturaCreator({
 
         {/* Footer */}
         <div
-          className={`flex items-center justify-end space-x-3 p-4 border-t ${
+          className={`flex flex-col space-y-3 p-4 border-t ${
             theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
           }`}
         >
-          <button
-            onClick={onClose}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              theme === 'dark'
-                ? 'text-gray-300 hover:bg-gray-700'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleSave(e);
-            }}
-            disabled={guardando}
-            className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-              guardando
-                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            <Save className="w-4 h-4" />
-            <span>{guardando ? 'Guardando...' : mode === 'proforma' ? 'Generar Proforma' : 'Guardar Factura'}</span>
-          </button>
+          {/* Advertencia de documentos requeridos para proforma */}
+          {mode === 'proforma' && documentosRequeridos && (
+            <div className={`p-3 rounded-lg border ${
+              puedeGenerar
+                ? theme === 'dark'
+                  ? 'bg-green-900/30 border-green-700 text-green-300'
+                  : 'bg-green-50 border-green-200 text-green-800'
+                : theme === 'dark'
+                  ? 'bg-orange-900/30 border-orange-700 text-orange-300'
+                  : 'bg-orange-50 border-orange-200 text-orange-800'
+            }`}>
+              {verificandoDocumentos ? (
+                <p className="text-sm">Verificando documentos requeridos...</p>
+              ) : puedeGenerar ? (
+                <p className="text-sm">✓ Todos los documentos requeridos están disponibles. Puedes generar la proforma.</p>
+              ) : (
+                <div className="text-sm">
+                  <p className="font-semibold mb-1">⚠ Documentos requeridos faltantes:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    {!documentosRequeridos.guiaDespacho && <li>Guía de Despacho</li>}
+                    {!documentosRequeridos.packingList && <li>Packing List</li>}
+                  </ul>
+                  <p className="mt-2 text-xs opacity-90">
+                    Por favor, sube estos documentos en la sección de Documentos antes de generar la proforma.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'text-gray-300 hover:bg-gray-700'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSave(e);
+              }}
+              disabled={guardando || (mode === 'proforma' && !puedeGenerar)}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                guardando || (mode === 'proforma' && !puedeGenerar)
+                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              <span>{guardando ? 'Guardando...' : mode === 'proforma' ? 'Generar Proforma' : 'Guardar Factura'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

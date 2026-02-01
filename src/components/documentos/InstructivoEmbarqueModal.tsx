@@ -9,7 +9,7 @@ import { generarInstructivoPDF } from '@/lib/instructivo-pdf';
 interface InstructivoEmbarqueModalProps {
   isOpen: boolean;
   onClose: () => void;
-  contenedor: string;
+  contenedor?: string; // Opcional: puede no tener contenedor aún
   registro: Registro;
 }
 
@@ -27,7 +27,7 @@ export function InstructivoEmbarqueModal({
     exportador: registro.shipper || '',
     naviera: registro.naviera || '',
     booking: registro.booking || '',
-    contenedor: contenedor,
+    contenedor: contenedor || '', // Puede estar vacío si aún no hay contenedor
     tipoContenedor: '40HC', // Valor por defecto
     temperatura: registro.temperatura?.toString() || '',
     pol: registro.pol || '',
@@ -48,7 +48,7 @@ export function InstructivoEmbarqueModal({
         exportador: registro.shipper || '',
         naviera: registro.naviera || '',
         booking: registro.booking || '',
-        contenedor: contenedor,
+        contenedor: contenedor || '', // Puede estar vacío si aún no hay contenedor
         tipoContenedor: '40HC',
         temperatura: registro.temperatura?.toString() || '',
         pol: registro.pol || '',
@@ -100,7 +100,7 @@ export function InstructivoEmbarqueModal({
                 Instructivo de Embarque
               </h2>
               <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
-                Contenedor: {contenedor}
+                {contenedor ? `Contenedor: ${contenedor}` : 'Contenedor: Pendiente asignación'}
               </p>
             </div>
           </div>
@@ -226,18 +226,18 @@ export function InstructivoEmbarqueModal({
 
             <div>
               <label className={`block text-xs font-medium mb-1.5 ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>
-                Contenedor *
+                Contenedor {!contenedor && <span className="text-xs text-orange-500">(Opcional - Pendiente)</span>}
               </label>
               <input
                 type="text"
                 name="contenedor"
                 value={formData.contenedor}
                 onChange={handleChange}
+                placeholder={!contenedor ? "Pendiente asignación" : ""}
                 className={`w-full border px-3 py-2 text-sm ${isDark
                   ? 'border-slate-700 bg-slate-900 text-white'
                   : 'border-gray-300 bg-white text-gray-900'
                 }`}
-                required
               />
             </div>
 

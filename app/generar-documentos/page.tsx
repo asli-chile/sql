@@ -30,8 +30,8 @@ import {
 } from 'lucide-react';
 import { SidebarSection } from '@/types/layout';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-// import { InstructivoEmbarqueModal } from '@/components/documentos/InstructivoEmbarqueModal';
-// import { FacturaProformaModal } from '@/components/documentos/FacturaProformaModal';
+import { InstructivoEmbarqueModal } from '@/components/documentos/InstructivoEmbarqueModal';
+import { FacturaProformaModal } from '@/components/documentos/FacturaProformaModal';
 
 interface ContenedorInfo {
   contenedor: string;
@@ -53,6 +53,7 @@ export default function GenerarDocumentosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRef, setSelectedRef] = useState<ReferenciaConContenedores | null>(null);
   const [selectedContenedor, setSelectedContenedor] = useState<ContenedorInfo | null>(null);
+  const [selectedRegistro, setSelectedRegistro] = useState<Registro | null>(null); // Para generar sin contenedor
   const [showInstructivoModal, setShowInstructivoModal] = useState(false);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -274,6 +275,14 @@ export default function GenerarDocumentosPage() {
   const handleSelectRef = (ref: ReferenciaConContenedores) => {
     setSelectedRef(ref);
     setSelectedContenedor(null);
+    // Si la referencia tiene un registro asociado, guardarlo para generar sin contenedor
+    if (ref.contenedores.length > 0) {
+      setSelectedRegistro(ref.contenedores[0].registro);
+    } else {
+      // Buscar el registro de esta referencia
+      const registro = registros.find(r => r.refAsli === ref.refAsli);
+      setSelectedRegistro(registro || null);
+    }
   };
 
   const handleSelectContenedor = (contenedor: ContenedorInfo) => {
@@ -281,11 +290,13 @@ export default function GenerarDocumentosPage() {
   };
 
   const handleGenerarInstructivo = () => {
-    if (!selectedContenedor) return;
+    // Permitir generar sin contenedor - solo necesita registro
+    if (!selectedRegistro) return;
     setShowInstructivoModal(true);
   };
 
   const handleGenerarProforma = () => {
+    // La proforma requiere contenedor
     if (!selectedContenedor) return;
     setShowProformaModal(true);
   };
@@ -523,7 +534,7 @@ export default function GenerarDocumentosPage() {
 
           {/* Panel derecho - Acciones */}
           <div className={`flex-1 flex flex-col overflow-hidden transition-all ${showFilters ? 'lg:mr-80' : ''}`}>
-            {selectedContenedor ? (
+            {selectedRef ? (
               <div className="flex-1 p-6">
                 <div className="max-w-2xl mx-auto">
                   <div className={`border p-6 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
@@ -532,22 +543,37 @@ export default function GenerarDocumentosPage() {
                     </h2>
                     <div className="mb-4">
                       <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        Referencia: <span className="font-semibold">{selectedRef?.refAsli}</span>
+                        Referencia: <span className="font-semibold">{selectedRef.refAsli}</span>
                       </p>
-                      <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        Contenedor: <span className="font-semibold">{selectedContenedor.contenedor}</span>
-                      </p>
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        Booking: <span className="font-semibold">{selectedContenedor.registro.booking}</span>
-                      </p>
+                      {selectedContenedor ? (
+                        <>
+                          <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            Contenedor: <span className="font-semibold">{selectedContenedor.contenedor}</span>
+                          </p>
+                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            Booking: <span className="font-semibold">{selectedContenedor.registro.booking}</span>
+                          </p>
+                        </>
+                      ) : (
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          {selectedRegistro?.booking ? (
+                            <>Booking: <span className="font-semibold">{selectedRegistro.booking}</span></>
+                          ) : (
+                            <span className="text-orange-500">Contenedor pendiente de asignación</span>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <button
                         onClick={handleGenerarInstructivo}
-                        className={`flex flex-col items-center justify-center p-6 border transition-colors ${theme === 'dark'
-                          ? 'border-slate-700 hover:bg-slate-800'
-                          : 'border-gray-300 hover:bg-gray-50'
+                        disabled={!selectedRegistro}
+                        className={`flex flex-col items-center justify-center p-6 border transition-colors ${!selectedRegistro
+                          ? 'opacity-50 cursor-not-allowed'
+                          : theme === 'dark'
+                            ? 'border-slate-700 hover:bg-slate-800'
+                            : 'border-gray-300 hover:bg-gray-50'
                           }`}
                       >
                         <FileCheck className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
@@ -555,15 +581,18 @@ export default function GenerarDocumentosPage() {
                           Instructivo de Embarque
                         </p>
                         <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Generar documento de instrucciones
+                          {selectedContenedor ? 'Generar documento de instrucciones' : 'Generar sin contenedor (pendiente)'}
                         </p>
                       </button>
 
                       <button
                         onClick={handleGenerarProforma}
-                        className={`flex flex-col items-center justify-center p-6 border transition-colors ${theme === 'dark'
-                          ? 'border-slate-700 hover:bg-slate-800'
-                          : 'border-gray-300 hover:bg-gray-50'
+                        disabled={!selectedContenedor}
+                        className={`flex flex-col items-center justify-center p-6 border transition-colors ${!selectedContenedor
+                          ? 'opacity-50 cursor-not-allowed'
+                          : theme === 'dark'
+                            ? 'border-slate-700 hover:bg-slate-800'
+                            : 'border-gray-300 hover:bg-gray-50'
                           }`}
                       >
                         <Receipt className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
@@ -571,7 +600,7 @@ export default function GenerarDocumentosPage() {
                           Factura Proforma
                         </p>
                         <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Generar factura proforma
+                          {selectedContenedor ? 'Generar factura proforma' : 'Requiere contenedor'}
                         </p>
                       </button>
                     </div>
@@ -583,10 +612,10 @@ export default function GenerarDocumentosPage() {
                 <div className="text-center">
                   <FileText className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   <p className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Selecciona un contenedor
+                    Selecciona una referencia
                   </p>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Elige una referencia y luego un contenedor para generar documentos
+                    Elige una referencia para generar documentos
                   </p>
                 </div>
               </div>
@@ -741,23 +770,25 @@ export default function GenerarDocumentosPage() {
         </div>
       </main>
 
-      {/* Modales - Se construirán después */}
-      {/* {selectedContenedor && (
+      {/* Modales */}
+      {selectedRegistro && (
         <>
           <InstructivoEmbarqueModal
             isOpen={showInstructivoModal}
             onClose={() => setShowInstructivoModal(false)}
-            contenedor={selectedContenedor.contenedor}
-            registro={selectedContenedor.registro}
+            contenedor={selectedContenedor?.contenedor}
+            registro={selectedRegistro}
           />
-          <FacturaProformaModal
-            isOpen={showProformaModal}
-            onClose={() => setShowProformaModal(false)}
-            contenedor={selectedContenedor.contenedor}
-            registro={selectedContenedor.registro}
-          />
+          {selectedContenedor && (
+            <FacturaProformaModal
+              isOpen={showProformaModal}
+              onClose={() => setShowProformaModal(false)}
+              contenedor={selectedContenedor.contenedor}
+              registro={selectedContenedor.registro}
+            />
+          )}
         </>
-      )} */}
+      )}
 
       {/* Modal de Perfil */}
       {showProfileModal && userInfo && (
