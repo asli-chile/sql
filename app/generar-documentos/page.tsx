@@ -28,6 +28,9 @@ import {
   Search,
   Filter,
   CheckCircle2,
+  ChevronLeft,
+  Anchor,
+  Package,
 } from 'lucide-react';
 import { SidebarSection } from '@/types/layout';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -65,6 +68,9 @@ export default function GenerarDocumentosPage() {
   const [selectedContenedor, setSelectedContenedor] = useState<ContenedorInfo | null>(null);
   const [showInstructivoModal, setShowInstructivoModal] = useState(false);
   const [showProformaModal, setShowProformaModal] = useState(false);
+  
+  // Estados para navegación móvil
+  const [mobileView, setMobileView] = useState<'naves' | 'bookings' | 'contenedores' | 'acciones'>('naves');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -349,15 +355,18 @@ export default function GenerarDocumentosPage() {
     setSelectedNave(nave);
     setSelectedBooking(null);
     setSelectedContenedor(null);
+    setMobileView('bookings'); // Cambiar a vista de bookings en móvil
   };
 
   const handleSelectBooking = (booking: BookingInfo) => {
     setSelectedBooking(booking);
     setSelectedContenedor(null);
+    setMobileView('contenedores'); // Cambiar a vista de contenedores en móvil
   };
 
   const handleSelectContenedor = (contenedor: ContenedorInfo) => {
     setSelectedContenedor(contenedor);
+    setMobileView('acciones'); // Cambiar a vista de acciones en móvil
   };
 
   const handleGenerarInstructivo = () => {
@@ -586,19 +595,102 @@ export default function GenerarDocumentosPage() {
           </div>
         </header>
 
-        <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Navegación breadcrumb móvil */}
+          <div className={`lg:hidden w-full border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
+            <div className="flex items-center gap-1.5 p-2 overflow-x-auto scrollbar-hide">
+              <button
+                onClick={() => setMobileView('naves')}
+                className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
+                  mobileView === 'naves'
+                    ? theme === 'dark'
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-blue-600 text-white'
+                    : theme === 'dark'
+                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                <Anchor className="h-3 w-3" />
+                <span className="hidden sm:inline">Naves</span>
+                <span className="sm:hidden">N</span>
+              </button>
+              {selectedNave && (
+                <>
+                  <ChevronRight className={`h-3 w-3 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                  <button
+                    onClick={() => setMobileView('bookings')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
+                      mobileView === 'bookings'
+                        ? theme === 'dark'
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-blue-600 text-white'
+                        : theme === 'dark'
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <FileText className="h-3 w-3" />
+                    <span className="hidden sm:inline">Bookings</span>
+                    <span className="sm:hidden">B</span>
+                  </button>
+                </>
+              )}
+              {selectedBooking && (
+                <>
+                  <ChevronRight className={`h-3 w-3 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                  <button
+                    onClick={() => setMobileView('contenedores')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
+                      mobileView === 'contenedores'
+                        ? theme === 'dark'
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-blue-600 text-white'
+                        : theme === 'dark'
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <Package className="h-3 w-3" />
+                    <span className="hidden sm:inline">Contenedores</span>
+                    <span className="sm:hidden">C</span>
+                  </button>
+                  <ChevronRight className={`h-3 w-3 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                  <button
+                    onClick={() => setMobileView('acciones')}
+                    className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-medium whitespace-nowrap rounded transition-colors ${
+                      mobileView === 'acciones'
+                        ? theme === 'dark'
+                          ? 'bg-sky-600 text-white'
+                          : 'bg-blue-600 text-white'
+                        : theme === 'dark'
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    <FileCheck className="h-3 w-3" />
+                    <span className="hidden sm:inline">Acciones</span>
+                    <span className="sm:hidden">A</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
           {/* Panel izquierdo - Lista de naves */}
-          <div className={`w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
+            mobileView !== 'naves' ? 'hidden lg:flex' : 'flex'
+          } ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
             {/* Búsqueda */}
-            <div className={`p-3 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+            <div className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
               <div className="relative">
-                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                <Search className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
                 <input
                   type="text"
-                  placeholder="Buscar nave, booking o contenedor..."
+                  placeholder="Buscar nave, booking..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 border text-sm ${theme === 'dark'
+                  className={`w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 border text-xs sm:text-sm ${theme === 'dark'
                     ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400'
                     : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
                     }`}
@@ -609,8 +701,8 @@ export default function GenerarDocumentosPage() {
             {/* Lista de naves */}
             <div className="flex-1 overflow-y-auto p-2">
               {filteredNaves.length === 0 ? (
-                <div className="text-center py-10">
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                <div className="text-center py-8 sm:py-10">
+                  <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
                     {searchTerm ? 'No se encontraron naves' : 'No hay naves disponibles'}
                   </p>
                 </div>
@@ -618,7 +710,7 @@ export default function GenerarDocumentosPage() {
                 filteredNaves.map((nave) => (
                   <div
                     key={nave.nave}
-                    className={`mb-2 border cursor-pointer transition-colors ${selectedNave?.nave === nave.nave
+                    className={`mb-2 border cursor-pointer transition-colors rounded ${selectedNave?.nave === nave.nave
                       ? theme === 'dark'
                         ? 'bg-sky-900/30 border-sky-600'
                         : 'bg-blue-50 border-blue-400'
@@ -628,16 +720,16 @@ export default function GenerarDocumentosPage() {
                       }`}
                     onClick={() => handleSelectNave(nave)}
                   >
-                    <div className="p-3">
+                    <div className="p-2.5 sm:p-3">
                       <div className="flex items-center justify-between mb-1">
-                        <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <p className={`font-semibold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                           {nave.nave}
                         </p>
-                        <span className={`text-xs px-2 py-0.5 ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                        <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
                           {nave.bookings.length} {nave.bookings.length === 1 ? 'reserva' : 'reservas'}
                         </span>
                       </div>
-                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                         {nave.naveCompleta}
                       </p>
                     </div>
@@ -648,21 +740,23 @@ export default function GenerarDocumentosPage() {
           </div>
 
           {/* Panel central - Bookings de la nave seleccionada */}
-          <div className={`w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+          <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
+            mobileView !== 'bookings' ? 'hidden lg:flex' : 'flex'
+          } ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
             {selectedNave ? (
               <>
-                <div className={`p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
-                  <h3 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+                  <h3 className={`font-semibold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Reservas - {selectedNave.nave}
                   </h3>
-                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {selectedNave.bookings.length} {selectedNave.bookings.length === 1 ? 'reserva' : 'reservas'}
                   </p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
                   {selectedNave.bookings.length === 0 ? (
-                    <div className="text-center py-10">
-                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                    <div className="text-center py-8 sm:py-10">
+                      <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
                         No hay reservas para esta nave
                       </p>
                     </div>
@@ -670,7 +764,7 @@ export default function GenerarDocumentosPage() {
                     selectedNave.bookings.map((booking) => (
                       <div
                         key={booking.booking}
-                        className={`mb-2 border cursor-pointer transition-colors ${selectedBooking?.booking === booking.booking
+                        className={`mb-2 border cursor-pointer transition-colors rounded ${selectedBooking?.booking === booking.booking
                           ? theme === 'dark'
                             ? 'bg-sky-900/30 border-sky-600'
                             : 'bg-blue-50 border-blue-400'
@@ -680,22 +774,22 @@ export default function GenerarDocumentosPage() {
                           }`}
                         onClick={() => handleSelectBooking(booking)}
                       >
-                        <div className="p-3">
-                          <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        <div className="p-2.5 sm:p-3">
+                          <p className={`font-medium text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             {booking.booking}
                           </p>
                           {booking.refAsli && (
-                            <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            <p className={`text-[10px] sm:text-xs mt-0.5 sm:mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                               Ref ASLI: {booking.refAsli}
                             </p>
                           )}
                           {booking.refCliente && (
-                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                               Ref Cliente: {booking.refCliente}
                             </p>
                           )}
-                          <div className="flex items-center gap-2 mt-2">
-                            <span className={`text-xs px-2 py-0.5 ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                          <div className="flex items-center gap-2 mt-1.5 sm:mt-2">
+                            <span className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
                               {booking.contenedores.length} {booking.contenedores.length === 1 ? 'contenedor' : 'contenedores'}
                             </span>
                           </div>
@@ -706,8 +800,8 @@ export default function GenerarDocumentosPage() {
                 </div>
               </>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+              <div className="flex-1 flex items-center justify-center p-4">
+                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
                   Selecciona una nave
                 </p>
               </div>
@@ -715,23 +809,27 @@ export default function GenerarDocumentosPage() {
           </div>
 
           {/* Panel derecho - Contenedores y Acciones */}
-          <div className={`flex-1 flex flex-col overflow-hidden transition-all ${showFilters ? 'lg:mr-80' : ''}`}>
+          <div className={`flex-1 flex flex-col overflow-hidden transition-all ${showFilters ? 'lg:mr-80' : ''} ${
+            (mobileView !== 'contenedores' && mobileView !== 'acciones') ? 'hidden lg:flex' : 'flex'
+          }`}>
             {selectedBooking ? (
-              <div className="flex h-full">
+              <div className="flex flex-col lg:flex-row h-full">
                 {/* Subpanel izquierdo - Contenedores */}
-                <div className={`w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-                  <div className={`p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
-                    <h3 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <div className={`w-full lg:w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${
+                  mobileView !== 'contenedores' ? 'hidden lg:flex' : 'flex'
+                } ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className={`p-2 sm:p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+                    <h3 className={`font-semibold text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       Contenedores
                     </h3>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       Booking: {selectedBooking.booking}
                     </p>
                   </div>
                   <div className="flex-1 overflow-y-auto p-2">
                     {selectedBooking.contenedores.length === 0 ? (
-                      <div className="text-center py-10">
-                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                      <div className="text-center py-8 sm:py-10">
+                        <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
                           No hay contenedores
                         </p>
                       </div>
@@ -739,7 +837,7 @@ export default function GenerarDocumentosPage() {
                       selectedBooking.contenedores.map((cont) => (
                         <div
                           key={cont.contenedor}
-                          className={`mb-2 border cursor-pointer transition-colors ${selectedContenedor?.contenedor === cont.contenedor
+                          className={`mb-2 border cursor-pointer transition-colors rounded ${selectedContenedor?.contenedor === cont.contenedor
                             ? theme === 'dark'
                               ? 'bg-sky-900/30 border-sky-600'
                               : 'bg-blue-50 border-blue-400'
@@ -749,8 +847,8 @@ export default function GenerarDocumentosPage() {
                             }`}
                           onClick={() => handleSelectContenedor(cont)}
                         >
-                          <div className="p-3">
-                            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          <div className="p-2.5 sm:p-3">
+                            <p className={`font-medium text-xs sm:text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                               {cont.contenedor}
                             </p>
                           </div>
@@ -761,36 +859,38 @@ export default function GenerarDocumentosPage() {
                 </div>
 
                 {/* Subpanel derecho - Acciones */}
-                <div className="flex-1 p-6 overflow-y-auto">
+                <div className={`flex-1 p-4 lg:p-6 overflow-y-auto ${
+                  mobileView !== 'acciones' ? 'hidden lg:block' : 'block'
+                }`}>
                   <div className="max-w-2xl mx-auto">
-                    <div className={`border p-6 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
-                      <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    <div className={`border p-4 lg:p-6 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
+                      <h2 className={`text-lg lg:text-xl font-bold mb-3 lg:mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                         Generar Documentos
                       </h2>
-                      <div className="mb-4">
-                        <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      <div className="mb-4 space-y-1">
+                        <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                           Nave: <span className="font-semibold">{selectedNave?.nave}</span>
                         </p>
-                        <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                           Booking: <span className="font-semibold">{selectedBooking.booking}</span>
                         </p>
                         {selectedBooking.refAsli && (
-                          <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                             Ref ASLI: <span className="font-semibold">{selectedBooking.refAsli}</span>
                           </p>
                         )}
                         {selectedContenedor && (
-                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                             Contenedor: <span className="font-semibold">{selectedContenedor.contenedor}</span>
                           </p>
                         )}
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                         <button
                           onClick={handleGenerarInstructivo}
                           disabled={!selectedBooking}
-                          className={`flex flex-col items-center justify-center p-6 border transition-colors relative ${!selectedBooking
+                          className={`flex flex-col items-center justify-center p-4 lg:p-6 border transition-colors relative ${!selectedBooking
                             ? 'opacity-50 cursor-not-allowed'
                             : theme === 'dark'
                               ? 'border-slate-700 hover:bg-slate-800'
@@ -799,18 +899,18 @@ export default function GenerarDocumentosPage() {
                         >
                           {selectedBooking && existingDocs[selectedBooking.booking]?.instructivo && (
                             <div className="absolute top-2 right-2">
-                              <CheckCircle2 className={`h-5 w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                              <CheckCircle2 className={`h-4 w-4 lg:h-5 lg:w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
                             </div>
                           )}
-                          <FileCheck className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
-                          <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          <FileCheck className={`h-10 w-10 lg:h-12 lg:w-12 mb-2 lg:mb-3 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                          <p className={`font-semibold text-xs lg:text-sm text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             Instructivo de Embarque
                           </p>
-                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          <p className={`text-[10px] lg:text-xs mt-1 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                             {selectedContenedor ? 'Para contenedor específico' : 'Para toda la reserva'}
                           </p>
                           {selectedBooking && existingDocs[selectedBooking.booking]?.instructivo && (
-                            <p className={`text-xs mt-1 font-medium ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                            <p className={`text-[10px] lg:text-xs mt-1 font-medium text-center ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
                               ✓ Ya existe en documentos
                             </p>
                           )}
@@ -819,7 +919,7 @@ export default function GenerarDocumentosPage() {
                         <button
                           onClick={handleGenerarProforma}
                           disabled={!selectedContenedor}
-                          className={`flex flex-col items-center justify-center p-6 border transition-colors relative ${!selectedContenedor
+                          className={`flex flex-col items-center justify-center p-4 lg:p-6 border transition-colors relative ${!selectedContenedor
                             ? 'opacity-50 cursor-not-allowed'
                             : theme === 'dark'
                               ? 'border-slate-700 hover:bg-slate-800'
@@ -828,18 +928,18 @@ export default function GenerarDocumentosPage() {
                         >
                           {selectedContenedor && selectedBooking && existingDocs[selectedBooking.booking]?.proforma && (
                             <div className="absolute top-2 right-2">
-                              <CheckCircle2 className={`h-5 w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                              <CheckCircle2 className={`h-4 w-4 lg:h-5 lg:w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
                             </div>
                           )}
-                          <Receipt className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                          <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                          <Receipt className={`h-10 w-10 lg:h-12 lg:w-12 mb-2 lg:mb-3 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                          <p className={`font-semibold text-xs lg:text-sm text-center ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                             Factura Proforma
                           </p>
-                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          <p className={`text-[10px] lg:text-xs mt-1 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                             {selectedContenedor ? 'Generar factura proforma' : 'Requiere contenedor'}
                           </p>
                           {selectedContenedor && selectedBooking && existingDocs[selectedBooking.booking]?.proforma && (
-                            <p className={`text-xs mt-1 font-medium ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                            <p className={`text-[10px] lg:text-xs mt-1 font-medium text-center ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
                               ✓ Ya existe en documentos
                             </p>
                           )}
@@ -850,13 +950,15 @@ export default function GenerarDocumentosPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center">
+              <div className={`flex-1 flex items-center justify-center p-4 ${
+                mobileView !== 'acciones' ? 'hidden lg:flex' : 'flex'
+              }`}>
                 <div className="text-center">
-                  <FileText className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <p className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  <FileText className={`h-12 w-12 lg:h-16 lg:w-16 mx-auto mb-3 lg:mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  <p className={`text-base lg:text-lg font-semibold mb-1 lg:mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     Selecciona un booking
                   </p>
-                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  <p className={`text-xs lg:text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
                     Elige una nave y luego un booking para generar documentos
                   </p>
                 </div>
