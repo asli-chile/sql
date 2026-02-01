@@ -513,11 +513,23 @@ export function FacturaCreator({
             {mode === 'proforma' ? (
               <div className="relative h-full w-full bg-gray-100">
                 {/* Nota informativa sobre plantilla */}
-                {plantillaSeleccionada && plantillaSeleccionada !== 'tradicional' && (
-                  <div className="absolute top-2 left-2 right-2 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
-                    📋 <strong>Vista previa en PDF</strong> - El archivo Excel se generará con la plantilla seleccionada al hacer clic en "Generar Proforma"
-                  </div>
-                )}
+                {plantillaSeleccionada && plantillaSeleccionada !== 'tradicional' && (() => {
+                  const plantillaActual = plantillasDisponibles.find(p => p.id === plantillaSeleccionada);
+                  const nombrePlantilla = plantillaActual?.nombre || 'plantilla personalizada';
+                  
+                  return (
+                    <div className="absolute top-2 left-2 right-2 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
+                      <div className="flex items-start gap-2">
+                        <span className="text-base">📋</span>
+                        <div>
+                          <strong>Vista previa en formato estándar</strong>
+                          <br />
+                          Esta vista previa muestra el PDF tradicional. Al hacer clic en "Generar Proforma", se creará el archivo Excel usando la plantilla: <strong className="text-blue-800">"{nombrePlantilla}"</strong>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {previewUrl ? (
                   <iframe
                     title="Vista previa PDF de la proforma"
