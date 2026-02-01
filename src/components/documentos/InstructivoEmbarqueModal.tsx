@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Registro } from '@/types/registros';
 import { useTheme } from '@/contexts/ThemeContext';
-import { X, Download, FileText } from 'lucide-react';
+import { X, Download, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { generarInstructivoPDF } from '@/lib/instructivo-pdf';
+import { createClient } from '@/lib/supabase-browser';
+import { useToast } from '@/hooks/useToast';
+import { ToastContainer } from '@/components/layout/Toast';
 
 interface InstructivoEmbarqueModalProps {
   isOpen: boolean;
@@ -21,6 +24,7 @@ export function InstructivoEmbarqueModal({
 }: InstructivoEmbarqueModalProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { toasts, removeToast, success, error: showError } = useToast();
   const [formData, setFormData] = useState({
     fechaEmision: new Date().toISOString().split('T')[0],
     consignatario: registro.shipper || '',
@@ -38,6 +42,47 @@ export function InstructivoEmbarqueModal({
     observaciones: registro.observacion || '',
   });
   const [generating, setGenerating] = useState(false);
+  const [existingDocument, setExistingDocument] = useState<boolean>(false);
+  const [checkingDocument, setCheckingDocument] = useState(false);
+
+  // Verificar si existe el instructivo en storage
+  useEffect(() => {
+    if (!isOpen || !registro.booking) return;
+    
+    const checkExistingDocument = async () => {
+      setCheckingDocument(true);
+      try {
+        const supabase = createClient();
+        const normalizedBooking = registro.booking.trim().toUpperCase().replace(/\s+/g, '');
+        
+        const { data, error } = await supabase.storage
+          .from('documentos')
+          .list('instructivo-embarque', {
+            limit: 100,
+            offset: 0,
+          });
+        
+        if (error) throw error;
+        
+        // Buscar archivo que coincida con el booking
+        const found = data?.some(file => {
+          const separatorIndex = file.name.indexOf('__');
+          if (separatorIndex === -1) return false;
+          const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+          return fileBooking === normalizedBooking;
+        });
+        
+        setExistingDocument(!!found);
+      } catch (err) {
+        console.error('Error verificando documento existente:', err);
+        setExistingDocument(false);
+      } finally {
+        setCheckingDocument(false);
+      }
+    };
+    
+    checkExistingDocument();
+  }, [isOpen, registro.booking]);
 
   useEffect(() => {
     if (isOpen) {
@@ -67,15 +112,56 @@ export function InstructivoEmbarqueModal({
   };
 
   const handleGenerate = async () => {
+    // Verificar que no exista el documento antes de generar
+    if (existingDocument) {
+      showError('Ya existe un instructivo para esta referencia. No se puede reemplazar.');
+      return;
+    }
+    
     setGenerating(true);
     try {
-      await generarInstructivoPDF({
+      const supabase = createClient();
+      
+      // Generar el PDF
+      const result = await generarInstructivoPDF({
         ...formData,
         registro,
-      });
+      }, false); // No descargar automáticamente
+      
+      // Subir a storage
+      const normalizedBooking = (registro.booking || '').trim().toUpperCase().replace(/\s+/g, '');
+      const bookingSegment = encodeURIComponent(normalizedBooking);
+      
+      // Sanitizar nombre del archivo
+      const sanitizeFileName = (name: string) => {
+        const cleanName = name.toLowerCase().replace(/[^a-z0-9.\-]/g, '-');
+        const [base, ext] = cleanName.split(/\.(?=[^.\s]+$)/);
+        const safeBase = base?.replace(/-+/g, '-').replace(/^-|-$/g, '') || `instructivo-${Date.now()}`;
+        return `${safeBase}.${ext || 'pdf'}`;
+      };
+      
+      const safeName = sanitizeFileName(result.fileName);
+      const filePath = `instructivo-embarque/${bookingSegment}__${Date.now()}-0-${safeName}`;
+      
+      // Subir nuevo instructivo
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, result.blob, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+          upsert: false, // No reemplazar si existe
+        });
+      
+      if (uploadError) {
+        throw new Error(`Error subiendo instructivo: ${uploadError.message}`);
+      }
+      
+      success('Instructivo generado y subido correctamente.');
+      setExistingDocument(true);
+      onClose();
     } catch (error) {
       console.error('Error generando instructivo:', error);
-      alert('Error al generar el instructivo. Por favor, intenta de nuevo.');
+      showError('Error al generar el instructivo. Por favor, intenta de nuevo.');
     } finally {
       setGenerating(false);
     }
@@ -114,6 +200,36 @@ export function InstructivoEmbarqueModal({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Estado del documento */}
+        {checkingDocument ? (
+          <div className={`px-6 py-3 border-b ${isDark ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'}`}>
+            <div className="flex items-center gap-2">
+              <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+              <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>
+                Verificando documento existente...
+              </p>
+            </div>
+          </div>
+        ) : existingDocument ? (
+          <div className={`px-6 py-3 border-b ${isDark ? 'border-slate-700 bg-orange-900/20' : 'border-gray-200 bg-orange-50'}`}>
+            <div className="flex items-center gap-2">
+              <AlertCircle className={`h-4 w-4 ${isDark ? 'text-orange-400' : 'text-orange-600'}`} />
+              <p className={`text-sm ${isDark ? 'text-orange-400' : 'text-orange-700'}`}>
+                Ya existe un instructivo para esta referencia en documentos. No se puede generar uno nuevo.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className={`px-6 py-3 border-b ${isDark ? 'border-slate-700 bg-blue-900/20' : 'border-gray-200 bg-blue-50'}`}>
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className={`h-4 w-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+              <p className={`text-sm ${isDark ? 'text-blue-400' : 'text-blue-700'}`}>
+                No existe un instructivo para esta referencia. El documento se guardará automáticamente en documentos.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
@@ -371,13 +487,18 @@ export function InstructivoEmbarqueModal({
           </button>
           <button
             onClick={handleGenerate}
-            disabled={generating || !formData.fechaEmision || !formData.consignatario || !formData.exportador}
+            disabled={generating || existingDocument || !formData.fechaEmision || !formData.consignatario || !formData.exportador}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {generating ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                 <span>Generando...</span>
+              </>
+            ) : existingDocument ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Ya existe en documentos</span>
               </>
             ) : (
               <>
@@ -388,6 +509,9 @@ export function InstructivoEmbarqueModal({
           </button>
         </div>
       </div>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

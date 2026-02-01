@@ -27,6 +27,7 @@ import {
   Receipt,
   Search,
   Filter,
+  CheckCircle2,
 } from 'lucide-react';
 import { SidebarSection } from '@/types/layout';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -38,10 +39,18 @@ interface ContenedorInfo {
   registro: Registro;
 }
 
-interface ReferenciaConContenedores {
-  refAsli: string;
+interface BookingInfo {
+  booking: string;
+  refAsli?: string;
   refCliente?: string;
+  registro: Registro;
   contenedores: ContenedorInfo[];
+}
+
+interface NaveInfo {
+  nave: string;
+  naveCompleta: string; // Nombre con viaje
+  bookings: BookingInfo[];
 }
 
 export default function GenerarDocumentosPage() {
@@ -51,9 +60,9 @@ export default function GenerarDocumentosPage() {
   const [loading, setLoading] = useState(true);
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRef, setSelectedRef] = useState<ReferenciaConContenedores | null>(null);
+  const [selectedNave, setSelectedNave] = useState<NaveInfo | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<BookingInfo | null>(null);
   const [selectedContenedor, setSelectedContenedor] = useState<ContenedorInfo | null>(null);
-  const [selectedRegistro, setSelectedRegistro] = useState<Registro | null>(null); // Para generar sin contenedor
   const [showInstructivoModal, setShowInstructivoModal] = useState(false);
   const [showProformaModal, setShowProformaModal] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -61,12 +70,13 @@ export default function GenerarDocumentosPage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [existingDocs, setExistingDocs] = useState<{[booking: string]: {instructivo: boolean, proforma: boolean}}>({});
   
   // Estados para filtros
   const [showFilters, setShowFilters] = useState(false);
   const [selectedClientes, setSelectedClientes] = useState<string[]>([]);
   const [selectedNaviera, setSelectedNaviera] = useState<string | null>(null);
-  const [selectedNave, setSelectedNave] = useState<string | null>(null);
+  const [filterNave, setFilterNave] = useState<string | null>(null);
   const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
@@ -119,6 +129,54 @@ export default function GenerarDocumentosPage() {
     fetchUser();
   }, []);
 
+  // Verificar documentos existentes cuando se selecciona un booking
+  useEffect(() => {
+    if (!selectedBooking) return;
+    
+    const checkExistingDocuments = async () => {
+      try {
+        const supabase = createClient();
+        const booking = selectedBooking.booking;
+        const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+        
+        // Verificar instructivo
+        const { data: instructivoData } = await supabase.storage
+          .from('documentos')
+          .list('instructivo-embarque', { limit: 100 });
+        
+        const hasInstructivo = instructivoData?.some(file => {
+          const separatorIndex = file.name.indexOf('__');
+          if (separatorIndex === -1) return false;
+          const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+          return fileBooking === normalizedBooking;
+        }) || false;
+        
+        // Verificar proforma
+        const { data: proformaData } = await supabase.storage
+          .from('documentos')
+          .list('factura-proforma', { limit: 100 });
+        
+        const hasProforma = proformaData?.some(file => {
+          const separatorIndex = file.name.indexOf('__');
+          if (separatorIndex === -1) return false;
+          const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+          return fileBooking === normalizedBooking;
+        }) || false;
+        
+        setExistingDocs({
+          [booking]: {
+            instructivo: hasInstructivo,
+            proforma: hasProforma,
+          }
+        });
+      } catch (error) {
+        console.error('Error verificando documentos existentes:', error);
+      }
+    };
+    
+    checkExistingDocuments();
+  }, [selectedBooking]);
+
   // Generar opciones de filtro
   const filterOptions = useMemo(() => {
     const clientesSet = new Set<string>();
@@ -154,14 +212,18 @@ export default function GenerarDocumentosPage() {
     };
   }, [registros]);
 
-  // Agrupar registros por referencia y extraer contenedores
-  const referenciasConContenedores = useMemo(() => {
-    const refsMap = new Map<string, ReferenciaConContenedores>();
+  // Agrupar registros por nave → booking → contenedores
+  const navesConBookings = useMemo(() => {
+    const navesMap = new Map<string, NaveInfo>();
 
     registros.forEach(registro => {
-      const refAsli = registro.refAsli?.trim();
-      if (!refAsli) return;
-
+      // Extraer nombre de la nave
+      const naveInicial = registro.naveInicial?.trim();
+      if (!naveInicial) return;
+      
+      const naveMatch = naveInicial.match(/^(.+?)\s*\[/);
+      const naveName = (naveMatch ? naveMatch[1].trim() : naveInicial).toUpperCase();
+      
       // Aplicar filtros
       if (selectedClientes.length > 0) {
         const cliente = registro.shipper?.trim().toUpperCase();
@@ -171,26 +233,42 @@ export default function GenerarDocumentosPage() {
         const naviera = registro.naviera?.trim().toUpperCase();
         if (!naviera || naviera !== selectedNaviera.toUpperCase()) return;
       }
-      if (selectedNave) {
-        const naveMatch = registro.naveInicial?.trim().match(/^(.+?)\s*\[/);
-        const naveName = naveMatch ? naveMatch[1].trim() : registro.naveInicial?.trim();
-        const nave = naveName?.toUpperCase();
-        if (!nave || nave !== selectedNave.toUpperCase()) return;
+      if (filterNave) {
+        if (naveName !== filterNave.toUpperCase()) return;
       }
       if (selectedEspecie) {
         const especie = registro.especie?.trim().toUpperCase();
         if (!especie || especie !== selectedEspecie.toUpperCase()) return;
       }
 
-      if (!refsMap.has(refAsli)) {
-        refsMap.set(refAsli, {
-          refAsli,
-          refCliente: registro.refCliente?.trim(),
-          contenedores: [],
+      const booking = registro.booking?.trim();
+      if (!booking) return;
+
+      // Crear o obtener nave
+      if (!navesMap.has(naveName)) {
+        navesMap.set(naveName, {
+          nave: naveName,
+          naveCompleta: naveInicial,
+          bookings: [],
         });
       }
 
-      const refData = refsMap.get(refAsli)!;
+      const naveInfo = navesMap.get(naveName)!;
+      
+      // Buscar o crear booking dentro de la nave
+      let bookingInfo = naveInfo.bookings.find(b => b.booking === booking);
+      if (!bookingInfo) {
+        bookingInfo = {
+          booking,
+          refAsli: registro.refAsli?.trim(),
+          refCliente: registro.refCliente?.trim(),
+          registro,
+          contenedores: [],
+        };
+        naveInfo.bookings.push(bookingInfo);
+      }
+
+      // Agregar contenedores
       const contenedores = Array.isArray(registro.contenedor)
         ? registro.contenedor
         : registro.contenedor
@@ -199,8 +277,8 @@ export default function GenerarDocumentosPage() {
 
       contenedores.forEach(contenedor => {
         const contenedorStr = contenedor?.trim();
-        if (contenedorStr && !refData.contenedores.some(c => c.contenedor === contenedorStr)) {
-          refData.contenedores.push({
+        if (contenedorStr && !bookingInfo!.contenedores.some(c => c.contenedor === contenedorStr)) {
+          bookingInfo!.contenedores.push({
             contenedor: contenedorStr,
             registro,
           });
@@ -208,33 +286,28 @@ export default function GenerarDocumentosPage() {
       });
     });
 
-    return Array.from(refsMap.values()).sort((a, b) => {
-      // Ordenar de mayor a menor (descendente)
-      // Si son numéricas, ordenar numéricamente
-      const aNum = parseInt(a.refAsli);
-      const bNum = parseInt(b.refAsli);
-      
-      if (!isNaN(aNum) && !isNaN(bNum)) {
-        // Si ambas son numéricas, ordenar numéricamente
-        return bNum - aNum;
-      }
-      
-      // Si no son numéricas o una no lo es, ordenar alfabéticamente descendente
-      return b.refAsli.localeCompare(a.refAsli);
-    });
-  }, [registros, selectedClientes, selectedNaviera, selectedNave, selectedEspecie]);
+    // Ordenar naves alfabéticamente
+    return Array.from(navesMap.values()).sort((a, b) => 
+      a.nave.localeCompare(b.nave)
+    );
+  }, [registros, selectedClientes, selectedNaviera, filterNave, selectedEspecie]);
 
-  // Filtrar referencias por término de búsqueda
-  const filteredReferencias = useMemo(() => {
-    if (!searchTerm.trim()) return referenciasConContenedores;
+  // Filtrar naves por término de búsqueda
+  const filteredNaves = useMemo(() => {
+    if (!searchTerm.trim()) return navesConBookings;
 
     const searchLower = searchTerm.toLowerCase();
-    return referenciasConContenedores.filter(ref => 
-      ref.refAsli.toLowerCase().includes(searchLower) ||
-      ref.refCliente?.toLowerCase().includes(searchLower) ||
-      ref.contenedores.some(c => c.contenedor.toLowerCase().includes(searchLower))
+    return navesConBookings.filter(nave => 
+      nave.nave.toLowerCase().includes(searchLower) ||
+      nave.naveCompleta.toLowerCase().includes(searchLower) ||
+      nave.bookings.some(b => 
+        b.booking.toLowerCase().includes(searchLower) ||
+        b.refAsli?.toLowerCase().includes(searchLower) ||
+        b.refCliente?.toLowerCase().includes(searchLower) ||
+        b.contenedores.some(c => c.contenedor.toLowerCase().includes(searchLower))
+      )
     );
-  }, [referenciasConContenedores, searchTerm]);
+  }, [navesConBookings, searchTerm]);
 
   const sidebarNav: SidebarSection[] = [
     {
@@ -272,17 +345,15 @@ export default function GenerarDocumentosPage() {
       : []),
   ];
 
-  const handleSelectRef = (ref: ReferenciaConContenedores) => {
-    setSelectedRef(ref);
+  const handleSelectNave = (nave: NaveInfo) => {
+    setSelectedNave(nave);
+    setSelectedBooking(null);
     setSelectedContenedor(null);
-    // Si la referencia tiene un registro asociado, guardarlo para generar sin contenedor
-    if (ref.contenedores.length > 0) {
-      setSelectedRegistro(ref.contenedores[0].registro);
-    } else {
-      // Buscar el registro de esta referencia
-      const registro = registros.find(r => r.refAsli === ref.refAsli);
-      setSelectedRegistro(registro || null);
-    }
+  };
+
+  const handleSelectBooking = (booking: BookingInfo) => {
+    setSelectedBooking(booking);
+    setSelectedContenedor(null);
   };
 
   const handleSelectContenedor = (contenedor: ContenedorInfo) => {
@@ -290,8 +361,8 @@ export default function GenerarDocumentosPage() {
   };
 
   const handleGenerarInstructivo = () => {
-    // Permitir generar sin contenedor - solo necesita registro
-    if (!selectedRegistro) return;
+    // Requiere al menos un booking seleccionado
+    if (!selectedBooking) return;
     setShowInstructivoModal(true);
   };
 
@@ -301,10 +372,108 @@ export default function GenerarDocumentosPage() {
     setShowProformaModal(true);
   };
 
+  const handleCloseInstructivoModal = () => {
+    setShowInstructivoModal(false);
+    // Recargar estado de documentos
+    if (selectedBooking) {
+      const checkExistingDocuments = async () => {
+        try {
+          const supabase = createClient();
+          const booking = selectedBooking.booking;
+          const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+          
+          // Verificar instructivo
+          const { data: instructivoData } = await supabase.storage
+            .from('documentos')
+            .list('instructivo-embarque', { limit: 100 });
+          
+          const hasInstructivo = instructivoData?.some(file => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return false;
+            const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+            return fileBooking === normalizedBooking;
+          }) || false;
+          
+          // Verificar proforma
+          const { data: proformaData } = await supabase.storage
+            .from('documentos')
+            .list('factura-proforma', { limit: 100 });
+          
+          const hasProforma = proformaData?.some(file => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return false;
+            const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+            return fileBooking === normalizedBooking;
+          }) || false;
+          
+          setExistingDocs({
+            [booking]: {
+              instructivo: hasInstructivo,
+              proforma: hasProforma,
+            }
+          });
+        } catch (error) {
+          console.error('Error verificando documentos existentes:', error);
+        }
+      };
+      
+      checkExistingDocuments();
+    }
+  };
+
+  const handleCloseProformaModal = () => {
+    setShowProformaModal(false);
+    // Recargar estado de documentos (usar la misma lógica que arriba)
+    if (selectedBooking) {
+      const checkExistingDocuments = async () => {
+        try {
+          const supabase = createClient();
+          const booking = selectedBooking.booking;
+          const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
+          
+          // Verificar instructivo
+          const { data: instructivoData } = await supabase.storage
+            .from('documentos')
+            .list('instructivo-embarque', { limit: 100 });
+          
+          const hasInstructivo = instructivoData?.some(file => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return false;
+            const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+            return fileBooking === normalizedBooking;
+          }) || false;
+          
+          // Verificar proforma
+          const { data: proformaData } = await supabase.storage
+            .from('documentos')
+            .list('factura-proforma', { limit: 100 });
+          
+          const hasProforma = proformaData?.some(file => {
+            const separatorIndex = file.name.indexOf('__');
+            if (separatorIndex === -1) return false;
+            const fileBooking = decodeURIComponent(file.name.slice(0, separatorIndex)).replace(/\s+/g, '');
+            return fileBooking === normalizedBooking;
+          }) || false;
+          
+          setExistingDocs({
+            [booking]: {
+              instructivo: hasInstructivo,
+              proforma: hasProforma,
+            }
+          });
+        } catch (error) {
+          console.error('Error verificando documentos existentes:', error);
+        }
+      };
+      
+      checkExistingDocuments();
+    }
+  };
+
   const handleClearFilters = () => {
     setSelectedClientes([]);
     setSelectedNaviera(null);
-    setSelectedNave(null);
+    setFilterNave(null);
     setSelectedEspecie(null);
   };
 
@@ -319,7 +488,7 @@ export default function GenerarDocumentosPage() {
     });
   };
 
-  const hasActiveFilters = selectedClientes.length > 0 || selectedNaviera || selectedNave || selectedEspecie;
+  const hasActiveFilters = selectedClientes.length > 0 || selectedNaviera || filterNave || selectedEspecie;
 
   if (loading) {
     return <LoadingScreen message="Cargando referencias..." />;
@@ -418,7 +587,7 @@ export default function GenerarDocumentosPage() {
         </header>
 
         <div className="flex-1 flex overflow-hidden relative">
-          {/* Panel izquierdo - Lista de referencias */}
+          {/* Panel izquierdo - Lista de naves */}
           <div className={`w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
             {/* Búsqueda */}
             <div className={`p-3 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
@@ -426,7 +595,7 @@ export default function GenerarDocumentosPage() {
                 <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
                 <input
                   type="text"
-                  placeholder="Buscar referencia o contenedor..."
+                  placeholder="Buscar nave, booking o contenedor..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={`w-full pl-10 pr-4 py-2 border text-sm ${theme === 'dark'
@@ -437,19 +606,19 @@ export default function GenerarDocumentosPage() {
               </div>
             </div>
 
-            {/* Lista de referencias */}
+            {/* Lista de naves */}
             <div className="flex-1 overflow-y-auto p-2">
-              {filteredReferencias.length === 0 ? (
+              {filteredNaves.length === 0 ? (
                 <div className="text-center py-10">
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                    {searchTerm ? 'No se encontraron referencias' : 'No hay referencias disponibles'}
+                    {searchTerm ? 'No se encontraron naves' : 'No hay naves disponibles'}
                   </p>
                 </div>
               ) : (
-                filteredReferencias.map((ref) => (
+                filteredNaves.map((nave) => (
                   <div
-                    key={ref.refAsli}
-                    className={`mb-2 border cursor-pointer transition-colors ${selectedRef?.refAsli === ref.refAsli
+                    key={nave.nave}
+                    className={`mb-2 border cursor-pointer transition-colors ${selectedNave?.nave === nave.nave
                       ? theme === 'dark'
                         ? 'bg-sky-900/30 border-sky-600'
                         : 'bg-blue-50 border-blue-400'
@@ -457,22 +626,20 @@ export default function GenerarDocumentosPage() {
                         ? 'border-slate-700 hover:bg-slate-800'
                         : 'border-gray-300 hover:bg-gray-50'
                       }`}
-                    onClick={() => handleSelectRef(ref)}
+                    onClick={() => handleSelectNave(nave)}
                   >
                     <div className="p-3">
                       <div className="flex items-center justify-between mb-1">
                         <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          {ref.refAsli}
+                          {nave.nave}
                         </p>
                         <span className={`text-xs px-2 py-0.5 ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                          {ref.contenedores.length} {ref.contenedores.length === 1 ? 'contenedor' : 'contenedores'}
+                          {nave.bookings.length} {nave.bookings.length === 1 ? 'reserva' : 'reservas'}
                         </span>
                       </div>
-                      {ref.refCliente && (
-                        <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          Ref Cliente: {ref.refCliente}
-                        </p>
-                      )}
+                      <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        {nave.naveCompleta}
+                      </p>
                     </div>
                   </div>
                 ))
@@ -480,27 +647,30 @@ export default function GenerarDocumentosPage() {
             </div>
           </div>
 
-          {/* Panel central - Contenedores */}
+          {/* Panel central - Bookings de la nave seleccionada */}
           <div className={`w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
-            {selectedRef ? (
+            {selectedNave ? (
               <>
                 <div className={`p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
                   <h3 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Contenedores - {selectedRef.refAsli}
+                    Reservas - {selectedNave.nave}
                   </h3>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {selectedNave.bookings.length} {selectedNave.bookings.length === 1 ? 'reserva' : 'reservas'}
+                  </p>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2">
-                  {selectedRef.contenedores.length === 0 ? (
+                  {selectedNave.bookings.length === 0 ? (
                     <div className="text-center py-10">
                       <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                        No hay contenedores para esta referencia
+                        No hay reservas para esta nave
                       </p>
                     </div>
                   ) : (
-                    selectedRef.contenedores.map((cont) => (
+                    selectedNave.bookings.map((booking) => (
                       <div
-                        key={cont.contenedor}
-                        className={`mb-2 border cursor-pointer transition-colors ${selectedContenedor?.contenedor === cont.contenedor
+                        key={booking.booking}
+                        className={`mb-2 border cursor-pointer transition-colors ${selectedBooking?.booking === booking.booking
                           ? theme === 'dark'
                             ? 'bg-sky-900/30 border-sky-600'
                             : 'bg-blue-50 border-blue-400'
@@ -508,15 +678,27 @@ export default function GenerarDocumentosPage() {
                             ? 'border-slate-700 hover:bg-slate-800'
                             : 'border-gray-300 hover:bg-gray-50'
                           }`}
-                        onClick={() => handleSelectContenedor(cont)}
+                        onClick={() => handleSelectBooking(booking)}
                       >
                         <div className="p-3">
                           <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                            {cont.contenedor}
+                            {booking.booking}
                           </p>
-                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            Booking: {cont.registro.booking}
-                          </p>
+                          {booking.refAsli && (
+                            <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              Ref ASLI: {booking.refAsli}
+                            </p>
+                          )}
+                          {booking.refCliente && (
+                            <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                              Ref Cliente: {booking.refCliente}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className={`text-xs px-2 py-0.5 ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
+                              {booking.contenedores.length} {booking.contenedores.length === 1 ? 'contenedor' : 'contenedores'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -526,83 +708,143 @@ export default function GenerarDocumentosPage() {
             ) : (
               <div className="flex-1 flex items-center justify-center">
                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                  Selecciona una referencia
+                  Selecciona una nave
                 </p>
               </div>
             )}
           </div>
 
-          {/* Panel derecho - Acciones */}
+          {/* Panel derecho - Contenedores y Acciones */}
           <div className={`flex-1 flex flex-col overflow-hidden transition-all ${showFilters ? 'lg:mr-80' : ''}`}>
-            {selectedRef ? (
-              <div className="flex-1 p-6">
-                <div className="max-w-2xl mx-auto">
-                  <div className={`border p-6 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
-                    <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                      Generar Documentos
-                    </h2>
-                    <div className="mb-4">
-                      <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        Referencia: <span className="font-semibold">{selectedRef.refAsli}</span>
-                      </p>
-                      {selectedContenedor ? (
-                        <>
+            {selectedBooking ? (
+              <div className="flex h-full">
+                {/* Subpanel izquierdo - Contenedores */}
+                <div className={`w-80 flex-shrink-0 flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'}`}>
+                  <div className={`p-3 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+                    <h3 className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      Contenedores
+                    </h3>
+                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Booking: {selectedBooking.booking}
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2">
+                    {selectedBooking.contenedores.length === 0 ? (
+                      <div className="text-center py-10">
+                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                          No hay contenedores
+                        </p>
+                      </div>
+                    ) : (
+                      selectedBooking.contenedores.map((cont) => (
+                        <div
+                          key={cont.contenedor}
+                          className={`mb-2 border cursor-pointer transition-colors ${selectedContenedor?.contenedor === cont.contenedor
+                            ? theme === 'dark'
+                              ? 'bg-sky-900/30 border-sky-600'
+                              : 'bg-blue-50 border-blue-400'
+                            : theme === 'dark'
+                              ? 'border-slate-700 hover:bg-slate-800'
+                              : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                          onClick={() => handleSelectContenedor(cont)}
+                        >
+                          <div className="p-3">
+                            <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                              {cont.contenedor}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Subpanel derecho - Acciones */}
+                <div className="flex-1 p-6 overflow-y-auto">
+                  <div className="max-w-2xl mx-auto">
+                    <div className={`border p-6 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-white'}`}>
+                      <h2 className={`text-xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                        Generar Documentos
+                      </h2>
+                      <div className="mb-4">
+                        <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          Nave: <span className="font-semibold">{selectedNave?.nave}</span>
+                        </p>
+                        <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                          Booking: <span className="font-semibold">{selectedBooking.booking}</span>
+                        </p>
+                        {selectedBooking.refAsli && (
                           <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            Ref ASLI: <span className="font-semibold">{selectedBooking.refAsli}</span>
+                          </p>
+                        )}
+                        {selectedContenedor && (
+                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                             Contenedor: <span className="font-semibold">{selectedContenedor.contenedor}</span>
                           </p>
-                          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                            Booking: <span className="font-semibold">{selectedContenedor.registro.booking}</span>
-                          </p>
-                        </>
-                      ) : (
-                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          {selectedRegistro?.booking ? (
-                            <>Booking: <span className="font-semibold">{selectedRegistro.booking}</span></>
-                          ) : (
-                            <span className="text-orange-500">Contenedor pendiente de asignación</span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                          onClick={handleGenerarInstructivo}
+                          disabled={!selectedBooking}
+                          className={`flex flex-col items-center justify-center p-6 border transition-colors relative ${!selectedBooking
+                            ? 'opacity-50 cursor-not-allowed'
+                            : theme === 'dark'
+                              ? 'border-slate-700 hover:bg-slate-800'
+                              : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          {selectedBooking && existingDocs[selectedBooking.booking]?.instructivo && (
+                            <div className="absolute top-2 right-2">
+                              <CheckCircle2 className={`h-5 w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                            </div>
                           )}
-                        </p>
-                      )}
-                    </div>
+                          <FileCheck className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                          <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            Instructivo de Embarque
+                          </p>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {selectedContenedor ? 'Para contenedor específico' : 'Para toda la reserva'}
+                          </p>
+                          {selectedBooking && existingDocs[selectedBooking.booking]?.instructivo && (
+                            <p className={`text-xs mt-1 font-medium ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                              ✓ Ya existe en documentos
+                            </p>
+                          )}
+                        </button>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <button
-                        onClick={handleGenerarInstructivo}
-                        disabled={!selectedRegistro}
-                        className={`flex flex-col items-center justify-center p-6 border transition-colors ${!selectedRegistro
-                          ? 'opacity-50 cursor-not-allowed'
-                          : theme === 'dark'
-                            ? 'border-slate-700 hover:bg-slate-800'
-                            : 'border-gray-300 hover:bg-gray-50'
-                          }`}
-                      >
-                        <FileCheck className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
-                        <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          Instructivo de Embarque
-                        </p>
-                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          {selectedContenedor ? 'Generar documento de instrucciones' : 'Generar sin contenedor (pendiente)'}
-                        </p>
-                      </button>
-
-                      <button
-                        onClick={handleGenerarProforma}
-                        disabled={!selectedContenedor}
-                        className={`flex flex-col items-center justify-center p-6 border transition-colors ${!selectedContenedor
-                          ? 'opacity-50 cursor-not-allowed'
-                          : theme === 'dark'
-                            ? 'border-slate-700 hover:bg-slate-800'
-                            : 'border-gray-300 hover:bg-gray-50'
-                          }`}
-                      >
-                        <Receipt className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                        <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                          Factura Proforma
-                        </p>
-                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                          {selectedContenedor ? 'Generar factura proforma' : 'Requiere contenedor'}
-                        </p>
-                      </button>
+                        <button
+                          onClick={handleGenerarProforma}
+                          disabled={!selectedContenedor}
+                          className={`flex flex-col items-center justify-center p-6 border transition-colors relative ${!selectedContenedor
+                            ? 'opacity-50 cursor-not-allowed'
+                            : theme === 'dark'
+                              ? 'border-slate-700 hover:bg-slate-800'
+                              : 'border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                          {selectedContenedor && selectedBooking && existingDocs[selectedBooking.booking]?.proforma && (
+                            <div className="absolute top-2 right-2">
+                              <CheckCircle2 className={`h-5 w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                            </div>
+                          )}
+                          <Receipt className={`h-12 w-12 mb-3 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                          <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                            Factura Proforma
+                          </p>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {selectedContenedor ? 'Generar factura proforma' : 'Requiere contenedor'}
+                          </p>
+                          {selectedContenedor && selectedBooking && existingDocs[selectedBooking.booking]?.proforma && (
+                            <p className={`text-xs mt-1 font-medium ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                              ✓ Ya existe en documentos
+                            </p>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -612,10 +854,10 @@ export default function GenerarDocumentosPage() {
                 <div className="text-center">
                   <FileText className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
                   <p className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Selecciona una referencia
+                    Selecciona un booking
                   </p>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                    Elige una referencia para generar documentos
+                    Elige una nave y luego un booking para generar documentos
                   </p>
                 </div>
               </div>
@@ -728,8 +970,8 @@ export default function GenerarDocumentosPage() {
                   Nave
                 </label>
                 <select
-                  value={selectedNave || ''}
-                  onChange={(e) => setSelectedNave(e.target.value || null)}
+                  value={filterNave || ''}
+                  onChange={(e) => setFilterNave(e.target.value || null)}
                   className={`w-full px-3 py-2 text-sm border ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800 text-white'
                     : 'border-gray-300 bg-white text-gray-900'
@@ -771,18 +1013,18 @@ export default function GenerarDocumentosPage() {
       </main>
 
       {/* Modales */}
-      {selectedRegistro && (
+      {selectedBooking && (
         <>
           <InstructivoEmbarqueModal
             isOpen={showInstructivoModal}
-            onClose={() => setShowInstructivoModal(false)}
+            onClose={handleCloseInstructivoModal}
             contenedor={selectedContenedor?.contenedor}
-            registro={selectedRegistro}
+            registro={selectedBooking.registro}
           />
           {selectedContenedor && (
             <FacturaProformaModal
               isOpen={showProformaModal}
-              onClose={() => setShowProformaModal(false)}
+              onClose={handleCloseProformaModal}
               contenedor={selectedContenedor.contenedor}
               registro={selectedContenedor.registro}
             />

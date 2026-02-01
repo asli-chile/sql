@@ -20,7 +20,12 @@ export interface InstructivoPDFData {
   registro: Registro;
 }
 
-export async function generarInstructivoPDF(data: InstructivoPDFData): Promise<void> {
+export interface InstructivoPDFResult {
+  blob: Blob;
+  fileName: string;
+}
+
+export async function generarInstructivoPDF(data: InstructivoPDFData, autoDownload: boolean = true): Promise<InstructivoPDFResult> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -212,6 +217,16 @@ export async function generarInstructivoPDF(data: InstructivoPDFData): Promise<v
   const contenedorNombre = data.contenedor || 'PENDIENTE';
   const fileName = `Instructivo_Embarque_${contenedorNombre}_${formatDate(data.fechaEmision).replace(/-/g, '')}.pdf`;
   
-  // Descargar PDF
-  doc.save(fileName);
+  // Generar blob
+  const pdfBlob = doc.output('blob');
+  
+  // Descargar PDF si autoDownload está activado
+  if (autoDownload) {
+    doc.save(fileName);
+  }
+  
+  return {
+    blob: pdfBlob,
+    fileName,
+  };
 }
