@@ -67,6 +67,7 @@ export function FacturaCreator({
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null); // Para vista previa de plantilla Excel
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   
@@ -164,6 +165,7 @@ export function FacturaCreator({
         }
         return null;
       });
+      setPreviewHtml(null);
       return;
     }
 
@@ -180,8 +182,72 @@ export function FacturaCreator({
         const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
         const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
         
-        // El preview siempre muestra el PDF tradicional
-        // La plantilla de Excel se aplicará al hacer clic en "Generar Proforma"
+        // Si hay una plantilla seleccionada (y no es tradicional), generar vista previa HTML del Excel
+        if (plantillaSeleccionada && plantillaSeleccionada !== 'tradicional') {
+          const supabase = createClient();
+          let plantilla = null;
+          
+          // Obtener la plantilla
+          if (plantillaSeleccionada !== 'auto') {
+            const { data } = await supabase
+              .from('plantillas_proforma')
+              .select('*')
+              .eq('id', plantillaSeleccionada)
+              .single();
+            plantilla = data;
+          } else {
+            // Auto: buscar plantilla default del cliente
+            const clienteNombre = registro.shipper;
+            const { data: clienteTemplate } = await supabase
+              .from('plantillas_proforma')
+              .select('*')
+              .eq('cliente', clienteNombre)
+              .eq('tipo_factura', 'proforma')
+              .eq('es_default', true)
+              .eq('activa', true)
+              .single();
+            
+            if (!clienteTemplate) {
+              const { data: genericTemplate } = await supabase
+                .from('plantillas_proforma')
+                .select('*')
+                .is('cliente', null)
+                .eq('tipo_factura', 'proforma')
+                .eq('es_default', true)
+                .eq('activa', true)
+                .single();
+              plantilla = genericTemplate;
+            } else {
+              plantilla = clienteTemplate;
+            }
+          }
+          
+          if (plantilla) {
+            // Cargar y procesar la plantilla
+            const { PlantillaExcelProcessor, facturaADatosPlantilla } = await import('@/lib/plantilla-excel-processor');
+            const { data: urlData } = await supabase.storage
+              .from('documentos')
+              .createSignedUrl(plantilla.archivo_url, 60);
+            
+            if (urlData?.signedUrl) {
+              const datos = facturaADatosPlantilla(facturaCompleta);
+              const processor = new PlantillaExcelProcessor(datos);
+              await processor.cargarPlantilla(urlData.signedUrl);
+              await processor.procesar();
+              
+              // Generar HTML preview
+              const htmlPreview = processor.generarHTMLPreview();
+              
+              if (!isCancelled) {
+                setPreviewUrl(null); // Limpiar URL del PDF
+                setPreviewHtml(htmlPreview);
+              }
+              return; // Salir temprano
+            }
+          }
+        }
+        
+        // Fallback: generar PDF tradicional
         const pdfResult = await generarFacturaPDF(facturaCompleta, {
           returnBlob: true,
           fileNameBase: `Proforma_${safeRef}_${safeInvoice}`,
@@ -195,6 +261,7 @@ export function FacturaCreator({
           URL.revokeObjectURL(url);
           return;
         }
+        setPreviewHtml(null); // Limpiar HTML
         setPreviewUrl(current => {
           if (current) {
             URL.revokeObjectURL(current);
@@ -216,7 +283,7 @@ export function FacturaCreator({
       isCancelled = true;
       clearTimeout(debounceTimer);
     };
-  }, [factura, totalesCalculados, isOpen, mode]);
+  }, [factura, totalesCalculados, isOpen, mode, plantillaSeleccionada, registro.shipper]);
 
   const handleSave = async (e?: React.MouseEvent) => {
     // Prevenir comportamiento por defecto si hay evento
@@ -522,15 +589,22 @@ export function FacturaCreator({
                       <div className="flex items-start gap-2">
                         <span className="text-base">📋</span>
                         <div>
-                          <strong>Vista previa en formato estándar</strong>
+                          <strong>Vista previa con plantilla</strong>
                           <br />
-                          Esta vista previa muestra el PDF tradicional. Al hacer clic en "Generar Proforma", se creará el archivo Excel usando la plantilla: <strong className="text-blue-800">"{nombrePlantilla}"</strong>
+                          Mostrando: <strong className="text-blue-800">"{nombrePlantilla}"</strong>. Al hacer clic en "Generar Proforma", se creará el archivo Excel con este formato.
                         </div>
                       </div>
                     </div>
                   );
                 })()}
-                {previewUrl ? (
+                
+                {/* Vista previa HTML (plantilla Excel) */}
+                {previewHtml ? (
+                  <div 
+                    className="h-full w-full overflow-auto bg-white p-4"
+                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                  />
+                ) : previewUrl ? (
                   <iframe
                     title="Vista previa PDF de la proforma"
                     src={previewUrl}

@@ -287,6 +287,87 @@ export class PlantillaExcelProcessor {
     console.log('✅ Blob generado:', blob.size, 'bytes');
     return blob;
   }
+
+  /**
+   * Genera una representación HTML de la primera hoja del workbook
+   * para mostrar como vista previa
+   */
+  generarHTMLPreview(): string {
+    const worksheet = this.workbook.worksheets[0];
+    if (!worksheet) {
+      return '<div class="p-4 text-gray-500">No hay datos para mostrar</div>';
+    }
+
+    let html = '<table class="w-full border-collapse text-xs">';
+    
+    worksheet.eachRow((row, rowNumber) => {
+      html += '<tr>';
+      
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const value = cell.value;
+        let displayValue = '';
+        
+        // Convertir diferentes tipos de valores
+        if (value === null || value === undefined) {
+          displayValue = '';
+        } else if (typeof value === 'object' && 'richText' in value) {
+          displayValue = (value as any).richText.map((rt: any) => rt.text).join('');
+        } else if (typeof value === 'object' && 'formula' in value) {
+          displayValue = (value as any).result?.toString() || '';
+        } else if (value instanceof Date) {
+          displayValue = value.toLocaleDateString();
+        } else {
+          displayValue = value.toString();
+        }
+
+        // Estilos de la celda
+        const styles: string[] = [];
+        
+        // Alineación
+        if (cell.alignment) {
+          if (cell.alignment.horizontal === 'center') styles.push('text-center');
+          else if (cell.alignment.horizontal === 'right') styles.push('text-right');
+          else if (cell.alignment.horizontal === 'left') styles.push('text-left');
+        }
+        
+        // Fuente
+        const fontStyles: string[] = [];
+        if (cell.font) {
+          if (cell.font.bold) fontStyles.push('font-bold');
+          if (cell.font.italic) fontStyles.push('italic');
+          if (cell.font.size) {
+            const fontSize = Math.max(8, Math.min(16, cell.font.size));
+            fontStyles.push(`text-[${fontSize}px]`);
+          }
+        }
+        
+        // Color de fondo
+        let bgColor = '';
+        if (cell.fill && 'fgColor' in cell.fill && cell.fill.fgColor) {
+          const color = (cell.fill.fgColor as any).argb;
+          if (color && color !== 'FFFFFFFF') {
+            bgColor = `background-color: #${color.substring(2)};`;
+          }
+        }
+        
+        // Bordes
+        const borderStyle = 'border border-gray-300';
+        
+        // Padding
+        const padding = 'px-2 py-1';
+        
+        const cellClass = `${borderStyle} ${padding} ${styles.join(' ')} ${fontStyles.join(' ')}`;
+        const cellStyle = bgColor ? ` style="${bgColor}"` : '';
+        
+        html += `<td class="${cellClass}"${cellStyle}>${displayValue}</td>`;
+      });
+      
+      html += '</tr>';
+    });
+    
+    html += '</table>';
+    return html;
+  }
 }
 
 /**
