@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { createClient } from '@/lib/supabase-browser';
+import ExcelJS from 'exceljs';
 import { 
   Plus, 
   Minus, 
@@ -16,7 +18,8 @@ import {
   AlignCenter,
   AlignRight,
   Palette,
-  Combine
+  Combine,
+  X
 } from 'lucide-react';
 
 // Tipos para las celdas
@@ -100,6 +103,11 @@ export function EditorPlantillasExcel() {
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
   const [nombrePlantilla, setNombrePlantilla] = useState('');
   const [clientePlantilla, setClientePlantilla] = useState('');
+  const [guardando, setGuardando] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string>('');
+  
+  const supabase = createClient();
   
   // Agregar fila
   const agregarFila = useCallback(() => {
@@ -184,6 +192,190 @@ export function EditorPlantillasExcel() {
       actualizarEstiloCelda(selectedCell.row, selectedCell.col, estilo);
     }
   }, [selectedCell, actualizarEstiloCelda]);
+  
+  // Generar vista previa
+  const generarVistaPrevia = useCallback(async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Proforma');
+      
+      // Configurar columnas
+      worksheet.columns = columns.map(col => ({ width: col.width / 7 }));
+      
+      // Agregar filas y celdas
+      rows.forEach((row, rowIdx) => {
+        const excelRow = worksheet.getRow(rowIdx + 1);
+        row.forEach((cell, colIdx) => {
+          const excelCell = excelRow.getCell(colIdx + 1);
+          excelCell.value = cell.value || '';
+          
+          // Aplicar estilos
+          if (cell.style) {
+            excelCell.font = {
+              bold: cell.style.bold,
+              italic: cell.style.italic,
+              size: cell.style.fontSize || 11,
+              color: cell.style.color ? { argb: cell.style.color.replace('#', 'FF') } : undefined
+            };
+            
+            excelCell.fill = cell.style.backgroundColor ? {
+              type: 'pattern',
+              pattern: 'solid',
+              fgColor: { argb: cell.style.backgroundColor.replace('#', 'FF') }
+            } : undefined;
+            
+            excelCell.alignment = {
+              horizontal: cell.style.textAlign || 'left',
+              vertical: 'middle'
+            };
+            
+            excelCell.border = {
+              top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+            };
+          }
+        });
+        excelRow.commit();
+      });
+      
+      // Generar HTML preview
+      let html = '<div style="padding: 20px; background: #f5f5f5;"><table style="border-collapse: collapse; width: 100%; max-width: 1200px; margin: 0 auto; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">';
+      
+      rows.forEach(row => {
+        html += '<tr>';
+        row.forEach((cell, colIdx) => {
+          const style = [
+            `width: ${columns[colIdx].width}px`,
+            'padding: 8px 10px',
+            'border: 1px solid #d0d0d0',
+            'text-align: ' + (cell.style?.textAlign || 'left'),
+            cell.style?.bold ? 'font-weight: bold' : '',
+            cell.style?.italic ? 'font-style: italic' : '',
+            cell.style?.color ? `color: ${cell.style.color}` : '',
+            cell.style?.backgroundColor ? `background-color: ${cell.style.backgroundColor}` : '',
+            cell.style?.fontSize ? `font-size: ${cell.style.fontSize}pt` : 'font-size: 11pt'
+          ].filter(Boolean).join('; ');
+          
+          const displayValue = cell.isMarker 
+            ? `<span style="color: #2563eb; font-family: monospace;">${cell.value}</span>`
+            : cell.value || '&nbsp;';
+          
+          html += `<td style="${style}">${displayValue}</td>`;
+        });
+        html += '</tr>';
+      });
+      
+      html += '</table></div>';
+      setPreviewHtml(html);
+      setShowPreview(true);
+    } catch (error) {
+      console.error('Error generando preview:', error);
+      alert('Error al generar vista previa');
+    }
+  }, [rows, columns]);
+  
+  // Guardar plantilla
+  const guardarPlantilla = useCallback(async () => {
+    if (!nombrePlantilla.trim()) {
+      alert('Por favor ingresa un nombre para la plantilla');
+      return;
+    }
+    
+    setGuardando(true);
+    try {
+      // Crear workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Proforma');
+      
+      // Configurar columnas
+      worksheet.columns = columns.map(col => ({ width: col.width / 7 }));
+      
+      // Agregar filas y celdas
+      rows.forEach((row, rowIdx) => {
+        const excelRow = worksheet.getRow(rowIdx + 1);
+        row.forEach((cell, colIdx) => {
+          const excelCell = excelRow.getCell(colIdx + 1);
+          excelCell.value = cell.value || '';
+          
+          // Aplicar estilos
+          if (cell.style) {
+            excelCell.font = {
+              bold: cell.style.bold,
+              italic: cell.style.italic,
+              size: cell.style.fontSize || 11,
+              color: cell.style.color ? { argb: cell.style.color.replace('#', 'FF') } : undefined
+            };
+            
+            if (cell.style.backgroundColor) {
+              excelCell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: cell.style.backgroundColor.replace('#', 'FF') }
+              };
+            }
+            
+            excelCell.alignment = {
+              horizontal: cell.style.textAlign || 'left',
+              vertical: 'middle'
+            };
+            
+            excelCell.border = {
+              top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
+              right: { style: 'thin', color: { argb: 'FFD0D0D0' } }
+            };
+          }
+        });
+        excelRow.commit();
+      });
+      
+      // Generar buffer
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      
+      // Generar nombre de archivo único
+      const timestamp = Date.now();
+      const fileName = `plantillas/${timestamp}-${nombrePlantilla.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
+      
+      // Subir a Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(fileName, blob, {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          upsert: false
+        });
+      
+      if (uploadError) throw uploadError;
+      
+      // Guardar registro en base de datos
+      const { error: dbError } = await supabase
+        .from('plantillas_proforma')
+        .insert({
+          nombre: nombrePlantilla,
+          cliente: clientePlantilla || null,
+          archivo_url: fileName,
+          activa: true,
+          es_default: false,
+          created_by: (await supabase.auth.getUser()).data.user?.email || 'unknown'
+        });
+      
+      if (dbError) throw dbError;
+      
+      alert('✅ Plantilla guardada exitosamente');
+      setNombrePlantilla('');
+      setClientePlantilla('');
+    } catch (error: any) {
+      console.error('Error guardando plantilla:', error);
+      alert('Error al guardar plantilla: ' + error.message);
+    } finally {
+      setGuardando(false);
+    }
+  }, [nombrePlantilla, clientePlantilla, rows, columns, supabase]);
 
   return (
     <div className={`h-full flex flex-col ${theme === 'dark' ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
@@ -192,6 +384,7 @@ export function EditorPlantillasExcel() {
         <h2 className="text-xl font-bold">✨ Editor Visual de Plantillas Excel</h2>
         <div className="flex gap-2">
           <button
+            onClick={generarVistaPrevia}
             className={`flex items-center gap-2 px-4 py-2 rounded ${
               theme === 'dark'
                 ? 'bg-blue-600 hover:bg-blue-700'
@@ -202,14 +395,18 @@ export function EditorPlantillasExcel() {
             Vista Previa
           </button>
           <button
+            onClick={guardarPlantilla}
+            disabled={guardando}
             className={`flex items-center gap-2 px-4 py-2 rounded ${
-              theme === 'dark'
+              guardando
+                ? 'bg-gray-400 cursor-not-allowed'
+                : theme === 'dark'
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-green-500 hover:bg-green-600'
             } text-white transition-colors`}
           >
             <Save className="w-4 h-4" />
-            Guardar
+            {guardando ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </div>
@@ -501,6 +698,26 @@ export function EditorPlantillasExcel() {
           </div>
         </div>
       </div>
+      
+      {/* Modal de vista previa */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className={`w-[90%] h-[90%] rounded-lg shadow-xl flex flex-col ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className={`flex items-center justify-between p-4 border-b ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className="text-lg font-semibold">Vista Previa de la Plantilla</h3>
+              <button
+                onClick={() => setShowPreview(false)}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4">
+              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
