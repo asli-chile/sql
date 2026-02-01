@@ -354,7 +354,7 @@ export class PlantillaExcelProcessor {
         
         // Sobrescribir alineación solo si está explícitamente definida en Excel
         if (cell.alignment) {
-          if (cell.alignment.horizontal && cell.alignment.horizontal !== 'general') {
+          if (cell.alignment.horizontal) {
             stylesParts.push(`text-align: ${cell.alignment.horizontal} !important`);
           }
           if (cell.alignment.wrapText) {
