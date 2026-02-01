@@ -16,6 +16,7 @@ export class PlantillaExcelProcessor {
    */
   async cargarPlantilla(url: string): Promise<void> {
     try {
+      console.log('🔄 Cargando plantilla desde:', url);
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -23,9 +24,18 @@ export class PlantillaExcelProcessor {
       }
       
       const arrayBuffer = await response.arrayBuffer();
+      console.log('📦 ArrayBuffer size:', arrayBuffer.byteLength);
+      
       await this.workbook.xlsx.load(arrayBuffer);
+      
+      const sheetsCount = this.workbook.worksheets.length;
+      console.log('📊 Hojas cargadas:', sheetsCount);
+      
+      if (sheetsCount === 0) {
+        throw new Error('El archivo Excel no contiene hojas de trabajo');
+      }
     } catch (error: any) {
-      console.error('Error en cargarPlantilla:', error);
+      console.error('❌ Error en cargarPlantilla:', error);
       throw new Error(`No se pudo cargar la plantilla: ${error?.message || 'Error desconocido'}`);
     }
   }
@@ -34,11 +44,15 @@ export class PlantillaExcelProcessor {
    * Procesa la plantilla reemplazando todos los marcadores
    */
   async procesar(): Promise<ExcelJS.Workbook> {
+    console.log('🔧 Iniciando procesamiento de plantilla...');
+    
     // Procesar cada hoja del libro
-    this.workbook.eachSheet((worksheet) => {
+    this.workbook.eachSheet((worksheet, sheetId) => {
+      console.log(`📄 Procesando hoja ${sheetId}: "${worksheet.name}"`);
       this.procesarHoja(worksheet);
     });
 
+    console.log('✅ Procesamiento completado');
     return this.workbook;
   }
 
@@ -261,10 +275,16 @@ export class PlantillaExcelProcessor {
    * Genera el archivo Excel procesado como Blob
    */
   async generarBlob(): Promise<Blob> {
+    console.log('💾 Generando blob...');
     const buffer = await this.generarBuffer();
-    return new Blob([buffer], { 
+    console.log('📦 Buffer size:', buffer.byteLength);
+    
+    const blob = new Blob([buffer], { 
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     });
+    
+    console.log('✅ Blob generado:', blob.size, 'bytes');
+    return blob;
   }
 }
 
