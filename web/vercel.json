@@ -76,6 +76,14 @@
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/documentos/:path*"
     },
     {
+      "source": "/generar-documentos",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/generar-documentos"
+    },
+    {
+      "source": "/generar-documentos/:path*",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/generar-documentos/:path*"
+    },
+    {
       "source": "/facturas",
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/facturas"
     },

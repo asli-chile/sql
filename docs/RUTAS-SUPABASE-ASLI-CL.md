@@ -38,9 +38,12 @@ https://asli.cl/dashboard/profile/emails
 ```
 https://asli.cl/registros
 https://asli.cl/documentos
+https://asli.cl/generar-documentos
 https://asli.cl/facturas
 https://asli.cl/itinerario
 https://asli.cl/transportes
+https://asli.cl/finanzas
+https://asli.cl/reportes
 https://asli.cl/tablas-personalizadas
 https://asli.cl/mantenimiento
 https://asli.cl/vessel-diagnose
@@ -78,6 +81,7 @@ https://asli.cl/dashboard
 https://asli.cl/dashboard/*
 https://asli.cl/registros
 https://asli.cl/documentos
+https://asli.cl/generar-documentos
 https://asli.cl/facturas
 https://asli.cl/itinerario
 https://asli.cl/transportes
