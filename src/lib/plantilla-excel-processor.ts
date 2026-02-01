@@ -300,25 +300,25 @@ export class PlantillaExcelProcessor {
 
     // Timestamp único para forzar regeneración
     const timestamp = Date.now();
-    let html = `<div class="excel-preview" data-timestamp="${timestamp}" style="font-family: \'Calibri\', Arial, sans-serif; font-size: 11pt; overflow-x: auto; padding: 16px; background: #f8f9fa;">`;
-    html += '<table style="border-collapse: separate; border-spacing: 0; width: 100%; max-width: 1200px; margin: 0 auto; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);">';
+    let html = `<div class="excel-preview" data-timestamp="${timestamp}" style="font-family: \'Calibri\', Arial, sans-serif; font-size: 10pt; overflow-x: auto; padding: 20px; background: #f5f5f5;">`;
+    html += '<table style="border-collapse: collapse; width: 100%; max-width: 1400px; margin: 0 auto; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">';
     
-    // Obtener anchos de columnas y calcular ancho total
-    const colWidths: number[] = [];
-    let totalWidth = 0;
-    let colCount = 0;
-    
-    worksheet.columns.forEach((col, idx) => {
-      const width = col.width || 12;
-      const pixelWidth = width * 8;
-      colWidths[idx + 1] = pixelWidth;
-      totalWidth += pixelWidth;
-      colCount++;
+    // Contar columnas para distribución uniforme
+    let maxColumns = 0;
+    worksheet.eachRow((row) => {
+      let colCount = 0;
+      row.eachCell({ includeEmpty: false }, () => {
+        colCount++;
+      });
+      if (colCount > maxColumns) maxColumns = colCount;
     });
     
+    // Calcular ancho uniforme por columna
+    const uniformWidth = maxColumns > 0 ? (100 / maxColumns).toFixed(2) : '11.11';
+    
     worksheet.eachRow((row, rowNumber) => {
-      const height = row.height ? row.height * 1.2 : 24;
-      html += `<tr style="height: ${height}px; min-height: 24px;">`;
+      const height = row.height ? row.height * 1.3 : 28;
+      html += `<tr style="height: ${height}px; min-height: 28px;">`;
       
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const value = cell.value;
@@ -337,56 +337,41 @@ export class PlantillaExcelProcessor {
           displayValue = value.toString().replace(/\n/g, '<br>');
         }
 
-        // Construir estilos inline
+        // Construir estilos inline - MÁS UNIFORMES
         const stylesParts: string[] = [
-          'padding: 8px 10px',
+          'padding: 10px 12px',
           'box-sizing: border-box',
-          'min-height: 24px',
-          'line-height: 1.4'
+          'min-height: 28px',
+          'line-height: 1.5',
+          `width: ${uniformWidth}%`, // Ancho uniforme para todas las columnas
+          'text-align: center', // TODO centrado por defecto
+          'vertical-align: middle', // TODO al medio verticalmente
+          'font-size: 10pt',
+          'white-space: nowrap',
+          'overflow: hidden',
+          'text-overflow: ellipsis'
         ];
         
-        // Ancho de columna equilibrado
-        if (colWidths[colNumber] && totalWidth > 0) {
-          const percentage = (colWidths[colNumber] / totalWidth) * 100;
-          stylesParts.push(`width: ${percentage.toFixed(2)}%`);
-          stylesParts.push(`max-width: ${colWidths[colNumber]}px`);
-        } else {
-          // Distribuir equitativamente si no hay ancho definido
-          const defaultPercentage = 100 / (colCount || 9);
-          stylesParts.push(`width: ${defaultPercentage.toFixed(2)}%`);
-        }
-        
-        // Alineación por defecto mejorada
-        let textAlign = 'center'; // Por defecto centrado para tablas simétricas
-        let verticalAlign = 'middle';
-        
-        // Alineación del Excel (si existe)
+        // Sobrescribir alineación solo si está explícitamente definida en Excel
         if (cell.alignment) {
-          if (cell.alignment.horizontal) {
-            textAlign = cell.alignment.horizontal;
-          }
-          if (cell.alignment.vertical) {
-            const vAlign = cell.alignment.vertical;
-            verticalAlign = vAlign === 'middle' ? 'middle' : vAlign;
+          if (cell.alignment.horizontal && cell.alignment.horizontal !== 'general') {
+            stylesParts.push(`text-align: ${cell.alignment.horizontal} !important`);
           }
           if (cell.alignment.wrapText) {
-            stylesParts.push('white-space: normal');
+            stylesParts.push('white-space: normal !important');
             stylesParts.push('word-wrap: break-word');
-          } else {
-            stylesParts.push('white-space: nowrap');
           }
-        } else {
-          stylesParts.push('white-space: nowrap');
         }
-        
-        stylesParts.push(`text-align: ${textAlign}`);
-        stylesParts.push(`vertical-align: ${verticalAlign}`);
         
         // Fuente
         if (cell.font) {
-          if (cell.font.bold) stylesParts.push('font-weight: bold');
+          if (cell.font.bold) stylesParts.push('font-weight: 700');
           if (cell.font.italic) stylesParts.push('font-style: italic');
-          if (cell.font.size) stylesParts.push(`font-size: ${cell.font.size}px`);
+          if (cell.font.size) {
+            // Normalizar tamaños de fuente
+            const fontSize = Math.max(9, Math.min(cell.font.size, 12));
+            stylesParts.push(`font-size: ${fontSize}pt`);
+          }
           if (cell.font.color && (cell.font.color as any).argb) {
             const color = (cell.font.color as any).argb;
             if (color && color !== 'FF000000') {
@@ -404,39 +389,8 @@ export class PlantillaExcelProcessor {
           }
         }
         
-        // Bordes uniformes y simétricos
-        const hasBorders = cell.border && (
-          cell.border.top?.style || 
-          cell.border.bottom?.style || 
-          cell.border.left?.style || 
-          cell.border.right?.style
-        );
-        
-        if (hasBorders && cell.border) {
-          if (cell.border.top?.style) {
-            stylesParts.push('border-top: 1px solid #404040');
-          } else {
-            stylesParts.push('border-top: 1px solid #d4d4d4');
-          }
-          if (cell.border.bottom?.style) {
-            stylesParts.push('border-bottom: 1px solid #404040');
-          } else {
-            stylesParts.push('border-bottom: 1px solid #d4d4d4');
-          }
-          if (cell.border.left?.style) {
-            stylesParts.push('border-left: 1px solid #404040');
-          } else {
-            stylesParts.push('border-left: 1px solid #d4d4d4');
-          }
-          if (cell.border.right?.style) {
-            stylesParts.push('border-right: 1px solid #404040');
-          } else {
-            stylesParts.push('border-right: 1px solid #d4d4d4');
-          }
-        } else {
-          // Bordes ligeros por defecto para mantener estructura
-          stylesParts.push('border: 1px solid #d4d4d4');
-        }
+        // Bordes uniformes y consistentes
+        stylesParts.push('border: 1px solid #d0d0d0');
         
         const cellStyle = stylesParts.join('; ');
         
