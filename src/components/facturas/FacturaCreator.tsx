@@ -724,25 +724,25 @@ function FormularioFactura({
       </section>
 
       {/* Consignatario */}
-      <section className="space-y-2">
-        <h4 className={`font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+      <section className="space-y-4">
+        <h4 className={`font-semibold text-base ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
           Consignatario
         </h4>
         
         {/* Selector de consignatarios */}
-        <div className={`p-3 rounded border ${
-          theme === 'dark' ? 'bg-gray-900 border-gray-600' : 'bg-blue-50 border-blue-300'
+        <div className={`p-4 rounded-lg border-2 ${
+          theme === 'dark' ? 'bg-gray-800/50 border-gray-600' : 'bg-blue-50 border-blue-300'
         }`}>
-          <label className={`block text-xs font-semibold mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+          <label className={`block text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
             📋 Seleccionar Consignatario Guardado
           </label>
           <select
             value={selectedConsignatarioId}
             onChange={(e) => handleSelectConsignatario(e.target.value)}
             disabled={loadingConsignatarios}
-            className={`w-full px-3 py-2.5 rounded border font-medium ${
+            className={`w-full px-4 py-3 rounded-lg border font-medium text-sm ${
               theme === 'dark'
-                ? 'bg-gray-800 border-gray-700 text-white'
+                ? 'bg-gray-900 border-gray-600 text-white'
                 : 'bg-white border-gray-300 text-gray-900'
             }`}
           >
@@ -756,131 +756,140 @@ function FormularioFactura({
             ))}
           </select>
           {consignatarios.length === 0 && !loadingConsignatarios && (
-            <p className={`text-xs mt-2 p-2 rounded ${theme === 'dark' ? 'bg-yellow-900/20 text-yellow-300' : 'bg-yellow-50 text-yellow-700'}`}>
+            <p className={`text-xs mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-yellow-900/20 text-yellow-300 border border-yellow-700' : 'bg-yellow-50 text-yellow-800 border border-yellow-200'}`}>
               ℹ️ No hay consignatarios registrados. Puedes agregar uno en <strong>Mantenimiento → Consignatarios</strong>.
             </p>
           )}
           {selectedConsignatarioId && (
-            <p className={`text-xs mt-2 p-2 rounded ${theme === 'dark' ? 'bg-green-900/20 text-green-300' : 'bg-green-50 text-green-700'}`}>
+            <p className={`text-xs mt-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-green-900/20 text-green-300 border border-green-700' : 'bg-green-50 text-green-700 border border-green-200'}`}>
               ✅ Datos cargados automáticamente
             </p>
           )}
         </div>
 
-        <div className={`pt-2 border-t ${theme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Company
-          </label>
-        <input
-          type="text"
-          value={factura.consignatario.nombre}
-          onChange={e => updateFactura('consignatario.nombre', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="Company"
-        />
+        {/* Separador visual */}
+        <div className={`flex items-center gap-3 my-6 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+          <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
+          <span className="text-xs font-medium">DATOS DEL CONSIGNATARIO</span>
+          <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
         </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Address
-          </label>
-        <textarea
-          value={factura.consignatario.direccion}
-          onChange={e => updateFactura('consignatario.direccion', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="Address"
-          rows={3}
-        />
-        </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Attn
-          </label>
-        <input
-          type="text"
-          value={factura.consignatario.contacto || ''}
-          onChange={e => updateFactura('consignatario.contacto', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="Attn"
-        />
-        </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            USCC
-          </label>
-        <input
-          type="text"
-          value={factura.consignatario.usci || ''}
-          onChange={e => updateFactura('consignatario.usci', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="USCC"
-        />
-        </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            Mobile
-          </label>
-        <input
-          type="text"
-          value={factura.consignatario.telefono || factura.consignatario.telefonoContacto || ''}
-          onChange={e => {
-            updateFactura('consignatario.telefono', e.target.value);
-            updateFactura('consignatario.telefonoContacto', e.target.value);
-          }}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="Mobile"
-        />
-        </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            E-mail
-          </label>
-        <input
-          type="text"
-          value={factura.consignatario.email || ''}
-          onChange={e => updateFactura('consignatario.email', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="E-mail"
-        />
-        </div>
-        <div>
-          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-            ZIP
-          </label>
-        <input
-          type="text"
-          value={factura.consignatario.codigoPostal || ''}
-          onChange={e => updateFactura('consignatario.codigoPostal', e.target.value)}
-          className={`w-full px-3 py-2 rounded border ${
-            theme === 'dark'
-              ? 'bg-gray-800 border-gray-700 text-white'
-              : 'bg-white border-gray-300 text-gray-900'
-          }`}
-          placeholder="ZIP"
-        />
+
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Company
+            </label>
+            <input
+              type="text"
+              value={factura.consignatario.nombre}
+              onChange={e => updateFactura('consignatario.nombre', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Company"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Address
+            </label>
+            <textarea
+              value={factura.consignatario.direccion}
+              onChange={e => updateFactura('consignatario.direccion', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Address"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Attn
+            </label>
+            <input
+              type="text"
+              value={factura.consignatario.contacto || ''}
+              onChange={e => updateFactura('consignatario.contacto', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Attn"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              USCC
+            </label>
+            <input
+              type="text"
+              value={factura.consignatario.usci || ''}
+              onChange={e => updateFactura('consignatario.usci', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="USCC"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Mobile
+            </label>
+            <input
+              type="text"
+              value={factura.consignatario.telefono || factura.consignatario.telefonoContacto || ''}
+              onChange={e => {
+                updateFactura('consignatario.telefono', e.target.value);
+                updateFactura('consignatario.telefonoContacto', e.target.value);
+              }}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Mobile"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              E-mail
+            </label>
+            <input
+              type="text"
+              value={factura.consignatario.email || ''}
+              onChange={e => updateFactura('consignatario.email', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="E-mail"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              ZIP
+            </label>
+            <input
+              type="text"
+              value={factura.consignatario.codigoPostal || ''}
+              onChange={e => updateFactura('consignatario.codigoPostal', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="ZIP"
+            />
+          </div>
         </div>
       </section>
 
