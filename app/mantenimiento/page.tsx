@@ -82,7 +82,7 @@ export default function MantenimientoPage() {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState<Record<string, string>>({});
   const [bootstrapKey, setBootstrapKey] = useState('');
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios' | 'plantillas'>('usuarios');
+  const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios' | 'plantillas' | 'editor-plantillas'>('usuarios');
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
