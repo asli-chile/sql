@@ -34,7 +34,7 @@ import {
 import { SidebarSection } from '@/types/layout';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { InstructivoEmbarqueModal } from '@/components/documentos/InstructivoEmbarqueModal';
-import { FacturaProformaModal } from '@/components/documentos/FacturaProformaModal';
+import { SimpleFacturaProformaModal } from '@/components/documentos/SimpleFacturaProformaModal';
 
 interface ContenedorInfo {
   contenedor: string;
@@ -998,10 +998,9 @@ export default function GenerarDocumentosPage() {
       )}
 
       {showProformaModal && selectedContenedor && selectedBooking && (
-        <FacturaProformaModal
+        <SimpleFacturaProformaModal
           isOpen={showProformaModal}
           onClose={handleCloseProformaModal}
-          contenedor={selectedContenedor.contenedor}
           registro={selectedContenedor.registro}
         />
       )}
