@@ -834,7 +834,7 @@ export function EditorPlantillasExcel() {
               </thead>
               <tbody>
                 {rows.map((row, rowIdx) => (
-                  <tr key={rowIdx}>
+                  <tr key={rowIdx} style={{ height: `${rowHeights[rowIdx]}px`, minHeight: 0, maxHeight: `${rowHeights[rowIdx]}px` }}>
                     <td 
                       className={`w-8 text-center text-xs border cursor-pointer transition-colors ${
                         selectedRow === rowIdx
@@ -880,7 +880,9 @@ export function EditorPlantillasExcel() {
                         } ${cell.isMarker ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                         style={{
                           width: columns[colIdx].width,
-                          height: rowHeights[rowIdx],
+                          height: `${rowHeights[rowIdx]}px`,
+                          minHeight: 0,
+                          maxHeight: `${rowHeights[rowIdx]}px`,
                           fontWeight: cell.style?.bold ? 'bold' : 'normal',
                           fontStyle: cell.style?.italic ? 'italic' : 'normal',
                           textAlign: cell.style?.textAlign || 'left',
@@ -933,9 +935,14 @@ export function EditorPlantillasExcel() {
                             setSelectedRow(null);
                             setSelectedColumn(null);
                           }}
-                          className={`w-full h-full px-2 py-1 bg-transparent outline-none text-sm ${
+                          className={`w-full h-full px-2 py-0.5 bg-transparent outline-none text-sm ${
                             cell.isMarker ? 'font-mono text-blue-600 dark:text-blue-400' : ''
                           }`}
+                          style={{
+                            minHeight: 0,
+                            height: '100%',
+                            lineHeight: '1.2'
+                          }}
                           placeholder={selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'Escribe o selecciona campo...' : ''}
                         />
                       </td>
@@ -1024,11 +1031,24 @@ export function EditorPlantillasExcel() {
                       type="number"
                       min="5"
                       max="1000"
-                      value={rowHeights[selectedRow] || 30}
+                      step="1"
+                      value={rowHeights[selectedRow] ?? 30}
                       onChange={(e) => {
                         const value = parseInt(e.target.value);
-                        if (!isNaN(value)) {
+                        if (!isNaN(value) && value >= 5 && value <= 1000) {
                           actualizarAlturaFila(selectedRow, value);
+                        } else if (e.target.value === '' || parseInt(e.target.value) < 5) {
+                          // Permitir escribir valores menores a 5 temporalmente
+                          actualizarAlturaFila(selectedRow, Math.max(5, parseInt(e.target.value) || 5));
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Asegurar que al perder el foco tenga un valor válido
+                        const value = parseInt(e.target.value);
+                        if (isNaN(value) || value < 5) {
+                          actualizarAlturaFila(selectedRow, 5);
+                        } else if (value > 1000) {
+                          actualizarAlturaFila(selectedRow, 1000);
                         }
                       }}
                       className={`w-full mt-1 px-2 py-1 rounded border ${
