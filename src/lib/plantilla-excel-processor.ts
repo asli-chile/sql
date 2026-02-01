@@ -343,9 +343,10 @@ export class PlantillaExcelProcessor {
             stylesParts.push(`text-align: ${cell.alignment.horizontal}`);
           }
           if (cell.alignment.vertical) {
-            let vAlign = cell.alignment.vertical;
-            if (vAlign === 'middle') vAlign = 'center';
-            stylesParts.push(`vertical-align: ${vAlign}`);
+            const vAlign = cell.alignment.vertical;
+            // Convertir valores de ExcelJS a CSS
+            const cssVAlign = vAlign === 'middle' ? 'center' : vAlign;
+            stylesParts.push(`vertical-align: ${cssVAlign}`);
           }
           if (cell.alignment.wrapText) {
             stylesParts.push('white-space: pre-wrap');
