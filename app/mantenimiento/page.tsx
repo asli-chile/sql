@@ -380,6 +380,8 @@ export default function MantenimientoPage() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
+        {/* Header - oculto en editor-plantillas para máximo espacio */}
+        {activeTab !== 'editor-plantillas' && (
         <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
           <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
             {/* Botón hamburguesa para móvil */}
@@ -503,8 +505,9 @@ export default function MantenimientoPage() {
             </div>
           </div>
         </header>
+        )}
 
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 pb-10 pt-6 sm:pt-8">
+        <main className={`flex-1 overflow-y-auto ${activeTab !== 'editor-plantillas' ? 'px-4 sm:px-6 pb-10 pt-6 sm:pt-8' : 'p-0'}`}>
           {activeTab === 'usuarios' ? (
           <div className="mx-auto max-w-5xl">
             <div className={`border p-6 sm:p-8 ${formTone}`}>

@@ -40,11 +40,17 @@ interface Cell {
   colSpan?: number;
   rowSpan?: number;
   isMarker?: boolean;
+  isMerged?: boolean; // Si es parte de una celda fusionada
+  mergeStart?: { row: number; col: number }; // Referencia a la celda principal
 }
 
 interface Column {
   width: number;
   id: string;
+}
+
+interface RowHeight {
+  height: number;
 }
 
 // Marcadores disponibles
@@ -100,24 +106,35 @@ export function EditorPlantillasExcel() {
     Array(10).fill(null).map((_, i) => ({ id: `col-${i}`, width: 100 }))
   );
   
+  const [rowHeights, setRowHeights] = useState<number[]>(
+    Array(5).fill(30) // Altura por defecto 30px
+  );
+  
   const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+  const [selectedRange, setSelectedRange] = useState<{  
+    start: { row: number; col: number };
+    end: { row: number; col: number };
+  } | null>(null);
   const [nombrePlantilla, setNombrePlantilla] = useState('');
   const [clientePlantilla, setClientePlantilla] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>('');
+  const [showBorderSelector, setShowBorderSelector] = useState(false);
   
   const supabase = createClient();
   
   // Agregar fila
   const agregarFila = useCallback(() => {
     setRows(prev => [...prev, Array(columns.length).fill(null).map(() => ({ value: '' }))]);
+    setRowHeights(prev => [...prev, 30]); // Nueva fila con altura por defecto
   }, [columns.length]);
   
   // Eliminar fila
   const eliminarFila = useCallback(() => {
     if (rows.length > 1) {
       setRows(prev => prev.slice(0, -1));
+      setRowHeights(prev => prev.slice(0, -1));
     }
   }, [rows.length]);
   
@@ -185,6 +202,119 @@ export function EditorPlantillasExcel() {
       });
     }
   }, [selectedCell, actualizarCelda]);
+  
+  // Actualizar altura de fila
+  const actualizarAlturaFila = useCallback((rowIdx: number, height: number) => {
+    setRowHeights(prev => {
+      const newHeights = [...prev];
+      newHeights[rowIdx] = height;
+      return newHeights;
+    });
+  }, []);
+  
+  // Fusionar celdas seleccionadas
+  const fusionarCeldas = useCallback(() => {
+    if (!selectedRange) {
+      alert('Selecciona un rango de celdas para fusionar');
+      return;
+    }
+    
+    const { start, end } = selectedRange;
+    const rowSpan = end.row - start.row + 1;
+    const colSpan = end.col - start.col + 1;
+    
+    if (rowSpan === 1 && colSpan === 1) {
+      alert('Selecciona más de una celda para fusionar');
+      return;
+    }
+    
+    setRows(prev => {
+      const newRows = [...prev];
+      // Marcar la celda principal
+      newRows[start.row] = [...newRows[start.row]];
+      newRows[start.row][start.col] = {
+        ...newRows[start.row][start.col],
+        rowSpan,
+        colSpan
+      };
+      
+      // Marcar las demás celdas como fusionadas
+      for (let r = start.row; r <= end.row; r++) {
+        for (let c = start.col; c <= end.col; c++) {
+          if (r !== start.row || c !== start.col) {
+            newRows[r] = [...newRows[r]];
+            newRows[r][c] = {
+              ...newRows[r][c],
+              isMerged: true,
+              mergeStart: { row: start.row, col: start.col }
+            };
+          }
+        }
+      }
+      
+      return newRows;
+    });
+    
+    setSelectedRange(null);
+  }, [selectedRange]);
+  
+  // Separar celdas fusionadas
+  const separarCeldas = useCallback(() => {
+    if (!selectedCell) return;
+    
+    const cell = rows[selectedCell.row]?.[selectedCell.col];
+    if (!cell?.rowSpan && !cell?.colSpan) {
+      alert('Esta celda no está fusionada');
+      return;
+    }
+    
+    const rowSpan = cell.rowSpan || 1;
+    const colSpan = cell.colSpan || 1;
+    
+    setRows(prev => {
+      const newRows = [...prev];
+      
+      // Limpiar la celda principal
+      newRows[selectedCell.row] = [...newRows[selectedCell.row]];
+      const { rowSpan: _, colSpan: __, ...cellWithoutMerge } = newRows[selectedCell.row][selectedCell.col];
+      newRows[selectedCell.row][selectedCell.col] = cellWithoutMerge;
+      
+      // Limpiar las celdas secundarias
+      for (let r = selectedCell.row; r < selectedCell.row + rowSpan; r++) {
+        for (let c = selectedCell.col; c < selectedCell.col + colSpan; c++) {
+          if (r !== selectedCell.row || c !== selectedCell.col) {
+            newRows[r] = [...newRows[r]];
+            const { isMerged: _, mergeStart: __, ...cleanCell } = newRows[r][c];
+            newRows[r][c] = cleanCell;
+          }
+        }
+      }
+      
+      return newRows;
+    });
+  }, [selectedCell, rows]);
+  
+  // Aplicar bordes personalizados
+  const aplicarBordes = useCallback((borderStyle: string) => {
+    if (!selectedCell) return;
+    
+    const borderConfig = {
+      'all': { top: 1, right: 1, bottom: 1, left: 1 },
+      'outer': { top: 1, right: 1, bottom: 1, left: 1 },
+      'inner': { top: 0, right: 0, bottom: 0, left: 0 },
+      'none': { top: 0, right: 0, bottom: 0, left: 0 },
+      'top': { top: 2, right: 0, bottom: 0, left: 0 },
+      'bottom': { top: 0, right: 0, bottom: 2, left: 0 },
+      'left': { top: 0, right: 0, bottom: 0, left: 2 },
+      'right': { top: 0, right: 2, bottom: 0, left: 0 },
+    }[borderStyle] || { top: 1, right: 1, bottom: 1, left: 1 };
+    
+    actualizarEstiloCelda(selectedCell.row, selectedCell.col, {
+      borderWidth: borderConfig.top // Simplificado para el ejemplo
+    });
+    
+    setShowBorderSelector(false);
+  }, [selectedCell, actualizarEstiloCelda]);
   
   // Aplicar estilo rápido a celda seleccionada
   const aplicarEstilo = useCallback((estilo: Partial<CellStyle>) => {
@@ -549,6 +679,53 @@ export function EditorPlantillasExcel() {
                     title="Color fondo"
                   />
                 </div>
+                
+                <div className="flex items-center gap-1 border-l pl-2">
+                  <button
+                    onClick={fusionarCeldas}
+                    disabled={!selectedRange}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Fusionar celdas seleccionadas"
+                  >
+                    <Combine className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={separarCeldas}
+                    disabled={!selectedCell || !rows[selectedCell.row]?.[selectedCell.col]?.rowSpan && !rows[selectedCell.row]?.[selectedCell.col]?.colSpan}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                    title="Separar celdas fusionadas"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="relative border-l pl-2">
+                  <button
+                    onClick={() => setShowBorderSelector(!showBorderSelector)}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded"
+                    title="Bordes"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <rect x="4" y="4" width="16" height="16" strokeWidth="2"/>
+                      <line x1="4" y1="12" x2="20" y2="12" strokeWidth="2"/>
+                      <line x1="12" y1="4" x2="12" y2="20" strokeWidth="2"/>
+                    </svg>
+                  </button>
+                  
+                  {showBorderSelector && (
+                    <div className={`absolute top-full left-0 mt-1 p-2 rounded shadow-lg z-10 ${theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-300'}`}>
+                      <div className="grid grid-cols-2 gap-1">
+                        <button onClick={() => aplicarBordes('all')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Todos</button>
+                        <button onClick={() => aplicarBordes('outer')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Exterior</button>
+                        <button onClick={() => aplicarBordes('none')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Ninguno</button>
+                        <button onClick={() => aplicarBordes('top')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Superior</button>
+                        <button onClick={() => aplicarBordes('bottom')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Inferior</button>
+                        <button onClick={() => aplicarBordes('left')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Izquierda</button>
+                        <button onClick={() => aplicarBordes('right')} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded text-xs">Derecha</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -583,13 +760,30 @@ export function EditorPlantillasExcel() {
               <tbody>
                 {rows.map((row, rowIdx) => (
                   <tr key={rowIdx}>
-                    <td className={`w-8 h-8 text-center text-xs border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-100'}`}>
-                      {rowIdx + 1}
+                    <td className={`w-8 text-center text-xs border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-100'}`}>
+                      <div className="flex flex-col items-center gap-1">
+                        <span>{rowIdx + 1}</span>
+                        <input
+                          type="number"
+                          value={rowHeights[rowIdx] || 30}
+                          onChange={(e) => actualizarAlturaFila(rowIdx, parseInt(e.target.value) || 30)}
+                          className="w-10 text-xs px-1 bg-transparent"
+                          min="20"
+                          max="200"
+                          title="Altura de fila"
+                        />
+                      </div>
                     </td>
-                    {row.map((cell, colIdx) => (
+                    {row.map((cell, colIdx) => {
+                      // Si la celda está fusionada (es secundaria), no renderizarla
+                      if (cell.isMerged) return null;
+                      
+                      return (
                       <td
                         key={`${rowIdx}-${colIdx}`}
-                        className={`border min-h-[32px] ${
+                        rowSpan={cell.rowSpan || 1}
+                        colSpan={cell.colSpan || 1}
+                        className={`border ${
                           selectedCell?.row === rowIdx && selectedCell?.col === colIdx
                             ? 'ring-2 ring-blue-500'
                             : theme === 'dark'
@@ -598,6 +792,7 @@ export function EditorPlantillasExcel() {
                         } ${cell.isMarker ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                         style={{
                           width: columns[colIdx].width,
+                          height: rowHeights[rowIdx],
                           fontWeight: cell.style?.bold ? 'bold' : 'normal',
                           fontStyle: cell.style?.italic ? 'italic' : 'normal',
                           textAlign: cell.style?.textAlign || 'left',
@@ -616,7 +811,8 @@ export function EditorPlantillasExcel() {
                           placeholder={selectedCell?.row === rowIdx && selectedCell?.col === colIdx ? 'Escribe o selecciona campo...' : ''}
                         />
                       </td>
-                    ))}
+                    );
+                    })}
                   </tr>
                 ))}
               </tbody>
