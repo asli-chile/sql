@@ -348,6 +348,7 @@ function FormularioFactura({
           calibre: '',
           kgNetoUnidad: 0,
           kgBrutoUnidad: 0,
+          precioPorKilo: 0,
           precioPorCaja: 0,
           total: 0,
         },
