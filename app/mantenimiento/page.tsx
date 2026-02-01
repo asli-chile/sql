@@ -490,7 +490,7 @@ export default function MantenimientoPage() {
               <button
                 onClick={() => setActiveTab('editor-plantillas')}
                 className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === 'editor-plantillas'
+                  (activeTab as string) === 'editor-plantillas'
                     ? theme === 'dark'
                       ? 'border-sky-500 text-sky-400'
                       : 'border-blue-600 text-blue-600'
