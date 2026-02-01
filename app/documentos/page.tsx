@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { FileText, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon, Globe, BarChart3, DollarSign, Users, Activity } from 'lucide-react';
+import { FileText, FileCheck, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon, Globe, BarChart3, DollarSign, Users, Activity } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -887,6 +887,7 @@ function DocumentosPage() {
         { label: 'Embarques', id: '/registros', isActive: pathname === '/registros', icon: Ship },
         { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText },
+        { label: 'Generar Documentos', id: '/generar-documentos', isActive: pathname === '/generar-documentos', icon: FileCheck },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: pathname === '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, FileCheck, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { PageWrapper } from '@/components/PageWrapper';
 
@@ -2667,6 +2667,7 @@ export default function RegistrosPage() {
         { label: 'Embarques', id: '/registros', isActive: true, counter: registrosCount, tone: 'violet', icon: Ship },
         { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

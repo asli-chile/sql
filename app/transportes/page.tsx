@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import type { User } from '@supabase/supabase-js';
-import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
+import { Search, RefreshCcw, Truck, Plus, ChevronLeft, ChevronRight, Ship, Globe, FileText, FileCheck, LayoutDashboard, Settings, X, Menu, User as UserIcon, Download, CheckCircle2, Trash2, AlertTriangle, Users, DollarSign, BarChart3, Filter, ChevronDown, Grid, List, ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
 import { TransporteRecord, fetchTransportes } from '@/lib/transportes-service';
 import { transportesColumns, transportesSections } from '@/components/transportes/columns';
@@ -703,6 +703,7 @@ export default function TransportesPage() {
         { label: 'Embarques', id: '/registros', icon: Ship, counter: registrosCount, tone: 'violet' },
         { label: 'Transportes', id: '/transportes', isActive: true, icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo

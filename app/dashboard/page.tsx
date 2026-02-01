@@ -19,6 +19,7 @@ import {
   ArrowRight,
   Clock,
   FileText,
+  FileCheck,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -659,6 +660,7 @@ function DashboardPage() {
         { label: 'Embarques', id: '/registros', icon: Ship, counter: registrosCount, tone: 'violet' },
         { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
         { label: 'Documentos', id: '/documentos', icon: FileText },
+        { label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck },
         { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo
