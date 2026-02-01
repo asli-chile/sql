@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import ExcelJS from 'exceljs';
@@ -115,6 +115,10 @@ export function EditorPlantillasExcel() {
     start: { row: number; col: number };
     end: { row: number; col: number };
   } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState<{ row: number; col: number } | null>(null);
+  const [selectedRow, setSelectedRow] = useState<number | null>(null);
+  const [selectedColumn, setSelectedColumn] = useState<number | null>(null);
   const [nombrePlantilla, setNombrePlantilla] = useState('');
   const [clientePlantilla, setClientePlantilla] = useState('');
   const [guardando, setGuardando] = useState(false);
@@ -212,6 +216,54 @@ export function EditorPlantillasExcel() {
     });
   }, []);
   
+  // Manejar inicio de drag
+  const handleMouseDown = useCallback((row: number, col: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    setDragStart({ row, col });
+    setIsDragging(true);
+    setSelectedCell({ row, col });
+    setSelectedRange({ start: { row, col }, end: { row, col } });
+    setSelectedRow(null);
+    setSelectedColumn(null);
+  }, []);
+  
+  // Manejar movimiento del mouse durante drag
+  const handleMouseMove = useCallback((row: number, col: number) => {
+    if (isDragging && dragStart) {
+      const startRow = Math.min(dragStart.row, row);
+      const endRow = Math.max(dragStart.row, row);
+      const startCol = Math.min(dragStart.col, col);
+      const endCol = Math.max(dragStart.col, col);
+      
+      setSelectedRange({
+        start: { row: startRow, col: startCol },
+        end: { row: endRow, col: endCol }
+      });
+    }
+  }, [isDragging, dragStart]);
+  
+  // Manejar fin de drag
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setDragStart(null);
+  }, []);
+  
+  // Manejar click en header de fila
+  const handleRowHeaderClick = useCallback((rowIdx: number) => {
+    setSelectedRow(rowIdx);
+    setSelectedColumn(null);
+    setSelectedCell(null);
+    setSelectedRange(null);
+  }, []);
+  
+  // Manejar click en header de columna
+  const handleColumnHeaderClick = useCallback((colIdx: number) => {
+    setSelectedColumn(colIdx);
+    setSelectedRow(null);
+    setSelectedCell(null);
+    setSelectedRange(null);
+  }, []);
+  
   // Fusionar celdas seleccionadas
   const fusionarCeldas = useCallback(() => {
     if (!selectedRange) {
@@ -256,6 +308,7 @@ export function EditorPlantillasExcel() {
     });
     
     setSelectedRange(null);
+    setSelectedCell({ row: start.row, col: start.col });
   }, [selectedRange]);
   
   // Separar celdas fusionadas
@@ -322,6 +375,20 @@ export function EditorPlantillasExcel() {
       actualizarEstiloCelda(selectedCell.row, selectedCell.col, estilo);
     }
   }, [selectedCell, actualizarEstiloCelda]);
+  
+  // Efecto para manejar eventos globales del mouse
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      handleMouseUp();
+    };
+    
+    if (isDragging) {
+      document.addEventListener('mouseup', handleGlobalMouseUp);
+      return () => {
+        document.removeEventListener('mouseup', handleGlobalMouseUp);
+      };
+    }
+  }, [isDragging, handleMouseUp]);
   
   // Generar vista previa
   const generarVistaPrevia = useCallback(async () => {
@@ -683,7 +750,7 @@ export function EditorPlantillasExcel() {
                 <div className="flex items-center gap-1 border-l pl-2">
                   <button
                     onClick={fusionarCeldas}
-                    disabled={!selectedRange}
+                    disabled={!selectedRange || (selectedRange.start.row === selectedRange.end.row && selectedRange.start.col === selectedRange.end.col)}
                     className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded disabled:opacity-40 disabled:cursor-not-allowed"
                     title="Fusionar celdas seleccionadas"
                   >
@@ -739,19 +806,20 @@ export function EditorPlantillasExcel() {
                   {columns.map((col, colIdx) => (
                     <th
                       key={col.id}
-                      className={`border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-100'}`}
+                      className={`border cursor-pointer transition-colors ${
+                        selectedColumn === colIdx
+                          ? theme === 'dark'
+                            ? 'bg-blue-600 border-blue-500'
+                            : 'bg-blue-500 border-blue-600'
+                          : theme === 'dark'
+                          ? 'border-gray-700 bg-gray-800'
+                          : 'border-gray-300 bg-gray-100'
+                      }`}
                       style={{ width: col.width }}
+                      onClick={() => handleColumnHeaderClick(colIdx)}
                     >
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-xs">{String.fromCharCode(65 + colIdx)}</span>
-                        <input
-                          type="number"
-                          value={col.width}
-                          onChange={(e) => actualizarAnchoColumna(colIdx, parseInt(e.target.value) || 100)}
-                          className="w-12 text-xs px-1 bg-transparent"
-                          min="50"
-                          max="500"
-                        />
+                      <div className="flex items-center justify-center px-1">
+                        <span className="text-xs font-semibold">{String.fromCharCode(65 + colIdx)}</span>
                       </div>
                     </th>
                   ))}
@@ -760,23 +828,31 @@ export function EditorPlantillasExcel() {
               <tbody>
                 {rows.map((row, rowIdx) => (
                   <tr key={rowIdx}>
-                    <td className={`w-8 text-center text-xs border ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-300 bg-gray-100'}`}>
-                      <div className="flex flex-col items-center gap-1">
-                        <span>{rowIdx + 1}</span>
-                        <input
-                          type="number"
-                          value={rowHeights[rowIdx] || 30}
-                          onChange={(e) => actualizarAlturaFila(rowIdx, parseInt(e.target.value) || 30)}
-                          className="w-10 text-xs px-1 bg-transparent"
-                          min="20"
-                          max="200"
-                          title="Altura de fila"
-                        />
-                      </div>
+                    <td 
+                      className={`w-8 text-center text-xs border cursor-pointer transition-colors ${
+                        selectedRow === rowIdx
+                          ? theme === 'dark'
+                            ? 'bg-blue-600 border-blue-500'
+                            : 'bg-blue-500 border-blue-600'
+                          : theme === 'dark'
+                          ? 'border-gray-700 bg-gray-800'
+                          : 'border-gray-300 bg-gray-100'
+                      }`}
+                      onClick={() => handleRowHeaderClick(rowIdx)}
+                    >
+                      <span className="font-semibold">{rowIdx + 1}</span>
                     </td>
                     {row.map((cell, colIdx) => {
                       // Si la celda está fusionada (es secundaria), no renderizarla
                       if (cell.isMerged) return null;
+                      
+                      // Verificar si la celda está en el rango seleccionado
+                      const isInRange = selectedRange && (
+                        rowIdx >= selectedRange.start.row &&
+                        rowIdx <= selectedRange.end.row &&
+                        colIdx >= selectedRange.start.col &&
+                        colIdx <= selectedRange.end.col
+                      );
                       
                       return (
                       <td
@@ -784,7 +860,9 @@ export function EditorPlantillasExcel() {
                         rowSpan={cell.rowSpan || 1}
                         colSpan={cell.colSpan || 1}
                         className={`border ${
-                          selectedCell?.row === rowIdx && selectedCell?.col === colIdx
+                          isInRange
+                            ? 'bg-blue-200 dark:bg-blue-900/40 ring-1 ring-blue-400'
+                            : selectedCell?.row === rowIdx && selectedCell?.col === colIdx
                             ? 'ring-2 ring-blue-500'
                             : theme === 'dark'
                             ? 'border-gray-700'
@@ -797,9 +875,20 @@ export function EditorPlantillasExcel() {
                           fontStyle: cell.style?.italic ? 'italic' : 'normal',
                           textAlign: cell.style?.textAlign || 'left',
                           color: cell.style?.color,
-                          backgroundColor: cell.style?.backgroundColor,
+                          backgroundColor: isInRange 
+                            ? (theme === 'dark' ? 'rgba(59, 130, 246, 0.3)' : 'rgba(191, 219, 254, 0.5)')
+                            : cell.style?.backgroundColor,
                         }}
-                        onClick={() => setSelectedCell({ row: rowIdx, col: colIdx })}
+                        onMouseDown={(e) => handleMouseDown(rowIdx, colIdx, e)}
+                        onMouseEnter={() => handleMouseMove(rowIdx, colIdx)}
+                        onClick={() => {
+                          if (!isDragging) {
+                            setSelectedCell({ row: rowIdx, col: colIdx });
+                            setSelectedRange({ start: { row: rowIdx, col: colIdx }, end: { row: rowIdx, col: colIdx } });
+                            setSelectedRow(null);
+                            setSelectedColumn(null);
+                          }
+                        }}
                       >
                         <input
                           type="text"
@@ -881,6 +970,76 @@ export function EditorPlantillasExcel() {
                     />
                   </label>
                 </div>
+              </div>
+            )}
+            
+            {selectedRow !== null && (
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-2 text-sm">📏 Fila Seleccionada</h4>
+                <p className="text-xs mb-2">Fila {selectedRow + 1}</p>
+                
+                <div className="space-y-2 text-xs">
+                  <label className="block">
+                    <span>Altura (px):</span>
+                    <input
+                      type="number"
+                      min="5"
+                      max="1000"
+                      value={rowHeights[selectedRow] || 30}
+                      onChange={(e) => actualizarAlturaFila(selectedRow, parseInt(e.target.value) || 30)}
+                      className={`w-full mt-1 px-2 py-1 rounded border ${
+                        theme === 'dark'
+                          ? 'bg-gray-900 border-gray-700'
+                          : 'bg-white border-gray-300'
+                      }`}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+            
+            {selectedColumn !== null && (
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-2 text-sm">📐 Columna Seleccionada</h4>
+                <p className="text-xs mb-2">Columna {String.fromCharCode(65 + selectedColumn)}</p>
+                
+                <div className="space-y-2 text-xs">
+                  <label className="block">
+                    <span>Ancho (px):</span>
+                    <input
+                      type="number"
+                      min="5"
+                      max="1000"
+                      value={columns[selectedColumn].width}
+                      onChange={(e) => actualizarAnchoColumna(selectedColumn, parseInt(e.target.value) || 100)}
+                      className={`w-full mt-1 px-2 py-1 rounded border ${
+                        theme === 'dark'
+                          ? 'bg-gray-900 border-gray-700'
+                          : 'bg-white border-gray-300'
+                      }`}
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
+            
+            {selectedRange && (selectedRange.start.row !== selectedRange.end.row || selectedRange.start.col !== selectedRange.end.col) && (
+              <div className="border-t pt-4">
+                <h4 className="font-semibold mb-2 text-sm">🔲 Rango Seleccionado</h4>
+                <p className="text-xs mb-2">
+                  {String.fromCharCode(65 + selectedRange.start.col)}{selectedRange.start.row + 1}:
+                  {String.fromCharCode(65 + selectedRange.end.col)}{selectedRange.end.row + 1}
+                </p>
+                <button
+                  onClick={fusionarCeldas}
+                  className={`w-full px-3 py-2 text-xs rounded ${
+                    theme === 'dark'
+                      ? 'bg-blue-600 hover:bg-blue-700'
+                      : 'bg-blue-500 hover:bg-blue-600'
+                  } text-white transition-colors`}
+                >
+                  Fusionar Celdas
+                </button>
               </div>
             )}
             
