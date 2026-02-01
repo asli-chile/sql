@@ -298,10 +298,19 @@ export class PlantillaExcelProcessor {
       return '<div class="p-4 text-gray-500">No hay datos para mostrar</div>';
     }
 
-    let html = '<table class="w-full border-collapse text-xs">';
+    let html = '<div class="excel-preview" style="font-family: Arial, sans-serif; font-size: 11px;">';
+    html += '<table style="border-collapse: collapse; width: 100%; table-layout: fixed;">';
+    
+    // Obtener anchos de columnas
+    const colWidths: number[] = [];
+    worksheet.columns.forEach((col, idx) => {
+      const width = col.width || 10;
+      colWidths[idx + 1] = width * 7; // Convertir a pixeles aproximados
+    });
     
     worksheet.eachRow((row, rowNumber) => {
-      html += '<tr>';
+      const height = row.height || 15;
+      html += `<tr style="height: ${height}px;">`;
       
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const value = cell.value;
@@ -309,7 +318,7 @@ export class PlantillaExcelProcessor {
         
         // Convertir diferentes tipos de valores
         if (value === null || value === undefined) {
-          displayValue = '';
+          displayValue = '&nbsp;';
         } else if (typeof value === 'object' && 'richText' in value) {
           displayValue = (value as any).richText.map((rt: any) => rt.text).join('');
         } else if (typeof value === 'object' && 'formula' in value) {
@@ -317,55 +326,96 @@ export class PlantillaExcelProcessor {
         } else if (value instanceof Date) {
           displayValue = value.toLocaleDateString();
         } else {
-          displayValue = value.toString();
+          displayValue = value.toString().replace(/\n/g, '<br>');
         }
 
-        // Estilos de la celda
-        const styles: string[] = [];
+        // Construir estilos inline
+        const stylesParts: string[] = [];
+        
+        // Ancho de columna
+        if (colWidths[colNumber]) {
+          stylesParts.push(`width: ${colWidths[colNumber]}px`);
+        }
         
         // Alineación
         if (cell.alignment) {
-          if (cell.alignment.horizontal === 'center') styles.push('text-center');
-          else if (cell.alignment.horizontal === 'right') styles.push('text-right');
-          else if (cell.alignment.horizontal === 'left') styles.push('text-left');
-        }
-        
-        // Fuente
-        const fontStyles: string[] = [];
-        if (cell.font) {
-          if (cell.font.bold) fontStyles.push('font-bold');
-          if (cell.font.italic) fontStyles.push('italic');
-          if (cell.font.size) {
-            const fontSize = Math.max(8, Math.min(16, cell.font.size));
-            fontStyles.push(`text-[${fontSize}px]`);
+          if (cell.alignment.horizontal) {
+            stylesParts.push(`text-align: ${cell.alignment.horizontal}`);
+          }
+          if (cell.alignment.vertical) {
+            let vAlign = cell.alignment.vertical;
+            if (vAlign === 'middle') vAlign = 'center';
+            stylesParts.push(`vertical-align: ${vAlign}`);
+          }
+          if (cell.alignment.wrapText) {
+            stylesParts.push('white-space: pre-wrap');
           }
         }
         
+        // Fuente
+        if (cell.font) {
+          if (cell.font.bold) stylesParts.push('font-weight: bold');
+          if (cell.font.italic) stylesParts.push('font-style: italic');
+          if (cell.font.size) stylesParts.push(`font-size: ${cell.font.size}px`);
+          if (cell.font.color && (cell.font.color as any).argb) {
+            const color = (cell.font.color as any).argb;
+            if (color && color !== 'FF000000') {
+              stylesParts.push(`color: #${color.substring(2)}`);
+            }
+          }
+          if (cell.font.underline) stylesParts.push('text-decoration: underline');
+        }
+        
         // Color de fondo
-        let bgColor = '';
         if (cell.fill && 'fgColor' in cell.fill && cell.fill.fgColor) {
           const color = (cell.fill.fgColor as any).argb;
-          if (color && color !== 'FFFFFFFF') {
-            bgColor = `background-color: #${color.substring(2)};`;
+          if (color && color !== 'FFFFFFFF' && color !== '00000000') {
+            stylesParts.push(`background-color: #${color.substring(2)}`);
           }
         }
         
         // Bordes
-        const borderStyle = 'border border-gray-300';
+        const borderParts: string[] = [];
+        if (cell.border) {
+          if (cell.border.top && cell.border.top.style) {
+            borderParts.push(`border-top: 1px solid #000`);
+          }
+          if (cell.border.bottom && cell.border.bottom.style) {
+            borderParts.push(`border-bottom: 1px solid #000`);
+          }
+          if (cell.border.left && cell.border.left.style) {
+            borderParts.push(`border-left: 1px solid #000`);
+          }
+          if (cell.border.right && cell.border.right.style) {
+            borderParts.push(`border-right: 1px solid #000`);
+          }
+        }
+        stylesParts.push(...borderParts);
         
         // Padding
-        const padding = 'px-2 py-1';
+        stylesParts.push('padding: 2px 4px');
         
-        const cellClass = `${borderStyle} ${padding} ${styles.join(' ')} ${fontStyles.join(' ')}`;
-        const cellStyle = bgColor ? ` style="${bgColor}"` : '';
+        const cellStyle = stylesParts.join('; ');
         
-        html += `<td class="${cellClass}"${cellStyle}>${displayValue}</td>`;
+        // Manejar celdas fusionadas (merged)
+        let colspan = 1;
+        let rowspan = 1;
+        if (worksheet.getCell(rowNumber, colNumber).isMerged) {
+          // Buscar el rango de la celda fusionada
+          const masterCell = worksheet.getCell(rowNumber, colNumber).master;
+          if (masterCell && masterCell.address === cell.address) {
+            // Esta es la celda maestra, calcular colspan/rowspan
+            // (simplificado, ExcelJS no expone esto directamente)
+          }
+        }
+        
+        html += `<td style="${cellStyle}">${displayValue}</td>`;
       });
       
       html += '</tr>';
     });
     
-    html += '</table>';
+    html += '</table></div>';
     return html;
   }
 }
