@@ -298,22 +298,27 @@ export class PlantillaExcelProcessor {
       return '<div class="p-4 text-gray-500">No hay datos para mostrar</div>';
     }
 
-    let html = '<div class="excel-preview" style="font-family: Arial, sans-serif; font-size: 11px; overflow-x: auto; padding: 20px;">';
-    html += '<table style="border-collapse: collapse; width: 100%; max-width: 1400px; margin: 0 auto; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
+    // Timestamp único para forzar regeneración
+    const timestamp = Date.now();
+    let html = `<div class="excel-preview" data-timestamp="${timestamp}" style="font-family: \'Calibri\', Arial, sans-serif; font-size: 11pt; overflow-x: auto; padding: 16px; background: #f8f9fa;">`;
+    html += '<table style="border-collapse: separate; border-spacing: 0; width: 100%; max-width: 1200px; margin: 0 auto; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);">';
     
     // Obtener anchos de columnas y calcular ancho total
     const colWidths: number[] = [];
     let totalWidth = 0;
+    let colCount = 0;
+    
     worksheet.columns.forEach((col, idx) => {
-      const width = col.width || 10;
-      const pixelWidth = width * 7;
+      const width = col.width || 12;
+      const pixelWidth = width * 8;
       colWidths[idx + 1] = pixelWidth;
       totalWidth += pixelWidth;
+      colCount++;
     });
     
     worksheet.eachRow((row, rowNumber) => {
-      const height = row.height || 18;
-      html += `<tr style="height: ${height}px;">`;
+      const height = row.height ? row.height * 1.2 : 24;
+      html += `<tr style="height: ${height}px; min-height: 24px;">`;
       
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const value = cell.value;
@@ -334,23 +339,28 @@ export class PlantillaExcelProcessor {
 
         // Construir estilos inline
         const stylesParts: string[] = [
-          'padding: 6px 8px',
+          'padding: 8px 10px',
           'box-sizing: border-box',
-          'overflow: hidden',
-          'text-overflow: ellipsis'
+          'min-height: 24px',
+          'line-height: 1.4'
         ];
         
-        // Ancho de columna proporcional
+        // Ancho de columna equilibrado
         if (colWidths[colNumber] && totalWidth > 0) {
           const percentage = (colWidths[colNumber] / totalWidth) * 100;
-          stylesParts.push(`width: ${percentage}%`);
+          stylesParts.push(`width: ${percentage.toFixed(2)}%`);
+          stylesParts.push(`max-width: ${colWidths[colNumber]}px`);
+        } else {
+          // Distribuir equitativamente si no hay ancho definido
+          const defaultPercentage = 100 / (colCount || 9);
+          stylesParts.push(`width: ${defaultPercentage.toFixed(2)}%`);
         }
         
-        // Alineación por defecto
-        let textAlign = 'left';
+        // Alineación por defecto mejorada
+        let textAlign = 'center'; // Por defecto centrado para tablas simétricas
         let verticalAlign = 'middle';
         
-        // Alineación del Excel
+        // Alineación del Excel (si existe)
         if (cell.alignment) {
           if (cell.alignment.horizontal) {
             textAlign = cell.alignment.horizontal;
@@ -360,8 +370,13 @@ export class PlantillaExcelProcessor {
             verticalAlign = vAlign === 'middle' ? 'middle' : vAlign;
           }
           if (cell.alignment.wrapText) {
-            stylesParts.push('white-space: pre-wrap');
+            stylesParts.push('white-space: normal');
+            stylesParts.push('word-wrap: break-word');
+          } else {
+            stylesParts.push('white-space: nowrap');
           }
+        } else {
+          stylesParts.push('white-space: nowrap');
         }
         
         stylesParts.push(`text-align: ${textAlign}`);
@@ -389,31 +404,43 @@ export class PlantillaExcelProcessor {
           }
         }
         
-        // Bordes simétricos
-        if (cell.border) {
-          const borderStyles: string[] = [];
-          if (cell.border.top && cell.border.top.style) {
-            borderStyles.push(`border-top: 1px solid #333`);
-          }
-          if (cell.border.bottom && cell.border.bottom.style) {
-            borderStyles.push(`border-bottom: 1px solid #333`);
-          }
-          if (cell.border.left && cell.border.left.style) {
-            borderStyles.push(`border-left: 1px solid #333`);
-          }
-          if (cell.border.right && cell.border.right.style) {
-            borderStyles.push(`border-right: 1px solid #333`);
-          }
-          if (borderStyles.length > 0) {
-            stylesParts.push(...borderStyles);
+        // Bordes uniformes y simétricos
+        const hasBorders = cell.border && (
+          cell.border.top?.style || 
+          cell.border.bottom?.style || 
+          cell.border.left?.style || 
+          cell.border.right?.style
+        );
+        
+        if (hasBorders && cell.border) {
+          if (cell.border.top?.style) {
+            stylesParts.push('border-top: 1px solid #404040');
           } else {
-            stylesParts.push('border: 1px solid #e0e0e0');
+            stylesParts.push('border-top: 1px solid #d4d4d4');
+          }
+          if (cell.border.bottom?.style) {
+            stylesParts.push('border-bottom: 1px solid #404040');
+          } else {
+            stylesParts.push('border-bottom: 1px solid #d4d4d4');
+          }
+          if (cell.border.left?.style) {
+            stylesParts.push('border-left: 1px solid #404040');
+          } else {
+            stylesParts.push('border-left: 1px solid #d4d4d4');
+          }
+          if (cell.border.right?.style) {
+            stylesParts.push('border-right: 1px solid #404040');
+          } else {
+            stylesParts.push('border-right: 1px solid #d4d4d4');
           }
         } else {
-          stylesParts.push('border: 1px solid #e0e0e0');
+          // Bordes ligeros por defecto para mantener estructura
+          stylesParts.push('border: 1px solid #d4d4d4');
         }
         
         const cellStyle = stylesParts.join('; ');
+        
+        html += `<td style="${cellStyle}">${displayValue}</td>`;
         
         // Manejar celdas fusionadas (merged)
         let colspan = 1;
