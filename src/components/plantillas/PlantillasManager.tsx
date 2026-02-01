@@ -110,7 +110,7 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
       // Si hay un archivo nuevo, subirlo
       if (formData.archivo) {
         const fileName = `${Date.now()}-${formData.archivo.name}`;
-        const filePath = `plantillas-proforma/${fileName}`;
+        const filePath = `plantillas/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('documentos')
@@ -118,11 +118,9 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('documentos')
-          .getPublicUrl(filePath);
-
-        archivoUrl = publicUrl;
+        // Guardar solo el path relativo, no la URL pública
+        // Usaremos URLs firmadas cuando sea necesario
+        archivoUrl = filePath;
         archivoNombre = formData.archivo.name;
         archivoSize = formData.archivo.size;
       }
@@ -238,7 +236,23 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
 
   const handleDownload = async (plantilla: PlantillaProforma) => {
     try {
-      const response = await fetch(plantilla.archivo_url);
+      const supabase = createClient();
+      let archivoUrl = plantilla.archivo_url;
+      
+      // Si la URL no es absoluta, obtener URL firmada
+      if (!archivoUrl.startsWith('http')) {
+        const { data: urlData, error } = await supabase.storage
+          .from('documentos')
+          .createSignedUrl(archivoUrl, 60);
+        
+        if (error || !urlData?.signedUrl) {
+          throw new Error('No se pudo obtener URL del archivo');
+        }
+        
+        archivoUrl = urlData.signedUrl;
+      }
+      
+      const response = await fetch(archivoUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -270,9 +284,9 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
       document.body.removeChild(a);
       
       alert('✅ Vista previa generada y descargada');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generando preview:', error);
-      alert('❌ Error al generar vista previa');
+      alert(`❌ Error al generar vista previa: ${error?.message || 'Error desconocido'}`);
     }
   };
 

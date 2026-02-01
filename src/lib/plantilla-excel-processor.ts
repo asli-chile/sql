@@ -15,9 +15,19 @@ export class PlantillaExcelProcessor {
    * Carga una plantilla Excel desde una URL
    */
   async cargarPlantilla(url: string): Promise<void> {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    await this.workbook.xlsx.load(arrayBuffer);
+    try {
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Error cargando plantilla: ${response.status} ${response.statusText}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      await this.workbook.xlsx.load(arrayBuffer);
+    } catch (error: any) {
+      console.error('Error en cargarPlantilla:', error);
+      throw new Error(`No se pudo cargar la plantilla: ${error?.message || 'Error desconocido'}`);
+    }
   }
 
   /**

@@ -73,7 +73,19 @@ export async function generarFacturaConPlantilla(
       const datos = facturaADatosPlantilla(factura);
       const processor = new PlantillaExcelProcessor(datos);
       
-      await processor.cargarPlantilla(plantilla.archivo_url);
+      // Obtener URL firmada si es necesario
+      let archivoUrl = plantilla.archivo_url;
+      if (!archivoUrl.startsWith('http')) {
+        const { data: urlData } = await supabase.storage
+          .from('documentos')
+          .createSignedUrl(archivoUrl, 60);
+        
+        if (urlData?.signedUrl) {
+          archivoUrl = urlData.signedUrl;
+        }
+      }
+      
+      await processor.cargarPlantilla(archivoUrl);
       await processor.procesar();
       
       const blob = await processor.generarBlob();
@@ -131,14 +143,30 @@ export async function previsualizarPlantilla(
 ): Promise<{ blob: Blob; fileName: string }> {
   const supabase = createClient();
 
-  const { data: plantilla } = await supabase
+  const { data: plantilla, error: errorPlantilla } = await supabase
     .from('plantillas_proforma')
     .select('*')
     .eq('id', plantillaId)
     .single();
 
-  if (!plantilla) {
+  if (errorPlantilla || !plantilla) {
     throw new Error('Plantilla no encontrada');
+  }
+
+  // Obtener URL firmada del archivo
+  let archivoUrl = plantilla.archivo_url;
+  
+  // Si la URL es relativa (path en storage), obtener URL pública o firmada
+  if (!archivoUrl.startsWith('http')) {
+    const { data: urlData } = await supabase.storage
+      .from('documentos')
+      .createSignedUrl(archivoUrl, 60); // URL válida por 60 segundos
+    
+    if (urlData?.signedUrl) {
+      archivoUrl = urlData.signedUrl;
+    } else {
+      throw new Error('No se pudo obtener URL del archivo');
+    }
   }
 
   // Datos de ejemplo si no se proporcionan
@@ -221,7 +249,7 @@ export async function previsualizarPlantilla(
   };
 
   const processor = new PlantillaExcelProcessor(datos);
-  await processor.cargarPlantilla(plantilla.archivo_url);
+  await processor.cargarPlantilla(archivoUrl);
   await processor.procesar();
   
   const blob = await processor.generarBlob();
