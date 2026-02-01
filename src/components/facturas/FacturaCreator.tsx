@@ -585,6 +585,15 @@ function FormularioFactura({
         codigoPostal: consignatario.consignee_zip || '',
         usci: consignatario.consignee_uscc || '',
       },
+      notifyParty: {
+        nombre: consignatario.notify_company || '',
+        direccion: consignatario.notify_address || '',
+        email: consignatario.notify_email || '',
+        telefono: consignatario.notify_mobile || '',
+        contacto: consignatario.notify_attn || '',
+        codigoPostal: consignatario.notify_zip || '',
+        usci: consignatario.notify_uscc || '',
+      },
     }));
   };
 
@@ -593,6 +602,21 @@ function FormularioFactura({
       const newFactura = { ...prev };
       const keys = path.split('.');
       let current: any = newFactura;
+      
+      // Si estamos actualizando notifyParty y no existe, inicializarlo
+      if (keys[0] === 'notifyParty' && !newFactura.notifyParty) {
+        newFactura.notifyParty = {
+          nombre: '',
+          direccion: '',
+          email: '',
+          telefono: '',
+          contacto: '',
+          telefonoContacto: '',
+          usci: '',
+          codigoPostal: '',
+        };
+      }
+      
       for (let i = 0; i < keys.length - 1; i++) {
         current = current[keys[i]];
       }
@@ -872,6 +896,135 @@ function FormularioFactura({
               type="text"
               value={factura.consignatario.codigoPostal || ''}
               onChange={e => updateFactura('consignatario.codigoPostal', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="ZIP"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Notify Party */}
+      <section className="space-y-4">
+        <h4 className={`font-semibold text-base ${theme === 'dark' ? 'text-gray-200' : 'text-gray-800'}`}>
+          Notify Party
+        </h4>
+
+        {/* Separador visual */}
+        <div className={`flex items-center gap-3 my-6 ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
+          <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
+          <span className="text-xs font-medium">DATOS DEL NOTIFY PARTY</span>
+          <div className={`flex-1 h-px ${theme === 'dark' ? 'bg-gray-700' : 'bg-gray-300'}`}></div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Company
+            </label>
+            <input
+              type="text"
+              value={factura.notifyParty?.nombre || ''}
+              onChange={e => updateFactura('notifyParty.nombre', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Company"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Address
+            </label>
+            <textarea
+              value={factura.notifyParty?.direccion || ''}
+              onChange={e => updateFactura('notifyParty.direccion', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Address"
+              rows={3}
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Attn
+            </label>
+            <input
+              type="text"
+              value={factura.notifyParty?.contacto || ''}
+              onChange={e => updateFactura('notifyParty.contacto', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Attn"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              USCC
+            </label>
+            <input
+              type="text"
+              value={factura.notifyParty?.usci || ''}
+              onChange={e => updateFactura('notifyParty.usci', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="USCC"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Mobile
+            </label>
+            <input
+              type="text"
+              value={factura.notifyParty?.telefono || ''}
+              onChange={e => updateFactura('notifyParty.telefono', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="Mobile"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              E-mail
+            </label>
+            <input
+              type="text"
+              value={factura.notifyParty?.email || ''}
+              onChange={e => updateFactura('notifyParty.email', e.target.value)}
+              className={`w-full px-4 py-3 rounded-lg border text-sm ${
+                theme === 'dark'
+                  ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'
+                  : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+              }`}
+              placeholder="E-mail"
+            />
+          </div>
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              ZIP
+            </label>
+            <input
+              type="text"
+              value={factura.notifyParty?.codigoPostal || ''}
+              onChange={e => updateFactura('notifyParty.codigoPostal', e.target.value)}
               className={`w-full px-4 py-3 rounded-lg border text-sm ${
                 theme === 'dark'
                   ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500'

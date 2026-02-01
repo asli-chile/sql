@@ -27,6 +27,18 @@ export interface Factura {
     codigoPostal?: string;
     pais: string;
   };
+
+  // Información del Notify Party (puede ser igual o diferente al consignatario)
+  notifyParty?: {
+    nombre?: string;
+    direccion?: string;
+    email?: string;
+    telefono?: string;
+    contacto?: string;
+    telefonoContacto?: string;
+    usci?: string;
+    codigoPostal?: string;
+  };
   
   // Detalles de embarque (vienen de registros o se completan manualmente)
   embarque: {
