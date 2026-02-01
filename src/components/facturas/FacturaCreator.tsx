@@ -67,7 +67,7 @@ export function FacturaCreator({
   const [descargandoPDF, setDescargandoPDF] = useState(false);
   const [descargandoExcel, setDescargandoExcel] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null); // Para vista previa de plantilla Excel
+  const [previewExcelUrl, setPreviewExcelUrl] = useState<string | null>(null); // URL del Excel para Google Viewer
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   
@@ -165,7 +165,7 @@ export function FacturaCreator({
         }
         return null;
       });
-      setPreviewHtml(null);
+      setPreviewExcelUrl(null);
       return;
     }
 
@@ -182,7 +182,7 @@ export function FacturaCreator({
         const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
         const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
         
-        // Si hay una plantilla seleccionada (y no es tradicional), generar vista previa HTML del Excel
+        // Si hay una plantilla seleccionada (y no es tradicional), generar Excel y subirlo temporalmente
         if (plantillaSeleccionada && plantillaSeleccionada !== 'tradicional') {
           const supabase = createClient();
           let plantilla = null;
@@ -235,14 +235,38 @@ export function FacturaCreator({
               await processor.cargarPlantilla(urlData.signedUrl);
               await processor.procesar();
               
-              // Generar HTML preview
-              const htmlPreview = processor.generarHTMLPreview();
+              // Generar blob del Excel
+              const excelBlob = await processor.generarBlob();
               
-              if (!isCancelled) {
-                setPreviewUrl(null); // Limpiar URL del PDF
-                setPreviewHtml(htmlPreview);
+              // Subir temporalmente a Supabase Storage para preview
+              const tempFileName = `preview-temp/${Date.now()}-${safeRef}.xlsx`;
+              const { error: uploadError } = await supabase.storage
+                .from('documentos')
+                .upload(tempFileName, excelBlob, {
+                  contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                  upsert: true,
+                });
+              
+              if (!uploadError) {
+                // Obtener URL pública para Google Viewer
+                const { data: publicUrlData } = supabase.storage
+                  .from('documentos')
+                  .getPublicUrl(tempFileName);
+                
+                if (publicUrlData?.publicUrl && !isCancelled) {
+                  setPreviewUrl(null); // Limpiar URL del PDF
+                  setPreviewExcelUrl(publicUrlData.publicUrl);
+                  
+                  // Eliminar archivo temporal después de 2 minutos
+                  setTimeout(async () => {
+                    await supabase.storage
+                      .from('documentos')
+                      .remove([tempFileName]);
+                  }, 120000);
+                  
+                  return; // Salir temprano
+                }
               }
-              return; // Salir temprano
             }
           }
         }
@@ -261,7 +285,7 @@ export function FacturaCreator({
           URL.revokeObjectURL(url);
           return;
         }
-        setPreviewHtml(null); // Limpiar HTML
+        setPreviewExcelUrl(null); // Limpiar Excel URL
         setPreviewUrl(current => {
           if (current) {
             URL.revokeObjectURL(current);
@@ -598,11 +622,12 @@ export function FacturaCreator({
                   );
                 })()}
                 
-                {/* Vista previa HTML (plantilla Excel) */}
-                {previewHtml ? (
-                  <div 
-                    className="h-full w-full overflow-auto bg-white p-4"
-                    dangerouslySetInnerHTML={{ __html: previewHtml }}
+                {/* Vista previa Excel con Google Docs Viewer */}
+                {previewExcelUrl ? (
+                  <iframe
+                    title="Vista previa Excel con plantilla"
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewExcelUrl)}&embedded=true`}
+                    className="h-full w-full border-0"
                   />
                 ) : previewUrl ? (
                   <iframe
