@@ -814,7 +814,7 @@ export default function MantenimientoPage() {
               </div>
             )}
           </div>
-          ) : (
+          ) : activeTab === 'consignatarios' ? (
             <div className="mx-auto max-w-6xl">
               <ConsignatariosManager currentUser={currentUser} />
             </div>
