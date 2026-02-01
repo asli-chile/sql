@@ -585,16 +585,6 @@ function FormularioFactura({
         codigoPostal: consignatario.consignee_zip || '',
         usci: consignatario.consignee_uscc || '',
       },
-      notifyParty: {
-        ...prev.notifyParty,
-        nombre: consignatario.notify_company,
-        direccion: consignatario.notify_address || '',
-        email: consignatario.notify_email || '',
-        telefono: consignatario.notify_mobile || '',
-        contacto: consignatario.notify_attn || '',
-        codigoPostal: consignatario.notify_zip || '',
-        usci: consignatario.notify_uscc || '',
-      },
     }));
   };
 
