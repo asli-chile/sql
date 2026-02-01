@@ -11,6 +11,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
 import ConsignatariosManager from '@/components/consignatarios/ConsignatariosManager';
 import { PlantillasManager } from '@/components/plantillas/PlantillasManager';
+import { EditorPlantillasExcel } from '@/components/plantillas/EditorPlantillasExcel';
 import {
   LayoutDashboard,
   Ship,
@@ -484,6 +485,21 @@ export default function MantenimientoPage() {
                 <FileSpreadsheet className="h-4 w-4" />
                 <span>Plantillas</span>
               </button>
+              <button
+                onClick={() => setActiveTab('editor-plantillas')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'editor-plantillas'
+                    ? theme === 'dark'
+                      ? 'border-sky-500 text-sky-400'
+                      : 'border-blue-600 text-blue-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-200'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                <span>✨ Editor Visual</span>
+              </button>
             </div>
           </div>
         </header>
@@ -821,6 +837,10 @@ export default function MantenimientoPage() {
           ) : activeTab === 'plantillas' ? (
             <div className="mx-auto max-w-7xl">
               <PlantillasManager currentUser={currentUser} />
+            </div>
+          ) : activeTab === 'editor-plantillas' ? (
+            <div className="h-[calc(100vh-4rem)]">
+              <EditorPlantillasExcel />
             </div>
           ) : null}
         </main>
