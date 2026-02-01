@@ -20,7 +20,7 @@ interface FacturaCreatorProps {
   onClose: () => void;
   onSave: () => void;
   mode?: 'factura' | 'proforma';
-  onGenerateProforma?: (factura: Factura) => Promise<void>;
+  onGenerateProforma?: (factura: Factura, plantillaId?: string) => Promise<void>; // Agregado plantillaId
   documentosRequeridos?: {
     guiaDespacho: boolean;
     packingList: boolean;
@@ -69,6 +69,11 @@ export function FacturaCreator({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  
+  // Plantillas disponibles (nuevo)
+  const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string>('auto');
+  const [cargandoPlantillas, setCargandoPlantillas] = useState(false);
 
   // Inicializar factura cuando cambia el registro
   useEffect(() => {
@@ -80,6 +85,50 @@ export function FacturaCreator({
       setFactura(baseFactura);
     }
   }, [isOpen, registro, mode]);
+
+  // Cargar plantillas disponibles (nuevo)
+  useEffect(() => {
+    const cargarPlantillas = async () => {
+      if (!isOpen || mode !== 'proforma') return;
+      
+      setCargandoPlantillas(true);
+      try {
+        const supabase = createClient();
+        const clienteNombre = registro.shipper;
+        
+        const { data, error } = await supabase
+          .from('plantillas_proforma')
+          .select('*')
+          .eq('tipo_factura', 'proforma')
+          .eq('activa', true)
+          .or(`cliente.eq.${clienteNombre},cliente.is.null`)
+          .order('es_default', { ascending: false })
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error cargando plantillas:', error);
+          setPlantillasDisponibles([]);
+        } else {
+          setPlantillasDisponibles(data || []);
+          
+          // Auto-seleccionar plantilla default si existe
+          const plantillaDefault = (data || []).find(p => 
+            p.cliente === clienteNombre && p.es_default
+          );
+          if (plantillaDefault) {
+            setPlantillaSeleccionada(plantillaDefault.id);
+          }
+        }
+      } catch (err) {
+        console.error('Error:', err);
+        setPlantillasDisponibles([]);
+      } finally {
+        setCargandoPlantillas(false);
+      }
+    };
+
+    cargarPlantillas();
+  }, [isOpen, mode, registro.shipper]);
 
   // Calcular totales cuando cambian los productos
   const totalesCalculados = useMemo(() => {
@@ -234,7 +283,11 @@ export function FacturaCreator({
         }
         const facturaCompleta = { ...factura, totales: totalesCalculados };
         warning('Generando proforma, espera un momento...');
-        await onGenerateProforma(facturaCompleta);
+        const plantillaId = plantillaSeleccionada === 'auto' || plantillaSeleccionada === 'tradicional' 
+          ? undefined 
+          : plantillaSeleccionada;
+        
+        await onGenerateProforma(facturaCompleta, plantillaId);
         setTimeout(() => {
           onSave();
         }, 300);
@@ -341,26 +394,59 @@ export function FacturaCreator({
             {mode === 'proforma' && (
               <div className="mt-2">
                 <label className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Plantilla
+                  📋 Plantilla Excel
                 </label>
-                <select
-                  value={factura.clientePlantilla}
-                  onChange={(event) => {
-                    const selected = event.target.value;
-                    setFactura(prev => ({ ...prev, clientePlantilla: selected }));
-                  }}
-                  className={`mt-1 w-full max-w-[220px] rounded-lg border px-2 py-1 text-xs outline-none transition ${
-                    theme === 'dark'
-                      ? 'border-gray-700 bg-gray-900 text-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30'
-                      : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
-                  }`}
-                >
-                  {TEMPLATE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                {cargandoPlantillas ? (
+                  <div className="flex items-center gap-2 mt-1 text-xs">
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-500 border-t-transparent" />
+                    <span>Cargando...</span>
+                  </div>
+                ) : (
+                  <select
+                    value={plantillaSeleccionada}
+                    onChange={(event) => {
+                      setPlantillaSeleccionada(event.target.value);
+                    }}
+                    className={`mt-1 w-full max-w-xs rounded-lg border px-2 py-1.5 text-xs outline-none transition ${
+                      theme === 'dark'
+                        ? 'border-gray-700 bg-gray-900 text-white focus:border-sky-500 focus:ring-2 focus:ring-sky-500/30'
+                        : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30'
+                    }`}
+                  >
+                    <option value="auto">🤖 Auto (plantilla default del cliente)</option>
+                    <option value="tradicional">📄 Formato Tradicional (sin plantilla)</option>
+                    
+                    {plantillasDisponibles.length > 0 && (
+                      <>
+                        {plantillasDisponibles
+                          .filter(p => p.cliente === registro.shipper)
+                          .map(plantilla => (
+                            <option key={plantilla.id} value={plantilla.id}>
+                              ✨ {plantilla.nombre}
+                              {plantilla.es_default ? ' (Default)' : ''}
+                              {' - ' + plantilla.cliente}
+                            </option>
+                          ))
+                        }
+                        
+                        {plantillasDisponibles
+                          .filter(p => !p.cliente)
+                          .map(plantilla => (
+                            <option key={plantilla.id} value={plantilla.id}>
+                              🌐 {plantilla.nombre} (Genérica)
+                            </option>
+                          ))
+                        }
+                      </>
+                    )}
+                  </select>
+                )}
+                
+                {plantillasDisponibles.length === 0 && !cargandoPlantillas && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    No hay plantillas personalizadas. Se usará el formato tradicional.
+                  </p>
+                )}
               </div>
             )}
           </div>

@@ -36,6 +36,8 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import { InstructivoEmbarqueModal } from '@/components/documentos/InstructivoEmbarqueModal';
 import { SimpleFacturaProformaModal } from '@/components/documentos/SimpleFacturaProformaModal';
 import { FacturaCreator } from '@/components/facturas/FacturaCreator';
+import { Factura } from '@/types/factura';
+import { generarProformaCompleta, subirProforma } from '@/lib/proforma-generator';
 
 interface ContenedorInfo {
   contenedor: string;
@@ -532,6 +534,46 @@ export default function GenerarDocumentosPage() {
     setSelectedEspecie(null);
   };
 
+  // Handler para generar proforma desde el editor completo
+  const handleGenerateProformaFromEditor = async (factura: Factura, plantillaId?: string) => {
+    if (!selectedContenedor) {
+      throw new Error('No se seleccionó un contenedor.');
+    }
+
+    const booking = selectedContenedor.registro.booking?.trim().toUpperCase().replace(/\s+/g, '');
+    if (!booking) {
+      throw new Error('El booking es obligatorio.');
+    }
+
+    const contenedor = selectedContenedor.contenedor || '';
+
+    // Generar proforma con plantilla
+    const result = await generarProformaCompleta({
+      factura,
+      plantillaId,
+      contenedor,
+    });
+
+    // Subir archivos
+    await subirProforma(
+      booking,
+      contenedor,
+      result.pdfBlob,
+      result.pdfFileName,
+      result.excelBlob,
+      result.excelFileName
+    );
+
+    const mensaje = result.plantillaUsada
+      ? `✨ Proforma generada con plantilla "${result.plantillaUsada.nombre}"`
+      : '📄 Proforma generada con formato tradicional';
+    
+    alert(mensaje);
+    
+    // Recargar documentos existentes
+    handleCloseProformaModal();
+  };
+
   const handleToggleCliente = (cliente: string) => {
     setSelectedClientes(prev => {
       const clienteUpper = cliente.toUpperCase();
@@ -1015,6 +1057,7 @@ export default function GenerarDocumentosPage() {
           onClose={() => setShowFullEditor(false)}
           onSave={() => setShowFullEditor(false)}
           mode="proforma"
+          onGenerateProforma={handleGenerateProformaFromEditor}
         />
       )}
     </div>

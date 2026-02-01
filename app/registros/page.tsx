@@ -43,6 +43,7 @@ import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
 import { parseStoredDocumentName, formatFileDisplayName, sanitizeFileName } from '@/utils/documentUtils';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
+import { generarProformaCompleta, subirProforma } from '@/lib/proforma-generator';
 
 
 interface User {
@@ -2136,7 +2137,7 @@ export default function RegistrosPage() {
     setRegistroSeleccionadoProforma(null);
   }, []);
 
-  const handleGenerateProforma = useCallback(async (factura: Factura) => {
+  const handleGenerateProforma = useCallback(async (factura: Factura, plantillaId?: string) => {
     if (!registroSeleccionadoProforma) {
       throw new Error('No se seleccionó un registro para proforma.');
     }
@@ -2154,56 +2155,34 @@ export default function RegistrosPage() {
       throw new Error('Ya existe una proforma para este booking.');
     }
 
-    const supabase = createClient();
-    const safeBaseName = refExterna.replace(/[\\/]/g, '-').trim();
-    const fileBaseName = `${safeBaseName} PROFORMA`;
-    const bookingSegment = encodeURIComponent(booking);
+    const contenedor = Array.isArray(registroSeleccionadoProforma.contenedor) 
+      ? registroSeleccionadoProforma.contenedor.join(', ')
+      : registroSeleccionadoProforma.contenedor || '';
 
-    const pdfResult = await generarFacturaPDF(factura, {
-      returnBlob: true,
-      fileNameBase: fileBaseName,
+    // Usar la nueva función helper que maneja plantillas
+    const result = await generarProformaCompleta({
+      factura,
+      plantillaId,
+      contenedor,
     });
-    if (!pdfResult) {
-      throw new Error('No se pudo generar el PDF de la proforma.');
-    }
 
-    const excelResult = await generarFacturaExcel(factura, {
-      returnBlob: true,
-      fileNameBase: fileBaseName,
-    });
-    if (!excelResult) {
-      throw new Error('No se pudo generar el Excel de la proforma.');
-    }
-
-    const pdfPath = `factura-proforma/${bookingSegment}__${pdfResult.fileName}`;
-    const excelPath = `factura-proforma/${bookingSegment}__${excelResult.fileName}`;
-
-    const { error: pdfError } = await supabase.storage
-      .from('documentos')
-      .upload(pdfPath, pdfResult.blob, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: 'application/pdf',
-      });
-
-    if (pdfError) {
-      throw pdfError;
-    }
-
-    const { error: excelError } = await supabase.storage
-      .from('documentos')
-      .upload(excelPath, excelResult.blob, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-
-    if (excelError) {
-      throw excelError;
-    }
+    // Subir archivos
+    await subirProforma(
+      booking,
+      contenedor,
+      result.pdfBlob,
+      result.pdfFileName,
+      result.excelBlob,
+      result.excelFileName
+    );
 
     await loadProformaDocuments();
-    success('Proforma generada y subida (PDF + Excel).');
+    
+    const mensaje = result.plantillaUsada
+      ? `✨ Proforma generada con plantilla "${result.plantillaUsada.nombre}"`
+      : '📄 Proforma generada con formato tradicional';
+    
+    success(mensaje);
     handleCloseProformaCreator();
   }, [registroSeleccionadoProforma, bookingsConProforma, loadProformaDocuments, success, handleCloseProformaCreator]);
 
@@ -3007,6 +2986,7 @@ export default function RegistrosPage() {
             onClose={() => setIsFullEditorOpen(false)}
             onSave={() => setIsFullEditorOpen(false)}
             mode="proforma"
+            onGenerateProforma={handleGenerateProforma}
           />
         )}
 
