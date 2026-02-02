@@ -239,8 +239,14 @@ async function generarFacturaExcelAlma(
     productRow.getCell(6).value = producto.calibre;
     productRow.getCell(7).value = `${producto.kgNetoUnidad.toFixed(2)} Kgs.`;
     productRow.getCell(8).value = `${producto.kgBrutoUnidad.toFixed(2)} Kgs.`;
-    productRow.getCell(9).value = `US$${producto.precioPorCaja.toFixed(2)}/box`;
-    productRow.getCell(10).value = `US$${producto.total.toFixed(2)}`;
+    
+    // Precio por caja como número con formato de moneda USD
+    productRow.getCell(9).value = producto.precioPorCaja;
+    productRow.getCell(9).numFmt = '$#,##0.00';
+    
+    // Total como número con formato de moneda USD
+    productRow.getCell(10).value = producto.total;
+    productRow.getCell(10).numFmt = '$#,##0.00';
     
     // Centrar todas las celdas
     for (let i = 1; i <= 10; i++) {
@@ -256,7 +262,8 @@ async function generarFacturaExcelAlma(
   const totalsRow = worksheet.getRow(rowIndex);
   totalsRow.getCell(1).value = 'TOTALES (Totals):';
   totalsRow.getCell(1).font = { bold: true };
-  totalsRow.getCell(10).value = `US$${factura.totales.valorTotal.toFixed(2)}`;
+  totalsRow.getCell(10).value = factura.totales.valorTotal;
+  totalsRow.getCell(10).numFmt = '$#,##0.00';
   totalsRow.getCell(10).font = { bold: true };
   totalsRow.getCell(10).alignment = { horizontal: 'center', vertical: 'middle' };
   totalsRow.fill = {

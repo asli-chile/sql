@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { FileText, FileCheck, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon, Globe, BarChart3, DollarSign, Users, Activity } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -66,9 +66,11 @@ type DocumentMap = Map<string, Map<string, DocumentInfo>>; // Map<booking, Map<d
 function DocumentosPage() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { theme } = useTheme();
   const { currentUser, setCurrentUser, canEdit, canDelete } = useUser();
   const supabase = useMemo(() => createClient(), []);
+  const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
   // Estados de ordenamiento
   const [sortField, setSortField] = useState<'refCliente' | 'fechaIngreso' | 'nave' | null>(null);
@@ -284,13 +286,13 @@ function DocumentosPage() {
   // Delete documento
   const handleDeleteDocument = useCallback(async (booking: string, documentType: string) => {
     if (!confirm('¿Estás seguro de que deseas eliminar este documento?')) {
-      return;
+      return false; // Retornar false si se cancela
     }
 
     const docTypeId = DOCUMENT_TYPE_MAP[documentType];
     if (!docTypeId) {
       showError('Tipo de documento no válido');
-      return;
+      return false;
     }
 
     const bookingKey = normalizeBooking(booking).replace(/\s+/g, '');
@@ -299,28 +301,129 @@ function DocumentosPage() {
 
     if (!docInfo) {
       showError('Documento no encontrado');
-      return;
+      return false;
     }
 
     try {
       setDeletingDoc({ booking, type: documentType });
 
-      const { error: deleteError } = await supabase.storage
+      // Eliminar el archivo
+      const { error: deleteError, data: deleteData } = await supabase.storage
         .from('documentos')
         .remove([docInfo.path]);
 
-      if (deleteError) throw deleteError;
+      if (deleteError) {
+        console.error('Error eliminando archivo:', deleteError);
+        throw deleteError;
+      }
 
-      // Recargar documentos
-      await loadDocuments();
+      console.log('✅ Archivo eliminado del storage:', deleteData);
+
+      // Actualizar el estado local INMEDIATAMENTE para feedback visual
+      setDocuments(prev => {
+        const newDocs = new Map();
+        prev.forEach((bookingDocs, key) => {
+          newDocs.set(key, new Map(bookingDocs));
+        });
+        const bookingDocs = newDocs.get(bookingKey);
+        if (bookingDocs) {
+          const newBookingDocs = new Map(bookingDocs);
+          newBookingDocs.delete(docTypeId);
+          if (newBookingDocs.size === 0) {
+            newDocs.delete(bookingKey);
+          } else {
+            newDocs.set(bookingKey, newBookingDocs);
+          }
+        }
+        return new Map(newDocs);
+      });
+
+      // Esperar y verificar que el archivo realmente se eliminó
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Verificar múltiples veces que el archivo se eliminó
+      let attempts = 0;
+      const maxAttempts = 3;
+      let fileStillExists = true;
+
+      while (attempts < maxAttempts && fileStillExists) {
+        const { data: verifyData } = await supabase.storage
+          .from('documentos')
+          .list(docTypeId, { limit: 1000 });
+
+        if (verifyData && verifyData.length > 0) {
+          const fileName = docInfo.path.split('/').pop() || '';
+          const exists = verifyData.some(f => {
+            const filePath = `${docTypeId}/${f.name}`;
+            return filePath === docInfo.path || f.name === fileName;
+          });
+
+          if (exists) {
+            attempts++;
+            console.warn(`⚠️ Intento ${attempts}/${maxAttempts}: El archivo todavía existe, reintentando eliminación...`);
+            // Reintentar eliminación
+            const { error: retryError } = await supabase.storage
+              .from('documentos')
+              .remove([docInfo.path]);
+            
+            if (retryError) {
+              console.error('Error en reintento de eliminación:', retryError);
+            }
+            
+            // Esperar antes del siguiente intento
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } else {
+            fileStillExists = false;
+          }
+        } else {
+          fileStillExists = false;
+        }
+      }
+
+      if (fileStillExists) {
+        console.warn('⚠️ El archivo todavía existe después de múltiples intentos, pero el estado local se actualizó');
+      }
+
+      // Actualizar el estado local DESPUÉS de verificar la eliminación
+      // Usar una función de actualización que garantice la inmutabilidad
+      setDocuments(prev => {
+        const newDocs = new Map();
+        // Copiar todos los documentos existentes
+        prev.forEach((bookingDocs, key) => {
+          newDocs.set(key, new Map(bookingDocs));
+        });
+        
+        // Eliminar el documento específico
+        const bookingDocs = newDocs.get(bookingKey);
+        if (bookingDocs) {
+          const newBookingDocs = new Map(bookingDocs);
+          newBookingDocs.delete(docTypeId);
+          // Si no quedan documentos para este booking, eliminar la entrada
+          if (newBookingDocs.size === 0) {
+            newDocs.delete(bookingKey);
+          } else {
+            newDocs.set(bookingKey, newBookingDocs);
+          }
+        }
+        
+        // Forzar un nuevo objeto Map para que React detecte el cambio
+        return new Map(newDocs);
+      });
+
+      // NO recargar automáticamente - el estado local ya está actualizado
+      // Si hay algún useEffect que recarga, esperará más tiempo antes de hacerlo
+      // Esto evita que el documento vuelva a aparecer por caché de Supabase
+      
       success('Documento eliminado correctamente');
+      return true; // Retornar true si se eliminó correctamente
     } catch (err) {
       console.error('Error eliminando documento:', err);
       showError('No se pudo eliminar el documento.');
+      return false;
     } finally {
       setDeletingDoc(null);
     }
-  }, [documents, supabase, loadDocuments, success, showError]);
+  }, [documents, supabase, success, showError]);
 
   const loadRegistros = useCallback(async () => {
     try {
@@ -718,6 +821,43 @@ function DocumentosPage() {
   useEffect(() => {
     setRegistros(filteredRegistros);
   }, [filteredRegistros]);
+
+  // Scroll automático a la fila cuando hay un parámetro booking en la URL
+  useEffect(() => {
+    const bookingParam = searchParams?.get('booking');
+    if (bookingParam && sortedDocumentosRows.length > 0) {
+      // Normalizar el booking del parámetro
+      const normalizedParamBooking = normalizeBooking(decodeURIComponent(bookingParam)).replace(/\s+/g, '');
+      
+      // Buscar la fila correspondiente
+      const targetRow = sortedDocumentosRows.find(row => {
+        const rowBooking = normalizeBooking(row.booking).replace(/\s+/g, '');
+        return rowBooking === normalizedParamBooking;
+      });
+
+      if (targetRow) {
+        // Esperar a que la tabla se renderice completamente
+        setTimeout(() => {
+          const rowElement = rowRefs.current.get(targetRow.id);
+          if (rowElement) {
+            rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Resaltar la fila temporalmente
+            const isDark = document.documentElement.classList.contains('dark') || 
+                          window.matchMedia('(prefers-color-scheme: dark)').matches;
+            rowElement.style.backgroundColor = isDark ? 'rgba(234, 179, 8, 0.3)' : 'rgba(254, 240, 138, 0.8)';
+            setTimeout(() => {
+              rowElement.style.backgroundColor = '';
+            }, 2000);
+            
+            // Limpiar el parámetro de la URL después de hacer scroll
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.delete('booking');
+            window.history.replaceState({}, '', newUrl.toString());
+          }
+        }, 500);
+      }
+    }
+  }, [searchParams, sortedDocumentosRows]);
 
   const handleClearFilters = () => {
     setSelectedSeason(null);
@@ -1168,8 +1308,19 @@ function DocumentosPage() {
                       </tr>
                     ) : (
                       sortedDocumentosRows.map((row) => (
-                        <tr key={row.id} className={`hover:${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
-                          } transition-colors`}>
+                        <tr 
+                          key={row.id} 
+                          ref={(el) => {
+                            if (el) {
+                              rowRefs.current.set(row.id, el);
+                            } else {
+                              rowRefs.current.delete(row.id);
+                            }
+                          }}
+                          className={`hover:${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
+                          } transition-colors`}
+                          style={{}}
+                        >
                           <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
                             }`}>
                             <div className="flex flex-col space-y-0.5">
@@ -1535,9 +1686,12 @@ function DocumentosPage() {
                 <div>
                   {documentModal.hasDocument && canDeleteDoc && (
                     <button
-                      onClick={() => {
-                        handleDeleteDocument(documentModal.booking, documentModal.docType);
-                        setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null });
+                      onClick={async () => {
+                        const deleted = await handleDeleteDocument(documentModal.booking, documentModal.docType);
+                        // Cerrar el modal solo si la eliminación fue exitosa
+                        if (deleted) {
+                          setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null });
+                        }
                       }}
                       disabled={isDeleting || isUploading}
                       className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'

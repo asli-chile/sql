@@ -12,6 +12,7 @@ import { SidebarSection } from '@/types/layout';
 import ConsignatariosManager from '@/components/consignatarios/ConsignatariosManager';
 import { PlantillasManager } from '@/components/plantillas/PlantillasManager';
 import { EditorPlantillasExcel } from '@/components/plantillas/EditorPlantillasExcel';
+import { EditorPlantillasGoogleSheets } from '@/components/plantillas/EditorPlantillasGoogleSheets';
 import {
   LayoutDashboard,
   Ship,
@@ -82,10 +83,12 @@ export default function MantenimientoPage() {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState<Record<string, string>>({});
   const [bootstrapKey, setBootstrapKey] = useState('');
-  const [activeTab, setActiveTab] = useState<'usuarios' | 'consignatarios' | 'plantillas' | 'editor-plantillas'>('usuarios');
+  type TabType = 'usuarios' | 'consignatarios' | 'plantillas' | 'editor-plantillas' | 'editor-google-sheets';
+  const [activeTab, setActiveTab] = useState<TabType>('usuarios');
   
   // Helper para evitar problemas de type narrowing
   const isEditorTab = activeTab === 'editor-plantillas';
+  const isGoogleSheetsTab = activeTab === 'editor-google-sheets';
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
@@ -384,7 +387,7 @@ export default function MantenimientoPage() {
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
         {/* Header - oculto en editor-plantillas para máximo espacio */}
-        {!isEditorTab && (
+        {activeTab !== 'editor-plantillas' && activeTab !== 'editor-google-sheets' && (
         <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
           <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
             {/* Botón hamburguesa para móvil */}
@@ -505,12 +508,27 @@ export default function MantenimientoPage() {
                 <FileSpreadsheet className="h-4 w-4" />
                 <span>✨ Editor Visual</span>
               </button>
+              <button
+                onClick={() => setActiveTab('editor-google-sheets')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  isGoogleSheetsTab
+                    ? theme === 'dark'
+                      ? 'border-green-500 text-green-400'
+                      : 'border-green-600 text-green-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-200'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                <span>📊 Editor Google Sheets</span>
+              </button>
             </div>
           </div>
         </header>
         )}
 
-        <main className={`flex-1 overflow-y-auto ${!isEditorTab ? 'px-4 sm:px-6 pb-10 pt-6 sm:pt-8' : 'p-0'}`}>
+        <main className={`flex-1 overflow-y-auto ${!isEditorTab && !isGoogleSheetsTab ? 'px-4 sm:px-6 pb-10 pt-6 sm:pt-8' : 'p-0'}`}>
           {activeTab === 'usuarios' ? (
           <div className="mx-auto max-w-5xl">
             <div className={`border p-6 sm:p-8 ${formTone}`}>
@@ -847,6 +865,10 @@ export default function MantenimientoPage() {
           ) : isEditorTab ? (
             <div className="h-[calc(100vh-4rem)]">
               <EditorPlantillasExcel />
+            </div>
+          ) : isGoogleSheetsTab ? (
+            <div className="h-[calc(100vh-4rem)]">
+              <EditorPlantillasGoogleSheets />
             </div>
           ) : null}
         </main>

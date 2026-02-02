@@ -26,6 +26,10 @@ export class PlantillaExcelProcessor {
       const arrayBuffer = await response.arrayBuffer();
       console.log('📦 ArrayBuffer size:', arrayBuffer.byteLength);
       
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error('El archivo está vacío');
+      }
+      
       await this.workbook.xlsx.load(arrayBuffer);
       
       const sheetsCount = this.workbook.worksheets.length;
@@ -34,6 +38,13 @@ export class PlantillaExcelProcessor {
       if (sheetsCount === 0) {
         throw new Error('El archivo Excel no contiene hojas de trabajo');
       }
+      
+      // Log información de cada hoja
+      this.workbook.eachSheet((worksheet) => {
+        const rowCount = worksheet.rowCount;
+        const columnCount = worksheet.columnCount;
+        console.log(`  - Hoja "${worksheet.name}": ${rowCount} filas, ${columnCount} columnas`);
+      });
     } catch (error: any) {
       console.error('❌ Error en cargarPlantilla:', error);
       throw new Error(`No se pudo cargar la plantilla: ${error?.message || 'Error desconocido'}`);
@@ -45,11 +56,23 @@ export class PlantillaExcelProcessor {
    */
   async procesar(): Promise<ExcelJS.Workbook> {
     console.log('🔧 Iniciando procesamiento de plantilla...');
+    console.log('📋 Datos disponibles:', {
+      productos: this.datos.productos.length,
+      exportador: this.datos.exportador_nombre,
+      consignee: this.datos.consignee_company
+    });
     
     // Procesar cada hoja del libro
     this.workbook.eachSheet((worksheet, sheetId) => {
-      console.log(`📄 Procesando hoja ${sheetId}: "${worksheet.name}"`);
+      const rowCountBefore = worksheet.rowCount;
+      const cellCountBefore = worksheet.actualColumnCount;
+      console.log(`📄 Procesando hoja ${sheetId}: "${worksheet.name}" (${rowCountBefore} filas, ${cellCountBefore} columnas)`);
+      
       this.procesarHoja(worksheet);
+      
+      const rowCountAfter = worksheet.rowCount;
+      const cellCountAfter = worksheet.actualColumnCount;
+      console.log(`✅ Hoja "${worksheet.name}" procesada (${rowCountAfter} filas, ${cellCountAfter} columnas)`);
     });
 
     console.log('✅ Procesamiento completado');
@@ -61,23 +84,133 @@ export class PlantillaExcelProcessor {
    */
   private procesarHoja(worksheet: ExcelJS.Worksheet): void {
     const filaProductos = this.encontrarFilaProductos(worksheet);
-
-    // Si encontramos fila de productos, procesarla especialmente
+    
+    console.log(`🔍 Buscando fila de productos en hoja "${worksheet.name}"...`);
     if (filaProductos) {
+      console.log(`✅ Fila de productos encontrada en fila ${filaProductos}`);
       this.procesarTablaProductos(worksheet, filaProductos);
+    } else {
+      console.log(`ℹ️ No se encontró fila de productos en esta hoja`);
     }
 
     // Reemplazar marcadores simples en toda la hoja
+    // IMPORTANTE: Recopilar cambios primero para evitar modificar durante iteración
+    const cambios: Array<{ row: number; col: number; value: any }> = [];
+    let celdasProcesadas = 0;
+    let marcadoresEncontrados = 0;
+    
+    // Primero, recopilar todos los cambios
     worksheet.eachRow((row, rowNumber) => {
-      // Si es la fila de productos, ya la procesamos
-      if (filaProductos && rowNumber === filaProductos) return;
+      // Si es la fila de productos original, ya la procesamos (pero puede haber sido eliminada)
+      if (filaProductos && rowNumber === filaProductos) {
+        return;
+      }
 
       row.eachCell((cell) => {
-        if (cell.value && typeof cell.value === 'string') {
-          cell.value = this.reemplazarMarcadores(cell.value);
+        const value = cell.value;
+        celdasProcesadas++;
+        
+        // Procesar diferentes tipos de valores
+        if (value === null || value === undefined) {
+          return;
+        }
+        
+        if (typeof value === 'string') {
+          // Solo procesar si contiene marcadores
+          if (value.includes('{{') || value.includes('"')) {
+            const originalValue = value;
+            const processedValue = this.reemplazarMarcadores(value);
+            
+            if (processedValue !== originalValue) {
+              marcadoresEncontrados++;
+              cambios.push({ row: rowNumber, col: cell.col, value: processedValue });
+              console.log(`  📝 Fila ${rowNumber}, Col ${cell.col}: "${originalValue.substring(0, 50)}..." → "${processedValue.substring(0, 50)}..."`);
+            }
+          }
+        } else if (typeof value === 'object' && 'richText' in value) {
+          // Rich text - procesar cada parte
+          const richText = (value as any).richText;
+          if (Array.isArray(richText)) {
+            let hasMarkers = false;
+            let needsUpdate = false;
+            const processedRichText = richText.map((rt: any) => {
+              if (rt.text && typeof rt.text === 'string') {
+                if (rt.text.includes('{{') || rt.text.includes('"')) {
+                  hasMarkers = true;
+                  const processedText = this.reemplazarMarcadores(rt.text);
+                  if (processedText !== rt.text) {
+                    needsUpdate = true;
+                    return {
+                      ...rt,
+                      text: processedText
+                    };
+                  }
+                }
+              }
+              return rt;
+            });
+            if (hasMarkers && needsUpdate) {
+              marcadoresEncontrados++;
+              cambios.push({ row: rowNumber, col: cell.col, value: { richText: processedRichText } });
+            }
+          }
+        } else if (typeof value === 'object' && 'formula' in value) {
+          // Fórmulas - reemplazar marcadores en la fórmula si es string
+          const formula = (value as any).formula;
+          if (typeof formula === 'string' && (formula.includes('{{') || formula.includes('"'))) {
+            const processedFormula = this.reemplazarMarcadores(formula);
+            if (processedFormula !== formula) {
+              marcadoresEncontrados++;
+              cambios.push({ 
+                row: rowNumber, 
+                col: cell.col, 
+                value: {
+                  ...value,
+                  formula: processedFormula
+                }
+              });
+            }
+          }
         }
       });
     });
+    
+    // Ahora aplicar todos los cambios
+    console.log(`  📊 Celdas procesadas: ${celdasProcesadas}, Marcadores encontrados: ${marcadoresEncontrados}, Cambios a aplicar: ${cambios.length}`);
+    
+    cambios.forEach((cambio) => {
+      try {
+        const row = worksheet.getRow(cambio.row);
+        const cell = row.getCell(cambio.col);
+        cell.value = cambio.value;
+      } catch (error) {
+        console.error(`  ⚠️ Error aplicando cambio en fila ${cambio.row}, col ${cambio.col}:`, error);
+      }
+    });
+    
+    // También procesar las filas de productos insertadas para marcadores generales
+    if (filaProductos && this.datos.productos.length > 0) {
+      console.log(`  🔄 Procesando marcadores generales en filas de productos...`);
+      for (let i = 0; i < this.datos.productos.length; i++) {
+        const rowNumber = filaProductos + i;
+        const row = worksheet.getRow(rowNumber);
+        if (row) {
+          row.eachCell((cell) => {
+            const value = cell.value;
+            if (typeof value === 'string' && (value.includes('{{') || value.includes('"'))) {
+              // Verificar que no sea un marcador de producto (ya procesado)
+              if (!value.includes('PRODUCTO_')) {
+                const processedValue = this.reemplazarMarcadores(value);
+                if (processedValue !== value) {
+                  cell.value = processedValue;
+                  console.log(`  📝 Fila producto ${rowNumber}, Col ${cell.col}: "${value.substring(0, 30)}..." → "${processedValue.substring(0, 30)}..."`);
+                }
+              }
+            }
+          });
+        }
+      }
+    }
   }
 
   /**
@@ -109,13 +242,18 @@ export class PlantillaExcelProcessor {
    * Procesa la tabla de productos duplicando filas
    */
   private procesarTablaProductos(worksheet: ExcelJS.Worksheet, filaBase: number): void {
+    console.log(`📋 Procesando tabla de productos en fila ${filaBase}...`);
+    
     // Guardar la fila plantilla
     const filaPlantilla = worksheet.getRow(filaBase);
     const valores = filaPlantilla.values as any[];
     const estilos = this.copiarEstilosDeRow(filaPlantilla);
+    
+    console.log(`  📊 Valores en fila plantilla:`, valores.slice(0, 5).map(v => typeof v === 'string' ? v.substring(0, 30) : String(v).substring(0, 30)));
 
     // Eliminar la fila plantilla
     worksheet.spliceRows(filaBase, 1);
+    console.log(`  🗑️ Fila plantilla eliminada, insertando ${this.datos.productos.length} filas de productos...`);
 
     // Insertar una fila por cada producto
     this.datos.productos.forEach((producto, index) => {
@@ -127,8 +265,33 @@ export class PlantillaExcelProcessor {
         
         const cell = nuevaFila.getCell(colIndex);
         
-        if (typeof valor === 'string') {
-          cell.value = this.reemplazarMarcadoresProducto(valor, producto);
+        // Convertir diferentes tipos de valores a string para procesar marcadores
+        if (valor !== null && valor !== undefined) {
+          if (typeof valor === 'string') {
+            cell.value = this.reemplazarMarcadoresProducto(valor, producto);
+          } else if (typeof valor === 'object' && 'richText' in valor) {
+            // Manejar rich text
+            const richText = (valor as any).richText;
+            if (Array.isArray(richText)) {
+              const textoCompleto = richText.map((rt: any) => rt.text || '').join('');
+              const textoReemplazado = this.reemplazarMarcadoresProducto(textoCompleto, producto);
+              cell.value = { richText: [{ text: textoReemplazado }] };
+            } else {
+              cell.value = valor;
+            }
+          } else if (typeof valor === 'object' && 'formula' in valor) {
+            // Manejar fórmulas - reemplazar marcadores en la fórmula
+            const formula = (valor as any).formula || '';
+            if (typeof formula === 'string') {
+              const formulaReemplazada = this.reemplazarMarcadoresProducto(formula, producto);
+              cell.value = { formula: formulaReemplazada };
+            } else {
+              cell.value = valor;
+            }
+          } else {
+            // Otros tipos (números, fechas, etc.)
+            cell.value = valor;
+          }
         } else {
           cell.value = valor;
         }
@@ -177,6 +340,12 @@ export class PlantillaExcelProcessor {
    */
   private reemplazarMarcadores(texto: string): string {
     let resultado = texto;
+    
+    // Log si contiene marcadores
+    const tieneMarcadores = /\{\{[A-Z_]+\}\}|"[A-Z_]+"/.test(texto);
+    if (tieneMarcadores) {
+      console.log(`🔄 Reemplazando marcadores generales en: "${texto.substring(0, 100)}${texto.length > 100 ? '...' : ''}"`);
+    }
 
     // Exportador
     resultado = resultado.replace(/\{\{EXPORTADOR_NOMBRE\}\}|"EXPORTADOR_NOMBRE"/g, this.datos.exportador_nombre);
@@ -233,6 +402,11 @@ export class PlantillaExcelProcessor {
     resultado = resultado.replace(/\{\{PESO_BRUTO_TOTAL\}\}|"PESO_BRUTO_TOTAL"/g, this.datos.peso_bruto_total.toString());
     resultado = resultado.replace(/\{\{VALOR_TOTAL\}\}|"VALOR_TOTAL"/g, this.datos.valor_total.toFixed(2));
     resultado = resultado.replace(/\{\{VALOR_TOTAL_TEXTO\}\}|"VALOR_TOTAL_TEXTO"/g, this.datos.valor_total_texto);
+    
+    // Totales de productos (suma de todos los totales de productos individuales)
+    const totalProductosFinal = this.datos.productos.reduce((sum, p) => sum + (p.total || 0), 0);
+    resultado = resultado.replace(/\{\{TOTAL_PRODUCTOS_FINAL\}\}|"TOTAL_PRODUCTOS_FINAL"/g, totalProductosFinal.toFixed(2));
+    resultado = resultado.replace(/\{\{TOTAL_FOB\}\}|"TOTAL_FOB"/g, totalProductosFinal.toFixed(2));
 
     // Fecha/Hora
     resultado = resultado.replace(/\{\{FECHA_HOY\}\}|"FECHA_HOY"/g, this.datos.fecha_hoy);
@@ -248,6 +422,12 @@ export class PlantillaExcelProcessor {
    */
   private reemplazarMarcadoresProducto(texto: string, producto: ProductoPlantilla): string {
     let resultado = texto;
+    
+    // Log si el texto contiene marcadores de especie o total
+    if (texto.includes('PRODUCTO_ESPECIE') || texto.includes('PRODUCTO_TOTAL') || texto.includes('TOTAL_VALUE') || texto.includes('VALOR_TOTAL')) {
+      console.log('🔄 Reemplazando marcadores en:', texto);
+      console.log('   Producto:', { especie: producto.especie, total: producto.total, cantidad: producto.cantidad, precio_caja: producto.precio_caja });
+    }
 
     resultado = resultado.replace(/\{\{PRODUCTO_CANTIDAD\}\}|"PRODUCTO_CANTIDAD"/g, producto.cantidad.toString());
     resultado = resultado.replace(/\{\{PRODUCTO_TIPO_ENVASE\}\}|"PRODUCTO_TIPO_ENVASE"/g, producto.tipo_envase);
@@ -260,6 +440,16 @@ export class PlantillaExcelProcessor {
     resultado = resultado.replace(/\{\{PRODUCTO_KG_BRUTO_UNIDAD\}\}|"PRODUCTO_KG_BRUTO_UNIDAD"/g, producto.kg_bruto_unidad.toString());
     resultado = resultado.replace(/\{\{PRODUCTO_PRECIO_CAJA\}\}|"PRODUCTO_PRECIO_CAJA"/g, producto.precio_caja.toFixed(2));
     resultado = resultado.replace(/\{\{PRODUCTO_TOTAL\}\}|"PRODUCTO_TOTAL"/g, producto.total.toFixed(2));
+    
+    // También soportar VALOR_TOTAL y TOTAL_VALUE en productos (por compatibilidad con plantillas antiguas)
+    // Estos se reemplazan con el total del producto individual
+    resultado = resultado.replace(/\{\{VALOR_TOTAL\}\}|"VALOR_TOTAL"/g, producto.total.toFixed(2));
+    resultado = resultado.replace(/\{\{TOTAL_VALUE\}\}|"TOTAL_VALUE"/g, producto.total.toFixed(2));
+    
+    // Log del resultado si hubo cambios
+    if (resultado !== texto && (texto.includes('PRODUCTO_ESPECIE') || texto.includes('PRODUCTO_TOTAL') || texto.includes('TOTAL_VALUE') || texto.includes('VALOR_TOTAL'))) {
+      console.log('✅ Resultado:', resultado);
+    }
 
     return resultado;
   }
@@ -268,8 +458,52 @@ export class PlantillaExcelProcessor {
    * Genera el archivo Excel procesado como buffer
    */
   async generarBuffer(): Promise<ArrayBuffer> {
-    const buffer = await this.workbook.xlsx.writeBuffer();
-    return buffer as ArrayBuffer;
+    try {
+      console.log('💾 Generando buffer del workbook...');
+      console.log(`  📊 Hojas en workbook: ${this.workbook.worksheets.length}`);
+      
+      // Verificar contenido antes de generar
+      let totalCells = 0;
+      this.workbook.eachSheet((worksheet) => {
+        const rowCount = worksheet.rowCount;
+        let cellCount = 0;
+        let sampleValues: string[] = [];
+        worksheet.eachRow((row, rowNum) => {
+          row.eachCell({ includeEmpty: false }, (cell) => {
+            cellCount++;
+            if (sampleValues.length < 5 && cell.value !== null && cell.value !== undefined) {
+              const val = String(cell.value).substring(0, 50);
+              sampleValues.push(`F${rowNum}C${cell.col}: "${val}"`);
+            }
+          });
+        });
+        totalCells += cellCount;
+        console.log(`  📄 Hoja "${worksheet.name}": ${rowCount} filas, ${cellCount} celdas con contenido`);
+        if (sampleValues.length > 0) {
+          console.log(`    📝 Muestra de valores:`, sampleValues);
+        } else {
+          console.warn(`    ⚠️ ADVERTENCIA: La hoja "${worksheet.name}" no tiene celdas con contenido!`);
+        }
+      });
+      
+      if (totalCells === 0) {
+        console.error('❌ ERROR CRÍTICO: El workbook no tiene ninguna celda con contenido!');
+        throw new Error('El workbook está vacío después del procesamiento');
+      }
+      
+      const buffer = await this.workbook.xlsx.writeBuffer();
+      console.log(`✅ Buffer generado: ${buffer.byteLength} bytes`);
+      
+      if (buffer.byteLength < 1000) {
+        console.warn(`⚠️ ADVERTENCIA: El buffer es muy pequeño (${buffer.byteLength} bytes), el archivo podría estar vacío o corrupto`);
+      }
+      
+      return buffer as ArrayBuffer;
+    } catch (error: any) {
+      console.error('❌ Error generando buffer:', error);
+      console.error('  Stack:', error?.stack);
+      throw new Error(`Error al generar el archivo Excel: ${error?.message || 'Error desconocido'}`);
+    }
   }
 
   /**
@@ -300,27 +534,40 @@ export class PlantillaExcelProcessor {
 
     // Timestamp único para forzar regeneración
     const timestamp = Date.now();
-    let html = `<div class="excel-preview" data-timestamp="${timestamp}" style="font-family: \'Calibri\', Arial, sans-serif; font-size: 10pt; overflow-x: auto; padding: 20px; background: #f5f5f5;">`;
-    html += '<table style="border-collapse: collapse; width: 100%; max-width: 1400px; margin: 0 auto; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">';
+    let html = `<div class="excel-preview" data-timestamp="${timestamp}" style="font-family: 'Calibri', Arial, sans-serif; font-size: 10pt; overflow-x: auto; padding: 20px; background: #ffffff; min-height: 100vh;">`;
+    html += '<table style="border-collapse: collapse; width: 100%; max-width: 1400px; margin: 0 auto; background: white; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">';
     
-    // Contar columnas para distribución uniforme
+    // Obtener el número máximo de columnas
     let maxColumns = 0;
     worksheet.eachRow((row) => {
-      let colCount = 0;
       row.eachCell({ includeEmpty: false }, () => {
-        colCount++;
+        maxColumns = Math.max(maxColumns, row.cellCount);
       });
-      if (colCount > maxColumns) maxColumns = colCount;
     });
     
+    // Si no hay columnas, usar un valor por defecto
+    if (maxColumns === 0) maxColumns = 10;
+    
     // Calcular ancho uniforme por columna
-    const uniformWidth = maxColumns > 0 ? (100 / maxColumns).toFixed(2) : '11.11';
+    const uniformWidth = (100 / maxColumns).toFixed(2);
+    
+    // Mapa para rastrear celdas fusionadas ya procesadas
+    const processedCells = new Set<string>();
     
     worksheet.eachRow((row, rowNumber) => {
-      const height = row.height ? row.height * 1.3 : 28;
-      html += `<tr style="height: ${height}px; min-height: 28px;">`;
+      const height = row.height ? Math.max(row.height * 1.3, 20) : 28;
+      html += `<tr style="height: ${height}px; min-height: 20px;">`;
       
-      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      // Procesar todas las columnas hasta el máximo
+      for (let colNumber = 1; colNumber <= maxColumns; colNumber++) {
+        const cellKey = `${rowNumber}-${colNumber}`;
+        
+        // Si esta celda ya fue procesada como parte de una fusión, saltarla
+        if (processedCells.has(cellKey)) {
+          continue;
+        }
+        
+        const cell = worksheet.getCell(rowNumber, colNumber);
         const value = cell.value;
         let displayValue = '';
         
@@ -332,84 +579,109 @@ export class PlantillaExcelProcessor {
         } else if (typeof value === 'object' && 'formula' in value) {
           displayValue = (value as any).result?.toString() || '';
         } else if (value instanceof Date) {
-          displayValue = value.toLocaleDateString();
+          displayValue = value.toLocaleDateString('es-CL');
         } else {
-          displayValue = value.toString().replace(/\n/g, '<br>');
+          displayValue = String(value).replace(/\n/g, '<br>');
         }
 
-        // Construir estilos inline - MÁS UNIFORMES
+        // Construir estilos inline
         const stylesParts: string[] = [
-          'padding: 10px 12px',
+          'padding: 8px 10px',
           'box-sizing: border-box',
-          'min-height: 28px',
-          'line-height: 1.5',
-          `width: ${uniformWidth}%`, // Ancho uniforme para todas las columnas
-          'text-align: center', // TODO centrado por defecto
-          'vertical-align: middle', // TODO al medio verticalmente
+          'min-height: 20px',
+          'line-height: 1.4',
+          `width: ${uniformWidth}%`,
+          'vertical-align: middle',
           'font-size: 10pt',
-          'white-space: nowrap',
-          'overflow: hidden',
-          'text-overflow: ellipsis'
+          'white-space: pre-wrap',
+          'word-wrap: break-word',
+          'border: 1px solid #d0d0d0',
+          'background-color: #ffffff', // Fondo blanco por defecto
         ];
         
-        // Sobrescribir alineación solo si está explícitamente definida en Excel
+        // Alineación
         if (cell.alignment) {
           if (cell.alignment.horizontal) {
-            stylesParts.push(`text-align: ${cell.alignment.horizontal} !important`);
+            stylesParts.push(`text-align: ${cell.alignment.horizontal}`);
+          } else {
+            stylesParts.push('text-align: left'); // Por defecto izquierda
           }
           if (cell.alignment.wrapText) {
-            stylesParts.push('white-space: normal !important');
+            stylesParts.push('white-space: normal');
             stylesParts.push('word-wrap: break-word');
           }
+        } else {
+          stylesParts.push('text-align: left');
         }
         
         // Fuente
         if (cell.font) {
-          if (cell.font.bold) stylesParts.push('font-weight: 700');
+          if (cell.font.bold) stylesParts.push('font-weight: bold');
           if (cell.font.italic) stylesParts.push('font-style: italic');
           if (cell.font.size) {
-            // Normalizar tamaños de fuente
-            const fontSize = Math.max(9, Math.min(cell.font.size, 12));
+            const fontSize = Math.max(8, Math.min(cell.font.size, 14));
             stylesParts.push(`font-size: ${fontSize}pt`);
           }
           if (cell.font.color && (cell.font.color as any).argb) {
             const color = (cell.font.color as any).argb;
-            if (color && color !== 'FF000000') {
+            if (color && color !== 'FF000000' && color.length === 8) {
               stylesParts.push(`color: #${color.substring(2)}`);
             }
           }
-          if (cell.font.underline) stylesParts.push('text-decoration: underline');
         }
         
         // Color de fondo
         if (cell.fill && 'fgColor' in cell.fill && cell.fill.fgColor) {
           const color = (cell.fill.fgColor as any).argb;
-          if (color && color !== 'FFFFFFFF' && color !== '00000000') {
+          if (color && color !== 'FFFFFFFF' && color !== '00000000' && color.length === 8) {
             stylesParts.push(`background-color: #${color.substring(2)}`);
           }
         }
         
-        // Bordes uniformes y consistentes
-        stylesParts.push('border: 1px solid #d0d0d0');
-        
         const cellStyle = stylesParts.join('; ');
         
-        html += `<td style="${cellStyle}">${displayValue}</td>`;
-        
-        // Manejar celdas fusionadas (merged)
+        // Manejar celdas fusionadas
         let colspan = 1;
         let rowspan = 1;
-        if (worksheet.getCell(rowNumber, colNumber).isMerged) {
-          // Buscar el rango de la celda fusionada
-          const masterCell = worksheet.getCell(rowNumber, colNumber).master;
-          if (masterCell && masterCell.address === cell.address) {
-            // Esta es la celda maestra, calcular colspan/rowspan
-            // (simplificado, ExcelJS no expone esto directamente)
+        
+        if (cell.isMerged) {
+          // Buscar el rango de fusión
+          const master = (cell as any).master;
+          if (master) {
+            const masterAddress = master.address;
+            const masterRow = master.row;
+            const masterCol = master.col;
+            
+            // Si esta es la celda maestra
+            if (rowNumber === masterRow && colNumber === masterCol) {
+              // Intentar obtener el rango de fusión
+              worksheet.model.merges?.forEach((merge: any) => {
+                if (merge.top === masterRow && merge.left === masterCol) {
+                  colspan = merge.right - merge.left + 1;
+                  rowspan = merge.bottom - merge.top + 1;
+                  
+                  // Marcar todas las celdas fusionadas como procesadas
+                  for (let r = merge.top; r <= merge.bottom; r++) {
+                    for (let c = merge.left; c <= merge.right; c++) {
+                      if (r !== masterRow || c !== masterCol) {
+                        processedCells.add(`${r}-${c}`);
+                      }
+                    }
+                  }
+                }
+              });
+            } else {
+              // Esta celda es parte de una fusión pero no es la maestra, saltarla
+              continue;
+            }
           }
         }
         
-        html += `<td style="${cellStyle}">${displayValue}</td>`;
-      });
+        const colspanAttr = colspan > 1 ? ` colspan="${colspan}"` : '';
+        const rowspanAttr = rowspan > 1 ? ` rowspan="${rowspan}"` : '';
+        
+        html += `<td style="${cellStyle}"${colspanAttr}${rowspanAttr}>${displayValue}</td>`;
+      }
       
       html += '</tr>';
     });
@@ -481,19 +753,57 @@ export function facturaADatosPlantilla(factura: any): DatosPlantilla {
     ref_cliente: '', // Agregar si existe en el modelo
 
     // Productos
-    productos: factura.productos.map((p: any) => ({
-      cantidad: p.cantidad,
-      tipo_envase: p.tipoEnvase,
-      especie: p.especie || '',
-      variedad: p.variedad,
-      categoria: p.categoria,
-      etiqueta: p.etiqueta,
-      calibre: p.calibre,
-      kg_neto_unidad: p.kgNetoUnidad,
-      kg_bruto_unidad: p.kgBrutoUnidad,
-      precio_caja: p.precioPorCaja,
-      total: p.total,
-    })),
+    productos: factura.productos.map((p: any, index: number) => {
+      // Calcular total correctamente: cantidad × precio por caja
+      const totalCorrecto = (p.cantidad || 0) * (p.precioPorCaja || 0);
+      
+      // Asegurar que la especie tenga un valor
+      const especie = (p.especie || '').trim();
+      
+      // Debug detallado
+      console.log(`📦 Producto ${index + 1}:`, {
+        cantidad: p.cantidad,
+        precioPorCaja: p.precioPorCaja,
+        totalOriginal: p.total,
+        totalCalculado: totalCorrecto,
+        especie: especie || '(vacía)',
+        variedad: p.variedad,
+        productoCompleto: p
+      });
+      
+      if (!especie) {
+        console.warn(`⚠️ Producto ${index + 1} sin especie:`, { 
+          cantidad: p.cantidad, 
+          variedad: p.variedad, 
+          especieOriginal: p.especie,
+          producto: p 
+        });
+      }
+      
+      if (isNaN(totalCorrecto) || totalCorrecto === 0) {
+        console.warn(`⚠️ Producto ${index + 1} con total incorrecto:`, { 
+          cantidad: p.cantidad, 
+          precioPorCaja: p.precioPorCaja, 
+          totalOriginal: p.total,
+          totalCalculado: totalCorrecto,
+          producto: p
+        });
+      }
+      
+      return {
+        cantidad: p.cantidad || 0,
+        tipo_envase: p.tipoEnvase || '',
+        especie: especie,
+        variedad: p.variedad || '',
+        categoria: p.categoria || '',
+        etiqueta: p.etiqueta || '',
+        calibre: p.calibre || '',
+        kg_neto_unidad: p.kgNetoUnidad || 0,
+        kg_bruto_unidad: p.kgBrutoUnidad || 0,
+        precio_caja: p.precioPorCaja || 0,
+        total: totalCorrecto, // Usar el cálculo correcto: cantidad × precio por caja
+      };
+    }),
 
     // Totales
     cantidad_total: factura.totales.cantidadTotal,

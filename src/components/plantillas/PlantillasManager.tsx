@@ -18,6 +18,7 @@ import {
   Star,
   Copy,
   Info,
+  ExternalLink,
 } from 'lucide-react';
 import { previsualizarPlantilla } from '@/lib/plantilla-helpers';
 
@@ -344,6 +345,19 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
             <Info className="h-4 w-4" />
             <span className="hidden sm:inline">Marcadores</span>
           </button>
+          <a
+            href="/plantillas/editor-google-sheets"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              theme === 'dark'
+                ? 'bg-green-600 text-white hover:bg-green-500'
+                : 'bg-green-500 text-white hover:bg-green-600'
+            }`}
+          >
+            <ExternalLink className="h-4 w-4" />
+            <span className="hidden sm:inline">Editor Google Sheets</span>
+          </a>
           <button
             onClick={() => setShowModal(true)}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${

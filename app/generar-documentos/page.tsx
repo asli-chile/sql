@@ -862,13 +862,20 @@ export default function GenerarDocumentosPage() {
                                               </p>
                                             </div>
                                             <button
-                                              onClick={() => handleGenerarProforma(contenedor, booking)}
-                                              disabled={hasProforma}
+                                              onClick={() => {
+                                                if (hasProforma) {
+                                                  // Redirigir a la página de documentos con el booking como parámetro
+                                                  const bookingParam = encodeURIComponent(booking.booking);
+                                                  window.location.href = `/documentos?booking=${bookingParam}`;
+                                                } else {
+                                                  handleGenerarProforma(contenedor, booking);
+                                                }
+                                              }}
                                               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
                                                 hasProforma
                                                   ? theme === 'dark'
-                                                    ? 'bg-green-900/30 text-green-400 border border-green-700'
-                                                    : 'bg-green-50 text-green-700 border border-green-200'
+                                                    ? 'bg-green-900/30 text-green-400 border border-green-700 hover:bg-green-900/50 cursor-pointer'
+                                                    : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 cursor-pointer'
                                                   : theme === 'dark'
                                                     ? 'bg-violet-600 text-white hover:bg-violet-500'
                                                     : 'bg-violet-600 text-white hover:bg-violet-500'

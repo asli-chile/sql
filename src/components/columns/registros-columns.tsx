@@ -952,17 +952,26 @@ export const createRegistrosColumns = (
           );
         }
 
-        // Si hay documento proforma pero no factura, mostrar nombre y fecha
+        // Si hay documento proforma pero no factura, mostrar nombre y fecha (clickeable)
         if (documentoProforma) {
           return (
-            <div className="flex flex-col items-center justify-center gap-1 px-2 py-1 max-w-[180px]">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Redirigir a la página de documentos con el booking como parámetro
+                const bookingParam = encodeURIComponent(booking || '');
+                window.location.href = `/documentos?booking=${bookingParam}`;
+              }}
+              className="flex flex-col items-center justify-center gap-1 px-2 py-1 max-w-[180px] hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors cursor-pointer"
+              title="Ver en página de documentos"
+            >
               <span className="text-xs text-green-600 dark:text-green-400 font-medium truncate w-full text-center" title={documentoProforma.nombre}>
                 {documentoProforma.nombre}
               </span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400">
                 {documentoProforma.fecha}
               </span>
-            </div>
+            </button>
           );
         }
 

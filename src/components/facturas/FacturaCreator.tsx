@@ -138,6 +138,7 @@ export function FacturaCreator({
 
     factura.productos.forEach(producto => {
       cantidadTotal += producto.cantidad;
+      // Total = cantidad × precio por caja
       const total = producto.cantidad * producto.precioPorCaja;
       valorTotal += total;
     });
@@ -895,8 +896,8 @@ function FormularioFactura({
         }
       }
       
-      // Recalcular total: cantidad × kg neto × precio por kilo
-      producto.total = producto.cantidad * producto.kgNetoUnidad * producto.precioPorKilo;
+      // Recalcular total: cantidad × precio por caja
+      producto.total = producto.cantidad * producto.precioPorCaja;
       
       newProductos[index] = producto;
       return { ...prev, productos: newProductos };
@@ -1833,7 +1834,7 @@ function initializeFacturaFromRegistro(registro: Registro): Factura {
       {
         cantidad: 0,
         tipoEnvase: 'CASES',
-        especie: registro.especie || '',
+        especie: (registro as any).mercancia || registro.especie || '',
         variedad: '',
         categoria: 'CAT 1',
         etiqueta: registro.shipper,

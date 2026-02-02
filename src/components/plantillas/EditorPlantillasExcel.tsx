@@ -19,7 +19,8 @@ import {
   AlignRight,
   Palette,
   Combine,
-  X
+  X,
+  MousePointer2
 } from 'lucide-react';
 
 // Tipos para las celdas
@@ -125,6 +126,7 @@ export function EditorPlantillasExcel() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [showBorderSelector, setShowBorderSelector] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false); // Modo de selección para combinar celdas
   
   const supabase = createClient();
   
@@ -313,6 +315,8 @@ export function EditorPlantillasExcel() {
     
     setSelectedRange(null);
     setSelectedCell({ row: start.row, col: start.col });
+    // Desactivar modo de selección después de combinar
+    setSelectionMode(false);
   }, [selectedRange]);
   
   // Separar celdas fusionadas
@@ -380,7 +384,7 @@ export function EditorPlantillasExcel() {
     }
   }, [selectedCell, actualizarEstiloCelda]);
   
-  // Efecto para manejar eventos globales del mouse
+  // Efecto para manejar eventos globales del mouse durante el arrastre
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       handleMouseUp();
@@ -388,8 +392,11 @@ export function EditorPlantillasExcel() {
     
     if (isDragging) {
       document.addEventListener('mouseup', handleGlobalMouseUp);
+      // Prevenir selección de texto durante el arrastre
+      document.body.style.userSelect = 'none';
       return () => {
         document.removeEventListener('mouseup', handleGlobalMouseUp);
+        document.body.style.userSelect = '';
       };
     }
   }, [isDragging, handleMouseUp]);
@@ -659,6 +666,15 @@ export function EditorPlantillasExcel() {
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Barra de herramientas */}
           <div className={`flex items-center gap-2 p-2 border-b ${theme === 'dark' ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50'}`}>
+            {selectionMode && (
+              <div className={`px-3 py-1 rounded text-xs font-semibold ${
+                theme === 'dark' 
+                  ? 'bg-blue-600 text-white' 
+                  : 'bg-blue-500 text-white'
+              }`}>
+                🔲 Modo Selección: Arrastra para seleccionar celdas
+              </div>
+            )}
             <div className="flex items-center gap-1 border-r pr-2">
               <button
                 onClick={agregarFila}
@@ -752,6 +768,17 @@ export function EditorPlantillasExcel() {
                 </div>
                 
                 <div className="flex items-center gap-1 border-l pl-2">
+                  <button
+                    onClick={() => setSelectionMode(!selectionMode)}
+                    className={`p-1 rounded transition-colors ${
+                      selectionMode
+                        ? 'bg-blue-500 text-white hover:bg-blue-600'
+                        : 'hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                    title={selectionMode ? "Desactivar modo selección (volver a escribir)" : "Activar modo selección para combinar celdas"}
+                  >
+                    <MousePointer2 className="w-4 h-4" />
+                  </button>
                   <button
                     onClick={fusionarCeldas}
                     disabled={!selectedRange || (selectedRange.start.row === selectedRange.end.row && selectedRange.start.col === selectedRange.end.col)}
@@ -867,6 +894,8 @@ export function EditorPlantillasExcel() {
                       return (
                       <td
                         key={`${rowIdx}-${colIdx}`}
+                        data-row={rowIdx}
+                        data-col={colIdx}
                         rowSpan={cell.rowSpan || 1}
                         colSpan={cell.colSpan || 1}
                         className={`border ${
@@ -892,23 +921,25 @@ export function EditorPlantillasExcel() {
                             : cell.style?.backgroundColor,
                         }}
                         onMouseDown={(e) => {
-                          // Solo activar drag si no se hace click en el input
-                          if ((e.target as HTMLElement).tagName !== 'INPUT') {
+                          // Solo activar drag si el modo de selección está activo
+                          if (selectionMode) {
                             handleMouseDown(rowIdx, colIdx, e);
                           }
                         }}
                         onMouseEnter={() => {
-                          if (isDragging) {
+                          // Actualizar el rango mientras arrastramos
+                          if (isDragging && dragStart) {
                             handleMouseMove(rowIdx, colIdx);
                           }
                         }}
                         onClick={(e) => {
-                          // Solo seleccionar si no se hace click en el input
+                          // Solo seleccionar si no se hace click en el input y no estamos en modo de selección arrastrando
                           if ((e.target as HTMLElement).tagName !== 'INPUT' && !isDragging) {
                             setSelectedCell({ row: rowIdx, col: colIdx });
                             setSelectedRange({ start: { row: rowIdx, col: colIdx }, end: { row: rowIdx, col: colIdx } });
                             setSelectedRow(null);
                             setSelectedColumn(null);
+                            // NO desactivar el modo de selección aquí - solo cuando se hace click en input o se fusiona
                           }
                         }}
                       >
@@ -916,11 +947,25 @@ export function EditorPlantillasExcel() {
                           type="text"
                           value={cell.value}
                           onChange={(e) => actualizarCelda(rowIdx, colIdx, e.target.value)}
+                          disabled={selectionMode}
                           onMouseDown={(e) => {
-                            // Detener propagación para que el td no capture el evento
+                            // Si estamos en modo de selección, permitir que el evento pase al td
+                            if (selectionMode) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // Iniciar el arrastre desde el td
+                              handleMouseDown(rowIdx, colIdx, e as any);
+                              return;
+                            }
+                            // Detener propagación para que el td no capture el evento cuando no estamos en modo selección
                             e.stopPropagation();
                           }}
                           onClick={(e) => {
+                            // Si estamos en modo de selección, no hacer nada
+                            if (selectionMode) {
+                              e.stopPropagation();
+                              return;
+                            }
                             // Detener propagación y seleccionar la celda
                             e.stopPropagation();
                             setSelectedCell({ row: rowIdx, col: colIdx });
@@ -929,6 +974,10 @@ export function EditorPlantillasExcel() {
                             setSelectedColumn(null);
                           }}
                           onFocus={() => {
+                            // Si estamos en modo de selección, no hacer nada
+                            if (selectionMode) {
+                              return;
+                            }
                             // Seleccionar la celda cuando el input recibe foco
                             setSelectedCell({ row: rowIdx, col: colIdx });
                             setSelectedRange({ start: { row: rowIdx, col: colIdx }, end: { row: rowIdx, col: colIdx } });
@@ -937,7 +986,7 @@ export function EditorPlantillasExcel() {
                           }}
                           className={`w-full h-full px-2 py-0.5 bg-transparent outline-none text-sm ${
                             cell.isMarker ? 'font-mono text-blue-600 dark:text-blue-400' : ''
-                          }`}
+                          } ${selectionMode ? 'pointer-events-none cursor-crosshair' : ''}`}
                           style={{
                             minHeight: 0,
                             height: '100%',

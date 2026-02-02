@@ -192,6 +192,8 @@ export const MARCADORES_DISPONIBLES = {
   PESO_BRUTO_TOTAL: '{{PESO_BRUTO_TOTAL}}',
   VALOR_TOTAL: '{{VALOR_TOTAL}}',
   VALOR_TOTAL_TEXTO: '{{VALOR_TOTAL_TEXTO}}',
+  TOTAL_PRODUCTOS_FINAL: '{{TOTAL_PRODUCTOS_FINAL}}', // Suma de todos los totales de productos individuales
+  TOTAL_FOB: '{{TOTAL_FOB}}', // Alias de TOTAL_PRODUCTOS_FINAL (suma de todos los totales de productos)
   
   // Fecha/Hora
   FECHA_HOY: '{{FECHA_HOY}}',

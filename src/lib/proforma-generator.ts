@@ -6,6 +6,25 @@ import { generarFacturaExcel } from './factura-excel';
 import { generarFacturaPDF } from './factura-pdf';
 import { normalizeBooking } from '@/utils/documentUtils';
 
+/**
+ * Carga una plantilla desde Google Sheets y la convierte a Excel
+ */
+async function cargarPlantillaDesdeGoogleSheets(): Promise<Blob | null> {
+  try {
+    const response = await fetch('/api/google-sheets/export-proforma-template');
+    
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.message || 'Error al cargar plantilla desde Google Sheets');
+    }
+
+    return await response.blob();
+  } catch (error) {
+    console.error('Error cargando plantilla desde Google Sheets:', error);
+    return null;
+  }
+}
+
 interface GenerarProformaOptions {
   factura: Factura;
   plantillaId?: string; // ID de plantilla específica, o undefined para auto/tradicional
@@ -41,8 +60,56 @@ export async function generarProformaCompleta(
   let excelBlob: Blob | null = null;
   let excelFileName = '';
 
+  // Intentar usar plantilla desde Google Sheets si plantillaId es 'google-sheets'
+  if (plantillaId === 'google-sheets') {
+    try {
+      console.log('✅ Usando plantilla desde Google Sheets');
+      const excelBlobFromSheets = await cargarPlantillaDesdeGoogleSheets();
+      
+      if (excelBlobFromSheets) {
+        // Convertir Blob a ArrayBuffer para el procesador
+        const arrayBuffer = await excelBlobFromSheets.arrayBuffer();
+        const datos = facturaADatosPlantilla(factura);
+        const processor = new PlantillaExcelProcessor(datos);
+        
+        // Crear un workbook temporal desde el blob
+        const ExcelJS = (await import('exceljs')).default;
+        const tempWorkbook = new ExcelJS.Workbook();
+        await tempWorkbook.xlsx.load(arrayBuffer);
+        
+        // Copiar al procesador
+        processor['workbook'] = tempWorkbook;
+        await processor.procesar();
+        
+        excelBlob = await processor.generarBlob();
+        excelFileName = `${fileBaseName}.xlsx`;
+        plantillaUsada = {
+          id: 'google-sheets',
+          nombre: 'Plantilla Google Sheets',
+          cliente: null,
+          descripcion: 'Plantilla editada en Google Sheets',
+          tipo_factura: 'proforma',
+          archivo_url: 'google-sheets://FORMATO PROFORMA',
+          archivo_nombre: 'FORMATO PROFORMA',
+          archivo_size: null,
+          configuracion: {},
+          marcadores_usados: [],
+          version: 1,
+          activa: true,
+          es_default: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          created_by: null,
+        };
+      }
+    } catch (err) {
+      console.error('Error procesando plantilla desde Google Sheets:', err);
+      // Continuar con fallback
+    }
+  }
+  
   // Intentar usar plantilla si se especificó o si hay una default para el cliente
-  if (plantillaId) {
+  if (plantillaId && plantillaId !== 'google-sheets') {
     // Plantilla específica seleccionada
     const { data: plantilla } = await supabase
       .from('plantillas_proforma')
