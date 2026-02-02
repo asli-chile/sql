@@ -226,6 +226,52 @@ export async function subirProforma(
   const bookingNormalizado = normalizeBooking(booking);
   const bookingSegment = encodeURIComponent(bookingNormalizado);
 
+  // Eliminar archivos anteriores para este booking y contenedor
+  try {
+    const { data: existingFiles, error: listError } = await supabase.storage
+      .from('documentos')
+      .list('factura-proforma', {
+        limit: 1000,
+      });
+
+    if (!listError && existingFiles && existingFiles.length > 0) {
+      const filesToDelete = existingFiles
+        .filter(f => {
+          // Verificar si el archivo pertenece a este booking y contenedor
+          const separatorIndex = f.name.indexOf('__');
+          if (separatorIndex === -1) return false;
+          
+          const fileBookingSegment = f.name.slice(0, separatorIndex);
+          const rest = f.name.slice(separatorIndex + 2);
+          const fileContenedor = rest.split('__')[0];
+          
+          try {
+            const decodedBooking = normalizeBooking(decodeURIComponent(fileBookingSegment));
+            const bookingMatch = decodedBooking === bookingNormalizado || fileBookingSegment === bookingSegment;
+            const contenedorMatch = fileContenedor === contenedor;
+            return bookingMatch && contenedorMatch;
+          } catch {
+            return fileBookingSegment === bookingSegment && fileContenedor === contenedor;
+          }
+        })
+        .map(f => `factura-proforma/${f.name}`);
+
+      if (filesToDelete.length > 0) {
+        const { error: deleteError } = await supabase.storage
+          .from('documentos')
+          .remove(filesToDelete);
+
+        if (deleteError) {
+          console.warn('Error al eliminar archivos anteriores de proforma:', deleteError);
+        } else {
+          console.log(`Eliminados ${filesToDelete.length} archivo(s) anterior(es) de proforma para ${booking} (${contenedor})`);
+        }
+      }
+    }
+  } catch (deleteErr) {
+    console.warn('Error al procesar archivos anteriores de proforma:', deleteErr);
+  }
+
   // Subir PDF
   const pdfPath = `factura-proforma/${bookingSegment}__${contenedor}__${pdfFileName}`;
   const { error: pdfError } = await supabase.storage

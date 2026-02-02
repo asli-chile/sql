@@ -143,6 +143,9 @@ function DocumentosPage() {
             continue;
           }
 
+          // Agrupar archivos por booking para identificar duplicados
+          const filesByBooking = new Map<string, Array<{ file: any; booking: string; bookingKey: string }>>();
+          
           data?.forEach((file) => {
             const separatorIndex = file.name.indexOf('__');
             if (separatorIndex === -1) return;
@@ -158,25 +161,60 @@ function DocumentosPage() {
 
             if (!booking) return;
 
-            // Obtener el booking sin espacios para la clave
             const bookingKey = booking.replace(/\s+/g, '');
+            const key = `${bookingKey}__${docType}`;
+            
+            if (!filesByBooking.has(key)) {
+              filesByBooking.set(key, []);
+            }
+            
+            filesByBooking.get(key)!.push({ file, booking, bookingKey });
+          });
 
+          // Procesar cada grupo de archivos y mantener solo el más reciente
+          for (const [key, fileGroup] of filesByBooking.entries()) {
+            if (fileGroup.length === 0) continue;
+            
+            // Ordenar por fecha de actualización (más reciente primero)
+            fileGroup.sort((a, b) => {
+              const dateA = a.file.updated_at ? new Date(a.file.updated_at).getTime() : 0;
+              const dateB = b.file.updated_at ? new Date(b.file.updated_at).getTime() : 0;
+              return dateB - dateA; // Más reciente primero
+            });
+
+            const mostRecent = fileGroup[0];
+            const { bookingKey } = mostRecent;
+            
+            // Agregar el más reciente al Map
             if (!newDocuments.has(bookingKey)) {
               newDocuments.set(bookingKey, new Map());
             }
-
+            
             const bookingDocs = newDocuments.get(bookingKey)!;
+            const { originalName } = parseStoredDocumentName(mostRecent.file.name);
+            bookingDocs.set(docType, {
+              path: `${docType}/${mostRecent.file.name}`,
+              name: originalName,
+            });
 
-            // Si ya existe un documento para este tipo, mantener el más reciente
-            const existing = bookingDocs.get(docType);
-            if (!existing || (file.updated_at && (!existing.path || file.updated_at > existing.path))) {
-              const { originalName } = parseStoredDocumentName(file.name);
-              bookingDocs.set(docType, {
-                path: `${docType}/${file.name}`,
-                name: originalName,
-              });
+            // Eliminar los archivos duplicados (todos excepto el más reciente)
+            if (fileGroup.length > 1) {
+              const filesToDelete = fileGroup.slice(1).map(f => `${docType}/${f.file.name}`);
+              try {
+                const { error: deleteError } = await supabase.storage
+                  .from('documentos')
+                  .remove(filesToDelete);
+                
+                if (deleteError) {
+                  console.warn(`Error eliminando duplicados para ${mostRecent.booking}:`, deleteError);
+                } else {
+                  console.log(`Eliminados ${filesToDelete.length} archivo(s) duplicado(s) para ${mostRecent.booking} (${docType})`);
+                }
+              } catch (err) {
+                console.warn(`Error procesando duplicados para ${mostRecent.booking}:`, err);
+              }
             }
-          });
+          }
         } catch (err) {
           console.error(`Error cargando documentos ${docType}:`, err);
         }
@@ -209,18 +247,45 @@ function DocumentosPage() {
       const safeName = sanitizeFileName(file.name);
       const filePath = `${docTypeId}/${bookingSegment}__${Date.now()}-0-${safeName}`;
 
-      // Eliminar archivos anteriores para este booking y tipo si existe
-      const bookingKey = normalizedBooking.replace(/\s+/g, '');
-      const bookingDocs = documents.get(bookingKey);
-      if (bookingDocs) {
-        const existing = bookingDocs.get(docTypeId);
-        if (existing?.path) {
-          try {
-            await supabase.storage.from('documentos').remove([existing.path]);
-          } catch (deleteErr) {
-            console.warn('Error al eliminar archivo anterior:', deleteErr);
+      // Eliminar TODOS los archivos anteriores para este booking y tipo
+      try {
+        const { data: existingFiles, error: listError } = await supabase.storage
+          .from('documentos')
+          .list(docTypeId, {
+            limit: 1000,
+          });
+
+        if (!listError && existingFiles && existingFiles.length > 0) {
+          const filesToDelete = existingFiles
+            .filter(f => {
+              // Verificar si el archivo pertenece a este booking
+              const separatorIndex = f.name.indexOf('__');
+              if (separatorIndex === -1) return false;
+              
+              const fileBookingSegment = f.name.slice(0, separatorIndex);
+              try {
+                const decodedBooking = normalizeBooking(decodeURIComponent(fileBookingSegment));
+                return decodedBooking === normalizedBooking || fileBookingSegment === bookingSegment;
+              } catch {
+                return fileBookingSegment === bookingSegment;
+              }
+            })
+            .map(f => `${docTypeId}/${f.name}`);
+
+          if (filesToDelete.length > 0) {
+            const { error: deleteError } = await supabase.storage
+              .from('documentos')
+              .remove(filesToDelete);
+
+            if (deleteError) {
+              console.warn('Error al eliminar archivos anteriores:', deleteError);
+            } else {
+              console.log(`Eliminados ${filesToDelete.length} archivo(s) anterior(es) para ${booking}`);
+            }
           }
         }
+      } catch (deleteErr) {
+        console.warn('Error al procesar archivos anteriores:', deleteErr);
       }
 
       // Subir nuevo archivo
