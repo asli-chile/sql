@@ -83,6 +83,7 @@ export async function GET(request: NextRequest) {
     // Obtener formato de celdas
     const gridData = sheet.data?.[0];
     const rowData = gridData?.rowData || [];
+    const rowMetadata = gridData?.rowMetadata || [];
 
     // Crear workbook de Excel
     const workbook = new ExcelJS.Workbook();
@@ -188,21 +189,21 @@ export async function GET(request: NextRequest) {
       }
 
       // Altura de fila
-      if (rowFormat?.effectiveFormat?.rowProperties?.pixelSize) {
-        excelRow.height = rowFormat.effectiveFormat.rowProperties.pixelSize;
+      const rowHeight = rowMetadata[rowIdx]?.pixelSize;
+      if (rowHeight) {
+        excelRow.height = rowHeight;
       }
     }
 
     // Procesar celdas combinadas
-    if (gridData?.mergedCells) {
-      for (const mergedCell of gridData.mergedCells) {
+    if (sheet.merges) {
+      for (const mergedCell of sheet.merges) {
         try {
-          worksheet.mergeCells(
-            mergedCell.startRowIndex + 1,
-            mergedCell.startColumnIndex + 1,
-            mergedCell.endRowIndex,
-            mergedCell.endColumnIndex
-          );
+          const startRow = (mergedCell.startRowIndex ?? 0) + 1;
+          const startCol = (mergedCell.startColumnIndex ?? 0) + 1;
+          const endRow = (mergedCell.endRowIndex ?? 0);
+          const endCol = (mergedCell.endColumnIndex ?? 0);
+          worksheet.mergeCells(startRow, startCol, endRow, endCol);
         } catch (err) {
           // Ignorar errores de celdas ya combinadas
           console.warn('Error combinando celdas:', err);
@@ -235,8 +236,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error exportando plantilla desde Google Sheets:', error);
-    const { message, status } = handleGoogleError(error);
-    return NextResponse.json({ ok: false, message }, { status });
+    return handleGoogleError(error);
   }
 }
 

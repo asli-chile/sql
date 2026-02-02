@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error obteniendo gid de la hoja:', error);
-    const { message, status } = handleGoogleError(error);
-    return NextResponse.json({ ok: false, message }, { status });
+    return handleGoogleError(error);
   }
 }

@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
     });
     
     // Si el error ya tiene un mensaje claro, usarlo
-    if (error.message && error.message.includes('Error')) {
+    if (error instanceof Error && error.message && error.message.includes('Error')) {
       return NextResponse.json({ 
         ok: false, 
         message: error.message 
@@ -181,7 +181,6 @@ export async function POST(request: NextRequest) {
     }
     
     // Si no, usar handleGoogleError
-    const { message, status } = handleGoogleError(error);
-    return NextResponse.json({ ok: false, message }, { status });
+    return handleGoogleError(error);
   }
 }
