@@ -123,8 +123,9 @@ export class PlantillaExcelProcessor {
             
             if (processedValue !== originalValue) {
               marcadoresEncontrados++;
-              cambios.push({ row: rowNumber, col: cell.col, value: processedValue });
-              console.log(`  📝 Fila ${rowNumber}, Col ${cell.col}: "${originalValue.substring(0, 50)}..." → "${processedValue.substring(0, 50)}..."`);
+              const colNumber = typeof cell.col === 'number' ? cell.col : Number(cell.col);
+              cambios.push({ row: rowNumber, col: colNumber, value: processedValue });
+              console.log(`  📝 Fila ${rowNumber}, Col ${colNumber}: "${originalValue.substring(0, 50)}..." → "${processedValue.substring(0, 50)}..."`);
             }
           }
         } else if (typeof value === 'object' && 'richText' in value) {
@@ -151,7 +152,8 @@ export class PlantillaExcelProcessor {
             });
             if (hasMarkers && needsUpdate) {
               marcadoresEncontrados++;
-              cambios.push({ row: rowNumber, col: cell.col, value: { richText: processedRichText } });
+              const colNumber = typeof cell.col === 'number' ? cell.col : Number(cell.col);
+              cambios.push({ row: rowNumber, col: colNumber, value: { richText: processedRichText } });
             }
           }
         } else if (typeof value === 'object' && 'formula' in value) {
@@ -161,9 +163,10 @@ export class PlantillaExcelProcessor {
             const processedFormula = this.reemplazarMarcadores(formula);
             if (processedFormula !== formula) {
               marcadoresEncontrados++;
+              const colNumber = typeof cell.col === 'number' ? cell.col : Number(cell.col);
               cambios.push({ 
                 row: rowNumber, 
-                col: cell.col, 
+                col: colNumber, 
                 value: {
                   ...value,
                   formula: processedFormula
