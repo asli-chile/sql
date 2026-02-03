@@ -10,6 +10,7 @@ import { PlantillaAlma } from '@/components/facturas/PlantillaAlma';
 import { PlantillaFruitAndes } from '@/components/facturas/PlantillaFruitAndes';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
+import { generarFacturaConPlantilla } from '@/lib/plantilla-helpers';
 
 interface FacturaEditorProps {
   factura: Factura;
@@ -175,8 +176,20 @@ export function FacturaEditor({ factura, isOpen, onClose, onSave }: FacturaEdito
     setDescargandoExcel(true);
     try {
       const facturaCompleta = { ...facturaEditada, totales: totalesCalculados };
-      await generarFacturaExcel(facturaCompleta);
-      success('Excel generado exitosamente');
+      
+      // SIEMPRE usar plantilla personalizada - NO hay formato genérico
+      const resultado = await generarFacturaConPlantilla(facturaCompleta);
+      if (resultado && resultado.blob) {
+        const url = URL.createObjectURL(resultado.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = resultado.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        success('Excel generado exitosamente con plantilla personalizada');
+      }
     } catch (err: any) {
       console.error('Error generando Excel:', err);
       showError('Error al generar Excel: ' + err.message);

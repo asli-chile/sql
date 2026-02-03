@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Save, Download } from 'lucide-react';
+import { X, Save, Download, RefreshCw, TestTube } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { Factura, ProductoFactura } from '@/types/factura';
 import { Consignatario } from '@/types/consignatarios';
@@ -13,6 +13,7 @@ import { PlantillaAlma } from '@/components/facturas/PlantillaAlma';
 import { PlantillaFruitAndes } from '@/components/facturas/PlantillaFruitAndes';
 import { generarFacturaPDF } from '@/lib/factura-pdf';
 import { generarFacturaExcel } from '@/lib/factura-excel';
+import { generarFacturaConPlantilla } from '@/lib/plantilla-helpers';
 
 interface FacturaCreatorProps {
   registro: Registro;
@@ -74,8 +75,10 @@ export function FacturaCreator({
   
   // Plantillas disponibles (nuevo)
   const [plantillasDisponibles, setPlantillasDisponibles] = useState<any[]>([]);
-  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string>('auto');
+  const [plantillaSeleccionada, setPlantillaSeleccionada] = useState<string>('');
   const [cargandoPlantillas, setCargandoPlantillas] = useState(false);
+  const [actualizarVistaPrevia, setActualizarVistaPrevia] = useState(false);
+  const [vistaPreviaManual, setVistaPreviaManual] = useState(false);
 
   // Inicializar factura cuando cambia el registro
   useEffect(() => {
@@ -85,13 +88,18 @@ export function FacturaCreator({
         baseFactura.clientePlantilla = resolveTemplateFromRegistro(registro);
       }
       setFactura(baseFactura);
+      // Generar vista previa automáticamente al abrir por primera vez
+      if (mode === 'proforma') {
+        setVistaPreviaManual(true);
+        setActualizarVistaPrevia(true);
+      }
     }
   }, [isOpen, registro, mode]);
 
-  // Cargar plantillas disponibles (nuevo)
+  // Cargar plantillas disponibles (siempre, no solo en modo proforma)
   useEffect(() => {
     const cargarPlantillas = async () => {
-      if (!isOpen || mode !== 'proforma') return;
+      if (!isOpen) return;
       
       setCargandoPlantillas(true);
       try {
@@ -109,15 +117,39 @@ export function FacturaCreator({
         if (error) {
           console.error('Error cargando plantillas:', error);
           setPlantillasDisponibles([]);
+          setPlantillaSeleccionada('');
         } else {
-          setPlantillasDisponibles(data || []);
+          // Filtrar solo plantillas activas
+          const plantillasActivas = (data || []).filter(p => p.activa === true);
+          setPlantillasDisponibles(plantillasActivas);
           
-          // Auto-seleccionar plantilla default si existe
-          const plantillaDefault = (data || []).find(p => 
-            p.cliente === clienteNombre && p.es_default
-          );
-          if (plantillaDefault) {
-            setPlantillaSeleccionada(plantillaDefault.id);
+          // Seleccionar la primera plantilla disponible por defecto
+          if (plantillasActivas.length > 0) {
+            // Prioridad: 1) Default del cliente, 2) Primera del cliente, 3) Primera genérica, 4) Primera disponible
+            const plantillaDefault = plantillasActivas.find(p => 
+              p.cliente === clienteNombre && p.es_default
+            ) || plantillasActivas.find(p => p.cliente === clienteNombre) ||
+               plantillasActivas.find(p => !p.cliente && p.es_default) ||
+               plantillasActivas[0];
+            
+            if (plantillaDefault) {
+              const plantillaId = String(plantillaDefault.id);
+              setPlantillaSeleccionada(plantillaId);
+              console.log(`✅ Plantilla seleccionada por defecto: ${plantillaDefault.nombre} (${plantillaId})`);
+            } else {
+              // Si no hay plantilla default, seleccionar la primera disponible
+              const primeraPlantilla = plantillasActivas[0];
+              if (primeraPlantilla) {
+                const plantillaId = String(primeraPlantilla.id);
+                setPlantillaSeleccionada(plantillaId);
+                console.log(`✅ Primera plantilla seleccionada: ${primeraPlantilla.nombre} (${plantillaId})`);
+              } else {
+                setPlantillaSeleccionada('');
+              }
+            }
+          } else {
+            setPlantillaSeleccionada('');
+            console.warn('⚠️ No hay plantillas activas disponibles');
           }
         }
       } catch (err) {
@@ -129,7 +161,7 @@ export function FacturaCreator({
     };
 
     cargarPlantillas();
-  }, [isOpen, mode, registro.shipper]);
+  }, [isOpen, registro.shipper]);
 
   // Calcular totales cuando cambian los productos
   const totalesCalculados = useMemo(() => {
@@ -158,6 +190,163 @@ export function FacturaCreator({
     }));
   }, [totalesCalculados]);
 
+  // Función para actualizar la vista previa
+  const handleActualizarVistaPrevia = () => {
+    setActualizarVistaPrevia(true);
+    setVistaPreviaManual(true);
+  };
+
+  // Función para llenar con datos de prueba
+  const handleLlenarDatosPrueba = () => {
+    const facturaPrueba: Factura = {
+      ...factura,
+      exportador: {
+        nombre: 'EXPORTADORA ALMA FRUIT SPA',
+        rut: '76.381.706-7',
+        giro: 'EXPORTACION DE FRUTAS Y VERDURAS',
+        direccion: 'ARTURO PEREZ CANTO 1011 CURICO',
+        email: 'contacto@almafruit.cl',
+      },
+      consignatario: {
+        nombre: 'SHENZHEN JIANRONG JIAYE TRADE CO. LTD',
+        direccion: '402, KANGHE BUILDING, NO. 1 KANGHE ROAD, SHENZHEN, CHINA',
+        email: 'wingkyip@woolee.com.hk',
+        telefono: '852-25470088',
+        contacto: 'Ms. Winsom Lau',
+        telefonoContacto: '852-25470088',
+        usci: '91440300MA5F5WJU0A',
+        codigoPostal: '511400',
+        pais: 'CHINA',
+      },
+      embarque: {
+        fechaFactura: new Date().toISOString().split('T')[0],
+        numeroInvoice: `INV-${Date.now().toString().slice(-6)}`,
+        numeroEmbarque: registro.booking || '2024M4',
+        fechaEmbarque: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        motonave: registro.naveInicial || 'SKAGEN MAERSK',
+        numeroViaje: registro.viaje || '447W',
+        clausulaVenta: 'FOB',
+        paisOrigen: 'CHILE',
+        puertoEmbarque: 'SAN ANTONIO',
+        puertoDestino: 'NANSHA',
+        paisDestinoFinal: 'CHINA',
+        formaPago: 'COB1',
+        contenedor: Array.isArray(registro.contenedor) ? registro.contenedor[0] : registro.contenedor || 'MNBU407541-8',
+        pesoNetoTotal: 12000,
+        pesoBrutoTotal: 14400,
+      },
+      productos: [
+        {
+          cantidad: 4800,
+          tipoEnvase: 'CASES',
+          especie: 'CEREZA',
+          variedad: 'RED CHERRIES',
+          categoria: 'CAT 1',
+          etiqueta: 'ALMAFRUIT',
+          calibre: '2J',
+          kgNetoUnidad: 2.5,
+          kgBrutoUnidad: 3.0,
+          precioPorKilo: 14.0,
+          precioPorCaja: 35.0,
+          total: 168000.0,
+        },
+        {
+          cantidad: 3200,
+          tipoEnvase: 'CASES',
+          especie: 'CEREZA',
+          variedad: 'RED CHERRIES',
+          categoria: 'CAT 1',
+          etiqueta: 'ALMAFRUIT',
+          calibre: '3J',
+          kgNetoUnidad: 2.5,
+          kgBrutoUnidad: 3.0,
+          precioPorKilo: 12.0,
+          precioPorCaja: 30.0,
+          total: 96000.0,
+        },
+      ],
+    };
+    
+    setFactura(facturaPrueba);
+    success('Datos de prueba cargados');
+  };
+
+  // Función para generar la vista previa (usando useCallback para evitar recrear la función)
+  const generarVistaPrevia = React.useCallback(async () => {
+    if (mode !== 'proforma') {
+      return;
+    }
+
+    setIsPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewMessage(null);
+    
+    try {
+      const facturaCompleta = { ...factura, totales: totalesCalculados };
+      const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
+      const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
+      
+      // Si hay una plantilla seleccionada, generar vista previa HTML del Excel
+      if (plantillaSeleccionada) {
+        const supabase = createClient();
+        
+        // Obtener la plantilla seleccionada
+        const { data: plantilla } = await supabase
+          .from('plantillas_proforma')
+          .select('*')
+          .eq('id', plantillaSeleccionada)
+          .eq('activa', true)
+          .single();
+        
+        if (plantilla) {
+          // Cargar y procesar la plantilla
+          const { PlantillaExcelProcessor, facturaADatosPlantilla } = await import('@/lib/plantilla-excel-processor');
+          const { data: urlData } = await supabase.storage
+            .from('documentos')
+            .createSignedUrl(plantilla.archivo_url, 60);
+          
+          if (urlData?.signedUrl) {
+            const datos = await facturaADatosPlantilla(facturaCompleta);
+            const processor = new PlantillaExcelProcessor(datos);
+            await processor.cargarPlantilla(urlData.signedUrl);
+            await processor.procesar();
+            
+            // Generar HTML preview del Excel procesado
+            const htmlPreview = processor.generarHTMLPreview();
+            
+            setPreviewUrl(null); // Limpiar URL del PDF
+            setPreviewHtml(htmlPreview);
+            setPreviewMessage(`Vista previa con plantilla "${plantilla.nombre}". Así se verá el archivo Excel final.`);
+            setIsPreviewLoading(false);
+            return;
+          }
+        }
+      }
+      
+      // Fallback: generar PDF tradicional
+      const pdfResult = await generarFacturaPDF(facturaCompleta, {
+        returnBlob: true,
+        fileNameBase: `Proforma_${safeRef}_${safeInvoice}`,
+      });
+      if (!pdfResult || !('blob' in pdfResult)) {
+        throw new Error('No se pudo generar el PDF de la proforma.');
+      }
+      
+      const url = URL.createObjectURL(pdfResult.blob);
+      setPreviewHtml(null); // Limpiar HTML
+      setPreviewUrl(current => {
+        if (current) {
+          URL.revokeObjectURL(current);
+        }
+        return url;
+      });
+    } catch (err: any) {
+      setPreviewError(err?.message || 'No se pudo generar la vista previa.');
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  }, [factura, totalesCalculados, mode, plantillaSeleccionada, registro.shipper]);
+
   useEffect(() => {
     if (!isOpen) {
       setPreviewUrl(current => {
@@ -168,124 +357,28 @@ export function FacturaCreator({
       });
       setPreviewHtml(null);
       setPreviewMessage(null);
+      setVistaPreviaManual(false);
+      setActualizarVistaPrevia(false);
       return;
     }
 
-    if (mode !== 'proforma') {
+    // Solo actualizar cuando se presiona el botón o cambia la plantilla
+    if (!actualizarVistaPrevia) {
       return;
     }
 
-    let isCancelled = false;
-    const debounceTimer = setTimeout(async () => {
-      setIsPreviewLoading(true);
-      setPreviewError(null);
-      setPreviewMessage(null);
-      try {
-        const facturaCompleta = { ...factura, totales: totalesCalculados };
-        const safeRef = facturaCompleta.refAsli?.replace(/\s+/g, '_') || 'PROFORMA';
-        const safeInvoice = facturaCompleta.embarque.numeroInvoice?.replace(/\s+/g, '_') || 'SIN-INVOICE';
-        
-        // Si hay una plantilla seleccionada (y no es tradicional), generar vista previa HTML del Excel
-        if (plantillaSeleccionada && plantillaSeleccionada !== 'tradicional') {
-          const supabase = createClient();
-          let plantilla = null;
-          
-          // Obtener la plantilla
-          if (plantillaSeleccionada !== 'auto') {
-            const { data } = await supabase
-              .from('plantillas_proforma')
-              .select('*')
-              .eq('id', plantillaSeleccionada)
-              .single();
-            plantilla = data;
-          } else {
-            // Auto: buscar plantilla default del cliente
-            const clienteNombre = registro.shipper;
-            const { data: clienteTemplate } = await supabase
-              .from('plantillas_proforma')
-              .select('*')
-              .eq('cliente', clienteNombre)
-              .eq('es_default', true)
-              .eq('activa', true)
-              .single();
-            
-            if (!clienteTemplate) {
-              const { data: genericTemplate } = await supabase
-                .from('plantillas_proforma')
-                .select('*')
-                .is('cliente', null)
-                .eq('es_default', true)
-                .eq('activa', true)
-                .single();
-              plantilla = genericTemplate;
-            } else {
-              plantilla = clienteTemplate;
-            }
-          }
-          
-          if (plantilla) {
-            // Cargar y procesar la plantilla
-            const { PlantillaExcelProcessor, facturaADatosPlantilla } = await import('@/lib/plantilla-excel-processor');
-            const { data: urlData } = await supabase.storage
-              .from('documentos')
-              .createSignedUrl(plantilla.archivo_url, 60);
-            
-            if (urlData?.signedUrl) {
-              const datos = facturaADatosPlantilla(facturaCompleta);
-              const processor = new PlantillaExcelProcessor(datos);
-              await processor.cargarPlantilla(urlData.signedUrl);
-              await processor.procesar();
-              
-              // Generar HTML preview del Excel procesado
-              const htmlPreview = processor.generarHTMLPreview();
-              
-              if (!isCancelled) {
-                setPreviewUrl(null); // Limpiar URL del PDF
-                setPreviewHtml(htmlPreview);
-                setPreviewMessage(`Vista previa con plantilla "${plantilla.nombre}". Así se verá el archivo Excel final.`);
-              }
-              return; // Salir temprano
-            }
-          }
-        }
-        
-        // Fallback: generar PDF tradicional
-        const pdfResult = await generarFacturaPDF(facturaCompleta, {
-          returnBlob: true,
-          fileNameBase: `Proforma_${safeRef}_${safeInvoice}`,
-        });
-        if (!pdfResult || !('blob' in pdfResult)) {
-          throw new Error('No se pudo generar el PDF de la proforma.');
-        }
-        
-        const url = URL.createObjectURL(pdfResult.blob);
-        if (isCancelled) {
-          URL.revokeObjectURL(url);
-          return;
-        }
-        setPreviewHtml(null); // Limpiar HTML
-        setPreviewUrl(current => {
-          if (current) {
-            URL.revokeObjectURL(current);
-          }
-          return url;
-        });
-      } catch (err: any) {
-        if (!isCancelled) {
-          setPreviewError(err?.message || 'No se pudo generar la vista previa.');
-        }
-      } finally {
-        if (!isCancelled) {
-          setIsPreviewLoading(false);
-        }
-      }
-    }, 450);
+    // Resetear el flag después de usarlo
+    setActualizarVistaPrevia(false);
 
-    return () => {
-      isCancelled = true;
-      clearTimeout(debounceTimer);
-    };
-  }, [factura, totalesCalculados, isOpen, mode, plantillaSeleccionada, registro.shipper]);
+    generarVistaPrevia();
+  }, [actualizarVistaPrevia, isOpen, generarVistaPrevia]);
+
+  // Actualizar vista previa cuando cambia la plantilla
+  useEffect(() => {
+    if (isOpen && mode === 'proforma' && plantillaSeleccionada) {
+      setActualizarVistaPrevia(true);
+    }
+  }, [plantillaSeleccionada, isOpen, mode]);
 
   const handleSave = async (e?: React.MouseEvent) => {
     // Prevenir comportamiento por defecto si hay evento
@@ -354,11 +447,22 @@ export function FacturaCreator({
         if (!onGenerateProforma) {
           throw new Error('No se configuró el generador de proformas.');
         }
-        const facturaCompleta = { ...factura, totales: totalesCalculados };
+        // Asegurar que el registroId esté presente en la factura
+        const facturaCompleta = { 
+          ...factura, 
+          totales: totalesCalculados,
+          registroId: factura.registroId || registro.id || '' // Asegurar que registroId esté presente
+        };
+        
+        console.log('📋 Generando proforma con factura:', {
+          registroId: facturaCompleta.registroId,
+          tieneRegistroId: !!facturaCompleta.registroId,
+          registroIdOriginal: factura.registroId,
+          registroIdDelRegistro: registro.id
+        });
+        
         warning('Generando proforma, espera un momento...');
-        const plantillaId = plantillaSeleccionada === 'auto' || plantillaSeleccionada === 'tradicional' 
-          ? undefined 
-          : plantillaSeleccionada;
+        const plantillaId = plantillaSeleccionada || undefined;
         
         await onGenerateProforma(facturaCompleta, plantillaId);
         setTimeout(() => {
@@ -370,6 +474,9 @@ export function FacturaCreator({
       // Obtener usuario actual
       const { data: userData } = await supabase.auth.getUser();
       const userEmail = userData?.user?.email || 'unknown';
+
+      // Obtener el ID de la plantilla que se está usando
+      const plantillaIdGuardar: string | null = plantillaSeleccionada || null;
 
       // Guardar en Supabase
       const { data, error } = await supabase
@@ -383,6 +490,7 @@ export function FacturaCreator({
           productos: factura.productos,
           totales: totalesCalculados,
           cliente_plantilla: factura.clientePlantilla,
+          plantilla_id: plantillaIdGuardar, // Guardar el ID de la plantilla usada
           created_by: userEmail,
         })
         .select()
@@ -429,8 +537,55 @@ export function FacturaCreator({
     setDescargandoExcel(true);
     try {
       const facturaCompleta = { ...factura, totales: totalesCalculados };
-      await generarFacturaExcel(facturaCompleta);
-      success('Excel generado exitosamente');
+      
+      // SIEMPRE usar plantilla personalizada - NO hay formato genérico
+      // Validar que haya una plantilla seleccionada
+      const plantillaIdStr = plantillaSeleccionada ? String(plantillaSeleccionada) : '';
+      const esValida = plantillaIdStr && plantillaIdStr.trim() !== '';
+      
+      console.log('🔍 Validando plantilla antes de descargar Excel:', {
+        plantillaSeleccionada,
+        plantillaIdStr,
+        tipo: typeof plantillaSeleccionada,
+        esValida,
+        plantillasDisponibles: plantillasDisponibles.length,
+        plantillasIds: plantillasDisponibles.map(p => String(p.id))
+      });
+      
+      if (!esValida) {
+        console.error('❌ No hay plantilla seleccionada');
+        showError('Debes seleccionar una plantilla. Ve a la sección de Plantillas de Factura para subir una si no hay disponibles.');
+        return;
+      }
+      
+      // Verificar que la plantilla seleccionada existe en las disponibles
+      const plantillaExiste = plantillasDisponibles.some(p => String(p.id) === plantillaIdStr);
+      
+      if (!plantillaExiste) {
+        console.error('❌ La plantilla seleccionada no existe en las disponibles:', {
+          plantillaSeleccionada: plantillaIdStr,
+          plantillasDisponibles: plantillasDisponibles.map(p => ({ id: String(p.id), nombre: p.nombre }))
+        });
+        showError('La plantilla seleccionada no está disponible. Por favor, selecciona otra plantilla.');
+        return;
+      }
+      
+      console.log('✅ Plantilla validada correctamente:', plantillaIdStr);
+      const plantillaId = plantillaIdStr;
+      
+      // Usar plantilla personalizada
+      const resultado = await generarFacturaConPlantilla(facturaCompleta, plantillaId);
+      if (resultado && resultado.blob) {
+        const url = URL.createObjectURL(resultado.blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = resultado.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        success('Excel generado exitosamente con plantilla personalizada');
+      }
     } catch (err: any) {
       console.error('Error generando Excel:', err);
       showError('Error al generar Excel: ' + err.message);
@@ -483,55 +638,66 @@ export function FacturaCreator({
                 {factura.refAsli}
               </span>
             )}
-            {mode === 'proforma' && (
-              <div className="flex items-center gap-2">
-                <label className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Plantilla:
-                </label>
-                {cargandoPlantillas ? (
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-500 border-t-transparent" />
-                  </div>
-                ) : (
-                  <select
-                    value={plantillaSeleccionada}
-                    onChange={(event) => {
-                      setPlantillaSeleccionada(event.target.value);
-                    }}
-                    className={`text-xs px-2 py-1 rounded border ${
-                      theme === 'dark'
-                        ? 'bg-gray-700 border-gray-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                    }`}
-                  >
-                    <option value="auto">🤖 Auto</option>
-                    <option value="tradicional">📄 Tradicional</option>
-                    {plantillasDisponibles.length > 0 && (
-                      <>
+            <div className="flex items-center gap-2">
+              <label className={`text-xs font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Plantilla:
+              </label>
+              {cargandoPlantillas ? (
+                <div className="flex items-center gap-2 text-xs">
+                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-blue-500 border-t-transparent" />
+                </div>
+              ) : (
+                <select
+                  value={String(plantillaSeleccionada || '')}
+                  onChange={(event) => {
+                    const nuevoValor = event.target.value;
+                    console.log('🔄 Cambiando plantilla seleccionada:', {
+                      anterior: plantillaSeleccionada,
+                      nuevo: nuevoValor,
+                      tipo: typeof nuevoValor
+                    });
+                    setPlantillaSeleccionada(nuevoValor);
+                    // Cuando cambia la plantilla, actualizar vista previa automáticamente
+                    setVistaPreviaManual(false);
+                    setActualizarVistaPrevia(true);
+                  }}
+                  className={`text-xs px-2 py-1 rounded border ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-white'
+                      : 'bg-white border-gray-300 text-gray-900'
+                  }`}
+                >
+                  {plantillasDisponibles.length > 0 ? (
+                    <>
+                      {plantillasDisponibles.filter(p => p.cliente === registro.shipper).length > 0 && (
                         <optgroup label="Plantillas del Cliente">
                           {plantillasDisponibles
                             .filter(p => p.cliente === registro.shipper)
                             .map((plantilla) => (
-                              <option key={plantilla.id} value={plantilla.id}>
+                              <option key={plantilla.id} value={String(plantilla.id)}>
                                 ✨ {plantilla.nombre}
                               </option>
                             ))}
                         </optgroup>
+                      )}
+                      {plantillasDisponibles.filter(p => !p.cliente).length > 0 && (
                         <optgroup label="Plantillas Genéricas">
                           {plantillasDisponibles
                             .filter(p => !p.cliente)
                             .map((plantilla) => (
-                              <option key={plantilla.id} value={plantilla.id}>
+                              <option key={plantilla.id} value={String(plantilla.id)}>
                                 🌐 {plantilla.nombre}
                               </option>
                             ))}
                         </optgroup>
-                      </>
-                    )}
-                  </select>
-                )}
-              </div>
-            )}
+                      )}
+                    </>
+                  ) : (
+                    <option value="">No hay plantillas disponibles</option>
+                  )}
+                </select>
+              )}
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
@@ -605,9 +771,28 @@ export function FacturaCreator({
           <div className="flex-1 overflow-hidden bg-white">
             {mode === 'proforma' ? (
               <div className="relative h-full w-full bg-gray-100">
+                {/* Botón Actualizar Vista Previa */}
+                <div className="absolute top-2 right-2 z-20">
+                  <button
+                    onClick={handleActualizarVistaPrevia}
+                    disabled={isPreviewLoading}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors shadow-md ${
+                      isPreviewLoading
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : theme === 'dark'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                    title="Actualizar vista previa"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isPreviewLoading ? 'animate-spin' : ''}`} />
+                    <span>Actualizar Vista Previa</span>
+                  </button>
+                </div>
+                
                 {/* Nota informativa sobre plantilla */}
                 {previewMessage && (
-                  <div className="absolute top-2 left-2 right-2 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
+                  <div className="absolute top-2 left-2 right-24 z-10 bg-blue-50 border border-blue-200 rounded-md p-2 text-xs text-blue-700">
                     <div className="flex items-start gap-2">
                       <span className="text-base">📋</span>
                       <div>
@@ -692,34 +877,49 @@ export function FacturaCreator({
             </div>
           )}
 
-          <div className="flex items-center justify-end space-x-3">
+          <div className="flex items-center justify-between">
             <button
-              onClick={onClose}
-              className={`px-4 py-2 rounded-lg transition-colors ${
+              onClick={handleLlenarDatosPrueba}
+              className={`px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 text-sm ${
                 theme === 'dark'
-                  ? 'text-gray-300 hover:bg-gray-700'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : 'bg-purple-500 text-white hover:bg-purple-600'
               }`}
+              title="Llenar con datos de prueba"
             >
-              Cancelar
+              <TestTube className="w-4 h-4" />
+              <span>Datos de Prueba</span>
             </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleSave(e);
-              }}
-              disabled={guardando || (mode === 'proforma' && !puedeGenerar)}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
-                guardando || (mode === 'proforma' && !puedeGenerar)
-                  ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
-            >
-              <Save className="w-4 h-4" />
-              <span>{guardando ? 'Guardando...' : mode === 'proforma' ? 'Generar Proforma' : 'Guardar Factura'}</span>
-            </button>
+            
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={onClose}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  theme === 'dark'
+                    ? 'text-gray-300 hover:bg-gray-700'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSave(e);
+                }}
+                disabled={guardando || (mode === 'proforma' && !puedeGenerar)}
+                className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                  guardando || (mode === 'proforma' && !puedeGenerar)
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                <Save className="w-4 h-4" />
+                <span>{guardando ? 'Guardando...' : mode === 'proforma' ? 'Generar Proforma' : 'Guardar Factura'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

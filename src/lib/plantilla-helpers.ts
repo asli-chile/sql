@@ -4,7 +4,7 @@ import { PlantillaExcelProcessor, facturaADatosPlantilla } from './plantilla-exc
 import { PlantillaProforma } from '@/types/plantillas-proforma';
 
 /**
- * Obtiene la plantilla default para un cliente
+ * Obtiene la plantilla ESPECÍFICA del cliente (NO busca genéricas)
  */
 export async function obtenerPlantillaCliente(
   cliente: string,
@@ -12,29 +12,43 @@ export async function obtenerPlantillaCliente(
 ): Promise<PlantillaProforma | null> {
   const supabase = createClient();
 
-  // Buscar plantilla default del cliente
-  const { data: plantillaCliente } = await supabase
+  // 1. Buscar plantilla default del cliente
+  const { data: plantillaDefaultCliente, error: errorDefaultCliente } = await supabase
     .from('plantillas_proforma')
     .select('*')
     .eq('cliente', cliente)
     .eq('tipo_factura', tipoFactura)
     .eq('es_default', true)
     .eq('activa', true)
-    .single();
+    .maybeSingle();
 
-  if (plantillaCliente) return plantillaCliente;
+  if (errorDefaultCliente && errorDefaultCliente.code !== 'PGRST116') {
+    console.warn('Error buscando plantilla default del cliente:', errorDefaultCliente);
+  }
 
-  // Si no hay plantilla del cliente, buscar plantilla genérica
-  const { data: plantillaGenerica } = await supabase
+  if (plantillaDefaultCliente) return plantillaDefaultCliente;
+
+  // 2. Si no hay default, buscar cualquier plantilla activa del cliente
+  const { data: plantillasCliente, error: errorCliente } = await supabase
     .from('plantillas_proforma')
     .select('*')
-    .is('cliente', null)
+    .eq('cliente', cliente)
     .eq('tipo_factura', tipoFactura)
-    .eq('es_default', true)
     .eq('activa', true)
-    .single();
+    .order('es_default', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-  return plantillaGenerica || null;
+  if (errorCliente && errorCliente.code !== 'PGRST116') {
+    console.warn('Error buscando plantillas del cliente:', errorCliente);
+  }
+
+  if (plantillasCliente && plantillasCliente.length > 0) {
+    return plantillasCliente[0];
+  }
+
+  // NO buscar plantillas genéricas - solo específicas del cliente
+  return null;
 }
 
 /**
@@ -47,60 +61,162 @@ export async function generarFacturaConPlantilla(
   const supabase = createClient();
   let plantilla: PlantillaProforma | null = null;
 
-  // Si se especifica un ID de plantilla, usarlo
-  if (plantillaId) {
-    const { data } = await supabase
+  // PRIORIDAD 1: Usar plantilla_id guardada en la factura (si existe)
+  if (factura.plantillaId) {
+    const { data, error } = await supabase
+      .from('plantillas_proforma')
+      .select('*')
+      .eq('id', factura.plantillaId)
+      .eq('activa', true)
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error obteniendo plantilla guardada:', error);
+      throw new Error(`Error al obtener la plantilla guardada: ${error.message}`);
+    }
+    
+    if (data) {
+      plantilla = data;
+    }
+  }
+  
+  // PRIORIDAD 2: Si se especifica un ID de plantilla explícitamente, usarlo
+  if (!plantilla && plantillaId) {
+    const { data, error } = await supabase
       .from('plantillas_proforma')
       .select('*')
       .eq('id', plantillaId)
-      .single();
+      .eq('activa', true)
+      .maybeSingle();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error obteniendo plantilla por ID:', error);
+      throw new Error(`Error al obtener la plantilla: ${error.message}`);
+    }
     
     plantilla = data;
-  } else {
-    // Buscar plantilla automáticamente según el cliente
-    const clienteNombre = factura.exportador?.nombre || 
-                          factura.consignatario?.nombre || 
-                          factura.clientePlantilla;
+  }
+  
+  // PRIORIDAD 3: Buscar plantilla automáticamente según el cliente (SOLO ESPECÍFICAS)
+  if (!plantilla) {
+    // Intentar múltiples variantes del nombre del cliente
+    const nombresCliente = [
+      factura.clientePlantilla,
+      factura.exportador?.nombre,
+      factura.consignatario?.nombre,
+    ].filter(Boolean) as string[];
     
-    if (clienteNombre) {
-      plantilla = await obtenerPlantillaCliente(clienteNombre, 'proforma');
-    }
-  }
-
-  // Si hay plantilla, usarla
-  if (plantilla) {
-    try {
-      const datos = facturaADatosPlantilla(factura);
-      const processor = new PlantillaExcelProcessor(datos);
-      
-      // Obtener URL firmada si es necesario
-      let archivoUrl = plantilla.archivo_url;
-      if (!archivoUrl.startsWith('http')) {
-        const { data: urlData } = await supabase.storage
-          .from('documentos')
-          .createSignedUrl(archivoUrl, 60);
-        
-        if (urlData?.signedUrl) {
-          archivoUrl = urlData.signedUrl;
-        }
+    // Buscar con cada variante del nombre
+    for (const nombreCliente of nombresCliente) {
+      if (nombreCliente) {
+        plantilla = await obtenerPlantillaCliente(nombreCliente, 'proforma');
+        if (plantilla) break;
       }
-      
-      await processor.cargarPlantilla(archivoUrl);
-      await processor.procesar();
-      
-      const blob = await processor.generarBlob();
-      const fileName = `Proforma_${factura.refAsli}_${Date.now()}.xlsx`;
-      
-      return { blob, fileName, usaPlantilla: true };
-    } catch (error) {
-      console.error('Error procesando plantilla, usando método tradicional:', error);
-      // Si falla, continuar con método tradicional
     }
   }
 
-  // Fallback: usar método tradicional (generar Excel programáticamente)
-  // Aquí llamarías a tu función existente de generación de Excel
-  throw new Error('Método tradicional no implementado en este helper. Usar generador existente.');
+  // SIEMPRE requerir plantilla ESPECÍFICA del cliente - NO hay formato genérico
+  if (!plantilla) {
+    const clienteNombre = factura.clientePlantilla || 
+                          factura.exportador?.nombre || 
+                          factura.consignatario?.nombre || 
+                          'el cliente';
+    
+    // Buscar TODAS las plantillas activas para ver qué clientes tienen plantillas
+    const { data: todasPlantillas, error: errorTodas } = await supabase
+      .from('plantillas_proforma')
+      .select('id, nombre, cliente, activa, es_default')
+      .eq('activa', true)
+      .order('cliente', { ascending: true })
+      .order('es_default', { ascending: false })
+      .limit(50);
+    
+    let mensaje = `No se encontró una plantilla personalizada ESPECÍFICA para "${clienteNombre}".\n\n`;
+    mensaje += `IMPORTANTE: Solo se usan plantillas específicas del cliente, NO genéricas.\n\n`;
+    
+    if (errorTodas) {
+      mensaje += `Error al verificar plantillas: ${errorTodas.message}\n`;
+      mensaje += `Por favor, verifica que tengas permisos para leer plantillas o contacta a un administrador.`;
+    } else if (todasPlantillas && todasPlantillas.length > 0) {
+      // Agrupar por cliente
+      const plantillasPorCliente: Record<string, string[]> = {};
+      todasPlantillas.forEach(p => {
+        const cliente = p.cliente || '(Sin cliente)';
+        if (!plantillasPorCliente[cliente]) {
+          plantillasPorCliente[cliente] = [];
+        }
+        plantillasPorCliente[cliente].push(p.nombre);
+      });
+      
+      mensaje += `Plantillas disponibles en el sistema:\n\n`;
+      Object.entries(plantillasPorCliente).forEach(([cliente, nombres]) => {
+        mensaje += `Cliente: "${cliente}"\n`;
+        nombres.forEach(nombre => {
+          mensaje += `  - ${nombre}\n`;
+        });
+        mensaje += `\n`;
+      });
+      
+      mensaje += `Para usar una plantilla con "${clienteNombre}":\n`;
+      mensaje += `1. Ve a la sección "Plantillas de Factura"\n`;
+      mensaje += `2. Edita la plantilla deseada y asigna el cliente "${clienteNombre}"\n`;
+      mensaje += `3. O crea una nueva plantilla para "${clienteNombre}"`;
+    } else {
+      mensaje += `No hay plantillas en el sistema.\n`;
+      mensaje += `Por favor, ve a la sección "Plantillas de Factura" y sube una plantilla Excel.`;
+    }
+    
+    throw new Error(mensaje);
+  }
+
+  // Usar plantilla personalizada
+  try {
+    const datos = await facturaADatosPlantilla(factura);
+    const processor = new PlantillaExcelProcessor(datos);
+    
+    // Obtener URL firmada si es necesario
+    let archivoUrl = plantilla.archivo_url;
+    if (!archivoUrl.startsWith('http')) {
+      const { data: urlData } = await supabase.storage
+        .from('documentos')
+        .createSignedUrl(archivoUrl, 60);
+      
+      if (urlData?.signedUrl) {
+        archivoUrl = urlData.signedUrl;
+      } else {
+        throw new Error('No se pudo obtener la URL de la plantilla');
+      }
+    }
+    
+    await processor.cargarPlantilla(archivoUrl);
+    await processor.procesar();
+    
+    const blob = await processor.generarBlob();
+    
+    // Usar el número de invoice como nombre del archivo
+    const numeroInvoice = factura.embarque?.numeroInvoice || '';
+    let fileName: string;
+    
+    if (numeroInvoice && numeroInvoice.trim()) {
+      // Limpiar el número de invoice de caracteres no válidos para nombres de archivo
+      const nombreLimpio = numeroInvoice
+        .trim()
+        .replace(/[<>:"/\\|?*]/g, '_') // Reemplazar caracteres no válidos
+        .replace(/\s+/g, '_') // Reemplazar espacios con guiones bajos
+        .replace(/_+/g, '_') // Eliminar guiones bajos múltiples
+        .replace(/^_+|_+$/g, ''); // Eliminar guiones bajos al inicio y final
+      
+      fileName = `${nombreLimpio}.xlsx`;
+    } else {
+      // Fallback si no hay número de invoice
+      fileName = `Proforma_${factura.refAsli}_${Date.now()}.xlsx`;
+    }
+    
+    return { blob, fileName, usaPlantilla: true };
+  } catch (error: any) {
+    console.error('Error procesando plantilla:', error);
+    throw new Error(`Error al procesar la plantilla personalizada: ${error?.message || 'Error desconocido'}`);
+  }
 }
 
 /**

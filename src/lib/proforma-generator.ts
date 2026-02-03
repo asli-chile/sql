@@ -69,7 +69,7 @@ export async function generarProformaCompleta(
       if (excelBlobFromSheets) {
         // Convertir Blob a ArrayBuffer para el procesador
         const arrayBuffer = await excelBlobFromSheets.arrayBuffer();
-        const datos = facturaADatosPlantilla(factura);
+        const datos = await facturaADatosPlantilla(factura);
         const processor = new PlantillaExcelProcessor(datos);
         
         // Crear un workbook temporal desde el blob
@@ -127,7 +127,7 @@ export async function generarProformaCompleta(
           .createSignedUrl(plantilla.archivo_url, 60);
         
         if (urlData?.signedUrl) {
-          const datos = facturaADatosPlantilla(factura);
+          const datos = await facturaADatosPlantilla(factura);
           const processor = new PlantillaExcelProcessor(datos);
           await processor.cargarPlantilla(urlData.signedUrl);
           await processor.procesar();
@@ -161,7 +161,7 @@ export async function generarProformaCompleta(
           .createSignedUrl(plantilla.archivo_url, 60);
         
         if (urlData?.signedUrl) {
-          const datos = facturaADatosPlantilla(factura);
+          const datos = await facturaADatosPlantilla(factura);
           const processor = new PlantillaExcelProcessor(datos);
           await processor.cargarPlantilla(urlData.signedUrl);
           await processor.procesar();
@@ -176,20 +176,18 @@ export async function generarProformaCompleta(
     }
   }
 
-  // Fallback a método tradicional si no hay plantilla o falló
+  // NO hay fallback genérico - SIEMPRE requerir plantilla específica
   if (!excelBlob) {
-    console.log('📄 Usando generador tradicional de Excel');
-    const excelResult = await generarFacturaExcel(factura, {
-      returnBlob: true,
-      fileNameBase: fileBaseName,
-    });
+    const clienteNombre = factura.exportador?.nombre || 
+                          factura.consignatario?.nombre || 
+                          factura.clientePlantilla || 
+                          'el cliente';
     
-    if (!excelResult || !('blob' in excelResult)) {
-      throw new Error('Error generando Excel');
-    }
-    
-    excelBlob = excelResult.blob;
-    excelFileName = excelResult.fileName;
+    throw new Error(
+      `No se encontró una plantilla personalizada ESPECÍFICA para "${clienteNombre}". ` +
+      `Por favor, ve a la sección "Plantillas de Factura" y sube una plantilla Excel para este cliente. ` +
+      `NO se usan formatos genéricos.`
+    );
   }
 
   // Generar PDF (siempre tradicional)

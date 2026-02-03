@@ -74,6 +74,7 @@ export interface Factura {
   
   // Metadatos
   clientePlantilla: string; // 'ALMAFRUIT', etc.
+  plantillaId?: string; // ID de la plantilla personalizada usada
   created_at?: string;
   updated_at?: string;
   created_by?: string;

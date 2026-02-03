@@ -1657,7 +1657,7 @@ function DocumentosPage() {
                               />
                             );
                           } else if (isExcel) {
-                            // Para Excel, mostrar vista previa con SheetJS (renderizado nativo en el navegador)
+                            // Para Excel, mostrar vista previa
                             return (
                               <div className="w-full h-full flex flex-col">
                                 <div className="mb-2 p-2 bg-green-50 dark:bg-green-900/20 rounded text-sm">
@@ -1668,7 +1668,7 @@ function DocumentosPage() {
                                     src={`/api/bookings/excel-preview?documentPath=${encodeURIComponent(docInfo.path)}`}
                                     className="w-full h-full border-0"
                                     title={`Vista previa de ${docInfo.name}`}
-                                    onLoad={() => console.log('✅ Excel preview con SheetJS cargado')}
+                                    onLoad={() => console.log('✅ Excel preview cargado')}
                                     onError={(e) => {
                                       console.error('❌ Error al cargar Excel preview:', e);
                                     }}

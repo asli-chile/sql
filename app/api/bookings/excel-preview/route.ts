@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
       ? 'application/vnd.ms-excel'
       : 'application/octet-stream';
 
-    // Crear una página HTML con SheetJS para renderizar el Excel
+    // Crear una página HTML para renderizar el Excel
+    // NOTA: La vista previa de Excel requiere descargar el archivo ya que no tenemos SheetJS
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -54,7 +55,6 @@ export async function GET(request: NextRequest) {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Vista previa de Excel</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
         <style>
           body { 
             margin: 0; 
@@ -164,85 +164,20 @@ export async function GET(request: NextRequest) {
         </div>
 
         <script>
-          // Función para procesar el Excel con SheetJS
-          function processExcel() {
-            try {
-              // Obtener el archivo base64
-              const base64Data = '${base64}';
-              
-              // Convertir base64 a binary
-              const binaryString = atob(base64Data);
-              const bytes = new Uint8Array(binaryString.length);
-              for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-              }
-              
-              // Leer el archivo con SheetJS
-              const workbook = XLSX.read(bytes, { type: 'array' });
-              
-              // Obtener la primera hoja
-              const firstSheetName = workbook.SheetNames[0];
-              const worksheet = workbook.Sheets[firstSheetName];
-              
-              // Convertir a HTML
-              const htmlTable = XLSX.utils.sheet_to_html(worksheet);
-              
-              // Mostrar el contenido
-              document.getElementById('excel-content').innerHTML = htmlTable;
-              
-              // Mejorar estilos de la tabla
-              const table = document.querySelector('#excel-content table');
-              if (table) {
-                table.className = 'excel-table';
-                
-                // Ajustar anchos de columnas
-                const rows = table.querySelectorAll('tr');
-                if (rows.length > 0) {
-                  const maxCols = Math.max(...Array.from(rows).map(row => row.children.length));
-                  for (let i = 0; i < maxCols; i++) {
-                    let maxWidth = 150;
-                    rows.forEach(row => {
-                      const cell = row.children[i];
-                      if (cell) {
-                        const width = cell.textContent.length * 8;
-                        if (width > maxWidth) maxWidth = width;
-                      }
-                    });
-                    
-                    // Aplicar ancho máximo
-                    rows.forEach(row => {
-                      const cell = row.children[i];
-                      if (cell) {
-                        cell.style.maxWidth = Math.min(maxWidth, 300) + 'px';
-                      }
-                    });
-                  }
-                }
-              }
-              
-              console.log('✅ Excel procesado exitosamente');
-              
-            } catch (error) {
-              console.error('❌ Error procesando Excel:', error);
-              document.getElementById('excel-content').innerHTML = \`
-                <div class="error">
-                  <h3>❌ Error al procesar el Excel</h3>
-                  <p>No se pudo mostrar la vista previa del archivo.</p>
-                  <p>Por favor, descarga el archivo para revisarlo.</p>
-                  <br>
-                  <a href="data:${mimeType};base64,${base64}" 
-                     download="${documentPath.split('/').pop()}" 
-                     class="download-btn" 
-                     style="font-size: 16px; padding: 12px 24px;">
-                    📥 Descargar Excel
-                  </a>
-                </div>
-              \`;
-            }
-          }
-          
-          // Procesar cuando la página cargue
-          window.addEventListener('load', processExcel);
+          // Mostrar mensaje de descarga ya que no tenemos SheetJS para vista previa
+          document.getElementById('excel-content').innerHTML = \`
+            <div style="text-align: center; padding: 40px;">
+              <h3>📊 Archivo Excel</h3>
+              <p>Para ver el contenido del archivo Excel, por favor descárgalo.</p>
+              <br>
+              <a href="data:${mimeType};base64,${base64}" 
+                 download="${documentPath.split('/').pop()}" 
+                 class="download-btn" 
+                 style="font-size: 16px; padding: 12px 24px; display: inline-block;">
+                📥 Descargar Excel
+              </a>
+            </div>
+          \`;
         </script>
       </body>
       </html>

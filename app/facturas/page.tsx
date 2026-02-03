@@ -108,6 +108,7 @@ export default function FacturasPage() {
         productos: f.productos || [],
         totales: f.totales || { cantidadTotal: 0, valorTotal: 0, valorTotalTexto: '' },
         clientePlantilla: f.cliente_plantilla || 'ALMAFRUIT',
+        plantillaId: f.plantilla_id || undefined, // ID de la plantilla usada
         created_at: f.created_at,
         updated_at: f.updated_at,
         created_by: f.created_by,
