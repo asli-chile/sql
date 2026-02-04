@@ -1270,9 +1270,9 @@ function DocumentosPage() {
               <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                 <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                   }`}>
-                  <thead className={`sticky top-0 z-20 ${theme === 'dark'
-                    ? 'bg-slate-900 border-b border-slate-800/60'
-                    : 'bg-white border-b border-gray-200'
+                  <thead className={`sticky top-0 z-50 ${theme === 'dark'
+                    ? 'bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/60 shadow-lg'
+                    : 'bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg'
                     }`}>
                     <tr>
                       <th

@@ -144,20 +144,77 @@ export class PlantillaExcelProcessor {
       console.log(`✅ Fila de productos encontrada en fila ${filaProductos}`);
       const filaPlantilla = worksheet.getRow(filaProductos);
       
-      // Guardar valores y estilos ORIGINALES (con marcadores sin procesar)
-      filaPlantilla.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+      // Guardar valores y estilos ORIGINALES SOLO de celdas con marcadores
+      filaPlantilla.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         if (colNumber === 0) return;
         
-        // Guardar valor original (con marcadores)
-        if (cell.value !== null && cell.value !== undefined) {
-          if (typeof cell.value === 'object') {
-            valoresOriginalesFilaProductos.set(colNumber, JSON.parse(JSON.stringify(cell.value)));
-          } else {
-            valoresOriginalesFilaProductos.set(colNumber, cell.value);
+        const value = cell.value;
+        let tieneMarcador = false;
+        
+        // Verificar si la celda tiene marcadores (formato exacto)
+        if (value !== null && value !== undefined) {
+          if (typeof value === 'string') {
+            tieneMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(value) || 
+                           /"[A-Z_][A-Z0-9_]*"/.test(value) ||
+                           value.includes('{{PRODUCTO_') ||
+                           value.includes('"PRODUCTO_') ||
+                           value.includes('{{EXPORTADOR_') ||
+                           value.includes('"EXPORTADOR_') ||
+                           value.includes('{{CONSIGNEE_') ||
+                           value.includes('"CONSIGNEE_') ||
+                           value.includes('{{NOTIFY_') ||
+                           value.includes('"NOTIFY_') ||
+                           value.includes('{{VALOR_TOTAL') ||
+                           value.includes('"VALOR_TOTAL') ||
+                           value.includes('{{CANTIDAD_TOTAL') ||
+                           value.includes('"CANTIDAD_TOTAL') ||
+                           value.includes('{{PESO_') ||
+                           value.includes('"PESO_') ||
+                           value.includes('{{TOTAL_') ||
+                           value.includes('"TOTAL_');
+          } else if (typeof value === 'object' && 'richText' in value) {
+            const richText = (value as any).richText;
+            if (Array.isArray(richText)) {
+              tieneMarcador = richText.some((rt: any) => {
+                if (!rt.text || typeof rt.text !== 'string') return false;
+                return /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(rt.text) || 
+                       /"[A-Z_][A-Z0-9_]*"/.test(rt.text) ||
+                       rt.text.includes('{{PRODUCTO_') ||
+                       rt.text.includes('"PRODUCTO_') ||
+                       rt.text.includes('{{VALOR_TOTAL') ||
+                       rt.text.includes('"VALOR_TOTAL') ||
+                       rt.text.includes('{{CANTIDAD_TOTAL') ||
+                       rt.text.includes('"CANTIDAD_TOTAL');
+              });
+            }
+          } else if (typeof value === 'object' && 'formula' in value) {
+            const formula = (value as any).formula;
+            tieneMarcador = typeof formula === 'string' && (
+              /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(formula) || 
+              /"[A-Z_][A-Z0-9_]*"/.test(formula) ||
+              formula.includes('{{PRODUCTO_') ||
+              formula.includes('"PRODUCTO_') ||
+              formula.includes('{{VALOR_TOTAL') ||
+              formula.includes('"VALOR_TOTAL') ||
+              formula.includes('{{CANTIDAD_TOTAL') ||
+              formula.includes('"CANTIDAD_TOTAL')
+            );
           }
         }
         
-        // Guardar estilos
+        // SOLO guardar celdas con marcadores
+        if (tieneMarcador) {
+          // Guardar valor original (con marcadores)
+          if (value !== null && value !== undefined) {
+            if (typeof value === 'object') {
+              valoresOriginalesFilaProductos.set(colNumber, JSON.parse(JSON.stringify(value)));
+            } else {
+              valoresOriginalesFilaProductos.set(colNumber, value);
+            }
+          }
+        }
+        
+        // SIEMPRE guardar estilos de TODAS las celdas (para mantener formato)
         estilosFilaProductos.set(colNumber, {
           font: cell.font ? JSON.parse(JSON.stringify(cell.font)) : undefined,
           alignment: cell.alignment ? JSON.parse(JSON.stringify(cell.alignment)) : undefined,
@@ -167,7 +224,13 @@ export class PlantillaExcelProcessor {
         });
       });
       
-      console.log(`  📊 Valores originales guardados: ${valoresOriginalesFilaProductos.size} celdas`);
+      // Guardar altura de la fila
+      if (filaPlantilla.height) {
+        estilosFilaProductos.set(0, { height: filaPlantilla.height });
+      }
+      
+      console.log(`  📊 Valores originales guardados: ${valoresOriginalesFilaProductos.size} celdas con marcadores`);
+      console.log(`  📊 Estilos guardados: ${estilosFilaProductos.size} celdas`);
     } else {
       console.log(`ℹ️ No se encontró fila de productos en esta hoja`);
     }
@@ -194,13 +257,52 @@ export class PlantillaExcelProcessor {
         let necesitaCambio = false;
         
         if (typeof value === 'string') {
-          // Buscar marcadores {{}} o "MARCADOR" o cualquier marcador de producto
-          const tieneMarcadores = value.includes('{{') || value.includes('"') || 
-                                  value.includes('PRODUCTO_ESPECIE') || 
-                                  value.includes('PRODUCTO_CANTIDAD') ||
-                                  value.includes('PRODUCTO_TIPO_ENVASE') ||
-                                  value.includes('PRODUCTO_VARIEDAD') ||
-                                  value.includes('PRODUCTO_TOTAL');
+          // Buscar marcadores {{MARCADOR}} o "MARCADOR" (formato exacto)
+          // Solo procesar si tiene el formato correcto de marcador
+          const tieneMarcadores = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(value) || 
+                                  /"[A-Z_][A-Z0-9_]*"/.test(value) ||
+                                  value.includes('{{PRODUCTO_') ||
+                                  value.includes('"PRODUCTO_') ||
+                                  value.includes('{{EXPORTADOR_') ||
+                                  value.includes('"EXPORTADOR_') ||
+                                  value.includes('{{CONSIGNEE_') ||
+                                  value.includes('"CONSIGNEE_') ||
+                                  value.includes('{{NOTIFY_') ||
+                                  value.includes('"NOTIFY_') ||
+                                  value.includes('{{FECHA_') ||
+                                  value.includes('"FECHA_') ||
+                                  value.includes('{{INVOICE_') ||
+                                  value.includes('"INVOICE_') ||
+                                  value.includes('{{EMBARQUE_') ||
+                                  value.includes('"EMBARQUE_') ||
+                                  value.includes('{{VALOR_TOTAL') ||
+                                  value.includes('"VALOR_TOTAL') ||
+                                  value.includes('{{CANTIDAD_TOTAL') ||
+                                  value.includes('"CANTIDAD_TOTAL') ||
+                                  value.includes('{{PESO_') ||
+                                  value.includes('"PESO_') ||
+                                  value.includes('{{TOTAL_') ||
+                                  value.includes('"TOTAL_') ||
+                                  value.includes('{{REF_') ||
+                                  value.includes('"REF_') ||
+                                  value.includes('{{BOOKING') ||
+                                  value.includes('"BOOKING') ||
+                                  value.includes('{{MOTONAVE') ||
+                                  value.includes('"MOTONAVE') ||
+                                  value.includes('{{VIAJE') ||
+                                  value.includes('"VIAJE') ||
+                                  value.includes('{{PUERTO_') ||
+                                  value.includes('"PUERTO_') ||
+                                  value.includes('{{PAIS_') ||
+                                  value.includes('"PAIS_') ||
+                                  value.includes('{{FORMA_PAGO') ||
+                                  value.includes('"FORMA_PAGO') ||
+                                  value.includes('{{CONTENEDOR') ||
+                                  value.includes('"CONTENEDOR') ||
+                                  value.includes('{{CLAUSULA_') ||
+                                  value.includes('"CLAUSULA_') ||
+                                  value.includes('{{MODALIDAD_') ||
+                                  value.includes('"MODALIDAD_');
           
           if (tieneMarcadores) {
             // Si es fila de productos, procesar con datos del producto
@@ -226,12 +328,20 @@ export class PlantillaExcelProcessor {
             let needsUpdate = false;
             const processedRichText = richText.map((rt: any) => {
               if (rt.text && typeof rt.text === 'string') {
-                const tieneMarcadores = rt.text.includes('{{') || rt.text.includes('"') ||
-                                       rt.text.includes('PRODUCTO_ESPECIE') ||
-                                       rt.text.includes('PRODUCTO_CANTIDAD') ||
-                                       rt.text.includes('PRODUCTO_TIPO_ENVASE') ||
-                                       rt.text.includes('PRODUCTO_VARIEDAD') ||
-                                       rt.text.includes('PRODUCTO_TOTAL');
+                const tieneMarcadores = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(rt.text) || 
+                                       /"[A-Z_][A-Z0-9_]*"/.test(rt.text) ||
+                                       rt.text.includes('{{PRODUCTO_') ||
+                                       rt.text.includes('"PRODUCTO_') ||
+                                       rt.text.includes('{{EXPORTADOR_') ||
+                                       rt.text.includes('"EXPORTADOR_') ||
+                                       rt.text.includes('{{CONSIGNEE_') ||
+                                       rt.text.includes('"CONSIGNEE_') ||
+                                       rt.text.includes('{{NOTIFY_') ||
+                                       rt.text.includes('"NOTIFY_') ||
+                                       rt.text.includes('{{VALOR_TOTAL') ||
+                                       rt.text.includes('"VALOR_TOTAL') ||
+                                       rt.text.includes('{{CANTIDAD_TOTAL') ||
+                                       rt.text.includes('"CANTIDAD_TOTAL');
                 
                 if (tieneMarcadores) {
                   let processedText = rt.text;
@@ -263,13 +373,14 @@ export class PlantillaExcelProcessor {
           // Fórmulas - reemplazar marcadores en la fórmula
           const formula = (value as any).formula;
           const tieneMarcadores = typeof formula === 'string' && (
-            formula.includes('{{') || 
-            formula.includes('"') ||
-            formula.includes('PRODUCTO_ESPECIE') ||
-            formula.includes('PRODUCTO_CANTIDAD') ||
-            formula.includes('PRODUCTO_TIPO_ENVASE') ||
-            formula.includes('PRODUCTO_VARIEDAD') ||
-            formula.includes('PRODUCTO_TOTAL')
+            /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(formula) || 
+            /"[A-Z_][A-Z0-9_]*"/.test(formula) ||
+            formula.includes('{{PRODUCTO_') ||
+            formula.includes('"PRODUCTO_') ||
+            formula.includes('{{VALOR_TOTAL') ||
+            formula.includes('"VALOR_TOTAL') ||
+            formula.includes('{{CANTIDAD_TOTAL') ||
+            formula.includes('"CANTIDAD_TOTAL')
           );
           
           if (tieneMarcadores) {
@@ -340,12 +451,8 @@ export class PlantillaExcelProcessor {
   ): void {
     console.log(`📋 Duplicando fila de productos en fila ${filaBase}...`);
     
-    // Buscar la fila de totales (si existe) para insertar antes de ella
-    const filaTotales = this.encontrarFilaTotales(worksheet, filaBase);
-    const filaInsercion = filaTotales || worksheet.rowCount + 1;
-    
-    console.log(`  📍 Fila de totales encontrada: ${filaTotales || 'no encontrada'}`);
-    console.log(`  📍 Insertando ${this.datos.productos.length - 1} filas después de la fila ${filaBase}, antes de la fila ${filaInsercion}`);
+    const numProductosAdicionales = this.datos.productos.length - 1;
+    console.log(`  📍 Insertando ${numProductosAdicionales} filas justo después de la fila ${filaBase}`);
     
     // Hacer commit de TODAS las filas antes de agregar (CRÍTICO)
     console.log(`  💾 Haciendo commit de todas las filas antes de duplicar...`);
@@ -353,63 +460,93 @@ export class PlantillaExcelProcessor {
       row.commit();
     });
     
-    // Insertar las filas adicionales justo después de la fila base
-    // Usamos insertRows que inserta antes de la fila especificada
-    for (let i = 1; i < this.datos.productos.length; i++) {
-      console.log(`  ➕ Insertando fila para producto ${i + 1} en posición ${filaBase + i}...`);
+    // Obtener la fila original completa para copiar TODO su formato
+    const filaOriginal = worksheet.getRow(filaBase);
+    
+    // IMPORTANTE: Insertar filas en orden inverso (de la última a la primera)
+    // Esto evita problemas con índices que cambian después de cada inserción
+    // spliceRows inserta ANTES de la fila especificada
+    for (let i = numProductosAdicionales; i >= 1; i--) {
+      const productoIndex = i; // Índice del producto (1, 2, 3, ...)
+      console.log(`  ➕ Insertando fila para producto ${productoIndex + 1}...`);
       
-      // Insertar fila vacía justo después de la fila base + (i-1) filas ya insertadas
+      // Insertar justo después de la fila base
+      // Como insertamos en orden inverso, la primera inserción va en filaBase + numProductosAdicionales
+      // y cada inserción anterior va desplazando hacia arriba
       const filaInsertar = filaBase + i;
       worksheet.spliceRows(filaInsertar, 0, []);
       
       // Obtener la fila recién insertada
       const nuevaFila = worksheet.getRow(filaInsertar);
       
-      // Aplicar valores ORIGINALES procesados con el producto actual
-      valoresOriginales.forEach((valorOriginal, colNumber) => {
+      // COPIAR TODO EL FORMATO DE LA FILA ORIGINAL
+      // 1. Copiar altura de fila
+      if (filaOriginal.height) {
+        nuevaFila.height = filaOriginal.height;
+      }
+      
+      // 2. Copiar TODAS las celdas de la fila original (formato completo)
+      filaOriginal.eachCell({ includeEmpty: true }, (celdaOriginal, colNumber) => {
         if (colNumber === 0) return;
         
-        const cell = nuevaFila.getCell(colNumber);
+        const nuevaCelda = nuevaFila.getCell(colNumber);
         
-        // Procesar el valor ORIGINAL con el producto actual
-        if (valorOriginal !== null && valorOriginal !== undefined) {
-          if (typeof valorOriginal === 'string') {
-            // Procesar marcadores de producto y generales
-            let valorProcesado = this.reemplazarMarcadoresProducto(valorOriginal, this.datos.productos[i]);
-            valorProcesado = this.reemplazarMarcadores(valorProcesado);
-            cell.value = valorProcesado;
-          } else if (typeof valorOriginal === 'object' && 'richText' in valorOriginal) {
-            const richText = (valorOriginal as any).richText;
-            if (Array.isArray(richText)) {
-              const textoCompleto = richText.map((rt: any) => rt.text || '').join('');
-              const textoReemplazado = this.reemplazarMarcadoresProducto(textoCompleto, this.datos.productos[i]);
-              const textoFinal = this.reemplazarMarcadores(textoReemplazado);
-              cell.value = { richText: [{ text: textoFinal }] };
+        // Copiar TODOS los estilos de la celda original
+        if (celdaOriginal.font) nuevaCelda.font = JSON.parse(JSON.stringify(celdaOriginal.font));
+        if (celdaOriginal.alignment) nuevaCelda.alignment = JSON.parse(JSON.stringify(celdaOriginal.alignment));
+        if (celdaOriginal.fill) nuevaCelda.fill = JSON.parse(JSON.stringify(celdaOriginal.fill));
+        if (celdaOriginal.border) nuevaCelda.border = JSON.parse(JSON.stringify(celdaOriginal.border));
+        if (celdaOriginal.numFmt) nuevaCelda.numFmt = celdaOriginal.numFmt;
+        
+        // SOLO procesar y reemplazar valores si la celda tiene marcadores
+        if (valoresOriginales.has(colNumber)) {
+          const valorOriginal = valoresOriginales.get(colNumber);
+          
+          if (valorOriginal !== null && valorOriginal !== undefined) {
+            if (typeof valorOriginal === 'string') {
+              // Procesar marcadores de producto y generales
+              let valorProcesado = this.reemplazarMarcadoresProducto(valorOriginal, this.datos.productos[productoIndex]);
+              valorProcesado = this.reemplazarMarcadores(valorProcesado);
+              nuevaCelda.value = valorProcesado;
+            } else if (typeof valorOriginal === 'object' && 'richText' in valorOriginal) {
+              const richText = (valorOriginal as any).richText;
+              if (Array.isArray(richText)) {
+                const textoCompleto = richText.map((rt: any) => rt.text || '').join('');
+                const textoReemplazado = this.reemplazarMarcadoresProducto(textoCompleto, this.datos.productos[productoIndex]);
+                const textoFinal = this.reemplazarMarcadores(textoReemplazado);
+                nuevaCelda.value = { richText: [{ text: textoFinal }] };
+              } else {
+                nuevaCelda.value = valorOriginal;
+              }
+            } else if (typeof valorOriginal === 'object' && 'formula' in valorOriginal) {
+              const formula = (valorOriginal as any).formula || '';
+              if (typeof formula === 'string') {
+                const formulaReemplazada = this.reemplazarMarcadoresProducto(formula, this.datos.productos[productoIndex]);
+                const formulaFinal = this.reemplazarMarcadores(formulaReemplazada);
+                nuevaCelda.value = { formula: formulaFinal };
+              } else {
+                nuevaCelda.value = valorOriginal;
+              }
             } else {
-              cell.value = valorOriginal;
+              nuevaCelda.value = valorOriginal;
             }
-          } else if (typeof valorOriginal === 'object' && 'formula' in valorOriginal) {
-            const formula = (valorOriginal as any).formula || '';
-            if (typeof formula === 'string') {
-              const formulaReemplazada = this.reemplazarMarcadoresProducto(formula, this.datos.productos[i]);
-              const formulaFinal = this.reemplazarMarcadores(formulaReemplazada);
-              cell.value = { formula: formulaFinal };
-            } else {
-              cell.value = valorOriginal;
-            }
-          } else {
-            // Otros tipos - copiar directamente
-            cell.value = valorOriginal;
           }
-        }
-        
-        // Aplicar estilos
-        const estilo = estilos.get(colNumber);
-        if (estilo) {
-          try {
-            this.aplicarEstilos(cell, estilo);
-          } catch (err) {
-            console.warn(`  ⚠️ Error aplicando estilos a col ${colNumber}:`, err);
+        } else {
+          // Si no tiene marcadores, copiar el valor original tal cual (puede estar vacío)
+          // Esto mantiene celdas vacías o con valores fijos
+          if (celdaOriginal.value !== null && celdaOriginal.value !== undefined) {
+            // Solo copiar si no es un marcador (ya procesado)
+            const valorOriginal = celdaOriginal.value;
+            if (typeof valorOriginal === 'string') {
+              // Verificar que no sea un marcador sin procesar
+              const esMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(valorOriginal) || 
+                                /"[A-Z_][A-Z0-9_]*"/.test(valorOriginal);
+              if (!esMarcador) {
+                nuevaCelda.value = valorOriginal;
+              }
+            } else {
+              nuevaCelda.value = JSON.parse(JSON.stringify(valorOriginal));
+            }
           }
         }
       });
@@ -418,7 +555,7 @@ export class PlantillaExcelProcessor {
       nuevaFila.commit();
     }
     
-    console.log(`  ✅ ${this.datos.productos.length - 1} filas insertadas correctamente después de la fila ${filaBase}`);
+    console.log(`  ✅ ${numProductosAdicionales} filas insertadas correctamente justo después de la fila ${filaBase}`);
   }
 
   /**
