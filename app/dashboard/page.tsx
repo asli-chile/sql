@@ -2,7 +2,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @next/next/no-img-element */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
@@ -409,12 +409,59 @@ function DashboardPage() {
 
   const displayedSeasonLabel = selectedSeason ? `Temporada ${selectedSeason}` : null;
 
+  const loadStats = useCallback(async () => {
+    try {
+      const supabase = createClient();
+
+      let query = supabase
+        .from('registros')
+        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, ejecutivo, booking, nave_inicial, etd, eta, deposito, temporada')
+        .is('deleted_at', null)
+        .not('ref_asli', 'is', null);
+
+      // Aplicar filtrado por cliente si no es admin
+      if (currentUser) {
+        const isAdmin = currentUser.rol === 'admin';
+        const clienteNombre = currentUser.cliente_nombre?.trim();
+        const clientesAsignados = currentUser.clientes_asignados || [];
+
+        if (!isAdmin) {
+          if (currentUser.rol === 'cliente' && clienteNombre) {
+            // Cliente: filtrar directo por su cliente_nombre (case-insensitive)
+            query = query.ilike('shipper', clienteNombre);
+          } else if (clientesAsignados.length > 0) {
+            // Ejecutivo u otros: filtrar por lista de clientes asignados
+            query = query.in('shipper', clientesAsignados);
+          } else {
+            // Si no es admin y no tiene clientes, no debería ver nada
+            query = query.eq('id', 'NONE');
+          }
+        }
+      }
+
+      const { data: registros, error } = await query;
+
+      if (error) throw error;
+
+      const registrosList = (registros || []) as RawRegistroStats[];
+
+      const registrosConRutas = registrosList
+        .filter((r) => r.pod)
+        .map((registro) => convertSupabaseToApp(registro));
+
+      setRegistrosParaMapa(registrosConRutas);
+      setRawRegistros(registrosList);
+    } catch (error) {
+      console.error('Error loading stats:', error);
+    }
+  }, [currentUser]);
+
   useEffect(() => {
     checkUser();
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (user && currentUser) {
       loadStats();
       void loadActiveVessels();
 
@@ -427,7 +474,7 @@ function DashboardPage() {
         clearInterval(intervalId);
       };
     }
-  }, [user]);
+  }, [user, currentUser, loadStats]);
 
   const checkUser = async () => {
     try {
@@ -480,31 +527,6 @@ function DashboardPage() {
 
   const handleUserUpdate = (updatedUser: any) => {
     setUserInfo(updatedUser);
-  };
-
-  const loadStats = async () => {
-    try {
-      const supabase = createClient();
-
-      const { data: registros, error } = await supabase
-        .from('registros')
-        .select('ref_asli, estado, updated_at, contenedor, pol, pod, naviera, shipper, ejecutivo, booking, nave_inicial, etd, eta, deposito, temporada')
-        .is('deleted_at', null)
-        .not('ref_asli', 'is', null);
-
-      if (error) throw error;
-
-      const registrosList = (registros || []) as RawRegistroStats[];
-
-      const registrosConRutas = registrosList
-        .filter((r) => r.pod)
-        .map((registro) => convertSupabaseToApp(registro));
-
-      setRegistrosParaMapa(registrosConRutas);
-      setRawRegistros(registrosList);
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    }
   };
 
   const loadActiveVessels = async () => {
