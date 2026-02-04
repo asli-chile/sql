@@ -73,13 +73,13 @@ export function DocumentosFiltersPanel({
       {/* Overlay para móvil */}
       {showFilters && (
         <div
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[260] lg:hidden"
           onClick={() => setShowFilters(false)}
         />
       )}
 
       {/* Sidebar de filtros */}
-      <div className={`fixed top-0 right-0 h-screen w-full sm:h-full sm:w-80 md:w-96 transform transition-transform duration-300 ease-in-out z-50 ${
+      <div className={`fixed top-0 right-0 h-screen w-full sm:h-full sm:w-80 md:w-96 transform transition-transform duration-300 ease-in-out z-[270] ${
         showFilters ? 'translate-x-0' : 'translate-x-full'
       } ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200'} border-l shadow-2xl`}>
         {/* Header */}
