@@ -30,6 +30,7 @@ interface UserContextType {
   canExport: boolean;
   transportesCount: number;
   registrosCount: number;
+  documentosCount: number;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -39,6 +40,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [transportesCount, setTransportesCount] = useState<number>(0);
   const [registrosCount, setRegistrosCount] = useState<number>(0);
+  const [documentosCount, setDocumentosCount] = useState<number>(0);
 
   useEffect(() => {
     // NO cargar desde localStorage - siempre cargar desde Supabase
@@ -51,6 +53,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!currentUser) {
         setTransportesCount(0);
         setRegistrosCount(0);
+        setDocumentosCount(0);
         return;
       }
 
@@ -98,10 +101,32 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         const { count: rCount, error: rError } = await registrosQuery;
         setRegistrosCount(rError ? 0 : (rCount || 0));
+
+        // --- Contar documentos (registros con ref_asli, excluyendo cancelados) ---
+        let documentosQuery = supabase
+          .from('registros')
+          .select('*', { count: 'exact', head: true })
+          .is('deleted_at', null)
+          .not('ref_asli', 'is', null)
+          .neq('estado', 'CANCELADO');
+
+        if (!isAdmin) {
+          if (currentUser.rol === 'cliente' && clienteNombre) {
+            documentosQuery = documentosQuery.ilike('shipper', clienteNombre);
+          } else if (clientesAsignados.length > 0) {
+            documentosQuery = documentosQuery.in('shipper', clientesAsignados);
+          } else {
+            documentosQuery = documentosQuery.eq('id', 'NONE');
+          }
+        }
+
+        const { count: dCount, error: dError } = await documentosQuery;
+        setDocumentosCount(dError ? 0 : (dCount || 0));
       } catch (error) {
         console.error('Error loading counts:', error);
         setTransportesCount(0);
         setRegistrosCount(0);
+        setDocumentosCount(0);
       }
     };
 
@@ -192,6 +217,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     canExport,
     transportesCount,
     registrosCount,
+    documentosCount,
   };
 
   return (

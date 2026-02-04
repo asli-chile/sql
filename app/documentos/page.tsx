@@ -68,7 +68,7 @@ function DocumentosPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { theme } = useTheme();
-  const { currentUser, setCurrentUser, canEdit, canDelete } = useUser();
+  const { currentUser, setCurrentUser, canEdit, canDelete, documentosCount } = useUser();
   const supabase = useMemo(() => createClient(), []);
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
@@ -111,6 +111,7 @@ function DocumentosPage() {
   const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
   const [fechaDesde, setFechaDesde] = useState<string>('');
   const [fechaHasta, setFechaHasta] = useState<string>('');
+  const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
   const fileInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const dataLoadedRef = useRef(false);
   const { success, error: showError } = useToast();
@@ -490,15 +491,93 @@ function DocumentosPage() {
     }
   }, [documents, supabase, success, showError]);
 
+  const loadClientesAsignados = useCallback(async (ejecutivoId: string, nombreUsuario?: string) => {
+    try {
+      const clientesAsignadosSet = new Set<string>();
+
+      // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
+      const { data, error } = await supabase
+        .from('ejecutivo_clientes')
+        .select('cliente_nombre')
+        .eq('ejecutivo_id', ejecutivoId)
+        .eq('activo', true);
+
+      if (!error && data) {
+        data.forEach(item => clientesAsignadosSet.add(item.cliente_nombre));
+      }
+
+      // 2. Si el nombre de usuario coincide con un cliente, agregarlo también
+      if (nombreUsuario) {
+        // Buscar en catalogos si existe un cliente con ese nombre
+        const { data: catalogoClientes, error: catalogoError } = await supabase
+          .from('catalogos')
+          .select('valores')
+          .eq('categoria', 'clientes')
+          .single();
+
+        if (!catalogoError && catalogoClientes?.valores) {
+          const valores = Array.isArray(catalogoClientes.valores)
+            ? catalogoClientes.valores
+            : typeof catalogoClientes.valores === 'string'
+              ? JSON.parse(catalogoClientes.valores)
+              : [];
+
+          // Verificar si el nombre de usuario coincide con algún cliente (comparación case-insensitive)
+          const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
+          const clienteCoincidente = valores.find((cliente: string) =>
+            cliente.toUpperCase().trim() === nombreUsuarioUpper
+          );
+
+          if (clienteCoincidente) {
+            clientesAsignadosSet.add(clienteCoincidente); // Usar el nombre exacto del catálogo
+          }
+        }
+      }
+
+      const clientesFinales = Array.from(clientesAsignadosSet);
+      setClientesAsignados(clientesFinales);
+      // Actualizar currentUser con los clientes asignados
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          clientes_asignados: clientesFinales,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading clientes asignados:', error);
+      setClientesAsignados([]);
+      // Actualizar currentUser con array vacío en caso de error
+      if (currentUser) {
+        setCurrentUser({
+          ...currentUser,
+          clientes_asignados: [],
+        });
+      }
+    }
+  }, [supabase, currentUser, setCurrentUser]);
+
   const loadRegistros = useCallback(async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from('registros')
         .select('*')
         .is('deleted_at', null)
-        .not('ref_asli', 'is', null)
-        .order('ref_asli', { ascending: false });
+        .not('ref_asli', 'is', null);
+
+      // Filtrar por clientes asignados si hay alguno
+      // Esto aplica tanto para ejecutivos como para usuarios cuyo nombre coincide con un cliente
+      const esAdmin = currentUser?.rol === 'admin';
+      const clienteNombre = currentUser?.rol === 'cliente' ? currentUser?.cliente_nombre?.trim() : '';
+      if (!esAdmin && clienteNombre) {
+        // Cliente: filtrar directo por su cliente_nombre (case-insensitive)
+        query = query.ilike('shipper', clienteNombre);
+      } else if (!esAdmin && clientesAsignados.length > 0) {
+        // Ejecutivo u otros: filtrar por lista de clientes asignados
+        query = query.in('shipper', clientesAsignados);
+      }
+
+      const { data, error } = await query.order('ref_asli', { ascending: false });
 
       if (error) {
         console.error('Error en consulta de registros:', error);
@@ -521,7 +600,7 @@ function DocumentosPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [supabase, showError]);
+  }, [supabase, showError, currentUser, clientesAsignados]);
 
   // Verificar y cargar usuario autenticado
   useEffect(() => {
@@ -577,9 +656,15 @@ function DocumentosPage() {
             rol: userData.rol,
             activo: userData.activo,
             puede_subir: userData.puede_subir ?? false,
+            cliente_nombre: userData.cliente_nombre ?? null,
             clientes_asignados: userData.clientes_asignados ?? [],
           };
           setCurrentUser(usuarioActualizado);
+          
+          // Cargar clientes asignados si es ejecutivo
+          if (userData.rol === 'ejecutivo' || (userData.rol !== 'admin' && userData.rol !== 'cliente')) {
+            loadClientesAsignados(userData.id, userData.nombre);
+          }
         }
       } catch (error: any) {
         if (!isMounted) return;
@@ -599,21 +684,19 @@ function DocumentosPage() {
   }, []); // Solo ejecutar una vez al montar
 
   useEffect(() => {
-    // Solo cargar datos una vez cuando currentUser esté disponible
-    if (currentUser && !dataLoadedRef.current) {
-      dataLoadedRef.current = true;
+    // Cargar datos cuando currentUser esté disponible
+    if (currentUser) {
       const fetchData = async () => {
         try {
           await Promise.all([loadRegistros(), loadDocuments()]);
         } catch (err) {
           console.error('Error cargando datos:', err);
-          dataLoadedRef.current = false; // Permitir reintentar en caso de error
         }
       };
       fetchData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser?.id]); // Solo depende del ID del usuario, no del objeto completo
+  }, [currentUser?.id, clientesAsignados.length]); // Recargar cuando cambien los clientes asignados
 
   // Generar opciones para los filtros basadas en los filtros ya seleccionados (filtrado en cascada)
   // IMPORTANTE: Los hooks deben estar antes de cualquier return condicional
@@ -1091,7 +1174,7 @@ function DocumentosPage() {
       items: [
         { label: 'Embarques', id: '/registros', isActive: pathname === '/registros', icon: Ship },
         { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
-        { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText },
+        { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText, counter: documentosCount, tone: 'sky' },
         ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', isActive: pathname === '/generar-documentos', icon: FileCheck }]
           : []),
@@ -1231,52 +1314,56 @@ function DocumentosPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full">
-          <div className="mx-auto w-full max-w-full px-2 pt-2 sm:px-3 sm:pt-3 space-y-2">
-            {/* Sidebar de Filtros */}
-            <DocumentosFiltersPanel
-              showFilters={showFilters}
-              setShowFilters={setShowFilters}
-              hasActiveFilters={hasActiveFilters}
-              handleClearFilters={handleClearFilters}
-              selectedSeason={selectedSeason}
-              setSelectedSeason={setSelectedSeason}
-              selectedClientes={selectedClientes}
-              setSelectedClientes={setSelectedClientes}
-              selectedEjecutivo={selectedEjecutivo}
-              setSelectedEjecutivo={setSelectedEjecutivo}
-              selectedEstado={selectedEstado}
-              setSelectedEstado={setSelectedEstado}
-              selectedNaviera={selectedNaviera}
-              setSelectedNaviera={setSelectedNaviera}
-              selectedEspecie={selectedEspecie}
-              setSelectedEspecie={setSelectedEspecie}
-              selectedNave={selectedNave}
-              setSelectedNave={setSelectedNave}
-              fechaDesde={fechaDesde}
-              setFechaDesde={setFechaDesde}
-              fechaHasta={fechaHasta}
-              setFechaHasta={setFechaHasta}
-              filterOptions={filterOptions}
-              handleToggleCliente={handleToggleCliente}
-              handleSelectAllClientes={handleSelectAllClientes}
-            />
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0 w-full">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-shrink-0 px-2 pt-2 sm:px-3 sm:pt-3">
+              {/* Sidebar de Filtros */}
+              <DocumentosFiltersPanel
+                showFilters={showFilters}
+                setShowFilters={setShowFilters}
+                hasActiveFilters={hasActiveFilters}
+                handleClearFilters={handleClearFilters}
+                selectedSeason={selectedSeason}
+                setSelectedSeason={setSelectedSeason}
+                selectedClientes={selectedClientes}
+                setSelectedClientes={setSelectedClientes}
+                selectedEjecutivo={selectedEjecutivo}
+                setSelectedEjecutivo={setSelectedEjecutivo}
+                selectedEstado={selectedEstado}
+                setSelectedEstado={setSelectedEstado}
+                selectedNaviera={selectedNaviera}
+                setSelectedNaviera={setSelectedNaviera}
+                selectedEspecie={selectedEspecie}
+                setSelectedEspecie={setSelectedEspecie}
+                selectedNave={selectedNave}
+                setSelectedNave={setSelectedNave}
+                fechaDesde={fechaDesde}
+                setFechaDesde={setFechaDesde}
+                fechaHasta={fechaHasta}
+                setFechaHasta={setFechaHasta}
+                filterOptions={filterOptions}
+                handleToggleCliente={handleToggleCliente}
+                handleSelectAllClientes={handleSelectAllClientes}
+              />
+            </div>
 
             {/* Tabla de Documentos */}
-            <section className={`flex-1 flex flex-col border overflow-hidden min-h-0 ${theme === 'dark'
+            <section className={`flex-1 flex flex-col border overflow-hidden min-h-0 mx-2 mb-2 sm:mx-3 sm:mb-3 ${theme === 'dark'
               ? 'border-slate-700/60 bg-slate-800/60'
               : 'border-gray-200 bg-white'
               }`}>
               <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
                 <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
                   }`}>
-                  <thead className={`sticky top-0 z-50 ${theme === 'dark'
-                    ? 'bg-slate-900/95 backdrop-blur-sm border-b border-slate-800/60 shadow-lg'
-                    : 'bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-lg'
+                  <thead className={`sticky top-0 z-[250] ${theme === 'dark'
+                    ? 'bg-slate-900 border-b border-slate-800/60 shadow-lg'
+                    : 'bg-white border-b border-gray-200 shadow-lg'
                     }`}>
                     <tr>
                       <th
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
+                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${theme === 'dark' 
+                          ? 'text-slate-200 bg-slate-900/95 hover:bg-slate-800' 
+                          : 'text-gray-800 bg-white/95 hover:bg-gray-100'
                           }`}
                         onClick={() => handleSort('nave')}
                       >
@@ -1290,7 +1377,9 @@ function DocumentosPage() {
                         </div>
                       </th>
                       <th
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
+                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${theme === 'dark' 
+                          ? 'text-slate-200 bg-slate-900/95 hover:bg-slate-800' 
+                          : 'text-gray-800 bg-white/95 hover:bg-gray-100'
                           }`}
                         onClick={() => handleSort('refCliente')}
                       >
@@ -1304,7 +1393,9 @@ function DocumentosPage() {
                         </div>
                       </th>
                       <th
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer hover:bg-opacity-80 transition-colors ${theme === 'dark' ? 'text-slate-200 hover:bg-slate-800' : 'text-gray-800 hover:bg-gray-100'
+                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${theme === 'dark' 
+                          ? 'text-slate-200 bg-slate-900/95 hover:bg-slate-800' 
+                          : 'text-gray-800 bg-white/95 hover:bg-gray-100'
                           }`}
                         onClick={() => handleSort('fechaIngreso')}
                       >
@@ -1317,39 +1408,57 @@ function DocumentosPage() {
                           )}
                         </div>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Reserva PDF
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Instructivo
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Guía de Despacho
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Packing List
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Proforma Invoice
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         BL-SWB-TELEX
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Factura SII
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         DUS Legalizado
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'
+                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200 bg-slate-900/95' 
+                        : 'text-gray-800 bg-white/95'
                         }`}>
                         Fullset
                       </th>
