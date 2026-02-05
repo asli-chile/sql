@@ -773,12 +773,11 @@ export class PlantillaExcelProcessor {
                   const celdaLimpiar = worksheet.getCell(r, c);
                   // Limpiar valor explícitamente
                   celdaLimpiar.value = null;
-                  celdaLimpiar.value = undefined;
                   // También limpiar estilos para evitar valores residuales
-                  celdaLimpiar.font = undefined;
-                  celdaLimpiar.fill = undefined;
-                  celdaLimpiar.border = undefined;
-                  celdaLimpiar.alignment = undefined;
+                  celdaLimpiar.font = {};
+                  celdaLimpiar.fill = {};
+                  celdaLimpiar.border = {};
+                  celdaLimpiar.alignment = {};
                 } catch (error) {
                   // Ignorar errores al limpiar celdas (pueden no existir aún)
                 }
