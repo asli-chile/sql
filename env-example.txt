@@ -10,3 +10,19 @@ GOOGLE_REFRESH_TOKEN=tu_google_refresh_token
 # 3. Crea credenciales OAuth2
 # 4. Obtén refresh token usando OAuth2 flow
 # 5. Agrega las variables aquí o en .env.local
+
+# Configuración para API del Banco Central de Chile
+# Para obtener el tipo de cambio USD/CLP (dólar observado)
+BANCO_CENTRAL_USER=tu_usuario_banco_central
+BANCO_CENTRAL_PASS=tu_contraseña_banco_central
+
+# Nota: Para obtener estas credenciales:
+# 1. Ve a https://si3.bcentral.cl/SieteRestWS/SieteRestWS.ashx
+# 2. Regístrate en el sitio del Banco Central de Chile
+# 3. Solicita acceso a la API REST
+# 4. Obtén tu usuario y contraseña
+# 5. Agrega las variables aquí o en .env.local
+#
+# IMPORTANTE: Si no tienes credenciales del Banco Central, puedes usar APIs alternativas:
+# - MinIndicador.cl (gratuita, sin credenciales): https://mindicador.cl/api/dolar/{dd-mm-yyyy}
+# - DolarApi.com (gratuita, sin credenciales): https://cl.dolarapi.com

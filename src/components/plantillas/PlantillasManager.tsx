@@ -839,6 +839,7 @@ export function PlantillasManager({ currentUser }: PlantillasManagerProps) {
                   <option value="proforma">Proforma Invoice</option>
                   <option value="commercial_invoice">Commercial Invoice</option>
                   <option value="packing_list">Packing List</option>
+                  <option value="booking_fee">Booking Fee / Facturación</option>
                 </select>
               </div>
 

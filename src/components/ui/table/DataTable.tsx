@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef, memo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   flexRender,
   getCoreRowModel,
@@ -15,7 +16,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Registro } from '@/types/registros';
-import { Search, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink, Copy, Truck, Menu, Check, Clock } from 'lucide-react';
+import { Search, Plus, X, ArrowUpDown, ArrowUp, ArrowDown, Trash2, Grid, List, Edit, CheckSquare, Send, RotateCcw, Download, RefreshCw, History, Eye, ExternalLink, Copy, Truck, Menu, Check, Clock, Receipt } from 'lucide-react';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUser } from '@/hooks/useUser';
@@ -96,9 +97,11 @@ export function DataTable({
   onSendToTransportes,
   bookingDocuments,
 }: DataTableProps) {
+  const router = useRouter();
   const { theme } = useTheme();
 
   const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
+  const isAdmin = currentUser?.rol === 'admin';
 
   const isDark = theme === 'dark';
   const panelClasses = isDark
@@ -1103,6 +1106,38 @@ export function DataTable({
                         {viewMode === 'table' ? <Grid className="h-4 w-4" /> : <List className="h-4 w-4" />}
                         {viewMode === 'table' ? 'Tarjetas' : 'Tabla'}
                       </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            if (hasSelection && selectedRecordsList.length > 0) {
+                              const ids = selectedRecordsList
+                                .map(r => r.id)
+                                .filter((id): id is string => id !== undefined && id !== null)
+                                .join(',');
+                              if (ids) {
+                                router.push(`/facturar-preview?ids=${ids}`);
+                              }
+                              setIsMenuOpen(false);
+                            }
+                          }}
+                          disabled={!hasSelection}
+                          className={`${menuItemClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={!hasSelection ? 'Selecciona al menos un registro para facturar' : ''}
+                        >
+                          <Receipt className="h-4 w-4" />
+                          Facturar
+                          {hasSelection && (
+                            <span
+                              className={`ml-auto inline-flex items-center border px-1.5 py-0.5 text-[10px] font-medium rounded ${isDark
+                                ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                                : 'bg-green-100 text-green-700 border-green-300'
+                                }`}
+                            >
+                              {selectedCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1322,6 +1357,38 @@ export function DataTable({
                       {viewMode === 'cards' ? <List className="h-4 w-4" /> : <Grid className="h-4 w-4" />}
                       {viewMode === 'cards' ? 'Tabla' : 'Tarjetas'}
                     </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          if (hasSelection && selectedRecordsList.length > 0) {
+                            const ids = selectedRecordsList
+                              .map(r => r.id)
+                              .filter((id): id is string => id !== undefined && id !== null)
+                              .join(',');
+                            if (ids) {
+                              router.push(`/facturar-preview?ids=${ids}`);
+                            }
+                            setIsMenuOpen(false);
+                          }
+                        }}
+                        disabled={!hasSelection}
+                        className={`${menuItemClasses} ${!hasSelection ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={!hasSelection ? 'Selecciona al menos un registro para facturar' : ''}
+                      >
+                        <Receipt className="h-4 w-4" />
+                        Facturar
+                        {hasSelection && (
+                          <span
+                            className={`ml-auto inline-flex items-center border px-1.5 py-0.5 text-[10px] font-medium rounded ${isDark
+                              ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                              : 'bg-green-100 text-green-700 border-green-300'
+                              }`}
+                          >
+                            {selectedCount}
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

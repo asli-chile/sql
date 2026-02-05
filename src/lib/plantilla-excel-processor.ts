@@ -460,6 +460,59 @@ export class PlantillaExcelProcessor {
       row.commit();
     });
     
+    // Obtener información de merges en la fila original ANTES de insertar
+    const mergesEnFilaOriginal: Array<{ top: number; left: number; bottom: number; right: number }> = [];
+    
+    // Intentar múltiples formas de acceder a los merges
+    let merges: any[] = [];
+    if (worksheet.model?.merges) {
+      merges = worksheet.model.merges;
+    } else if ((worksheet as any).merges) {
+      merges = (worksheet as any).merges;
+    } else if ((worksheet as any).model?.merges) {
+      merges = (worksheet as any).model.merges;
+    }
+    
+    merges.forEach((merge: any) => {
+      // Intentar múltiples formatos de merge
+      let mergeTop: number, mergeBottom: number, mergeLeft: number, mergeRight: number;
+      
+      if (merge.top !== undefined && merge.bottom !== undefined) {
+        // Formato: { top, bottom, left, right }
+        mergeTop = merge.top;
+        mergeBottom = merge.bottom;
+        mergeLeft = merge.left;
+        mergeRight = merge.right;
+      } else if (merge.s && merge.e) {
+        // Formato: { s: { r, c }, e: { r, c } }
+        mergeTop = merge.s.r || 0;
+        mergeLeft = merge.s.c || 0;
+        mergeBottom = merge.e.r || 0;
+        mergeRight = merge.e.c || 0;
+      } else if ((merge as any).s?.r !== undefined) {
+        // Formato alternativo
+        mergeTop = (merge as any).s.r;
+        mergeLeft = (merge as any).s.c;
+        mergeBottom = (merge as any).e.r;
+        mergeRight = (merge as any).e.c;
+      } else {
+        return; // Formato desconocido, saltar
+      }
+      
+      // Si el merge incluye la fila base, guardarlo
+      if (mergeTop <= filaBase && mergeBottom >= filaBase) {
+        mergesEnFilaOriginal.push({
+          top: mergeTop,
+          left: mergeLeft,
+          bottom: mergeBottom,
+          right: mergeRight
+        });
+        console.log(`  🔗 Merge encontrado: fila ${mergeTop}-${mergeBottom}, col ${mergeLeft}-${mergeRight}`);
+      }
+    });
+    
+    console.log(`  🔗 Total de merges encontrados en la fila original: ${mergesEnFilaOriginal.length}`);
+    
     // Obtener la fila original completa para copiar TODO su formato
     const filaOriginal = worksheet.getRow(filaBase);
     
@@ -485,74 +538,304 @@ export class PlantillaExcelProcessor {
         nuevaFila.height = filaOriginal.height;
       }
       
-      // 2. Copiar TODAS las celdas de la fila original (formato completo)
-      filaOriginal.eachCell({ includeEmpty: true }, (celdaOriginal, colNumber) => {
-        if (colNumber === 0) return;
+      // 2. Identificar qué celdas son parte de un merge en la fila original
+      // Necesitamos saber qué celdas son maestras y cuáles son parte del merge
+      const celdasEnMerge = new Set<number>();
+      const celdasMaestras = new Map<number, { top: number; left: number; bottom: number; right: number }>();
+      
+      mergesEnFilaOriginal.forEach(merge => {
+        if (merge.top <= filaBase && merge.bottom >= filaBase) {
+          // Si la fila base es la fila superior del merge, entonces la celda maestra está en esta fila
+          if (merge.top === filaBase) {
+            // Esta es la celda maestra del merge
+            celdasMaestras.set(merge.left, merge);
+            
+            // Marcar todas las demás celdas del merge como "en merge" (no maestras)
+            for (let c = merge.left + 1; c <= merge.right; c++) {
+              celdasEnMerge.add(c);
+            }
+          } else {
+            // La fila base está dentro del merge pero no es la fila superior
+            // Todas las celdas del merge en esta fila son parte del merge (no maestras)
+            for (let c = merge.left; c <= merge.right; c++) {
+              celdasEnMerge.add(c);
+            }
+          }
+        }
+      });
+      
+      console.log(`  📍 Celdas en merge: ${Array.from(celdasEnMerge).join(', ')}`);
+      console.log(`  📍 Celdas maestras: ${Array.from(celdasMaestras.keys()).join(', ')}`);
+      
+      // 3. Copiar TODAS las celdas de la fila original (formato completo)
+      // IMPORTANTE: Iterar manualmente sobre todas las columnas para tener control total
+      // Esto nos permite saltar explícitamente las celdas en merge
+      const maxCol = Math.max(filaOriginal.cellCount || 0, 50); // Asegurar que iteramos sobre todas las columnas
+      
+      for (let colNumber = 1; colNumber <= maxCol; colNumber++) {
+        // Si esta celda es parte de un merge en la fila original (pero no es la maestra),
+        // NO copiarla individualmente - se manejará en el merge
+        if (celdasEnMerge.has(colNumber)) {
+          // Limpiar explícitamente esta celda ya que está en merge
+          try {
+            const celdaEnMerge = nuevaFila.getCell(colNumber);
+            celdaEnMerge.value = null;
+            celdaEnMerge.value = undefined;
+          } catch {
+            // Ignorar errores
+          }
+          continue; // Saltar esta celda, será parte del merge
+        }
+        
+        // Obtener la celda original (puede no existir si está vacía)
+        let celdaOriginal;
+        try {
+          celdaOriginal = filaOriginal.getCell(colNumber);
+        } catch {
+          continue; // Si la celda no existe, saltarla
+        }
+        
+        // CRÍTICO: Verificar si la celda original está realmente en un merge usando ExcelJS
+        // ExcelJS puede devolver el valor de la celda maestra incluso para celdas dentro del merge
+        const estaEnMerge = celdasEnMerge.has(colNumber);
+        const esCeldaMaestra = celdasMaestras.has(colNumber);
+        
+        // Verificar también usando las propiedades de ExcelJS
+        const esMergedEnExcel = (celdaOriginal as any).isMerged || (celdaOriginal as any).master;
+        const esMasterEnExcel = !esMergedEnExcel && (celdaOriginal as any).master === undefined;
+        
+        // Si está en merge pero NO es la celda maestra, NO copiar NADA (ni valor ni estilos)
+        // Solo limpiar y continuar
+        if ((estaEnMerge && !esCeldaMaestra) || (esMergedEnExcel && !esMasterEnExcel)) {
+          const nuevaCelda = nuevaFila.getCell(colNumber);
+          nuevaCelda.value = null;
+          continue; // Saltar completamente esta celda
+        }
         
         const nuevaCelda = nuevaFila.getCell(colNumber);
         
-        // Copiar TODOS los estilos de la celda original
+        // Copiar TODOS los estilos de la celda original (solo si no está en merge o es maestra)
         if (celdaOriginal.font) nuevaCelda.font = JSON.parse(JSON.stringify(celdaOriginal.font));
         if (celdaOriginal.alignment) nuevaCelda.alignment = JSON.parse(JSON.stringify(celdaOriginal.alignment));
         if (celdaOriginal.fill) nuevaCelda.fill = JSON.parse(JSON.stringify(celdaOriginal.fill));
         if (celdaOriginal.border) nuevaCelda.border = JSON.parse(JSON.stringify(celdaOriginal.border));
         if (celdaOriginal.numFmt) nuevaCelda.numFmt = celdaOriginal.numFmt;
         
-        // SOLO procesar y reemplazar valores si la celda tiene marcadores
-        if (valoresOriginales.has(colNumber)) {
-          const valorOriginal = valoresOriginales.get(colNumber);
-          
-          if (valorOriginal !== null && valorOriginal !== undefined) {
-            if (typeof valorOriginal === 'string') {
-              // Procesar marcadores de producto y generales
-              let valorProcesado = this.reemplazarMarcadoresProducto(valorOriginal, this.datos.productos[productoIndex]);
-              valorProcesado = this.reemplazarMarcadores(valorProcesado);
-              nuevaCelda.value = valorProcesado;
-            } else if (typeof valorOriginal === 'object' && 'richText' in valorOriginal) {
-              const richText = (valorOriginal as any).richText;
-              if (Array.isArray(richText)) {
-                const textoCompleto = richText.map((rt: any) => rt.text || '').join('');
-                const textoReemplazado = this.reemplazarMarcadoresProducto(textoCompleto, this.datos.productos[productoIndex]);
-                const textoFinal = this.reemplazarMarcadores(textoReemplazado);
-                nuevaCelda.value = { richText: [{ text: textoFinal }] };
+        // Si es celda maestra de un merge, solo copiar el valor si tiene marcadores
+        // El valor se copiará a la celda maestra y luego se recreará el merge
+        if (esCeldaMaestra) {
+          // Solo procesar si tiene marcadores
+          if (valoresOriginales.has(colNumber)) {
+            const valorOriginal = valoresOriginales.get(colNumber);
+            
+            if (valorOriginal !== null && valorOriginal !== undefined) {
+              if (typeof valorOriginal === 'string') {
+                // Procesar marcadores de producto y generales
+                let valorProcesado = this.reemplazarMarcadoresProducto(valorOriginal, this.datos.productos[productoIndex]);
+                valorProcesado = this.reemplazarMarcadores(valorProcesado);
+                nuevaCelda.value = valorProcesado;
+              } else if (typeof valorOriginal === 'object' && 'richText' in valorOriginal) {
+                const richText = (valorOriginal as any).richText;
+                if (Array.isArray(richText)) {
+                  const textoCompleto = richText.map((rt: any) => rt.text || '').join('');
+                  const textoReemplazado = this.reemplazarMarcadoresProducto(textoCompleto, this.datos.productos[productoIndex]);
+                  const textoFinal = this.reemplazarMarcadores(textoReemplazado);
+                  nuevaCelda.value = { richText: [{ text: textoFinal }] };
+                } else {
+                  nuevaCelda.value = valorOriginal;
+                }
+              } else if (typeof valorOriginal === 'object' && 'formula' in valorOriginal) {
+                const formula = (valorOriginal as any).formula || '';
+                if (typeof formula === 'string') {
+                  const formulaReemplazada = this.reemplazarMarcadoresProducto(formula, this.datos.productos[productoIndex]);
+                  const formulaFinal = this.reemplazarMarcadores(formulaReemplazada);
+                  nuevaCelda.value = { formula: formulaFinal };
+                } else {
+                  nuevaCelda.value = valorOriginal;
+                }
               } else {
                 nuevaCelda.value = valorOriginal;
               }
-            } else if (typeof valorOriginal === 'object' && 'formula' in valorOriginal) {
-              const formula = (valorOriginal as any).formula || '';
-              if (typeof formula === 'string') {
-                const formulaReemplazada = this.reemplazarMarcadoresProducto(formula, this.datos.productos[productoIndex]);
-                const formulaFinal = this.reemplazarMarcadores(formulaReemplazada);
-                nuevaCelda.value = { formula: formulaFinal };
+            }
+          } else {
+            // Si es maestra pero no tiene marcadores, copiar el valor original si existe
+            if (celdaOriginal.value !== null && celdaOriginal.value !== undefined) {
+              const valorOriginal = celdaOriginal.value;
+              if (typeof valorOriginal === 'string') {
+                // Verificar que no sea un marcador sin procesar
+                const esMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(valorOriginal) || 
+                                  /"[A-Z_][A-Z0-9_]*"/.test(valorOriginal);
+                if (!esMarcador) {
+                  nuevaCelda.value = valorOriginal;
+                }
               } else {
-                nuevaCelda.value = valorOriginal;
+                nuevaCelda.value = JSON.parse(JSON.stringify(valorOriginal));
               }
-            } else {
-              nuevaCelda.value = valorOriginal;
             }
           }
-        } else {
-          // Si no tiene marcadores, copiar el valor original tal cual (puede estar vacío)
-          // Esto mantiene celdas vacías o con valores fijos
-          if (celdaOriginal.value !== null && celdaOriginal.value !== undefined) {
-            // Solo copiar si no es un marcador (ya procesado)
-            const valorOriginal = celdaOriginal.value;
-            if (typeof valorOriginal === 'string') {
-              // Verificar que no sea un marcador sin procesar
-              const esMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(valorOriginal) || 
-                                /"[A-Z_][A-Z0-9_]*"/.test(valorOriginal);
-              if (!esMarcador) {
+        } else if (!estaEnMerge) {
+          // Si NO está en merge, procesar normalmente
+          if (valoresOriginales.has(colNumber)) {
+            const valorOriginal = valoresOriginales.get(colNumber);
+            
+            if (valorOriginal !== null && valorOriginal !== undefined) {
+              if (typeof valorOriginal === 'string') {
+                // Procesar marcadores de producto y generales
+                let valorProcesado = this.reemplazarMarcadoresProducto(valorOriginal, this.datos.productos[productoIndex]);
+                valorProcesado = this.reemplazarMarcadores(valorProcesado);
+                nuevaCelda.value = valorProcesado;
+              } else if (typeof valorOriginal === 'object' && 'richText' in valorOriginal) {
+                const richText = (valorOriginal as any).richText;
+                if (Array.isArray(richText)) {
+                  const textoCompleto = richText.map((rt: any) => rt.text || '').join('');
+                  const textoReemplazado = this.reemplazarMarcadoresProducto(textoCompleto, this.datos.productos[productoIndex]);
+                  const textoFinal = this.reemplazarMarcadores(textoReemplazado);
+                  nuevaCelda.value = { richText: [{ text: textoFinal }] };
+                } else {
+                  nuevaCelda.value = valorOriginal;
+                }
+              } else if (typeof valorOriginal === 'object' && 'formula' in valorOriginal) {
+                const formula = (valorOriginal as any).formula || '';
+                if (typeof formula === 'string') {
+                  const formulaReemplazada = this.reemplazarMarcadoresProducto(formula, this.datos.productos[productoIndex]);
+                  const formulaFinal = this.reemplazarMarcadores(formulaReemplazada);
+                  nuevaCelda.value = { formula: formulaFinal };
+                } else {
+                  nuevaCelda.value = valorOriginal;
+                }
+              } else {
                 nuevaCelda.value = valorOriginal;
               }
-            } else {
-              nuevaCelda.value = JSON.parse(JSON.stringify(valorOriginal));
+            }
+          } else {
+            // Si no tiene marcadores, copiar el valor original si existe
+            if (celdaOriginal.value !== null && celdaOriginal.value !== undefined) {
+              const valorOriginal = celdaOriginal.value;
+              if (typeof valorOriginal === 'string') {
+                // Verificar que no sea un marcador sin procesar
+                const esMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(valorOriginal) || 
+                                  /"[A-Z_][A-Z0-9_]*"/.test(valorOriginal);
+                if (!esMarcador) {
+                  nuevaCelda.value = valorOriginal;
+                }
+              } else {
+                nuevaCelda.value = JSON.parse(JSON.stringify(valorOriginal));
+              }
+            }
+          }
+        }
+      }
+      
+      // Commit inmediato de la fila ANTES de limpiar y recrear merges
+      nuevaFila.commit();
+      
+      // 4. Limpiar TODAS las celdas que están en merge (excepto la maestra) antes de recrear el merge
+      // Esto es crítico: debemos limpiar explícitamente las celdas que están dentro del merge
+      mergesEnFilaOriginal.forEach(merge => {
+        if (merge.top <= filaBase && merge.bottom >= filaBase) {
+          const nuevoTop = filaInsertar;
+          const nuevoBottom = filaInsertar + (merge.bottom - merge.top);
+          const nuevoLeft = merge.left;
+          const nuevoRight = merge.right;
+          
+          console.log(`  🧹 Limpiando celdas en merge: fila ${nuevoTop}-${nuevoBottom}, col ${nuevoLeft}-${nuevoRight}`);
+          
+          // PRIMERO: Asegurarse de que la celda maestra tenga el valor correcto
+          // Si la celda maestra no tiene valor, copiarlo desde la fila original
+          const celdaMaestra = worksheet.getCell(nuevoTop, nuevoLeft);
+          if (!celdaMaestra.value || celdaMaestra.value === null) {
+            try {
+              const celdaOriginalMaestra = filaOriginal.getCell(merge.left);
+              if (celdaOriginalMaestra.value !== null && celdaOriginalMaestra.value !== undefined) {
+                // Solo copiar si no es un marcador sin procesar
+                const valorOriginal = celdaOriginalMaestra.value;
+                if (typeof valorOriginal === 'string') {
+                  const esMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(valorOriginal) || 
+                                    /"[A-Z_][A-Z0-9_]*"/.test(valorOriginal);
+                  if (!esMarcador) {
+                    celdaMaestra.value = valorOriginal;
+                  }
+                } else {
+                  celdaMaestra.value = JSON.parse(JSON.stringify(valorOriginal));
+                }
+              }
+            } catch (error) {
+              console.warn(`  ⚠️ Error copiando valor a celda maestra:`, error);
+            }
+          }
+          
+          // SEGUNDO: Limpiar todas las demás celdas del merge
+          for (let r = nuevoTop; r <= nuevoBottom; r++) {
+            for (let c = nuevoLeft; c <= nuevoRight; c++) {
+              // Solo limpiar si NO es la celda maestra
+              if (r !== nuevoTop || c !== nuevoLeft) {
+                try {
+                  const celdaLimpiar = worksheet.getCell(r, c);
+                  // Limpiar valor explícitamente
+                  celdaLimpiar.value = null;
+                  celdaLimpiar.value = undefined;
+                  // También limpiar estilos para evitar valores residuales
+                  celdaLimpiar.font = undefined;
+                  celdaLimpiar.fill = undefined;
+                  celdaLimpiar.border = undefined;
+                  celdaLimpiar.alignment = undefined;
+                } catch (error) {
+                  // Ignorar errores al limpiar celdas (pueden no existir aún)
+                }
+              }
             }
           }
         }
       });
       
-      // Commit inmediato de la fila
-      nuevaFila.commit();
+      // 5. Recrear los merges en la nueva fila DESPUÉS de limpiar
+      mergesEnFilaOriginal.forEach(merge => {
+        try {
+          // Si el merge incluye la fila base, recrearlo en la nueva fila
+          if (merge.top <= filaBase && merge.bottom >= filaBase) {
+            const nuevoTop = filaInsertar;
+            const nuevoBottom = filaInsertar + (merge.bottom - merge.top);
+            const nuevoLeft = merge.left;
+            const nuevoRight = merge.right;
+            
+            // Solo crear el merge si no es solo una celda (tiene más de una celda)
+            if (nuevoTop !== nuevoBottom || nuevoLeft !== nuevoRight) {
+              // Asegurarse de que la celda maestra tenga el valor correcto antes de recrear el merge
+              const celdaMaestra = worksheet.getCell(nuevoTop, nuevoLeft);
+              if (!celdaMaestra.value || celdaMaestra.value === null) {
+                // Si la celda maestra no tiene valor, intentar copiarlo desde la fila original
+                try {
+                  const celdaOriginalMaestra = filaOriginal.getCell(merge.left);
+                  if (celdaOriginalMaestra.value !== null && celdaOriginalMaestra.value !== undefined) {
+                    const valorOriginal = celdaOriginalMaestra.value;
+                    if (typeof valorOriginal === 'string') {
+                      const esMarcador = /\{\{[A-Z_][A-Z0-9_]*\}\}/.test(valorOriginal) || 
+                                        /"[A-Z_][A-Z0-9_]*"/.test(valorOriginal);
+                      if (!esMarcador) {
+                        celdaMaestra.value = valorOriginal;
+                      }
+                    } else {
+                      celdaMaestra.value = JSON.parse(JSON.stringify(valorOriginal));
+                    }
+                  }
+                } catch (error) {
+                  console.warn(`  ⚠️ Error copiando valor a celda maestra antes de merge:`, error);
+                }
+              }
+              
+              worksheet.mergeCells(nuevoTop, nuevoLeft, nuevoBottom, nuevoRight);
+              console.log(`  🔗 Merge recreado: fila ${nuevoTop}-${nuevoBottom}, col ${nuevoLeft}-${nuevoRight}`);
+            }
+          }
+        } catch (error: any) {
+          // Ignorar errores de merges duplicados o inválidos
+          if (!error.message?.includes('already merged') && 
+              !error.message?.includes('Invalid merge') &&
+              !error.message?.includes('Cannot merge')) {
+            console.warn(`  ⚠️ Error recreando merge en fila ${filaInsertar}:`, error.message);
+          }
+        }
+      });
     }
     
     console.log(`  ✅ ${numProductosAdicionales} filas insertadas correctamente justo después de la fila ${filaBase}`);
@@ -1037,37 +1320,45 @@ export class PlantillaExcelProcessor {
         let colspan = 1;
         let rowspan = 1;
         
-        if (cell.isMerged) {
-          // Buscar el rango de fusión
-          const master = (cell as any).master;
-          if (master) {
-            const masterAddress = master.address;
-            const masterRow = master.row;
-            const masterCol = master.col;
+        // Buscar si esta celda está dentro de algún rango de fusión
+        let isInMerge = false;
+        let isMergeMaster = false;
+        
+        if (worksheet.model.merges && worksheet.model.merges.length > 0) {
+          for (const merge of worksheet.model.merges) {
+            const mergeTop = merge.top || (merge as any).s?.r || 0;
+            const mergeLeft = merge.left || (merge as any).s?.c || 0;
+            const mergeBottom = merge.bottom || (merge as any).e?.r || 0;
+            const mergeRight = merge.right || (merge as any).e?.c || 0;
             
-            // Si esta es la celda maestra
-            if (rowNumber === masterRow && colNumber === masterCol) {
-              // Intentar obtener el rango de fusión
-              worksheet.model.merges?.forEach((merge: any) => {
-                if (merge.top === masterRow && merge.left === masterCol) {
-                  colspan = merge.right - merge.left + 1;
-                  rowspan = merge.bottom - merge.top + 1;
-                  
-                  // Marcar todas las celdas fusionadas como procesadas
-                  for (let r = merge.top; r <= merge.bottom; r++) {
-                    for (let c = merge.left; c <= merge.right; c++) {
-                      if (r !== masterRow || c !== masterCol) {
-                        processedCells.add(`${r}-${c}`);
-                      }
+            // Verificar si esta celda está dentro del rango de fusión
+            if (rowNumber >= mergeTop && rowNumber <= mergeBottom &&
+                colNumber >= mergeLeft && colNumber <= mergeRight) {
+              isInMerge = true;
+              
+              // Si es la celda maestra (esquina superior izquierda)
+              if (rowNumber === mergeTop && colNumber === mergeLeft) {
+                isMergeMaster = true;
+                colspan = mergeRight - mergeLeft + 1;
+                rowspan = mergeBottom - mergeTop + 1;
+                
+                // Marcar todas las celdas fusionadas como procesadas (excepto la maestra)
+                for (let r = mergeTop; r <= mergeBottom; r++) {
+                  for (let c = mergeLeft; c <= mergeRight; c++) {
+                    if (r !== mergeTop || c !== mergeLeft) {
+                      processedCells.add(`${r}-${c}`);
                     }
                   }
                 }
-              });
-            } else {
-              // Esta celda es parte de una fusión pero no es la maestra, saltarla
-              continue;
+              }
+              break; // Salir del loop una vez encontrado el merge
             }
           }
+        }
+        
+        // Si la celda está en un merge pero no es la maestra, saltarla
+        if (isInMerge && !isMergeMaster) {
+          continue;
         }
         
         const colspanAttr = colspan > 1 ? ` colspan="${colspan}"` : '';

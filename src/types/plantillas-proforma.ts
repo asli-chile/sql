@@ -5,7 +5,7 @@ export interface PlantillaProforma {
   nombre: string;
   cliente: string | null; // NULL = plantilla genérica
   descripcion: string | null;
-  tipo_factura: 'proforma' | 'commercial_invoice' | 'packing_list';
+  tipo_factura: 'proforma' | 'commercial_invoice' | 'packing_list' | 'booking_fee';
   archivo_url: string;
   archivo_nombre: string;
   archivo_size: number | null;
@@ -34,7 +34,7 @@ export interface PlantillaFormData {
   nombre: string;
   cliente: string;
   descripcion: string;
-  tipo_factura: 'proforma' | 'commercial_invoice' | 'packing_list';
+  tipo_factura: 'proforma' | 'commercial_invoice' | 'packing_list' | 'booking_fee';
   archivo: File | null;
   configuracion: PlantillaConfiguracion;
   activa: boolean;
