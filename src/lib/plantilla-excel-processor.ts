@@ -1322,10 +1322,15 @@ export class PlantillaExcelProcessor {
         
         if (worksheet.model.merges && worksheet.model.merges.length > 0) {
           for (const merge of worksheet.model.merges) {
-            const mergeTop = merge.top || (merge as any).s?.r || 0;
-            const mergeLeft = merge.left || (merge as any).s?.c || 0;
-            const mergeBottom = merge.bottom || (merge as any).e?.r || 0;
-            const mergeRight = merge.right || (merge as any).e?.c || 0;
+            // merge puede ser string o objeto, necesitamos manejarlo correctamente
+            if (typeof merge === 'string') {
+              continue; // Saltar si es string (formato no soportado)
+            }
+            const mergeObj = merge as any;
+            const mergeTop = mergeObj?.top || mergeObj?.s?.r || 0;
+            const mergeLeft = mergeObj?.left || mergeObj?.s?.c || 0;
+            const mergeBottom = mergeObj?.bottom || mergeObj?.e?.r || 0;
+            const mergeRight = mergeObj?.right || mergeObj?.e?.c || 0;
             
             // Verificar si esta celda está dentro del rango de fusión
             if (rowNumber >= mergeTop && rowNumber <= mergeBottom &&
