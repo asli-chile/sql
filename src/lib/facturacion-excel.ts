@@ -186,20 +186,26 @@ function generarFacturacionExcelBasico(
         }
       });
 
-      // Consultar tipos de cambio para todas las fechas únicas de ETD
-      console.log(`🔄 Consultando tipos de cambio del Banco Central para ${fechasUnicas.size} fecha(s) única(s)...`);
-      for (const fechaStr of fechasUnicas) {
+      // Consultar tipos de cambio para todas las fechas únicas de ETD en paralelo
+      console.log(`🔄 Consultando tipos de cambio del Banco Central para ${fechasUnicas.size} fecha(s) única(s) en paralelo...`);
+      const promesasTipoCambio = Array.from(fechasUnicas).map(async (fechaStr) => {
         // Crear fecha desde string YYYY-MM-DD en hora local
         const [año, mes, dia] = fechaStr.split('-').map(Number);
         const fecha = new Date(año, mes - 1, dia);
         const tipoCambio = await obtenerTipoCambio(fecha);
+        return { fechaStr, tipoCambio };
+      });
+      
+      // Esperar todas las consultas en paralelo
+      const resultados = await Promise.all(promesasTipoCambio);
+      resultados.forEach(({ fechaStr, tipoCambio }) => {
         tiposCambio.set(fechaStr, tipoCambio);
-      }
+      });
       
       const tiposCambioExitosos = Array.from(tiposCambio.values()).filter(tc => tc !== null).length;
       console.log(`✅ Tipos de cambio obtenidos: ${tiposCambioExitosos}/${fechasUnicas.size}`);
 
-      // Estilos
+      // Estilos - crear una vez y reutilizar
       const headerStyle = {
         font: { bold: true, size: 11, color: { argb: 'FFFFFFFF' } },
         fill: {
@@ -229,6 +235,25 @@ function generarFacturacionExcelBasico(
       const numberStyle = {
         ...cellStyle,
         numFmt: '#,##0.00',
+      };
+
+      const totalRowCellStyle = {
+        ...cellStyle,
+        fill: {
+          type: 'pattern' as const,
+          pattern: 'solid' as const,
+          fgColor: { argb: 'FFE0E0E0' },
+        },
+      };
+
+      const totalRowNumberStyle = {
+        ...numberStyle,
+        font: { bold: true },
+        fill: {
+          type: 'pattern' as const,
+          pattern: 'solid' as const,
+          fgColor: { argb: 'FFE0E0E0' },
+        },
       };
 
       // Headers
@@ -346,14 +371,11 @@ function generarFacturacionExcelBasico(
           font: { bold: true },
         };
 
-        // Aplicar estilos
-        for (let i = 1; i <= 16; i++) {
-          if (i === 14 || i === 15 || i === 16) {
-            // Ya aplicado arriba
-            continue;
-          }
+        // Aplicar estilos a todas las celdas de una vez (más eficiente)
+        for (let i = 1; i <= 13; i++) {
           row.getCell(i).style = cellStyle;
         }
+        // Las celdas 14, 15, 16 ya tienen estilos aplicados arriba
 
         row.height = 20;
         rowIndex++;
@@ -368,52 +390,24 @@ function generarFacturacionExcelBasico(
       const ultimaFilaDatos = rowIndex - 1;
       const promedioCell = totalRow.getCell(14);
       promedioCell.value = { formula: `AVERAGE(N${primeraFilaDatos}:N${ultimaFilaDatos})` };
-      promedioCell.style = {
-        ...numberStyle,
-        font: { bold: true },
-        fill: {
-          type: 'pattern' as const,
-          pattern: 'solid' as const,
-          fgColor: { argb: 'FFE0E0E0' },
-        },
-      };
+      promedioCell.style = totalRowNumberStyle;
       
       // Etiqueta "TOTAL" en columna 15
       totalRow.getCell(15).value = 'TOTAL';
       totalRow.getCell(15).style = {
-        ...cellStyle,
+        ...totalRowCellStyle,
         font: { bold: true },
-        fill: {
-          type: 'pattern' as const,
-          pattern: 'solid' as const,
-          fgColor: { argb: 'FFE0E0E0' },
-        },
         alignment: { horizontal: 'right' as const, vertical: 'middle' as const },
       };
       
       // Suma de totales en columna 16
       const sumaCell = totalRow.getCell(16);
       sumaCell.value = { formula: `SUM(P${primeraFilaDatos}:P${ultimaFilaDatos})` };
-      sumaCell.style = {
-        ...numberStyle,
-        font: { bold: true },
-        fill: {
-          type: 'pattern' as const,
-          pattern: 'solid' as const,
-          fgColor: { argb: 'FFE0E0E0' },
-        },
-      };
+      sumaCell.style = totalRowNumberStyle;
 
       // Aplicar estilos a las demás celdas de la fila de totales
       for (let i = 1; i <= 13; i++) {
-        totalRow.getCell(i).style = {
-          ...cellStyle,
-          fill: {
-            type: 'pattern' as const,
-            pattern: 'solid' as const,
-            fgColor: { argb: 'FFE0E0E0' },
-          },
-        };
+        totalRow.getCell(i).style = totalRowCellStyle;
       }
 
       totalRow.height = 25;
