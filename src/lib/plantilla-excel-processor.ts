@@ -773,11 +773,8 @@ export class PlantillaExcelProcessor {
                   const celdaLimpiar = worksheet.getCell(r, c);
                   // Limpiar valor explícitamente
                   celdaLimpiar.value = null;
-                  // También limpiar estilos para evitar valores residuales
-                  celdaLimpiar.font = {};
-                  celdaLimpiar.fill = {};
-                  celdaLimpiar.border = {};
-                  celdaLimpiar.alignment = {};
+                  // Nota: Los estilos se mantienen, solo se limpia el valor
+                  // Esto es suficiente ya que la celda maestra del merge mantiene los estilos
                 } catch (error) {
                   // Ignorar errores al limpiar celdas (pueden no existir aún)
                 }
