@@ -119,7 +119,7 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getSession();
 
   // Rutas que requieren autenticación
-  const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas', '/tablas-personalizadas', '/reportes', '/finanzas'];
+  const protectedRoutes = ['/dashboard', '/registros', '/documentos', '/facturas', '/tablas-personalizadas', '/reportes', '/finanzas', '/facturar-preview'];
   const authRoutes = ['/auth'];
 
   // Comportamiento normal cuando NO viene desde asli.cl (acceso directo al dominio de Vercel)
