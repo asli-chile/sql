@@ -92,6 +92,14 @@
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/facturas/:path*"
     },
     {
+      "source": "/facturar-preview",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/facturar-preview"
+    },
+    {
+      "source": "/facturar-preview/:path*",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/facturar-preview/:path*"
+    },
+    {
       "source": "/itinerario",
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/itinerario"
     },
