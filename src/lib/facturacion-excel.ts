@@ -77,19 +77,16 @@ export async function generarFacturacionExcel(
       console.warn('Las plantillas personalizadas para facturación aún no están implementadas. Generando Excel básico.');
       return generarFacturacionExcelBasico(gruposPorNave);
       
-      // Cargar y procesar plantilla
-      await processor.cargarPlantilla(urlData.signedUrl);
-      const workbook = await processor.procesar();
-
-      // Generar buffer
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], {
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-
-      const fileName = `Facturacion_${new Date().toISOString().split('T')[0]}.xlsx`;
-
-      return { blob, fileName };
+      // TODO: Implementar procesamiento de plantillas personalizadas para facturación
+      // const processor = new PlantillaExcelProcessor();
+      // await processor.cargarPlantilla(urlData.signedUrl);
+      // const workbook = await processor.procesar();
+      // const buffer = await workbook.xlsx.writeBuffer();
+      // const blob = new Blob([buffer], {
+      //   type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      // });
+      // const fileName = `Facturacion_${new Date().toISOString().split('T')[0]}.xlsx`;
+      // return { blob, fileName };
     } catch (error: any) {
       console.error('Error generando Excel con plantilla:', error);
       // Si falla, generar Excel básico
