@@ -2916,7 +2916,7 @@ export default function RegistrosPage() {
           onSuccess={(createdRecords) => {
             // Filtrar registros que ya fueron agregados para evitar duplicados
             const newRecords = createdRecords.filter(record => {
-              const recordId = record.id || record.ref_asli;
+              const recordId = record.id || record.refAsli;
               if (!recordId) return true; // Si no tiene ID, agregarlo (no debería pasar)
               
               // Si ya fue agregado recientemente, no agregarlo de nuevo
@@ -2935,9 +2935,9 @@ export default function RegistrosPage() {
               // Agregar los nuevos registros al estado local sin recargar
               setRegistros((prevRegistros) => {
                 // Filtrar duplicados por ID antes de agregar
-                const existingIds = new Set(prevRegistros.map(r => r.id || r.ref_asli));
+                const existingIds = new Set(prevRegistros.map(r => r.id || r.refAsli));
                 const uniqueNewRecords = newRecords.filter(r => {
-                  const id = r.id || r.ref_asli;
+                  const id = r.id || r.refAsli;
                   return id && !existingIds.has(id);
                 });
                 
@@ -2960,7 +2960,7 @@ export default function RegistrosPage() {
             // Limpiar el set de IDs agregados después de 5 segundos para permitir agregar los mismos registros si se recarga
             setTimeout(() => {
               newRecords.forEach(record => {
-                const recordId = record.id || record.ref_asli;
+                const recordId = record.id || record.refAsli;
                 if (recordId) {
                   recentlyAddedIdsRef.current.delete(recordId);
                 }
