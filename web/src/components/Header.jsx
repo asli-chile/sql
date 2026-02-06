@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
  */
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [dolarObservado, setDolarObservado] = useState(null)
+  const [loadingDolar, setLoadingDolar] = useState(true)
 
   const handleToggleMenu = () => {
     setIsMenuOpen(!isMenuOpen)
@@ -36,10 +38,43 @@ const Header = () => {
     }
   }, [isMenuOpen])
 
+  // Obtener el valor del dólar observado
+  useEffect(() => {
+    const fetchDolarObservado = async () => {
+      try {
+        setLoadingDolar(true)
+        // Usar la API de mindicador.cl para obtener el dólar observado
+        const response = await fetch('https://mindicador.cl/api/dolar')
+        const data = await response.json()
+        
+        if (data && data.valor) {
+          // El valor más reciente está en data.valor
+          setDolarObservado({
+            valor: data.valor,
+            fecha: data.fecha
+          })
+        } else if (data && data.serie && data.serie.length > 0) {
+          // Fallback: usar el primer valor de la serie si existe
+          const valorMasReciente = data.serie[0]
+          setDolarObservado({
+            valor: valorMasReciente.valor,
+            fecha: valorMasReciente.fecha
+          })
+        }
+      } catch (error) {
+        console.error('Error al obtener el dólar observado:', error)
+      } finally {
+        setLoadingDolar(false)
+      }
+    }
+
+    fetchDolarObservado()
+  }, [])
+
   return (
     <header className="bg-asli-dark shadow-lg sticky top-0 z-50 relative">
       <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="grid grid-cols-3 items-center h-20">
           {/* Logo ASLI */}
           <div className="flex-shrink-0">
             <a
@@ -60,8 +95,43 @@ const Header = () => {
             </a>
           </div>
 
+          {/* Dólar Observado - Centro */}
+          <div className="flex justify-center items-center">
+            {loadingDolar ? (
+              <div className="text-white text-sm md:text-base animate-pulse">
+                Cargando...
+              </div>
+            ) : dolarObservado ? (
+              <div className="text-center">
+                <div className="text-white text-xs md:text-sm font-medium hidden sm:block">
+                  Dólar Observado
+                </div>
+                <div className="text-white text-sm md:text-base lg:text-lg font-bold">
+                  ${dolarObservado.valor.toLocaleString('es-CL', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                  })}
+                </div>
+                {dolarObservado.fecha && (
+                  <div className="text-white text-xs opacity-80 mt-0.5">
+                    {new Date(dolarObservado.fecha).toLocaleDateString('es-CL', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-white text-xs md:text-sm opacity-70">
+                No disponible
+              </div>
+            )}
+          </div>
+
           {/* Menu Button - Always visible */}
-          <button
+          <div className="flex justify-end">
+            <button
             type="button"
             className="p-2 rounded-md text-white hover:text-asli-primary focus:outline-none focus:ring-2 focus:ring-asli-primary"
             onClick={handleToggleMenu}
@@ -85,6 +155,7 @@ const Header = () => {
               )}
             </svg>
           </button>
+          </div>
         </div>
       </nav>
 
