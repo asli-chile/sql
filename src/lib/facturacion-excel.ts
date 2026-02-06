@@ -174,6 +174,24 @@ function generarFacturacionExcelBasico(
         registros.push(...grupo.registros);
       });
 
+      // Ordenar registros de más antiguo a más nuevo por ETD
+      registros.sort((a, b) => {
+        // Si ambos tienen ETD, ordenar por fecha
+        if (a.etd && b.etd) {
+          return a.etd.getTime() - b.etd.getTime();
+        }
+        // Si solo a tiene ETD, va primero
+        if (a.etd && !b.etd) {
+          return -1;
+        }
+        // Si solo b tiene ETD, va primero
+        if (!a.etd && b.etd) {
+          return 1;
+        }
+        // Si ninguno tiene ETD, mantener orden original
+        return 0;
+      });
+
       // Obtener tipos de cambio para cada registro basado en su ETD
       const tiposCambio = new Map<string, number | null>();
       const fechasUnicas = new Set<string>();
