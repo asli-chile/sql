@@ -405,8 +405,8 @@ class AisstreamWebSocketService {
       // Si hay múltiples registros, preferir el que tenga un nombre real (no placeholder)
       // Si todos son placeholders, usar el primero
       const existing = existingRecords && existingRecords.length > 0 
-        ? existingRecords.find(r => r.vessel_name && !r.vessel_name.startsWith('MMSI-')) 
-          || existingRecords.find(r => r.last_lat && r.last_lon) 
+        ? existingRecords.find((r: any) => r.vessel_name && !r.vessel_name.startsWith('MMSI-')) 
+          || existingRecords.find((r: any) => r.last_lat && r.last_lon) 
           || existingRecords[0]
         : null;
 
@@ -515,7 +515,7 @@ class AisstreamWebSocketService {
         .limit(10);
 
       const existing = existingRecords && existingRecords.length > 0
-        ? existingRecords.find(r => r.vessel_name && !r.vessel_name.startsWith('MMSI-'))
+        ? existingRecords.find((r: any) => r.vessel_name && !r.vessel_name.startsWith('MMSI-'))
           || existingRecords[0]
         : null;
 
