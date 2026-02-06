@@ -62,11 +62,14 @@ DECLARE
   siguiente_numero INTEGER := 1;
   ref_asli_result TEXT;
 BEGIN
-  -- Obtener todos los números existentes
-  SELECT ARRAY_AGG(DISTINCT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) ORDER BY 1)
+  -- Obtener todos los números existentes usando subconsulta para DISTINCT y ORDER BY
+  SELECT ARRAY_AGG(num ORDER BY num)
     INTO existing_numbers
-  FROM registros
-  WHERE ref_asli ~ '^A\d+$';
+  FROM (
+    SELECT DISTINCT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) AS num
+    FROM registros
+    WHERE ref_asli ~ '^A\d+$'
+  ) AS unique_nums;
   
   IF existing_numbers IS NULL THEN
     existing_numbers := ARRAY[]::INTEGER[];
@@ -75,7 +78,7 @@ BEGIN
   -- Encontrar el siguiente número disponible
   SELECT COALESCE(MAX(num), 0) + 1 INTO siguiente_numero
   FROM (
-    SELECT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) AS num
+    SELECT DISTINCT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) AS num
     FROM registros
     WHERE ref_asli ~ '^A\d+$'
   ) AS nums;
