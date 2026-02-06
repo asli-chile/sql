@@ -190,7 +190,7 @@ export async function POST(request: Request) {
                 success: false,
                 imo: null,
                 mmsi: null,
-                message: `Error actualizando en BD: ${updateError.message}`,
+                message: `Error actualizando en BD: ${updateError?.message || 'Error desconocido'}`,
               });
               continue;
             }
@@ -212,7 +212,7 @@ export async function POST(request: Request) {
                 success: false,
                 imo: null,
                 mmsi: null,
-                message: `Error creando en BD: ${insertError.message}`,
+                message: `Error creando en BD: ${insertError?.message || 'Error desconocido'}`,
               });
               continue;
             }
