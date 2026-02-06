@@ -213,7 +213,7 @@ export function DataTable({
   const alwaysVisibleColumns = ['refAsli', 'refCliente', 'booking', 'historial'];
 
   // Estado para el menú contextual
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; record: Registro; openUpward?: boolean } | null>(null);
 
   const [executiveFilter, setExecutiveFilter] = useState('');
   const hasGlobalFilter = typeof globalFilter === 'string' && globalFilter.trim().length > 0;
@@ -288,6 +288,48 @@ export function DataTable({
 
   // Mantener filtros cuando los datos cambien
   // Los filtros se mantienen automáticamente por React Table
+
+  // Ajustar posición del menú contextual después de renderizarse
+  useEffect(() => {
+    if (contextMenu && contextMenuRef.current) {
+      const menuElement = contextMenuRef.current;
+      const menuHeight = menuElement.offsetHeight;
+      const menuWidth = menuElement.offsetWidth;
+      
+      // Verificar si el menú se sale de la pantalla
+      const spaceBelow = window.innerHeight - contextMenu.y;
+      const spaceAbove = contextMenu.y;
+      const spaceRight = window.innerWidth - contextMenu.x;
+      const spaceLeft = contextMenu.x;
+      
+      let adjustedY = contextMenu.y;
+      let adjustedX = contextMenu.x;
+      
+      // Si no hay espacio debajo pero sí arriba, abrir hacia arriba
+      if (spaceBelow < menuHeight && spaceAbove > menuHeight) {
+        adjustedY = contextMenu.y - menuHeight;
+      }
+      // Si tampoco hay espacio arriba, ajustar para que quepa
+      else if (spaceBelow < menuHeight && spaceAbove < menuHeight) {
+        adjustedY = Math.max(10, window.innerHeight - menuHeight - 10);
+      }
+      
+      // Ajustar posición horizontal si se sale por la derecha
+      if (spaceRight < menuWidth && spaceLeft > menuWidth) {
+        adjustedX = contextMenu.x - menuWidth;
+      }
+      // Si tampoco hay espacio a la izquierda, ajustar para que quepa
+      else if (spaceRight < menuWidth && spaceLeft < menuWidth) {
+        adjustedX = Math.max(10, window.innerWidth - menuWidth - 10);
+      }
+      
+      // Solo actualizar si es necesario
+      if (adjustedY !== contextMenu.y || adjustedX !== contextMenu.x) {
+        menuElement.style.top = `${Math.max(10, adjustedY)}px`;
+        menuElement.style.left = `${Math.max(10, adjustedX)}px`;
+      }
+    }
+  }, [contextMenu]);
 
   // Cerrar menú contextual si se hace click fuera
   useEffect(() => {
@@ -1732,7 +1774,23 @@ export function DataTable({
                           onDelete ||
                           onShowHistorial;
                         if (hasAnyOption) {
-                          setContextMenu({ x: e.clientX, y: e.clientY, record: row.original });
+                          // Calcular si hay espacio suficiente debajo del punto de clic
+                          // Estimamos la altura del menú contextual (aproximadamente 300px)
+                          const menuEstimatedHeight = 300;
+                          const spaceBelow = window.innerHeight - e.clientY;
+                          const openUpward = spaceBelow < menuEstimatedHeight;
+                          
+                          // Si se abre hacia arriba, ajustar la posición Y
+                          const adjustedY = openUpward 
+                            ? e.clientY - menuEstimatedHeight 
+                            : e.clientY;
+                          
+                          setContextMenu({ 
+                            x: e.clientX, 
+                            y: Math.max(10, adjustedY), // Asegurar que no se salga por arriba
+                            record: row.original,
+                            openUpward 
+                          });
                         }
                       }}
                     >
@@ -1838,7 +1896,22 @@ export function DataTable({
                   const hasEditNaveViaje = currentUser?.rol === 'admin' &&
                     ((selectedRows.size > 0 && onBulkEditNaveViaje) || onEditNaveViaje);
                   if (hasEditNaveViaje) {
-                    setContextMenu({ x: event.clientX, y: event.clientY, record });
+                    // Calcular si hay espacio suficiente debajo del punto de clic
+                    const menuEstimatedHeight = 300;
+                    const spaceBelow = window.innerHeight - event.clientY;
+                    const openUpward = spaceBelow < menuEstimatedHeight;
+                    
+                    // Si se abre hacia arriba, ajustar la posición Y
+                    const adjustedY = openUpward 
+                      ? event.clientY - menuEstimatedHeight 
+                      : event.clientY;
+                    
+                    setContextMenu({ 
+                      x: event.clientX, 
+                      y: Math.max(10, adjustedY), // Asegurar que no se salga por arriba
+                      record,
+                      openUpward 
+                    });
                   }
                 };
 
