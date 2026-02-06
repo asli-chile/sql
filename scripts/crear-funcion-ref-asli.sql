@@ -58,12 +58,11 @@ CREATE OR REPLACE FUNCTION get_multiple_ref_asli(cantidad INTEGER)
 RETURNS TEXT[] AS $$
 DECLARE
   ref_asli_list TEXT[] := ARRAY[]::TEXT[];
-  max_numero INTEGER;
-  siguiente_numero INTEGER;
+  existing_numbers INTEGER[];
+  siguiente_numero INTEGER := 1;
   ref_asli_result TEXT;
-  i INTEGER;
 BEGIN
-  -- Obtener el número máximo
+  -- Obtener todos los números existentes
   SELECT ARRAY_AGG(DISTINCT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) ORDER BY 1)
     INTO existing_numbers
   FROM registros
@@ -73,12 +72,29 @@ BEGIN
     existing_numbers := ARRAY[]::INTEGER[];
   END IF;
   
+  -- Encontrar el siguiente número disponible
+  SELECT COALESCE(MAX(num), 0) + 1 INTO siguiente_numero
+  FROM (
+    SELECT CAST(SUBSTRING(ref_asli FROM '^A(\d+)$') AS INTEGER) AS num
+    FROM registros
+    WHERE ref_asli ~ '^A\d+$'
+  ) AS nums;
+  
+  IF siguiente_numero IS NULL OR siguiente_numero < 1 THEN
+    siguiente_numero := 1;
+  END IF;
+  
+  -- Generar la cantidad solicitada de REF ASLI únicos
   WHILE array_length(ref_asli_list, 1) < cantidad LOOP
-    IF NOT (siguiente_numero = ANY(existing_numbers)) THEN
-      ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
-      ref_asli_list := array_append(ref_asli_list, ref_asli_result);
-      existing_numbers := array_append(existing_numbers, siguiente_numero);
-    END IF;
+    -- Buscar el siguiente número que no esté en la lista de existentes
+    WHILE siguiente_numero = ANY(existing_numbers) LOOP
+      siguiente_numero := siguiente_numero + 1;
+    END LOOP;
+    
+    -- Generar el REF ASLI y agregarlo a la lista
+    ref_asli_result := 'A' || LPAD(siguiente_numero::TEXT, 4, '0');
+    ref_asli_list := array_append(ref_asli_list, ref_asli_result);
+    existing_numbers := array_append(existing_numbers, siguiente_numero);
     siguiente_numero := siguiente_numero + 1;
   END LOOP;
   

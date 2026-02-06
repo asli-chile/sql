@@ -23,28 +23,100 @@ export function setSupabaseClient(client: SupabaseClient) {
  */
 export const generateRefAsliMobile = async (count: number = 1): Promise<string | string[]> => {
   try {
-    // Llamar a la función SQL que ve TODOS los registros (ignora RLS)
-    const { data, error } = await supabaseClient.rpc('get_next_ref_asli');
-
-    if (error) {
-      console.error('❌ Error generando REF ASLI:', error);
-      // Fallback: método directo
-      return await generateRefAsliFallback(count);
-    }
-
     if (count === 1) {
+      // Para un solo REF ASLI, usar la función simple
+      const { data, error } = await supabaseClient.rpc('get_next_ref_asli');
+
+      if (error) {
+        console.error('❌ Error generando REF ASLI:', error);
+        // Fallback: método directo
+        return await generateRefAsliFallback(count);
+      }
+
       return data as string;
     }
 
-    // Para múltiples, llamar la función varias veces
-    const refAsliList: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const { data: refData, error: refError } = await supabase.rpc('get_next_ref_asli');
-      if (refError) {
-        console.error(`❌ Error generando REF ASLI ${i + 1}:`, refError);
-        break;
+    // Para múltiples, intentar usar la función que genera múltiples de una vez
+    try {
+      const { data: multipleData, error: multipleError } = await supabaseClient.rpc('get_multiple_ref_asli', {
+        cantidad: count
+      });
+
+      if (!multipleError && multipleData && Array.isArray(multipleData) && multipleData.length === count) {
+        // Verificar que todos sean únicos
+        const uniqueSet = new Set(multipleData);
+        if (uniqueSet.size === count) {
+          return multipleData;
+        } else {
+          console.warn('⚠️ La función devolvió REF ASLI duplicados, usando método secuencial');
+        }
       }
-      refAsliList.push(refData as string);
+    } catch (multipleError) {
+      console.warn('⚠️ Error usando get_multiple_ref_asli, usando método secuencial:', multipleError);
+    }
+
+    // Fallback: generar secuencialmente con verificación de unicidad
+    const refAsliList: string[] = [];
+    const usedRefAsli = new Set<string>();
+    
+    for (let i = 0; i < count; i++) {
+      let attempts = 0;
+      let refAsli: string | null = null;
+      
+      // Intentar hasta obtener uno único (máximo 100 intentos)
+      while (attempts < 100 && (refAsli === null || usedRefAsli.has(refAsli))) {
+        const { data: refData, error: refError } = await supabaseClient.rpc('get_next_ref_asli');
+        
+        if (refError) {
+          console.error(`❌ Error generando REF ASLI ${i + 1}:`, refError);
+          // Si falla, usar el método fallback
+          const fallbackResult = await generateRefAsliFallback(1);
+          refAsli = Array.isArray(fallbackResult) ? fallbackResult[0] : fallbackResult;
+          break;
+        }
+        
+        refAsli = refData as string;
+        attempts++;
+        
+        // Si ya existe en nuestra lista, esperar un poco y volver a intentar
+        if (usedRefAsli.has(refAsli)) {
+          await new Promise(resolve => setTimeout(resolve, 50)); // Esperar 50ms
+        }
+      }
+      
+      if (refAsli && !usedRefAsli.has(refAsli)) {
+        refAsliList.push(refAsli);
+        usedRefAsli.add(refAsli);
+      } else {
+        // Si no se pudo obtener uno único, usar fallback con número incremental
+        const fallbackResult = await generateRefAsliFallback(1);
+        const fallbackRef = Array.isArray(fallbackResult) ? fallbackResult[0] : fallbackResult;
+        
+        // Asegurar que el fallback también sea único
+        let uniqueFallback = fallbackRef;
+        let fallbackCounter = 1;
+        while (usedRefAsli.has(uniqueFallback)) {
+          const match = uniqueFallback.match(/^A(\d+)$/i);
+          if (match) {
+            const num = parseInt(match[1], 10) + fallbackCounter;
+            uniqueFallback = `A${num.toString().padStart(4, '0')}`;
+            fallbackCounter++;
+          } else {
+            uniqueFallback = `A${(Date.now() % 10000 + i).toString().padStart(4, '0')}`;
+          }
+        }
+        
+        refAsliList.push(uniqueFallback);
+        usedRefAsli.add(uniqueFallback);
+      }
+    }
+
+    // Verificación final de unicidad
+    const finalUniqueSet = new Set(refAsliList);
+    if (finalUniqueSet.size !== refAsliList.length) {
+      console.error('❌ ERROR CRÍTICO: Se generaron REF ASLI duplicados:', refAsliList);
+      // Regenerar usando fallback completamente
+      return await generateRefAsliFallback(count);
     }
 
     return refAsliList;
