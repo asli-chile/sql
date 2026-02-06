@@ -72,7 +72,27 @@ export async function GET() {
 
     const nowIso = new Date().toISOString();
 
-    // 1) Traer todos los registros de embarques "activos"
+    // 1) Traer todos los buques de vessel_position que tengan IMO o MMSI y coordenadas
+    const { data: allVesselsWithPosition, error: positionsError } = await supabase
+      .from('vessel_position')
+      .select('vessel_name, imo, mmsi, last_lat, last_lon, last_position_at, last_api_call_at')
+      .not('last_lat', 'is', null)
+      .not('last_lon', 'is', null)
+      .or('imo.not.is.null,mmsi.not.is.null');
+
+    if (positionsError) {
+      console.error('[ActiveVessels] Error consultando vessel_position:', positionsError);
+    }
+
+    // Crear un Set con todos los nombres de buques que tienen IMO/MMSI y coordenadas
+    const vesselsWithTracking = new Set<string>();
+    (allVesselsWithPosition || []).forEach((vessel: any) => {
+      if (vessel.vessel_name && (vessel.imo || vessel.mmsi)) {
+        vesselsWithTracking.add(vessel.vessel_name);
+      }
+    });
+
+    // 2) Traer todos los registros de embarques "activos" (para información adicional)
     const { data: registros, error: registrosError } = await supabase
       .from('registros')
       .select('nave_inicial, booking, contenedor, etd, eta, pod')
@@ -82,10 +102,7 @@ export async function GET() {
 
     if (registrosError) {
       console.error('[ActiveVessels] Error consultando registros activos:', registrosError);
-      return NextResponse.json(
-        { error: 'Error consultando registros activos' },
-        { status: 500 },
-      );
+      // No retornar error, continuar con los buques que tienen tracking
     }
 
     type RegistroRow = {
@@ -109,6 +126,21 @@ export async function GET() {
       }
     >();
 
+    // Agregar todos los buques con tracking al mapa (aunque no estén en registros activos)
+    vesselsWithTracking.forEach((vesselName) => {
+      if (!byVessel.has(vesselName)) {
+        byVessel.set(vesselName, {
+          vessel_name: vesselName,
+          etdCandidates: [],
+          etaCandidates: [],
+          destinations: new Set<string>(),
+          bookings: new Set<string>(),
+          containers: new Set<string>(),
+        });
+      }
+    });
+
+    // Agregar información de registros activos a los buques existentes
     (registros || []).forEach((row: RegistroRow) => {
       const vesselName = parseVesselName(row.nave_inicial);
       if (!vesselName) {
@@ -167,35 +199,26 @@ export async function GET() {
       );
     }
 
-    // 2) Leer posiciones cacheadas desde vessel_positions
-    const { data: positions, error: positionsError } = await supabase
-      .from('vessel_positions')
-      .select('vessel_name, last_lat, last_lon, last_position_at, last_api_call_at')
-      .in('vessel_name', vesselNames);
-
-    if (positionsError) {
-      console.error('[ActiveVessels] Error leyendo vessel_positions:', positionsError);
-      return NextResponse.json(
-        { error: 'Error leyendo posiciones de buques' },
-        { status: 500 },
-      );
-    }
+    // 3) Leer posiciones cacheadas desde vessel_position (ya las tenemos de arriba, pero las reorganizamos)
+    const positions = allVesselsWithPosition || [];
 
     const positionByName = new Map<
       string,
       { last_lat: number | null; last_lon: number | null; last_position_at: string | null; last_api_call_at: string | null }
     >();
 
-    (positions || []).forEach((row: any) => {
-      positionByName.set(row.vessel_name, {
-        last_lat: row.last_lat ?? null,
-        last_lon: row.last_lon ?? null,
-        last_position_at: row.last_position_at ?? null,
-        last_api_call_at: row.last_api_call_at ?? null,
-      });
+    positions.forEach((row: any) => {
+      if (row.vessel_name) {
+        positionByName.set(row.vessel_name, {
+          last_lat: row.last_lat ?? null,
+          last_lon: row.last_lon ?? null,
+          last_position_at: row.last_position_at ?? null,
+          last_api_call_at: row.last_api_call_at ?? null,
+        });
+      }
     });
 
-    // 3) Leer historial de posiciones para poder dibujar la ruta.
+    // 4) Leer historial de posiciones para poder dibujar la ruta.
     //    Traemos todos los puntos para estos buques ordenados por fecha.
     //    Agregamos un timestamp para evitar cache en la consulta
     const { data: tracks, error: tracksError } = await supabase

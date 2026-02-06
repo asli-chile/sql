@@ -26,3 +26,20 @@ BANCO_CENTRAL_PASS=tu_contraseña_banco_central
 # IMPORTANTE: Si no tienes credenciales del Banco Central, puedes usar APIs alternativas:
 # - MinIndicador.cl (gratuita, sin credenciales): https://mindicador.cl/api/dolar/{dd-mm-yyyy}
 # - DolarApi.com (gratuita, sin credenciales): https://cl.dolarapi.com
+
+# Configuración para API AIS (Seguimiento de buques en tiempo real)
+# aisstream.io (GRATUITO - WebSocket)
+# El sistema usa WebSocket para recibir datos AIS en tiempo real
+AISSTREAM_API_KEY=tu_api_key_aisstream
+#
+# Nota: Para obtener la API key de aisstream.io (GRATUITA):
+# 1. Ve a https://aisstream.io
+# 2. Regístrate y obtén tu API key gratuita
+# 3. Agrega la variable AISSTREAM_API_KEY en .env.local
+# 4. El servicio WebSocket se inicia automáticamente al llamar /api/vessels/start-websocket
+#
+# IMPORTANTE: 
+# - aisstream.io es completamente GRATUITO
+# - Usa WebSocket para streaming en tiempo real (wss://stream.aisstream.io/v0/stream)
+# - Los datos se actualizan automáticamente en la base de datos
+# - No se requieren llamadas REST costosas

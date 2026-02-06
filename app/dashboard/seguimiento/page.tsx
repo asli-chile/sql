@@ -42,6 +42,7 @@ const SeguimientoPage = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isListSidebarOpen, setIsListSidebarOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isSearchingIMO, setIsSearchingIMO] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -182,6 +183,41 @@ const SeguimientoPage = () => {
       console.error('[Seguimiento] Error actualizando posiciones:', error);
     } finally {
       await loadVessels();
+    }
+  };
+
+  const handleStartWebSocket = async () => {
+    try {
+      setIsSearchingIMO(true);
+      const url = `/api/vessels/start-websocket`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string; message?: string }
+          | null;
+        const message =
+          payload?.error ?? payload?.message ?? 'Error al iniciar el servicio WebSocket';
+        throw new Error(message);
+      }
+
+      const data = await response.json();
+      console.log('[Seguimiento] Servicio WebSocket iniciado:', data);
+      
+      // Recargar buques después de un momento para ver los cambios
+      setTimeout(() => {
+        loadVessels();
+      }, 2000);
+    } catch (error) {
+      console.error('[Seguimiento] Error iniciando WebSocket:', error);
+      alert('Error al iniciar el servicio WebSocket. Verifica que AISSTREAM_API_KEY esté configurada.');
+    } finally {
+      setIsSearchingIMO(false);
     }
   };
 
@@ -361,6 +397,19 @@ const SeguimientoPage = () => {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
+              <button
+                type="button"
+                onClick={handleStartWebSocket}
+                disabled={isSearchingIMO}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors border ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-500 hover:text-sky-200 bg-slate-800/60 disabled:opacity-50 disabled:cursor-not-allowed'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white disabled:opacity-50 disabled:cursor-not-allowed'
+                  }`}
+                title="Iniciar servicio WebSocket de aisstream.io para recibir datos AIS en tiempo real (gratuito)"
+              >
+                <Activity className="h-4 w-4" />
+                <span className="hidden sm:inline">{isSearchingIMO ? 'Iniciando...' : 'Iniciar WebSocket'}</span>
+              </button>
               <button
                 type="button"
                 onClick={handleRefreshPositions}

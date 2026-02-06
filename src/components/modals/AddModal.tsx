@@ -166,6 +166,7 @@ export function AddModal({
   const [currentStep, setCurrentStep] = useState(1);
   const [atmosferaControlada, setAtmosferaControlada] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const isSavingRef = React.useRef(false);
 
   const copiesPreview =
     numberOfCopies.trim() === ''
@@ -213,6 +214,7 @@ export function AddModal({
       setCurrentStep(1); // Resetear al paso 1 al abrir
       setAtmosferaControlada(false); // Resetear checkbox de atmósfera controlada
       setIsSaved(false); // Resetear estado de guardado
+      isSavingRef.current = false; // Resetear flag de guardado
       try {
         const [newRefAsli] = await requestRefAsliList(1);
         setFormData(prev => ({
@@ -476,6 +478,14 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       return;
     }
 
+    // Prevenir ejecuciones múltiples
+    if (isSavingRef.current || loading || isSaved) {
+      console.warn('⚠️ handleSave ya está en ejecución o ya se guardó, ignorando llamada duplicada');
+      return;
+    }
+
+    // Marcar como guardando
+    isSavingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -514,13 +524,12 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         ? `${formData.naveInicial} [${formData.viaje.trim()}]`
         : formData.naveInicial || '';
 
-      // Generar REF ASLI únicos para todas las copias
-      const refAsliList = await requestRefAsliList(resolvedCopies);
+      // Generar REF ASLI y REF EXTERNA en paralelo para ahorrar tiempo
+      const [refAsliList, refExternaResult] = await Promise.all([
+        requestRefAsliList(resolvedCopies),
+        generateRefExternaMobile(formData.shipper, formData.especie, resolvedCopies)
+      ]);
 
-      // Usar cliente Supabase importado
-
-      // Generar REF EXTERNA correlativas únicas para todas las copias
-      const refExternaResult = await generateRefExternaMobile(formData.shipper, formData.especie, resolvedCopies);
       const refExternaList = Array.isArray(refExternaResult) ? refExternaResult : [refExternaResult];
 
       // Crear múltiples copias
@@ -613,49 +622,60 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         }
 
         setError(`Error al crear los registros: ${errorMessage}`);
+        isSavingRef.current = false;
         return;
       }
 
-      await Promise.all(
-        [
-          ensureCatalogUpdate('refCliente', formData.refCliente, refExternasUnicas),
-          ensureCatalogUpdate('ejecutivos', formData.ejecutivo, ejecutivosUnicos),
-          ensureCatalogUpdate('clientes', formData.shipper, clientesUnicos),
-          ensureCatalogUpdate('navieras', formData.naviera, navierasUnicas),
-          ensureCatalogUpdate('naves', formData.naveInicial, navesUnicas),
-          ensureCatalogUpdate('especies', formData.especie, especiesUnicas),
-          ensureCatalogUpdate('pols', formData.pol, polsUnicos),
-          ensureCatalogUpdate('destinos', formData.pod, destinosUnicos),
-          ensureCatalogUpdate('depositos', formData.deposito, depositosUnicos),
-          ensureCatalogUpdate('cbm', formData.cbm, cbmUnicos),
-          ensureCatalogUpdate('fletes', formData.flete, fletesUnicos),
-          ensureCatalogUpdate('contratos', formData.contrato, contratosUnicos),
-          ensureCatalogUpdate('co2', formData.co2, co2sUnicos),
-          ensureCatalogUpdate('o2', formData.o2, o2sUnicos),
-          ensureCatalogUpdate('tratamiento de frio', formData.tratamientoFrio, tratamientosDeFrioOpciones),
-        ]
-          .filter((promise): promise is Promise<void> => promise !== null),
-      );
-
-      await upsertNaveMappingEntry();
-
-      // Sincronizar con transportes relacionados
-      if (createResult.records && createResult.records.length > 0) {
-        try {
-          const appRecords = createResult.records.map((record: any) => convertSupabaseToApp(record));
-          await syncMultipleTransportesFromRegistros(appRecords);
-        } catch (syncError) {
-          console.warn('⚠️ Error al sincronizar transportes desde AddModal:', syncError);
-        }
-      }
-
-      // No cerrar el modal, solo marcar como guardado y mostrar botón de correo
+      // Convertir los registros creados inmediatamente para mostrar feedback rápido
+      const appRecords = createResult.records.map((record: any) => convertSupabaseToApp(record));
+      
+      // Marcar como guardado y mostrar feedback inmediatamente
       setIsSaved(true);
       setLoading(false);
       
-      // Convertir los registros creados y pasarlos a onSuccess
-      const appRecords = createResult.records.map((record: any) => convertSupabaseToApp(record));
+      // Llamar a onSuccess inmediatamente para actualizar la UI
       onSuccess(appRecords);
+
+      // Ejecutar actualizaciones de catálogos y sincronización en segundo plano (no bloquear)
+      // Esto permite que el usuario vea el resultado inmediatamente
+      Promise.all([
+        // Actualizaciones de catálogos en paralelo
+        Promise.all(
+          [
+            ensureCatalogUpdate('refCliente', formData.refCliente, refExternasUnicas),
+            ensureCatalogUpdate('ejecutivos', formData.ejecutivo, ejecutivosUnicos),
+            ensureCatalogUpdate('clientes', formData.shipper, clientesUnicos),
+            ensureCatalogUpdate('navieras', formData.naviera, navierasUnicas),
+            ensureCatalogUpdate('naves', formData.naveInicial, navesUnicas),
+            ensureCatalogUpdate('especies', formData.especie, especiesUnicas),
+            ensureCatalogUpdate('pols', formData.pol, polsUnicos),
+            ensureCatalogUpdate('destinos', formData.pod, destinosUnicos),
+            ensureCatalogUpdate('depositos', formData.deposito, depositosUnicos),
+            ensureCatalogUpdate('cbm', formData.cbm, cbmUnicos),
+            ensureCatalogUpdate('fletes', formData.flete, fletesUnicos),
+            ensureCatalogUpdate('contratos', formData.contrato, contratosUnicos),
+            ensureCatalogUpdate('co2', formData.co2, co2sUnicos),
+            ensureCatalogUpdate('o2', formData.o2, o2sUnicos),
+            ensureCatalogUpdate('tratamiento de frio', formData.tratamientoFrio, tratamientosDeFrioOpciones),
+          ]
+            .filter((promise): promise is Promise<void> => promise !== null),
+        ),
+        // Actualización de nave mapping
+        upsertNaveMappingEntry(),
+        // Sincronización con transportes relacionados
+        (async () => {
+          if (createResult.records && createResult.records.length > 0) {
+            try {
+              await syncMultipleTransportesFromRegistros(appRecords);
+            } catch (syncError) {
+              console.warn('⚠️ Error al sincronizar transportes desde AddModal:', syncError);
+            }
+          }
+        })(),
+      ]).catch((error) => {
+        // Los errores en segundo plano no deben afectar la experiencia del usuario
+        console.warn('⚠️ Error en operaciones en segundo plano:', error);
+      });
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =
@@ -663,6 +683,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       setError(message);
     } finally {
       setLoading(false);
+      isSavingRef.current = false;
     }
   };
 
@@ -1771,8 +1792,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     <button
                       type="button"
                       onClick={isSaved ? sendReservationEmail : handleSave}
-                      disabled={loading}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 px-6 py-3 text-lg font-semibold text-white transition-colors disabled:opacity-50"
+                      disabled={loading || isSaved || isSavingRef.current}
+                      className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 px-6 py-3 text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {loading ? 'Guardando…' : isSaved ? '📧 Enviar Solicitud de Reserva' : 'Guardar registro'}
                     </button>

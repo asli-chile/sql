@@ -47,12 +47,22 @@ export async function POST() {
   try {
     // Log inicial para diagnóstico
     console.log('[UpdatePositions] Iniciando actualización de posiciones');
+    const AISSTREAM_API_KEY = process.env.AISSTREAM_API_KEY;
     console.log('[UpdatePositions] Variables de entorno:', {
-      hasBaseUrl: !!process.env.VESSEL_API_BASE_URL,
-      hasApiKey: !!process.env.VESSEL_API_KEY,
-      baseUrl: process.env.VESSEL_API_BASE_URL || 'NO DEFINIDA',
+      provider: 'aisstream.io (WebSocket)',
+      hasAisstreamKey: !!AISSTREAM_API_KEY,
       nodeEnv: process.env.NODE_ENV,
     });
+
+    if (!AISSTREAM_API_KEY) {
+      return NextResponse.json(
+        { 
+          error: 'AISSTREAM_API_KEY no está configurada',
+          message: 'aisstream.io es gratuito. Configura AISSTREAM_API_KEY en tus variables de entorno.'
+        },
+        { status: 500 },
+      );
+    }
 
     const supabase = await createClient();
 
@@ -254,34 +264,14 @@ export async function POST() {
       });
 
       if (!aisResult) {
-        // Verificar si la API está configurada (leer dentro de la función)
-        const VESSEL_API_BASE_URL = process.env.VESSEL_API_BASE_URL;
-        const VESSEL_API_KEY = process.env.VESSEL_API_KEY;
-        const apiConfigured = VESSEL_API_BASE_URL && VESSEL_API_KEY;
-        
-        let reason = 'La API AIS no devolvió datos válidos.';
-        if (!apiConfigured) {
-          reason = 'La API AIS no está configurada (faltan variables de entorno VESSEL_API_BASE_URL o VESSEL_API_KEY).';
-        } else {
-          reason = `La API AIS no devolvió datos válidos para este buque. IMO usado: ${imoToUse || 'N/A'}, MMSI usado: ${mmsiToUse || 'N/A'}. Verifica que los identificadores sean correctos o que el buque esté disponible en la API.`;
-        }
-
-        console.error(
-          `[UpdatePositions] Error para ${vessel.vessel_name}:`,
-          reason,
-          {
-            imo: imoToUse,
-            mmsi: mmsiToUse,
-            apiConfigured,
-            hasBaseUrl: !!VESSEL_API_BASE_URL,
-            hasApiKey: !!VESSEL_API_KEY,
-            baseUrl: VESSEL_API_BASE_URL || 'NO DEFINIDA',
-          },
+        console.log(
+          `[UpdatePositions] ⚠️ No se encontró posición en la base de datos para ${vessel.vessel_name}. ` +
+            'El servicio WebSocket puede no haber recibido datos aún. Asegúrate de que el WebSocket esté activo llamando a /api/vessels/start-websocket',
         );
 
         failed.push({
           vessel_name: vessel.vessel_name,
-          reason,
+          reason: 'No se encontró posición en la base de datos. El WebSocket puede no estar activo.',
         });
         continue;
       }

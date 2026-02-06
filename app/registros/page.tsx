@@ -143,6 +143,7 @@ export default function RegistrosPage() {
   const [selectedRecord, setSelectedRecord] = useState<Registro | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const recentlyAddedIdsRef = useRef<Set<string>>(new Set());
   const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
   const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
@@ -2907,15 +2908,65 @@ export default function RegistrosPage() {
         {/* Modals */}
         <AddModal
           isOpen={isAddModalOpen}
-          onClose={() => setIsAddModalOpen(false)}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            // Limpiar el set de IDs agregados al cerrar el modal
+            recentlyAddedIdsRef.current.clear();
+          }}
           onSuccess={(createdRecords) => {
-            // Agregar los nuevos registros al estado local sin recargar
-            setRegistros((prevRegistros) => {
-              // Agregar al inicio para mantener el orden (más recientes primero)
-              return [...createdRecords, ...prevRegistros];
+            // Filtrar registros que ya fueron agregados para evitar duplicados
+            const newRecords = createdRecords.filter(record => {
+              const recordId = record.id || record.ref_asli;
+              if (!recordId) return true; // Si no tiene ID, agregarlo (no debería pasar)
+              
+              // Si ya fue agregado recientemente, no agregarlo de nuevo
+              if (recentlyAddedIdsRef.current.has(recordId)) {
+                console.warn('⚠️ Registro ya fue agregado, ignorando duplicado:', recordId);
+                return false;
+              }
+              
+              // Marcar como agregado
+              recentlyAddedIdsRef.current.add(recordId);
+              return true;
             });
-            // Actualizar catálogos sin recargar todo
-            loadCatalogos();
+
+            // Solo agregar si hay registros nuevos
+            if (newRecords.length > 0) {
+              // Agregar los nuevos registros al estado local sin recargar
+              setRegistros((prevRegistros) => {
+                // Filtrar duplicados por ID antes de agregar
+                const existingIds = new Set(prevRegistros.map(r => r.id || r.ref_asli));
+                const uniqueNewRecords = newRecords.filter(r => {
+                  const id = r.id || r.ref_asli;
+                  return id && !existingIds.has(id);
+                });
+                
+                if (uniqueNewRecords.length === 0) {
+                  console.warn('⚠️ Todos los registros ya existen en el estado, no se agregarán duplicados');
+                  return prevRegistros;
+                }
+                
+                // Agregar al inicio para mantener el orden (más recientes primero)
+                return [...uniqueNewRecords, ...prevRegistros];
+              });
+              
+              // Actualizar catálogos en segundo plano (no bloquear la UI)
+              // Esto permite que el usuario vea los registros inmediatamente
+              loadCatalogos().catch((error) => {
+                console.warn('⚠️ Error al actualizar catálogos en segundo plano:', error);
+              });
+            }
+            
+            // Limpiar el set de IDs agregados después de 5 segundos para permitir agregar los mismos registros si se recarga
+            setTimeout(() => {
+              newRecords.forEach(record => {
+                const recordId = record.id || record.ref_asli;
+                if (recordId) {
+                  recentlyAddedIdsRef.current.delete(recordId);
+                }
+              });
+            }, 5000);
+            
             // No cerrar el modal automáticamente para permitir enviar el correo
           }}
           createdByName={

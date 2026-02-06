@@ -602,6 +602,24 @@ export const createRegistrosColumns = (
           />
         );
       },
+      filterFn: (row, id, value) => {
+        // Filtro personalizado para mes de ETD
+        if (!value || value === '' || (typeof value === 'string' && value.trim() === '')) {
+          return true;
+        }
+
+        const etd = row.original.etd;
+        if (!etd) return false;
+
+        // Obtener el mes de la fecha ETD
+        const etdDate = etd instanceof Date ? etd : new Date(etd);
+        if (isNaN(etdDate.getTime())) return false;
+
+        const mesEtd = etdDate.getMonth() + 1; // getMonth() devuelve 0-11, necesitamos 1-12
+        const filterValue = typeof value === 'string' ? parseInt(value, 10) : Number(value);
+
+        return mesEtd === filterValue;
+      },
     },
     {
       id: 'eta',

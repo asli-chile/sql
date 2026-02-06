@@ -1,0 +1,35 @@
+[00:00:02.153] Server  LOG      ✓ Ready in 1457ms
+[00:08:05.919] Server  LOG      ✓ Compiled in 113ms
+[00:08:11.559] Server  LOG      ✓ Compiled in 98ms
+[00:08:15.836] Server  LOG      ✓ Compiled in 104ms
+[00:08:32.133] Server  LOG      ✓ Compiled in 87ms
+[00:08:32.246] Browser ERROR   ./OneDrive/Documentos/TODO/DESARROLLO/ASLI/web/src/components/Header.jsx:144:13
+Parsing ecmascript source code failed
+  142 |           </button>
+  143 |         </div>
+> 144 |       </nav>
+      |             ^
+> 145 |
+      | ^
+> 146 |       {/* Overlay oscuro - Click para cerrar */}
+      | ^^^^^^^
+  147 |       {isMenuOpen && (
+  148 |         <div
+  149 |           className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 transition-opacity duration-300"
+
+Expected '</', got 'jsx text (
+
+      )'
+
+Import traces:
+  Browser:
+    ./OneDrive/Documentos/TODO/DESARROLLO/ASLI/web/src/components/Header.jsx
+    ./OneDrive/Documentos/TODO/DESARROLLO/ASLI/web/pages/index.jsx
+
+  SSR:
+    ./OneDrive/Documentos/TODO/DESARROLLO/ASLI/web/src/components/Header.jsx
+    ./OneDrive/Documentos/TODO/DESARROLLO/ASLI/web/pages/index.jsx
+[00:08:43.370] Server  LOG      ✓ Compiled in 59ms
+[00:08:59.613] Server  LOG      ✓ Compiled in 100ms
+[00:09:10.394] Server  LOG      ✓ Compiled in 79ms
+[00:10:10.045] Server  LOG      ✓ Compiled in 80ms

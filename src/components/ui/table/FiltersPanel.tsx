@@ -45,6 +45,21 @@ export function FiltersPanel({
   // Estado local para forzar re-renders cuando cambian los filtros
   const [filterUpdateTrigger, setFilterUpdateTrigger] = useState(0);
 
+  // Obtener meses únicos de ETD de los registros
+  const mesesUnicosEtd = useMemo(() => {
+    const meses = new Set<number>();
+    table.getPreFilteredRowModel().rows.forEach((row) => {
+      const etd = row.original.etd;
+      if (etd) {
+        const etdDate = etd instanceof Date ? etd : new Date(etd);
+        if (!isNaN(etdDate.getTime())) {
+          meses.add(etdDate.getMonth() + 1);
+        }
+      }
+    });
+    return Array.from(meses).sort((a, b) => a - b);
+  }, [table, filterUpdateTrigger]);
+
   // Suscribirse a cambios en el estado de la tabla para forzar actualizaciones
   useEffect(() => {
     // Forzar actualización cuando cambian los filtros de columna
@@ -210,7 +225,7 @@ export function FiltersPanel({
     onClearAll?.();
   };
 
-  const importantColumns = ['estado', 'naviera', 'shipper', 'pod', 'deposito', 'pol', 'especie', 'naveInicial'];
+  const importantColumns = ['estado', 'naviera', 'shipper', 'pod', 'deposito', 'pol', 'especie', 'naveInicial', 'etd'];
 
   return (
     <div className="space-y-3">
@@ -600,6 +615,55 @@ export function FiltersPanel({
                   {especiesUnicas.map((especie) => (
                     <option key={especie} value={especie}>
                       {especie}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          }
+
+          if (column.id === 'etd') {
+            const nombresMeses: Record<number, string> = {
+              1: 'Enero',
+              2: 'Febrero',
+              3: 'Marzo',
+              4: 'Abril',
+              5: 'Mayo',
+              6: 'Junio',
+              7: 'Julio',
+              8: 'Agosto',
+              9: 'Septiembre',
+              10: 'Octubre',
+              11: 'Noviembre',
+              12: 'Diciembre'
+            };
+
+            return (
+              <div key={column.id} className="space-y-2">
+                <label className={`text-xs font-medium flex items-center gap-2 ${getLabelStyles(hasFilter)}`}>
+                  {hasFilter && <Filter className="h-3 w-3" />}
+                  <span className="flex items-center gap-1">
+                    Mes ETD
+                    {hasFilter && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-medium ${theme === 'dark' ? 'bg-green-500/20 text-green-300' : 'bg-green-100 text-green-700'}`}>
+                        ✓
+                      </span>
+                    )}
+                  </span>
+                </label>
+                <select
+                  value={filterValue}
+                  onChange={(e) => {
+                    const newValue = e.target.value;
+                    // Usar undefined en lugar de string vacío para limpiar el filtro
+                    column.setFilterValue(newValue === '' ? undefined : newValue);
+                  }}
+                  className={getFilterStyles(hasFilter)}
+                >
+                  <option value="">Todos los meses</option>
+                  {mesesUnicosEtd.map((mes) => (
+                    <option key={mes} value={mes}>
+                      {nombresMeses[mes] || `Mes ${mes}`}
                     </option>
                   ))}
                 </select>
