@@ -1236,7 +1236,16 @@ export default function RegistrosPage() {
       if (error) throw error;
 
       success('Nave y viaje actualizados correctamente');
-      await loadRegistros();
+      
+      // Actualizar el registro en el estado local sin recargar
+      setRegistros((prevRegistros) =>
+        prevRegistros.map((record) =>
+          record.id === selectedRegistroForNaveViaje.id
+            ? { ...record, naveInicial: naveCompleta }
+            : record
+        )
+      );
+      
       handleCloseNaveViajeModal();
     } catch (err: any) {
       error('Error al actualizar nave y viaje: ' + (err.message || 'Error desconocido'));
@@ -1309,7 +1318,17 @@ export default function RegistrosPage() {
       if (error) throw error;
 
       success(`${registrosParaActualizar.length} registro(s) actualizado(s) correctamente`);
-      await loadRegistros();
+      
+      // Actualizar los registros en el estado local sin recargar
+      const recordIdsSet = new Set(recordIds);
+      setRegistros((prevRegistros) =>
+        prevRegistros.map((record) =>
+          record.id && recordIdsSet.has(record.id)
+            ? { ...record, naveInicial: naveCompleta }
+            : record
+        )
+      );
+      
       handleCloseNaveViajeModal();
     } catch (err: any) {
       error('Error al actualizar nave y viaje: ' + (err.message || 'Error desconocido'));
@@ -1498,7 +1517,8 @@ export default function RegistrosPage() {
           'ingresoStacking': 'ingreso_stacking',
           'refAsli': 'ref_asli',
           'numeroBl': 'numero_bl',
-          'estadoBl': 'estado_bl'
+          'estadoBl': 'estado_bl',
+          'tratamientoFrio': 'tratamiento de frio'
         };
 
         return fieldMapping[fieldName] || fieldName;
@@ -1792,11 +1812,25 @@ export default function RegistrosPage() {
     return registrosVisibles.filter(r => r.ejecutivo === tableStates.executiveFilter);
   }, [registrosVisibles, tableStates?.executiveFilter]);
 
-  // Limpiar filtros inválidos cuando cambia el ejecutivo
+  // Limpiar filtros inválidos solo cuando cambia el ejecutivo, no cuando se actualizan registros
+  // Usar un ref para rastrear el ejecutivo anterior y solo limpiar si realmente cambió
+  const previousExecutiveFilterRef = useRef(tableStates?.executiveFilter || '');
+
   useEffect(() => {
     if (!tableInstance || !tableStates) return;
 
     const currentExecutiveFilter = tableStates.executiveFilter || '';
+    
+    // Solo limpiar filtros si cambió el ejecutivo, no si solo se actualizaron registros
+    const executiveFilterChanged = previousExecutiveFilterRef.current !== currentExecutiveFilter;
+    
+    // Actualizar ref
+    previousExecutiveFilterRef.current = currentExecutiveFilter;
+    
+    // Solo ejecutar la lógica de limpieza si cambió el ejecutivo
+    if (!executiveFilterChanged) {
+      return;
+    }
 
     // Generar arrays de opciones válidas basadas en el ejecutivo actual
     const registrosFiltrados = currentExecutiveFilter
@@ -1874,7 +1908,7 @@ export default function RegistrosPage() {
         }
       });
     }
-  }, [tableInstance, tableStates?.executiveFilter, registrosVisibles]);
+  }, [tableInstance, tableStates?.executiveFilter]); // Solo depender del ejecutivo, no de registrosVisibles
 
   const registrosLength = registrosVisibles.length;
   useEffect(() => {
@@ -2874,8 +2908,13 @@ export default function RegistrosPage() {
         <AddModal
           isOpen={isAddModalOpen}
           onClose={() => setIsAddModalOpen(false)}
-          onSuccess={() => {
-            loadRegistros();
+          onSuccess={(createdRecords) => {
+            // Agregar los nuevos registros al estado local sin recargar
+            setRegistros((prevRegistros) => {
+              // Agregar al inicio para mantener el orden (más recientes primero)
+              return [...createdRecords, ...prevRegistros];
+            });
+            // Actualizar catálogos sin recargar todo
             loadCatalogos();
             // No cerrar el modal automáticamente para permitir enviar el correo
           }}
@@ -2910,8 +2949,14 @@ export default function RegistrosPage() {
         <EditModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSuccess={() => {
-            loadRegistros();
+          onSuccess={(updatedRecord) => {
+            // Actualizar el registro en el estado local sin recargar
+            setRegistros((prevRegistros) =>
+              prevRegistros.map((record) =>
+                record.id === updatedRecord.id ? updatedRecord : record
+              )
+            );
+            // Actualizar catálogos sin recargar todo
             loadCatalogos();
             setIsEditModalOpen(false);
           }}

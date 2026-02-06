@@ -642,7 +642,17 @@ export function DataTable({
     if (!onSelectAll) return;
     const visibleRecords = table.getRowModel().rows.map(row => row.original);
     onSelectAll(visibleRecords);
+    setIsMenuOpen(false);
   };
+
+  // Detectar si hay filtros activos
+  const visibleRowsCount = table.getRowModel().rows.length;
+  const totalRowsCount = data.length;
+  const hasActiveFilters = visibleRowsCount < totalRowsCount;
+  
+  // Verificar si todos los registros visibles están seleccionados
+  const visibleRecordIds = new Set(table.getRowModel().rows.map(row => row.original.id).filter((id): id is string => Boolean(id)));
+  const allVisibleSelected = visibleRecordIds.size > 0 && Array.from(visibleRecordIds).every(id => selectedRows.has(id));
 
   const handleClearSelectionClick = () => {
     onClearSelection?.();
@@ -1080,6 +1090,28 @@ export function DataTable({
                         >
                           <Eye className="h-4 w-4" />
                           {showSheetsPreview ? 'Ocultar' : 'Ver'} Sheets
+                        </button>
+                      )}
+                      {onSelectAll && (
+                        <button
+                          onClick={handleSelectAllClick}
+                          className={menuItemClasses}
+                        >
+                          <CheckSquare className="h-4 w-4" />
+                          {allVisibleSelected 
+                            ? (hasActiveFilters ? 'Deseleccionar visibles' : 'Deseleccionar todo')
+                            : (hasActiveFilters ? 'Seleccionar visibles' : 'Seleccionar todo')
+                          }
+                          {hasActiveFilters && (
+                            <span
+                              className={`ml-auto inline-flex items-center border px-1.5 py-0.5 text-[10px] font-medium rounded ${isDark
+                                ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                                : 'bg-blue-100 text-blue-700 border-blue-300'
+                                }`}
+                            >
+                              {visibleRowsCount}/{totalRowsCount}
+                            </span>
+                          )}
                         </button>
                       )}
                       {onClearSelection && (

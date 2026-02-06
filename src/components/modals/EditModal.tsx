@@ -15,7 +15,7 @@ interface EditModalProps {
   record: Registro | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (updatedRecord: Registro) => void;
   navierasUnicas?: string[];
   navesUnicas?: string[];
   fletesUnicos?: string[];
@@ -368,7 +368,9 @@ export function EditModal({
         }
       }
 
-      onSuccess();
+      // Convertir el registro actualizado y pasarlo a onSuccess
+      const appRegistro = convertSupabaseToApp(data);
+      onSuccess(appRegistro);
       onClose();
     } catch (err) {
       console.error('Error al actualizar registro:', err);

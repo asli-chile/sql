@@ -19,11 +19,12 @@ import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { syncMultipleTransportesFromRegistros } from '@/lib/sync-transportes';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
+import type { Registro } from '@/types/registros';
 
 interface AddModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdRecords: Registro[]) => void;
   createdByName: string;
   userEmail?: string | null;
   ejecutivosUnicos: string[];
@@ -651,7 +652,10 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       // No cerrar el modal, solo marcar como guardado y mostrar botón de correo
       setIsSaved(true);
       setLoading(false);
-      onSuccess();
+      
+      // Convertir los registros creados y pasarlos a onSuccess
+      const appRecords = createResult.records.map((record: any) => convertSupabaseToApp(record));
+      onSuccess(appRecords);
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =
