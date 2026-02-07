@@ -18,6 +18,7 @@ const TIPO_REPORTE_TO_SHEET: Record<TipoReporte, string> = {
   'reserva-confirmada': 'RESERVA CONFIRMADA + STACKING',
   zarpe: 'ZARPE',
   arribo: 'ARRIBO',
+  'booking-fee': 'BOOKING FEE',
   'gate-out': 'GATE OUT'
 };
 
