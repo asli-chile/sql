@@ -14,6 +14,16 @@ export function ConsoleBanner() {
 %c╚═╝  ╚═╝ ╚══════╝ ╚══════╝ ╚═╝
 
 %c   LOGISTICA  Y  COMERCIO  EXTERIOR
+
+
+%c                by
+
+%c████████╗  █████╗  ███████╗
+%c╚══██╔══╝ ██╔══██╗ ╚══███╔╝
+%c   ██║    ███████║   ███╔╝ 
+%c   ██║    ██╔══██║  ███╔╝  
+%c   ██║    ██║  ██║ ███████╗
+%c   ╚═╝    ╚═╝  ╚═╝ ╚══════╝
 `;
 
     // Estilos para cada línea del banner
@@ -25,6 +35,13 @@ export function ConsoleBanner() {
       'color: #3b82f6; font-weight: bold; font-size: 14px;',
       'color: #3b82f6; font-weight: bold; font-size: 14px;',
       'color: #10b981; font-weight: bold; font-size: 12px; letter-spacing: 2px;',
+      'color: #6b7280; font-weight: normal; font-size: 11px;',
+      'color: #f59e0b; font-weight: bold; font-size: 11px;',
+      'color: #f59e0b; font-weight: bold; font-size: 11px;',
+      'color: #f59e0b; font-weight: bold; font-size: 11px;',
+      'color: #f59e0b; font-weight: bold; font-size: 11px;',
+      'color: #f59e0b; font-weight: bold; font-size: 11px;',
+      'color: #f59e0b; font-weight: bold; font-size: 11px;',
     ];
 
     // Mostrar el banner en la consola
@@ -39,7 +56,17 @@ export function ConsoleBanner() {
 ██║  ██║ ███████║ ███████╗ ██║
 ╚═╝  ╚═╝ ╚══════╝ ╚══════╝ ╚═╝
 
-   LOGISTICA  Y  COMERCIO  EXTERIOR</pre>`;
+   LOGISTICA  Y  COMERCIO  EXTERIOR
+
+
+                by
+
+████████╗  █████╗  ███████╗
+╚══██╔══╝ ██╔══██╗ ╚══███╔╝
+   ██║    ███████║   ███╔╝ 
+   ██║    ██╔══██║  ███╔╝  
+   ██║    ██║  ██║ ███████╗
+   ╚═╝    ╚═╝  ╚═╝ ╚══════╝</pre>`;
 
     // Insertar después del body y antes del cierre de HTML
     // Usar setTimeout para asegurar que el DOM esté completamente cargado
