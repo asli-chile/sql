@@ -356,10 +356,10 @@ async function generarBookingFee(registros: Registro[]): Promise<ExcelJS.Buffer>
   
   // Convertir ArrayBuffer a Buffer (compatible con Node.js y navegador)
   if (typeof Buffer !== 'undefined') {
-    return Buffer.from(arrayBuffer);
+    return Buffer.from(arrayBuffer) as ExcelJS.Buffer;
   } else {
     // En navegador, usar Uint8Array
-    return new Uint8Array(arrayBuffer) as any;
+    return new Uint8Array(arrayBuffer) as ExcelJS.Buffer;
   }
 }
 
