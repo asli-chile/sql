@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, AlertCircle, ChevronRight, ChevronLeft, Check, Calendar } from 'lucide-react';
+import { X, AlertCircle, ChevronRight, ChevronLeft, Check, Calendar, Mail, RefreshCw } from 'lucide-react';
 import { Combobox } from '@/components/ui/Combobox';
 import { generateUniqueRefAsli } from '@/lib/ref-asli-utils';
 import { createClient } from '@/lib/supabase-browser';
@@ -622,6 +622,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         }
 
         setError(`Error al crear los registros: ${errorMessage}`);
+        setLoading(false);
         isSavingRef.current = false;
         return;
       }
@@ -632,37 +633,44 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       // Marcar como guardado y mostrar feedback inmediatamente
       setIsSaved(true);
       setLoading(false);
+      isSavingRef.current = false;
       
       // Llamar a onSuccess inmediatamente para actualizar la UI
       onSuccess(appRecords);
 
       // Ejecutar actualizaciones de catálogos y sincronización en segundo plano (no bloquear)
-      // Esto permite que el usuario vea el resultado inmediatamente
-      Promise.all([
-        // Actualizaciones de catálogos en paralelo
-        Promise.all(
-          [
-            ensureCatalogUpdate('refCliente', formData.refCliente, refExternasUnicas),
-            ensureCatalogUpdate('ejecutivos', formData.ejecutivo, ejecutivosUnicos),
-            ensureCatalogUpdate('clientes', formData.shipper, clientesUnicos),
-            ensureCatalogUpdate('navieras', formData.naviera, navierasUnicas),
-            ensureCatalogUpdate('naves', formData.naveInicial, navesUnicas),
-            ensureCatalogUpdate('especies', formData.especie, especiesUnicas),
-            ensureCatalogUpdate('pols', formData.pol, polsUnicos),
-            ensureCatalogUpdate('destinos', formData.pod, destinosUnicos),
-            ensureCatalogUpdate('depositos', formData.deposito, depositosUnicos),
-            ensureCatalogUpdate('cbm', formData.cbm, cbmUnicos),
-            ensureCatalogUpdate('fletes', formData.flete, fletesUnicos),
-            ensureCatalogUpdate('contratos', formData.contrato, contratosUnicos),
-            ensureCatalogUpdate('co2', formData.co2, co2sUnicos),
-            ensureCatalogUpdate('o2', formData.o2, o2sUnicos),
-            ensureCatalogUpdate('tratamiento de frio', formData.tratamientoFrio, tratamientosDeFrioOpciones),
-          ]
-            .filter((promise): promise is Promise<void> => promise !== null),
-        ),
-        // Actualización de nave mapping
-        upsertNaveMappingEntry(),
-        // Sincronización con transportes relacionados
+      // Usar setTimeout para asegurar que no bloquee el hilo principal
+      setTimeout(() => {
+        Promise.all([
+          // Actualizaciones de catálogos en paralelo
+          Promise.all(
+            [
+              ensureCatalogUpdate('refCliente', formData.refCliente, refExternasUnicas),
+              ensureCatalogUpdate('ejecutivos', formData.ejecutivo, ejecutivosUnicos),
+              ensureCatalogUpdate('clientes', formData.shipper, clientesUnicos),
+              ensureCatalogUpdate('navieras', formData.naviera, navierasUnicas),
+              ensureCatalogUpdate('naves', formData.naveInicial, navesUnicas),
+              ensureCatalogUpdate('especies', formData.especie, especiesUnicas),
+              ensureCatalogUpdate('pols', formData.pol, polsUnicos),
+              ensureCatalogUpdate('destinos', formData.pod, destinosUnicos),
+              ensureCatalogUpdate('depositos', formData.deposito, depositosUnicos),
+              ensureCatalogUpdate('cbm', formData.cbm, cbmUnicos),
+              ensureCatalogUpdate('fletes', formData.flete, fletesUnicos),
+              ensureCatalogUpdate('contratos', formData.contrato, contratosUnicos),
+              ensureCatalogUpdate('co2', formData.co2, co2sUnicos),
+              ensureCatalogUpdate('o2', formData.o2, o2sUnicos),
+              ensureCatalogUpdate('tratamiento de frio', formData.tratamientoFrio, tratamientosDeFrioOpciones),
+            ]
+              .filter((promise): promise is Promise<void> => promise !== null),
+          ),
+          // Actualización de nave mapping
+          upsertNaveMappingEntry(),
+        ]).catch((error) => {
+          console.warn('⚠️ Error en actualizaciones de catálogos:', error);
+        });
+
+        // Sincronización con transportes en un proceso completamente separado y asíncrono
+        // Esto no debe bloquear nada
         (async () => {
           if (createResult.records && createResult.records.length > 0) {
             try {
@@ -671,11 +679,10 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               console.warn('⚠️ Error al sincronizar transportes desde AddModal:', syncError);
             }
           }
-        })(),
-      ]).catch((error) => {
-        // Los errores en segundo plano no deben afectar la experiencia del usuario
-        console.warn('⚠️ Error en operaciones en segundo plano:', error);
-      });
+        })().catch(() => {
+          // Ignorar errores de sincronización, no deben afectar al usuario
+        });
+      }, 0);
     } catch (err: unknown) {
       console.error('Error al crear registro:', err);
       const message =
@@ -1786,26 +1793,48 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                         <p className={`text-center font-semibold ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
                           ✅ Registro guardado exitosamente
                         </p>
+                        <p className={`text-center text-sm mt-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
+                          Puedes enviar la solicitud de reserva por correo ahora o cerrar el modal
+                        </p>
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      onClick={isSaved ? sendReservationEmail : handleSave}
-                      disabled={loading || isSaved || isSavingRef.current}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 px-6 py-3 text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Guardando…' : isSaved ? '📧 Enviar Solicitud de Reserva' : 'Guardar registro'}
-                    </button>
-
-                    {isSaved && (
+                    {!isSaved ? (
                       <button
                         type="button"
-                        onClick={onClose}
-                        className="w-full inline-flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 px-6 py-3 text-lg font-semibold text-white transition-colors"
+                        onClick={handleSave}
+                        disabled={loading || isSavingRef.current}
+                        className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 px-6 py-3 text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Cerrar
+                        {loading ? (
+                          <>
+                            <RefreshCw className="h-5 w-5 animate-spin" />
+                            Guardando…
+                          </>
+                        ) : (
+                          <>
+                            Guardar registro
+                          </>
+                        )}
                       </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={sendReservationEmail}
+                          className="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 text-lg font-semibold text-white transition-colors shadow-lg"
+                        >
+                          <Mail className="h-5 w-5" />
+                          📧 Enviar Solicitud de Reserva por Correo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={onClose}
+                          className="w-full inline-flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 px-6 py-3 text-lg font-semibold text-white transition-colors"
+                        >
+                          Cerrar
+                        </button>
+                      </>
                     )}
                   </div>
                 )}

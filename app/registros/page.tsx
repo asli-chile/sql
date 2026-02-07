@@ -130,6 +130,8 @@ export default function RegistrosPage() {
   const [tratamientosFrioUnicos, setTratamientosFrioUnicos] = useState<string[]>([]);
   const [tiposAtmosferaUnicos, setTiposAtmosferaUnicos] = useState<string[]>([]);
   const [facturacionesUnicas, setFacturacionesUnicas] = useState<string[]>([]);
+  const [temporadasUnicas, setTemporadasUnicas] = useState<string[]>([]);
+  const [temporadaSeleccionada, setTemporadaSeleccionada] = useState<string>('TODAS');
 
   const [navierasFiltro, setNavierasFiltro] = useState<string[]>([]);
   const [ejecutivosFiltro, setEjecutivosFiltro] = useState<string[]>([]);
@@ -211,9 +213,30 @@ export default function RegistrosPage() {
     }
   }, [estadoParam, idParam, tableInstance, tableStates]);
 
-  const registrosVisibles = useMemo(() => {
-    return registros;
+  // Extraer temporadas únicas de los registros
+  useEffect(() => {
+    const temporadas = new Set<string>();
+    registros.forEach((registro) => {
+      if (registro.temporada && registro.temporada.trim()) {
+        temporadas.add(registro.temporada.trim());
+      }
+    });
+    const temporadasArray = Array.from(temporadas).sort();
+    setTemporadasUnicas(temporadasArray);
   }, [registros]);
+
+  const registrosVisibles = useMemo(() => {
+    let registrosFiltrados = registros;
+    
+    // Aplicar filtro de temporada si hay una seleccionada
+    if (temporadaSeleccionada && temporadaSeleccionada !== 'TODAS') {
+      registrosFiltrados = registrosFiltrados.filter(
+        (registro) => registro.temporada === temporadaSeleccionada
+      );
+    }
+    
+    return registrosFiltrados;
+  }, [registros, temporadaSeleccionada]);
 
   useEffect(() => {
     checkUser();
@@ -2771,6 +2794,27 @@ export default function RegistrosPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0">
+                  {/* Selector de Temporada */}
+                  {temporadasUnicas.length > 0 && (
+                    <div className="relative hidden sm:flex flex-shrink-0">
+                      <select
+                        value={temporadaSeleccionada}
+                        onChange={(e) => setTemporadaSeleccionada(e.target.value)}
+                        className={`border text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 transition flex-shrink-0 min-w-[120px] sm:min-w-[140px] ${theme === 'dark'
+                          ? 'border-slate-700/60 bg-slate-700/60 text-slate-200 hover:border-sky-500/60 focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/60'
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
+                          }`}
+                        aria-label="Seleccionar temporada"
+                      >
+                        <option value="TODAS">Todas las temporadas</option>
+                        {temporadasUnicas.map((temporada) => (
+                          <option key={temporada} value={temporada}>
+                            {temporada}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <button
                     onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
                     className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border transition flex-shrink-0 ${isRightSidebarOpen

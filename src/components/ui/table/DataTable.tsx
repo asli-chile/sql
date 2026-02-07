@@ -2001,6 +2001,12 @@ export function DataTable({
                     ? record.contenedor.join(', ')
                     : (record.contenedor || '-');
 
+                  const formatValueForCopy = (value: any): string => {
+                    if (value === null || value === undefined) return '-';
+                    if (value instanceof Date) return formatDate(value);
+                    return String(value);
+                  };
+
                   const cardHtml = `<div style="font-family: Arial, sans-serif; background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 16px; padding: 20px; max-width: 400px; color: #cbd5e1;">
   <div style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px;">
     <div>
@@ -2011,19 +2017,24 @@ export function DataTable({
   </div>
   <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: #cbd5e1;">
     <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">REF ASLI</span>
-      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.refAsli)}</span>
-    </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">REF CLIENTE</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.refCliente)}</span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.refCliente))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">EJECUTIVO</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.ejecutivo))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">SHIPPER</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.shipper))}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">NAVIERA</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.naviera)}</span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.naviera))}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">NAVE</span>
@@ -2031,24 +2042,34 @@ export function DataTable({
       <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatNave())}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
-      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">MERCANCIA</span>
-      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.especie)}</span>
-    </div>
-    <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">BOOKING</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.booking)}</span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.booking))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">ESPECIE</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.especie))}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">CONTENEDOR</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
       <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(contenedorText)}</span>
     </div>
+    ${record.temperatura !== null && record.temperatura !== undefined ? `<div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">TEMP</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${record.temperatura}°C</span>
+    </div>` : ''}
+    ${record.cbm !== null && record.cbm !== undefined ? `<div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">CBM</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${record.cbm}</span>
+    </div>` : ''}
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">POL</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.pol)}</span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.pol))}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">ETD</span>
@@ -2058,7 +2079,7 @@ export function DataTable({
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">POD</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
-      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.pod)}</span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.pod))}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">ETA</span>
@@ -2071,26 +2092,56 @@ export function DataTable({
       <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(calculateTransito())}</span>
     </div>
     <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">DEPÓSITO</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.deposito))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">TIPO INGRESO</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.tipoIngreso))}</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">FLETE</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(formatValueForCopy(record.flete))}</span>
+    </div>
+    ${record.numeroBl ? `<div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">N° BL</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.numeroBl)}</span>
+    </div>` : ''}
+    ${record.estadoBl ? `<div style="display: flex; align-items: center; gap: 8px;">
+      <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">ESTADO BL</span>
+      <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
+      <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml(record.estadoBl)}</span>
+    </div>` : ''}
+    ${(record as any).consignatario ? `<div style="display: flex; align-items: center; gap: 8px;">
       <span style="color: #ffffff; font-weight: 700; flex-shrink: 0;">CONSIGNATARIO</span>
       <span style="flex: 1; border-bottom: 1px dotted #475569; min-width: 20px;"></span>
       <span style="font-weight: 600; text-align: right; color: #e2e8f0;">${escapeHtml((record as any).consignatario)}</span>
-    </div>
+    </div>` : ''}
   </div>
 </div>`;
 
                   const cardText = `REF ASLI: ${record.refAsli || '-'}
 REF CLIENTE: ${record.refCliente || '-'}
+EJECUTIVO: ${record.ejecutivo || '-'}
+SHIPPER: ${record.shipper || '-'}
 NAVIERA: ${record.naviera || '-'}
 NAVE: ${formatNave()}
-MERCANCIA: ${record.especie || '-'}
 BOOKING: ${record.booking || '-'}
+ESPECIE: ${record.especie || '-'}
 CONTENEDOR: ${contenedorText}
-POL: ${record.pol || '-'}
+${record.temperatura !== null && record.temperatura !== undefined ? `TEMP: ${record.temperatura}°C\n` : ''}${record.cbm !== null && record.cbm !== undefined ? `CBM: ${record.cbm}\n` : ''}POL: ${record.pol || '-'}
 ETD: ${formatDate(record.etd)}
 POD: ${record.pod || '-'}
 ETA: ${formatDate(record.eta)}
 TRÁNSITO: ${calculateTransito()}
-CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
+DEPÓSITO: ${record.deposito || '-'}
+TIPO INGRESO: ${record.tipoIngreso || '-'}
+FLETE: ${record.flete || '-'}
+${record.numeroBl ? `N° BL: ${record.numeroBl}\n` : ''}${record.estadoBl ? `ESTADO BL: ${record.estadoBl}\n` : ''}${(record as any).consignatario ? `CONSIGNATARIO: ${(record as any).consignatario}\n` : ''}${record.comentario ? `COMENTARIO: ${record.comentario}\n` : ''}${record.observacion ? `OBSERVACIÓN: ${record.observacion}` : ''}`;
 
                   try {
                     // Copiar como HTML para preservar el formato visual
@@ -2128,72 +2179,224 @@ CONSIGNATARIO: ${(record as any).consignatario || '-'}`;
                       </span>
                     </div>
 
-                    <div className={`mt-3 grid gap-2.5 text-[11px] sm:text-xs ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>REF ASLI</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.refAsli || '-'}</span>
+                    <div className={`mt-3 space-y-3 text-[11px] sm:text-xs ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>
+                      {/* Sección: Referencias y Cliente */}
+                      <div className="space-y-2">
+                        <div className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Referencias
+                        </div>
+                        <div className="grid gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>REF CLIENTE</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.refCliente || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>EJECUTIVO</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.ejecutivo || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>SHIPPER</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.shipper || '-'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>REF CLIENTE</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.refCliente || '-'}</span>
+
+                      {/* Sección: Naviera y Nave */}
+                      <div className="space-y-2">
+                        <div className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Naviera
+                        </div>
+                        <div className="grid gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>NAVIERA</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.naviera || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>NAVE</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatNave()}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>BOOKING</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.booking || '-'}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>NAVIERA</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.naviera || '-'}</span>
+
+                      {/* Sección: Mercancía y Contenedor */}
+                      <div className="space-y-2">
+                        <div className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Mercancía
+                        </div>
+                        <div className="grid gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ESPECIE</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.especie || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONTENEDOR</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
+                          </div>
+                          {record.temperatura !== null && record.temperatura !== undefined && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>TEMP</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.temperatura}°C</span>
+                            </div>
+                          )}
+                          {record.cbm !== null && record.cbm !== undefined && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CBM</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.cbm}</span>
+                            </div>
+                          )}
+                          {record.tratamientoFrio && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>TRAT. FRÍO</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.tratamientoFrio}</span>
+                            </div>
+                          )}
+                          {record.tipoAtmosfera && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ATMÓSFERA</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.tipoAtmosfera}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>NAVE</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatNave()}</span>
+
+                      {/* Sección: Rutas y Fechas */}
+                      <div className="space-y-2">
+                        <div className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Ruta
+                        </div>
+                        <div className="grid gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>POL</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.pol || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ETD</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.etd)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>POD</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.pod || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ETA</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.eta)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>TRÁNSITO</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{calculateTransito()}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>MERCANCIA</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.especie || '-'}</span>
+
+                      {/* Sección: Operaciones y Documentos */}
+                      <div className="space-y-2">
+                        <div className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                          Operaciones
+                        </div>
+                        <div className="grid gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>DEPÓSITO</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.deposito || '-'}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>TIPO INGRESO</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.tipoIngreso || '-'}</span>
+                          </div>
+                          {record.ingresoStacking && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ING. STACKING</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.ingresoStacking)}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>FLETE</span>
+                            <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                            <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.flete || '-'}</span>
+                          </div>
+                          {record.numeroBl && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>N° BL</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.numeroBl}</span>
+                            </div>
+                          )}
+                          {record.estadoBl && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ESTADO BL</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.estadoBl}</span>
+                            </div>
+                          )}
+                          {record.contrato && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONTRATO</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.contrato}</span>
+                            </div>
+                          )}
+                          {record.facturacion && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>FACTURACIÓN</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.facturacion}</span>
+                            </div>
+                          )}
+                          {(record as any).consignatario && (
+                            <div className="flex items-center gap-2">
+                              <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONSIGNATARIO</span>
+                              <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
+                              <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{(record as any).consignatario}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>BOOKING</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.booking || '-'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONTENEDOR</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{Array.isArray(record.contenedor) ? record.contenedor.join(', ') : (record.contenedor || '-')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>POL</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.pol || '-'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ETD</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.etd)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>POD</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{record.pod || '-'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>ETA</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{formatDate(record.eta)}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>TRÁNSITO</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{calculateTransito()}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-bold flex-shrink-0 ${isDark ? 'text-white' : 'text-gray-900'}`}>CONSIGNATARIO</span>
-                        <span className={`flex-1 border-b border-dotted ${isDark ? 'border-slate-600' : 'border-gray-300'}`}></span>
-                        <span className={`font-semibold text-right ${isDark ? 'text-slate-200' : 'text-gray-700'}`}>{(record as any).consignatario || '-'}</span>
-                      </div>
+
+                      {/* Sección: Comentarios y Observaciones */}
+                      {(record.comentario || record.observacion) && (
+                        <div className="space-y-2">
+                          <div className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
+                            Notas
+                          </div>
+                          <div className="grid gap-2">
+                            {record.comentario && (
+                              <div className="flex flex-col gap-1">
+                                <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>COMENTARIO</span>
+                                <span className={`text-[10px] ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>{record.comentario}</span>
+                              </div>
+                            )}
+                            {record.observacion && (
+                              <div className="flex flex-col gap-1">
+                                <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>OBSERVACIÓN</span>
+                                <span className={`text-[10px] ${isDark ? 'text-slate-300' : 'text-gray-600'}`}>{record.observacion}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
