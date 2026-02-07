@@ -269,7 +269,9 @@ export default function TrackingPage() {
                 ...(currentUser && currentUser.rol !== 'cliente'
                   ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
                   : []),
-                { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
+                ...(isRodrigo
+                  ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
+                  : []),
                 { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true, counter: trackingCount, tone: 'emerald' as const },
                 ...(isRodrigo
                     ? [

@@ -566,16 +566,20 @@ function DashboardPage() {
       available: true,
       stats: displayedStats
     },
-    {
-      id: 'dashboard/seguimiento',
-      title: 'Seguimiento de Buques',
-      description: 'Mapa AIS y estado de los buques activos',
-      icon: Globe,
-      color: 'bg-sky-500',
-      hoverColor: 'hover:bg-sky-600',
-      available: true,
-      stats: null
-    },
+    ...(isRodrigo
+      ? [
+        {
+          id: 'dashboard/seguimiento',
+          title: 'Seguimiento de Buques',
+          description: 'Mapa AIS y estado de los buques activos',
+          icon: Globe,
+          color: 'bg-sky-500',
+          hoverColor: 'hover:bg-sky-600',
+          available: true,
+          stats: null
+        },
+      ]
+      : []),
     {
       id: 'transportes',
       title: 'Registros de Transporte',
@@ -678,7 +682,9 @@ function DashboardPage() {
         ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe },
+        ...(isRodrigo
+          ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
+          : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo
           ? [

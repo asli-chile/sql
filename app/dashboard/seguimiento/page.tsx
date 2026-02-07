@@ -307,7 +307,9 @@ const SeguimientoPage = () => {
         ...(userInfo && userInfo.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        { label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: true, icon: Globe },
+        ...(isRodrigo
+          ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: true, icon: Globe }]
+          : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
         ...(isRodrigo
           ? [
@@ -330,6 +332,12 @@ const SeguimientoPage = () => {
   ];
 
   if (loadingUser || !user) {
+    return null;
+  }
+
+  // Proteger acceso: solo Rodrigo puede ver esta página
+  if (!isRodrigo) {
+    router.push('/dashboard');
     return null;
   }
 
