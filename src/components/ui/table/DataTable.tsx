@@ -102,6 +102,7 @@ export function DataTable({
 
   const { canEdit, canAdd, canDelete, canExport, currentUser } = useUser();
   const isAdmin = currentUser?.rol === 'admin';
+  const isCliente = currentUser?.rol === 'cliente';
 
   const isDark = theme === 'dark';
   const panelClasses = isDark
@@ -143,7 +144,7 @@ export function DataTable({
   const pendingColumnSizingRef = useRef<ColumnSizingState | null>(null);
   const sheetsPreviewUrl = 'https://docs.google.com/spreadsheets/d/1w-qqXkBPNW2j0yvOiL4xp83cBtdbpYWU8YV77PaGBjg/preview';
   const sheetsEditUrl = 'https://docs.google.com/spreadsheets/d/1w-qqXkBPNW2j0yvOiL4xp83cBtdbpYWU8YV77PaGBjg/edit';
-  const canPreviewSheets = Boolean(sheetsPreviewUrl);
+  const canPreviewSheets = Boolean(sheetsPreviewUrl) && !isCliente;
   const scrollLockState = useRef<ScrollLockState | null>(null);
   const sizingResetRef = useRef(false);
 
