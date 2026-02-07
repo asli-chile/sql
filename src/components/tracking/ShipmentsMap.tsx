@@ -268,9 +268,6 @@ export function ShipmentsMap({ registros, activeVessels = [], className = '' }: 
 
       if (!finalCoords) {
         // Si no tenemos coordenadas ni del puerto ni del país, no mostrarlo
-        if (IS_DEV) {
-          console.warn(`⚠️ No se encontraron coordenadas para puerto "${registro.pod}" - no se mostrará en el mapa`);
-        }
         return;
       }
 

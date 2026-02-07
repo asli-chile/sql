@@ -433,9 +433,6 @@ export function getPortCoordinates(portName: string): [number, number] | null {
   }
   
   // Si no se encuentra, devolver null para que el componente pueda manejarlo
-  if (IS_DEV) {
-    console.warn(`⚠️ Puerto no encontrado: "${portName}" (normalizado: "${normalized}"). No se mostrará en el mapa.`);
-  }
   return null;
 }
 

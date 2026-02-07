@@ -8,6 +8,7 @@ export interface Registro {
   ejecutivo: string;
   usuario?: string;
   shipper: string;
+  clienteAbr?: string; // Abreviatura del cliente
   booking: string;
   contenedor: string | string[];
   naviera: string;

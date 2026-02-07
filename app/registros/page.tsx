@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, FileCheck, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
+import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, FileCheck, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { PageWrapper } from '@/components/PageWrapper';
 
@@ -65,6 +65,7 @@ export default function RegistrosPage() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   // Estados para filtros y columnas del DataTable
   const [tableInstance, setTableInstance] = useState<any>(null);
@@ -114,6 +115,7 @@ export default function RegistrosPage() {
   const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
   const [especiesUnicas, setEspeciesUnicas] = useState<string[]>([]);
   const [clientesUnicos, setClientesUnicos] = useState<string[]>([]);
+  const [clientesAbrMap, setClientesAbrMap] = useState<Record<string, string>>({});
   const [refExternasUnicas, setRefExternasUnicas] = useState<string[]>([]);
   const [polsUnicos, setPolsUnicos] = useState<string[]>([]);
   const [destinosUnicos, setDestinosUnicos] = useState<string[]>([]);
@@ -588,15 +590,45 @@ export default function RegistrosPage() {
         setEjecutivosFiltro(ejecutivos);
       }
 
-      // 3. Clientes desde catalogos_clientes
+      // 3. Clientes desde catalogos_clientes (con abreviatura si existe)
+      // Cargar todos los campos disponibles
       const { data: clientesData, error: clientesError } = await supabase
         .from('catalogos_clientes')
-        .select('nombre')
+        .select('*')
         .eq('activo', true)
         .order('nombre');
+      
+      if (clientesError) {
+        console.error('Error cargando clientes:', clientesError);
+      }
 
       if (!clientesError && clientesData) {
         const todosLosClientes = clientesData.map((c: any) => c.nombre).filter(Boolean);
+        // Crear mapeo de nombre -> abreviatura
+        // Usar tanto el nombre exacto como el nombre normalizado (trim, uppercase) para mayor compatibilidad
+        const clientesAbrMap: Record<string, string> = {};
+        clientesData.forEach((c: any) => {
+          // Buscar abreviatura en diferentes campos posibles (probando todas las variaciones)
+          const abr = (c.cliente_abr || c.clienteAbr || c.abr || c.abreviatura || c.abreviacion || '').trim();
+          const nombre = (c.nombre || '').trim();
+          
+          if (nombre && abr) {
+            const nombreExacto = nombre;
+            const nombreNormalizado = nombreExacto.toUpperCase();
+            // Guardar con ambos formatos para asegurar coincidencia
+            clientesAbrMap[nombreExacto] = abr;
+            clientesAbrMap[nombreNormalizado] = abr;
+            // También guardar sin espacios extra al inicio/fin
+            const nombreSinEspacios = nombreExacto.replace(/^\s+|\s+$/g, '');
+            if (nombreSinEspacios !== nombreExacto) {
+              clientesAbrMap[nombreSinEspacios] = abr;
+              clientesAbrMap[nombreSinEspacios.toUpperCase()] = abr;
+            }
+          }
+        });
+        // Guardar el mapeo en el estado
+        setClientesAbrMap(clientesAbrMap);
+        
         // Si es ejecutivo, filtrar solo sus clientes asignados
         const currentClientesAsignados = clientesAsignados;
         const currentIsEjecutivo = isEjecutivo;
@@ -806,7 +838,7 @@ export default function RegistrosPage() {
         .single();
 
       if (error) {
-        console.warn('No se pudo cargar catálogo de estados, usando valores por defecto:', error);
+        // No se pudo cargar catálogo de estados, usando valores por defecto
         setEstadosUnicos(['PENDIENTE', 'CONFIRMADO', 'CANCELADO']);
         return;
       }
@@ -1495,11 +1527,9 @@ export default function RegistrosPage() {
       const syncResult = await syncTransportesFromRegistro(updatedRecord, oldBooking);
 
       if (syncResult.success && (syncResult.updated || 0) > 0) {
-        console.log(`✅ Se sincronizaron ${syncResult.updated} transportes con el registro actualizado`);
-        // Opcional: Mostrar notificación al usuario
-        // success(`Se actualizaron ${syncResult.updated} transportes relacionados`);
+        // Transportes sincronizados correctamente
       } else if (!syncResult.success) {
-        console.warn('⚠️ Error en sincronización de transportes:', syncResult.error);
+        console.error('Error en sincronización de transportes:', syncResult.error);
         // Opcional: Mostrar advertencia al usuario
         // warning('No se pudieron sincronizar los transportes relacionados');
       }
@@ -1598,7 +1628,7 @@ export default function RegistrosPage() {
             newValue: normalizedValue,
           });
         } catch (historialError) {
-          console.warn(`⚠️ Error creando historial para registro ${record.id}:`, historialError);
+          // Error no crítico al crear historial, se ignora silenciosamente
         }
       }
 
@@ -1623,11 +1653,9 @@ export default function RegistrosPage() {
           const syncResult = await syncMultipleTransportesFromRegistros(updatedRecords);
 
           if (syncResult.success && syncResult.totalUpdated > 0) {
-            console.log(`✅ Se sincronizaron ${syncResult.totalUpdated} transportes con la actualización masiva`);
-            // Opcional: Mostrar notificación al usuario
-            // success(`Se actualizaron ${syncResult.totalUpdated} transportes relacionados`);
+            // Transportes sincronizados correctamente
           } else if (!syncResult.success) {
-            console.warn('⚠️ Error en sincronización masiva de transportes:', syncResult.results);
+            console.error('Error en sincronización masiva de transportes:', syncResult.results);
           }
         } catch (error) {
           console.error('❌ Error crítico en sincronización masiva:', error);
@@ -1995,7 +2023,7 @@ export default function RegistrosPage() {
         });
 
       if (error) {
-        console.warn('No se pudieron cargar documentos proforma:', error.message);
+        // No se pudieron cargar documentos proforma
         return;
       }
 
@@ -2095,7 +2123,7 @@ export default function RegistrosPage() {
           });
 
         if (error) {
-          console.warn('No se pudieron cargar documentos booking:', error.message);
+          // No se pudieron cargar documentos booking
           return;
         }
 
@@ -2164,7 +2192,6 @@ export default function RegistrosPage() {
         });
 
         setBookingDocuments(bookingsMap);
-        console.log('Documentos booking cargados:', Array.from(bookingsMap.entries()));
       } catch (err) {
         console.error('Error cargando documentos booking:', err);
       }
@@ -2637,7 +2664,8 @@ export default function RegistrosPage() {
     handleOpenProformaCreator, // handler para generar proforma
     handleOpenBookingModal, // handler para abrir modal de booking
     bookingDocuments, // documentos PDF de booking en storage
-    currentUser?.rol !== 'cliente'
+    currentUser?.rol !== 'cliente',
+    clientesAbrMap // mapeo de clientes a abreviaturas
   ), [
     registrosVisibles,
     selectedRows,
@@ -2671,7 +2699,8 @@ export default function RegistrosPage() {
     handleOpenProformaCreator,
     handleOpenBookingModal,
     bookingDocuments,
-    currentUser?.rol
+    currentUser?.rol,
+    clientesAbrMap
   ]);
 
   if (loading) {
@@ -2763,8 +2792,23 @@ export default function RegistrosPage() {
           className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all"
           style={{ width: '100%', maxWidth: '100%' }}
         >
-          <header className={`sticky top-0 z-40 border-b ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/95 backdrop-blur' : 'border-gray-200 bg-white/95 backdrop-blur'}`}>
-            <div className="flex w-full flex-col gap-2 sm:gap-3 py-2 sm:py-2.5 md:py-3" style={{ paddingLeft: '8px', paddingRight: '4px' }}>
+          <header className={`sticky top-0 z-40 border-b transition-all duration-300 ease-in-out ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/95 backdrop-blur' : 'border-gray-200 bg-white/95 backdrop-blur'}`}>
+            {/* Botón para expandir header - Solo visible cuando está colapsado */}
+            {isHeaderCollapsed && (
+              <div className={`flex justify-center items-center w-full py-2 border-b ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/95' : 'border-gray-200 bg-white/95'}`}>
+                <button
+                  onClick={() => setIsHeaderCollapsed(false)}
+                  className={`flex items-center justify-center w-full py-2 transition-all rounded-md ${theme === 'dark' ? 'hover:bg-slate-700/80 text-slate-200 hover:text-sky-200 border border-slate-600/60' : 'hover:bg-gray-100 text-gray-700 hover:text-blue-600 border border-gray-300'}`}
+                  aria-label="Expandir menú"
+                  title="Expandir menú"
+                >
+                  <ChevronDown className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+            
+            {/* Contenido del header */}
+            <div className={`flex w-full flex-col gap-2 sm:gap-3 transition-all duration-300 ease-in-out overflow-hidden ${isHeaderCollapsed ? 'max-h-0 py-0 opacity-0 pointer-events-none' : 'max-h-[200px] py-2 sm:py-2.5 md:py-3 opacity-100'}`} style={{ paddingLeft: '8px', paddingRight: '4px' }}>
               <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between w-full">
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
                   {/* Botón hamburguesa para móvil */}
@@ -2789,7 +2833,18 @@ export default function RegistrosPage() {
                   )}
                   <div className="space-y-0.5 flex-1 min-w-0 overflow-hidden">
                     <p className={`text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Módulo Operativo</p>
-                    <h1 className={`text-sm sm:text-base md:text-lg lg:text-xl font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros de Embarques</h1>
+                    <div className="flex items-center gap-2">
+                      <h1 className={`text-sm sm:text-base md:text-lg lg:text-xl font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros de Embarques</h1>
+                      {/* Botón para colapsar header - Visible junto al título */}
+                      <button
+                        onClick={() => setIsHeaderCollapsed(true)}
+                        className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center border transition-all flex-shrink-0 ${theme === 'dark' ? 'border-slate-600 bg-slate-700/80 text-slate-200 hover:border-sky-500 hover:bg-sky-500/20 hover:text-sky-200' : 'border-gray-400 bg-gray-50 text-gray-700 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}`}
+                        aria-label="Colapsar menú"
+                        title="Colapsar menú para aprovechar más espacio"
+                      >
+                        <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      </button>
+                    </div>
                     <p className={`hidden text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'} md:block truncate`}>Gestión de contenedores y embarques</p>
                   </div>
                 </div>
@@ -2965,7 +3020,7 @@ export default function RegistrosPage() {
               
               // Si ya fue agregado recientemente, no agregarlo de nuevo
               if (recentlyAddedIdsRef.current.has(recordId)) {
-                console.warn('⚠️ Registro ya fue agregado, ignorando duplicado:', recordId);
+                // Registro ya fue agregado, ignorando duplicado
                 return false;
               }
               
@@ -2986,7 +3041,7 @@ export default function RegistrosPage() {
                 });
                 
                 if (uniqueNewRecords.length === 0) {
-                  console.warn('⚠️ Todos los registros ya existen en el estado, no se agregarán duplicados');
+                  // Todos los registros ya existen, no se agregarán duplicados
                   return prevRegistros;
                 }
                 
@@ -2996,8 +3051,8 @@ export default function RegistrosPage() {
               
               // Actualizar catálogos en segundo plano (no bloquear la UI)
               // Esto permite que el usuario vea los registros inmediatamente
-              loadCatalogos().catch((error) => {
-                console.warn('⚠️ Error al actualizar catálogos en segundo plano:', error);
+              loadCatalogos().catch(() => {
+                // Error no crítico al actualizar catálogos en segundo plano, se ignora
               });
             }
             
@@ -3099,10 +3154,6 @@ export default function RegistrosPage() {
               if (!selectedRegistroForBooking?.booking) return null;
               const bookingKey = selectedRegistroForBooking.booking.trim().toUpperCase().replace(/\s+/g, '');
               const doc = bookingDocuments.get(bookingKey);
-              console.log('🔍 Buscando documento para booking:', bookingKey);
-              console.log('📊 Total documentos cargados:', bookingDocuments.size);
-              console.log('📋 Claves disponibles:', Array.from(bookingDocuments.keys()).slice(0, 10));
-              console.log('✅ Documento encontrado:', doc);
               return doc || null;
             })()
           }

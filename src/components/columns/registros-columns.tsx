@@ -63,7 +63,7 @@ const COLUMN_WIDTHS: Record<string, { min: number; max: number }> = {
   ejecutivo: { min: 184, max: 288 },
   usuario: { min: 173, max: 288 },
   ingresado: { min: 127, max: 173 },
-  shipper: { min: 250, max: 250 },
+  shipper: { min: 120, max: 180 },
   booking: { min: 230, max: 355 },
   contenedor: { min: 150, max: 322 },
   naviera: { min: 184, max: 299 },
@@ -128,10 +128,14 @@ export const createRegistrosColumns = (
   onGenerateProforma?: (registro: Registro) => void,
   onOpenBookingModal?: (registro: Registro) => void,
   bookingDocuments?: Map<string, { nombre: string; fecha: string }>,
-  canUploadProforma?: boolean
+  canUploadProforma?: boolean,
+  clientesAbrMap?: Record<string, string>
 ): ColumnDef<Registro>[] => {
   // Crear mapeo de naves a navieras
   const naveToNavierasMap = createNaveToNavieraMap(data);
+  
+  // Guardar el mapeo de abreviaturas en una constante para usarlo en el closure
+  const abrMap = clientesAbrMap || {};
 
   // Obtener registros seleccionados
   const getSelectedRecords = (): Registro[] => {
@@ -314,6 +318,31 @@ export const createRegistrosColumns = (
       header: 'Cliente',
       cell: ({ row }) => {
         const value = row.getValue('shipper') as string;
+        // Obtener abreviatura desde el mapeo pasado como parámetro o desde el registro
+        // Intentar con el valor exacto y también con el valor normalizado
+        const valueTrimmed = value?.trim() || '';
+        const valueNormalized = valueTrimmed.toUpperCase();
+        
+        // Buscar en el mapeo con diferentes variaciones
+        let abrFromMap = abrMap[valueTrimmed] || abrMap[valueNormalized];
+        
+        // Si no se encuentra, buscar por coincidencia parcial (por si hay diferencias de espacios)
+        if (!abrFromMap && Object.keys(abrMap).length > 0) {
+          const mapKey = Object.keys(abrMap).find(key => 
+            key.trim().toUpperCase() === valueNormalized || 
+            key.trim() === valueTrimmed
+          );
+          if (mapKey) {
+            abrFromMap = abrMap[mapKey];
+          }
+        }
+        
+        // Usar la abreviatura si existe, sino usar el valor original
+        const displayValue = row.original.clienteAbr || abrFromMap || value;
+        
+        // Mostrar la abreviatura SIEMPRE que exista (ya sea del mapeo o del registro)
+        const shouldShowAbr = !!(abrFromMap || row.original.clienteAbr);
+        
         return (
           <InlineEditCell
             value={value}
@@ -325,6 +354,7 @@ export const createRegistrosColumns = (
             options={clientesUnicos || []}
             selectedRecords={getSelectedRecords()}
             isSelectionMode={true}
+            customDisplay={shouldShowAbr ? <span className="truncate font-medium">{displayValue}</span> : undefined}
           />
         );
       },

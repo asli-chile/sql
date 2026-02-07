@@ -360,11 +360,6 @@ function DashboardPage() {
 
   // TEMPORARY: Mostrar todas las naves para debugging
   const filteredActiveVessels = useMemo(() => {
-    console.log('[Dashboard] Total active vessels:', activeVessels.length);
-    activeVessels.forEach(v => {
-      console.log('[Dashboard] Active vessel:', v.vessel_name, 'lat:', v.last_lat, 'lon:', v.last_lon);
-    });
-
     // Por ahora, mostrar TODAS las naves activas sin filtrar
     return activeVessels;
 
@@ -390,8 +385,6 @@ function DashboardPage() {
       }
     });
 
-    console.log('[Dashboard] Valid vessel names from registros:', Array.from(validVesselNames));
-    console.log('[Dashboard] Active vessels from API:', activeVessels.map(v => v.vessel_name));
 
     const filtered = activeVessels.filter((vessel) => {
       if (!vessel.vessel_name) return false;

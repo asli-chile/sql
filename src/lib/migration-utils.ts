@@ -90,6 +90,7 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     ejecutivo: supabaseData.ejecutivo,
     usuario: supabaseData.usuario || supabaseData.created_by || undefined,
     shipper: supabaseData.shipper,
+    clienteAbr: supabaseData.cliente_abr || undefined,
     booking: supabaseData.booking,
     contenedor: supabaseData.contenedor,
     naviera: supabaseData.naviera,
