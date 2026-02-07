@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { Registro } from '@/types/registros';
+import { generarFacturacionExcel } from './facturacion-excel';
 
 // URL del logo de ASLI
 const LOGO_URL = '/logoasli.png';
@@ -9,7 +10,8 @@ export type TipoReporte =
   | 'reserva-confirmada' 
   | 'zarpe' 
   | 'arribo'
-  | 'gate-out';
+  | 'gate-out'
+  | 'booking-fee';
 
 export interface OpcionReporte {
   id: TipoReporte;
@@ -285,6 +287,82 @@ export function descargarExcel(buffer: ExcelJS.Buffer, nombreArchivo: string) {
   window.URL.revokeObjectURL(url);
 }
 
+// Función para agrupar registros por nave (para booking fee)
+function agruparRegistrosPorNave(registros: Registro[]) {
+  const grupos = new Map<string, {
+    nave: string;
+    registros: Registro[];
+    cantidad: number;
+    etd: Date | null;
+    especies: Set<string>;
+    temperaturas: Set<number | null>;
+    ventilaciones: Set<number | null>;
+  }>();
+
+  registros.forEach((registro) => {
+    const nave = registro.naveInicial || 'SIN NAVE';
+    
+    if (!grupos.has(nave)) {
+      grupos.set(nave, {
+        nave,
+        registros: [],
+        cantidad: 0,
+        etd: null,
+        especies: new Set(),
+        temperaturas: new Set(),
+        ventilaciones: new Set(),
+      });
+    }
+
+    const grupo = grupos.get(nave)!;
+    grupo.registros.push(registro);
+    grupo.cantidad += 1;
+    
+    if (registro.etd) {
+      if (!grupo.etd || (registro.etd < grupo.etd)) {
+        grupo.etd = registro.etd;
+      }
+    }
+    
+    if (registro.especie) {
+      grupo.especies.add(registro.especie);
+    }
+    
+    if (registro.temperatura !== null && registro.temperatura !== undefined) {
+      grupo.temperaturas.add(registro.temperatura);
+    }
+    
+    if (registro.cbm !== null && registro.cbm !== undefined) {
+      grupo.ventilaciones.add(registro.cbm);
+    }
+  });
+
+  return Array.from(grupos.values()).map(g => ({
+    nave: g.nave,
+    registros: g.registros,
+    cantidad: g.cantidad,
+    etd: g.etd,
+    especies: Array.from(g.especies),
+    temperaturas: Array.from(g.temperaturas),
+    ventilaciones: Array.from(g.ventilaciones),
+  }));
+}
+
+// Función para generar reporte de booking fee
+async function generarBookingFee(registros: Registro[]): Promise<ExcelJS.Buffer> {
+  const gruposPorNave = agruparRegistrosPorNave(registros);
+  const { blob } = await generarFacturacionExcel(gruposPorNave);
+  const arrayBuffer = await blob.arrayBuffer();
+  
+  // Convertir ArrayBuffer a Buffer (compatible con Node.js y navegador)
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(arrayBuffer);
+  } else {
+    // En navegador, usar Uint8Array
+    return new Uint8Array(arrayBuffer) as any;
+  }
+}
+
 // Función principal para generar reporte según tipo
 export async function generarReporte(
   tipo: TipoReporte, 
@@ -297,6 +375,8 @@ export async function generarReporte(
       return await generarZarpe(registros);
     case 'arribo':
       return await generarArribo(registros);
+    case 'booking-fee':
+      return await generarBookingFee(registros);
     default:
       throw new Error(`Tipo de reporte no válido: ${tipo}`);
   }

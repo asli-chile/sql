@@ -10,7 +10,6 @@ import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
 import {
-  LogOut,
   User as UserIcon,
   ArrowLeft,
   Download,
@@ -19,7 +18,8 @@ import {
   Filter,
   RefreshCw,
   Send,
-  X
+  X,
+  ChevronDown
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
@@ -28,6 +28,7 @@ import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
+import { generarReporte, descargarExcel, TipoReporte } from '@/lib/reportes';
 
 export default function TablasPersonalizadasPage() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function TablasPersonalizadasPage() {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [selectedRegistros, setSelectedRegistros] = useState<Registro[]>([]);
   const [showEditNaveViajeModal, setShowEditNaveViajeModal] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [navesUnicas, setNavesUnicas] = useState<string[]>([]);
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
   const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
@@ -69,13 +71,7 @@ export default function TablasPersonalizadasPage() {
         const filterType = props.column.getColDef().filter || 'agTextColumnFilter';
         const field = props.column.getColDef().field;
         
-        if (!field) {
-          console.error('No field defined for column');
-          return;
-        }
-        
-        if (!props.api) {
-          console.error('API not available');
+        if (!field || !props.api) {
           return;
         }
         
@@ -83,7 +79,6 @@ export default function TablasPersonalizadasPage() {
         const filterInstance = await props.api.getColumnFilterInstance(field);
         
         if (!filterInstance) {
-          console.error('Filter instance not available');
           return;
         }
         
@@ -114,51 +109,8 @@ export default function TablasPersonalizadasPage() {
         
         // Forzar actualización de filtros
         props.api.onFilterChanged();
-        
-        // Verificar que el filtro se aplicó correctamente y obtener información de debug
-        setTimeout(() => {
-          const appliedFilter = props.api.getFilterModel();
-          const rowCount = props.api.getDisplayedRowCount();
-          
-          // Obtener TODAS las filas (no solo las renderizadas) para ver los datos reales
-          const allRowData: any[] = [];
-          props.api.forEachNode((node) => {
-            if (node.data) {
-              allRowData.push(node.data);
-            }
-          });
-          
-          // Obtener valores únicos del campo
-          const uniqueValues = Array.from(new Set(
-            allRowData.map(row => row[field]).filter(Boolean)
-          )).slice(0, 20);
-          
-          // Verificar coincidencias
-          const trimmedValue = value.trim();
-          const matchingRows = allRowData.filter(row => {
-            const rowValue = String(row[field] || '').trim();
-            return rowValue.toLowerCase().includes(trimmedValue.toLowerCase());
-          });
-          
-          console.log('=== FILTER DEBUG ===');
-          console.log('Field:', field);
-          console.log('Filter Value:', trimmedValue);
-          console.log('Displayed Rows:', rowCount);
-          console.log('Total Rows in Grid:', allRowData.length);
-          console.log('Applied Filter Model:', appliedFilter[field]);
-          console.log('Unique Values in Field (first 20):', uniqueValues);
-          console.log('Matching Rows (by our check):', matchingRows.length);
-          console.log('Sample Matching Rows:', matchingRows.slice(0, 3).map(r => ({ 
-            ejecutivo: r.ejecutivo, 
-            [field]: r[field] 
-          })));
-          console.log('Value exists in unique values:', uniqueValues.some(v => 
-            String(v).toLowerCase().includes(trimmedValue.toLowerCase())
-          ));
-          console.log('===================');
-        }, 200);
       } catch (error) {
-        console.error('Error applying filter:', error);
+        // Error silencioso al aplicar filtro
       }
     }, [props.api, props.column]);
 
@@ -196,11 +148,7 @@ export default function TablasPersonalizadasPage() {
             <div className="flex flex-col ml-1">
               <button
                 onClick={() => {
-                  try {
-                    props.setSort('asc', false);
-                  } catch (error) {
-                    console.error('Error setting sort:', error);
-                  }
+                  props.setSort('asc', false);
                 }}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-[10px] leading-none"
                 title="Ordenar ascendente"
@@ -209,11 +157,7 @@ export default function TablasPersonalizadasPage() {
               </button>
               <button
                 onClick={() => {
-                  try {
-                    props.setSort('desc', false);
-                  } catch (error) {
-                    console.error('Error setting sort:', error);
-                  }
+                  props.setSort('desc', false);
                 }}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-[10px] leading-none"
                 title="Ordenar descendente"
@@ -349,7 +293,7 @@ export default function TablasPersonalizadasPage() {
             newValue: processedValue,
           });
         } catch (historialError) {
-          console.warn('Error al registrar en historial:', historialError);
+          // Error silencioso al registrar historial
         }
 
         // Actualizar el registro en el estado local
@@ -370,8 +314,8 @@ export default function TablasPersonalizadasPage() {
     pagination: false,
     rowSelection: {
       mode: 'multiRow',
-      checkboxes: true,
-      headerCheckbox: true,
+      checkboxes: true, // Habilitar checkboxes (se mostrarán solo en la columna con checkboxSelection)
+      headerCheckbox: true, // Habilitar header checkbox
       enableClickSelection: false,
     },
     defaultColDef: {
@@ -386,15 +330,11 @@ export default function TablasPersonalizadasPage() {
     },
     sideBar: false,
     suppressMenuHide: true,
-    // Solo permitir seleccionar filas que pasan los filtros
-    isRowSelectable: (node: any) => {
-      // Por defecto todas las filas son seleccionables
-      // La lógica de filtrado se maneja en onSelectionChanged
-      return true;
-    },
     // Manejar cambios de celda para edición inline
     onCellValueChanged: onCellValueChanged,
-  });
+    // Nota: isRowSelectable está deprecado pero se mantiene por compatibilidad
+    // La lógica de filtrado se maneja en onSelectionChanged
+  } as GridOptions);
 
   const loadCatalogos = useCallback(async () => {
     try {
@@ -581,33 +521,38 @@ export default function TablasPersonalizadasPage() {
     };
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push('/auth');
-    } catch (error) {
-      console.error('Error logging out:', error);
-      showError('Error al cerrar sesión');
-    }
-  };
+  // Cerrar el desplegable de exportar cuando se hace clic fuera
+  useEffect(() => {
+    if (!showExportDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const container = document.querySelector('.export-dropdown-container');
+      if (container && !container.contains(target)) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    // Usar un pequeño delay para evitar que se cierre inmediatamente
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showExportDropdown]);
 
   // Definición de columnas para registros
   const columnDefs: ColDef[] = useMemo(() => [
     {
-      headerName: '',
-      width: 50,
+      field: 'refCliente',
+      headerName: 'REF Cliente',
+      width: 120,
       pinned: 'left',
-      lockPosition: true,
-      checkboxSelection: true,
-      headerCheckboxSelection: true,
-      suppressMovable: true,
-      sortable: false,
-      filter: false,
-      editable: false,
-      resizable: false,
-      cellStyle: { textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-      headerClass: 'ag-center-header',
+      checkboxSelection: true, // Mantener para mostrar checkbox solo en esta columna
+      filter: 'agTextColumnFilter',
     },
     {
       field: 'refAsli',
@@ -698,6 +643,22 @@ export default function TablasPersonalizadasPage() {
       },
     },
     {
+      field: 'viaje',
+      headerName: 'Viaje',
+      valueGetter: (params) => {
+        // Primero intentar obtener el viaje directamente del registro
+        if (params.data?.viaje) {
+          return params.data.viaje;
+        }
+        // Si no existe, extraerlo de la columna naveInicial que tiene formato "NAVE [VIAJE]"
+        const naveInicial = params.data?.naveInicial || '';
+        const match = naveInicial.match(/\[(.+?)\]/);
+        return match ? match[1] : '';
+      },
+      width: 80,
+      filter: 'agTextColumnFilter',
+    },
+    {
       field: 'especie',
       headerName: 'Especie',
       width: 120,
@@ -756,7 +717,7 @@ export default function TablasPersonalizadasPage() {
     {
       field: 'tt',
       headerName: 'TT',
-      width: 60,
+      width: 80,
       filter: 'agNumberColumnFilter',
     },
     {
@@ -843,12 +804,6 @@ export default function TablasPersonalizadasPage() {
       },
     },
     {
-      field: 'refCliente',
-      headerName: 'REF Cliente',
-      width: 120,
-      filter: 'agTextColumnFilter',
-    },
-    {
       field: 'usuario',
       headerName: 'Usuario',
       width: 100,
@@ -858,12 +813,6 @@ export default function TablasPersonalizadasPage() {
       field: 'clienteAbr',
       headerName: 'Cliente Abr',
       width: 100,
-      filter: 'agTextColumnFilter',
-    },
-    {
-      field: 'viaje',
-      headerName: 'Viaje',
-      width: 80,
       filter: 'agTextColumnFilter',
     },
     {
@@ -1250,42 +1199,31 @@ export default function TablasPersonalizadasPage() {
     return undefined;
   }, [theme]);
 
-  const handleExportCSV = () => {
-    const csvContent = [
-      // Headers
-      columnDefs.map(col => col.headerName || col.field).join(','),
-      // Rows
-      ...rowData.map(row =>
-        columnDefs.map(col => {
-          const field = col.field as keyof Registro;
-          let value = row[field];
+  const handleExportReport = async (tipo: TipoReporte) => {
+    if (selectedRegistros.length === 0) {
+      showError('Por favor, selecciona al menos un registro para exportar');
+      return;
+    }
 
-          // Formatear valores especiales
-          if (value instanceof Date) {
-            value = value.toLocaleDateString('es-CL');
-          } else if (Array.isArray(value)) {
-            value = value.join(', ');
-          } else if (value === null || value === undefined) {
-            value = '';
-          }
-
-          // Escape commas and quotes in CSV
-          const stringValue = String(value);
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }).join(',')
-      )
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `registros_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    success('CSV exportado exitosamente');
+    try {
+      setShowExportDropdown(false);
+      const buffer = await generarReporte(tipo, selectedRegistros);
+      const nombreReporte = tipo === 'reserva-confirmada' 
+        ? 'Reserva_Confirmada' 
+        : tipo === 'zarpe' 
+        ? 'Informe_Zarpe' 
+        : tipo === 'arribo'
+        ? 'Informe_Arribo'
+        : tipo === 'booking-fee'
+        ? 'Booking_Fee'
+        : 'Reporte';
+      descargarExcel(buffer, nombreReporte);
+      success(`Reporte ${nombreReporte} exportado exitosamente`);
+    } catch (error) {
+      console.error('Error al generar reporte:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      showError(`Error al generar el reporte: ${errorMessage}`);
+    }
   };
 
   const handleRefreshData = () => {
@@ -1355,27 +1293,30 @@ export default function TablasPersonalizadasPage() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </button>
-              <div className="flex items-center space-x-2">
-                <Grid3x3 className={`w-5 h-5 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
-                <h1 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Tablas Personalizadas
-                </h1>
-              </div>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                REGISTROS ASLI
+              </h1>
+              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                logistica y comercio exterior
+              </p>
             </div>
             <div className="flex items-center space-x-2">
               <button
+                type="button"
                 onClick={() => setShowProfileModal(true)}
-                className={`p-2 transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
+                className={`flex items-center gap-1.5 sm:gap-2 border px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm transition ${theme === 'dark' 
+                  ? 'border-gray-700/60 bg-gray-800/60 text-gray-200 hover:border-blue-500/60 hover:text-blue-200' 
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 hover:text-blue-700'
                   }`}
+                aria-haspopup="dialog"
+                title={userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
               >
-                <UserIcon className="w-5 h-5" />
-              </button>
-              <button
-                onClick={handleLogout}
-                className={`p-2 transition-colors ${theme === 'dark' ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
-                  }`}
-              >
-                <LogOut className="w-5 h-5" />
+                <UserIcon className="h-4 w-4 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm hidden sm:inline">
+                  {userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                </span>
               </button>
             </div>
           </div>
@@ -1401,13 +1342,90 @@ export default function TablasPersonalizadasPage() {
                 <RefreshCw className={`w-4 h-4 ${loadingData ? 'animate-spin' : ''}`} />
                 <span>{loadingData ? 'Cargando...' : 'Recargar'}</span>
               </button>
-              <button
-                onClick={handleExportCSV}
-                className="flex items-center space-x-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white transition-colors text-sm"
-              >
-                <Download className="w-4 h-4" />
-                <span>Exportar CSV</span>
-              </button>
+              <div className="relative export-dropdown-container">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowExportDropdown(!showExportDropdown);
+                  }}
+                  className="flex items-center space-x-2 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white transition-colors text-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Exportar Selección</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showExportDropdown && (
+                  <div 
+                    className={`absolute top-full left-0 mt-1 z-[100] min-w-[220px] border shadow-xl rounded-sm ${
+                      theme === 'dark' 
+                        ? 'bg-gray-800 border-gray-600' 
+                        : 'bg-white border-gray-300'
+                    }`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {selectedRegistros.length === 0 ? (
+                      <div className={`px-4 py-3 text-sm text-center ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        Selecciona registros para exportar
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('reserva-confirmada');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b ${
+                            theme === 'dark' 
+                              ? 'text-gray-200 border-gray-700' 
+                              : 'text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          ✅ Reserva Confirmada
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('zarpe');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b ${
+                            theme === 'dark' 
+                              ? 'text-gray-200 border-gray-700' 
+                              : 'text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          🚢 Informe de Zarpe
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('arribo');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b ${
+                            theme === 'dark' 
+                              ? 'text-gray-200 border-gray-700' 
+                              : 'text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          ⚓ Informe de Arribo
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('booking-fee');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                            theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+                          }`}
+                        >
+                          💰 Booking Fee
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
