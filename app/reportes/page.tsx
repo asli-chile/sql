@@ -406,6 +406,7 @@ export default function ReportesPage() {
             { label: 'Reportes', id: '/reportes', isActive: true, icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
     ...(isRodrigo

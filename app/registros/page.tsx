@@ -2746,6 +2746,7 @@ export default function RegistrosPage() {
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
     {

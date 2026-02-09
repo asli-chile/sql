@@ -6,7 +6,7 @@ import { GlobalLoading } from '@/components/ui/GlobalLoading';
 import { UserProvider } from '@/hooks/useUser';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ConsoleBanner } from "@/components/ConsoleBanner";
+// import { ConsoleBanner } from "@/components/ConsoleBanner";
 
 const firaSans = Fira_Sans({
   weight: '400',
@@ -51,7 +51,7 @@ export default function RootLayout({
               <UserProvider>
                 {children}
                 <GlobalLoading />
-                <ConsoleBanner />
+                {/* <ConsoleBanner /> */}
               </UserProvider>
             </ThemeProvider>
           </LoadingProvider>

@@ -1188,6 +1188,7 @@ function DocumentosPage() {
             { label: 'Reportes', id: '/reportes', isActive: pathname === '/reportes', icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', isActive: pathname === '/itinerario', icon: Ship },
       ],
     },
     ...(isRodrigo

@@ -1,0 +1,61 @@
+===========================================
+INSTRUCCIONES SIMPLES PARA PROBAR EL SISTEMA
+===========================================
+
+PASO 1: Abrir PowerShell o Terminal
+------------------------------------
+- Presiona Windows + X
+- Selecciona "Windows PowerShell" o "Terminal"
+
+PASO 2: Ir a la carpeta del proyecto
+------------------------------------
+Escribe esto y presiona Enter:
+
+    cd "C:\Users\rodri\OneDrive\Documentos\TODO\DESARROLLO\ASLI\itinerario-processor"
+
+PASO 3: Activar el entorno virtual
+------------------------------------
+Escribe esto y presiona Enter:
+
+    .\venv\Scripts\Activate.ps1
+
+Deberias ver (venv) al inicio de la linea.
+
+PASO 4: Probar que funciona
+-----------------------------
+Escribe esto para verificar que todo esta bien:
+
+    python -c "import pytesseract; print('Todo OK')"
+
+Si ves "Todo OK", todo esta listo.
+
+PASO 5: Procesar una imagen
+----------------------------
+Necesitas una imagen de un itinerario. Luego escribe:
+
+    python main.py "ruta\completa\a\tu\imagen.jpg"
+
+Ejemplo:
+    python main.py "C:\Users\rodri\Desktop\itinerario.jpg"
+
+PASO 6: Ver los resultados
+---------------------------
+Los archivos se crean en la carpeta "output":
+- output\itinerario_datos.xlsx  (Excel)
+- output\itinerario_datos.pdf   (PDF)
+
+===========================================
+NOTA IMPORTANTE: Tesseract OCR
+===========================================
+
+Si aparece error "tesseract is not installed":
+
+1. Descarga Tesseract desde:
+   https://github.com/UB-Mannheim/tesseract/wiki
+
+2. Instalalo y selecciona ESPANOL e INGLES
+
+3. Si sigue sin funcionar, edita main.py y agrega la ruta
+   de Tesseract (ver ejemplo en el codigo)
+
+===========================================

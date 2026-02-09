@@ -383,6 +383,7 @@ export default function GenerarDocumentosPage() {
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
     ...(isRodrigo

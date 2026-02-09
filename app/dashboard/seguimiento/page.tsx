@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, RefreshCcw, Search, X, ChevronRight, ChevronLeft, LayoutDashboard, Anchor, Truck, FileText, FileCheck, Globe, DollarSign, BarChart3, Users, User as UserIcon, Activity } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Search, X, ChevronRight, ChevronLeft, LayoutDashboard, Anchor, Truck, FileText, FileCheck, Globe, DollarSign, BarChart3, Users, User as UserIcon, Activity, Ship } from 'lucide-react';
 import type { ActiveVessel } from '@/types/vessels';
 import { VesselDetailsModal } from '@/components/tracking/VesselDetailsModal';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -317,6 +317,7 @@ const SeguimientoPage = () => {
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
     ...(isRodrigo

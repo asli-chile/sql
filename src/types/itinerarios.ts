@@ -24,6 +24,7 @@ export type ItinerarioEscala = {
   eta: string | null;
   dias_transito: number | null;
   orden: number;
+  area: string | null; // Área geográfica: ASIA, EUROPA, AMERICA, INDIA-MEDIOORIENTE
   created_at: string;
   updated_at: string;
 };
@@ -34,9 +35,10 @@ export type ItinerarioWithEscalas = Itinerario & {
 
 export type ItinerarioFilters = {
   servicio?: string;
-  consorcio?: string;
+  consorcio?: string; // Mantener para compatibilidad, pero usar "naviera" en la UI
   nave?: string;
-  semana?: number;
+  semanas?: number; // Número de semanas a mostrar (1-6)
   pol?: string;
+  region?: string;
 };
 

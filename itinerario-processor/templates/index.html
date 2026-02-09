@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Itinerarios de Navieras</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #366092 0%, #4a7ba7 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            border: 3px dashed #366092;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            margin-bottom: 30px;
+        }
+        
+        .upload-section.dragover {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-button {
+            background: #366092;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: inline-block;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        
+        .file-button:hover {
+            background: #2a4d6e;
+        }
+        
+        .file-name {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        
+        .process-button {
+            width: 100%;
+            background: #28a745;
+            color: white;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 20px;
+        }
+        
+        .process-button:hover:not(:disabled) {
+            background: #218838;
+        }
+        
+        .process-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #366092;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .results.active {
+            display: block;
+        }
+        
+        .results h2 {
+            color: #366092;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .data-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #366092;
+        }
+        
+        .data-item label {
+            display: block;
+            font-weight: 600;
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .data-item value {
+            display: block;
+            color: #333;
+            font-size: 16px;
+        }
+        
+        .download-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .download-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .download-excel {
+            background: #28a745;
+            color: white;
+        }
+        
+        .download-pdf {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .error {
+            display: none;
+            padding: 15px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #dc3545;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .error-link {
+            color: #721c24;
+            text-decoration: underline;
+            font-weight: bold;
+        }
+        
+        .texto-completo {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .texto-completo h3 {
+            color: #366092;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .texto-completo pre {
+            color: #666;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚢 Procesador de Itinerarios de Navieras</h1>
+            <p>Sube una imagen de itinerario y extrae los datos automaticamente</p>
+        </div>
+        
+        <div class="content">
+            <form id="uploadForm">
+                <div class="upload-section" id="uploadArea">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="fileInput" class="file-input" accept="image/*" required>
+                        <label for="fileInput" class="file-button">
+                            📁 Seleccionar Imagen
+                        </label>
+                    </div>
+                    <div class="file-name" id="fileName"></div>
+                </div>
+                
+                <button type="submit" class="process-button" id="processBtn">
+                    🔄 Procesar Itinerario
+                </button>
+            </form>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Procesando imagen... Esto puede tardar unos segundos</p>
+            </div>
+            
+            <div class="error" id="error"></div>
+            
+            <div class="results" id="results">
+                <h2>✅ Datos Extraidos</h2>
+                <div class="data-grid" id="dataGrid"></div>
+                
+                <div class="download-buttons">
+                    <a href="#" class="download-btn download-excel" id="downloadExcel">📊 Descargar Excel</a>
+                    <a href="#" class="download-btn download-pdf" id="downloadPdf">📄 Descargar PDF</a>
+                </div>
+                
+                <div class="texto-completo" id="textoCompleto"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+        const uploadArea = document.getElementById('uploadArea');
+        
+        // Mostrar nombre de archivo seleccionado
+        fileInput.addEventListener('change', function(e) {
+            if (e.target.files.length > 0) {
+                fileName.textContent = 'Archivo seleccionado: ' + e.target.files[0].name;
+            }
+        });
+        
+        // Drag and drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', function() {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                fileInput.files = e.dataTransfer.files;
+                fileName.textContent = 'Archivo seleccionado: ' + e.dataTransfer.files[0].name;
+            }
+        });
+        
+        // Procesar formulario
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!fileInput.files.length) {
+                showError('Por favor selecciona una imagen');
+                return;
+            }
+            
+            // Ocultar resultados anteriores
+            results.classList.remove('active');
+            error.classList.remove('active');
+            
+            // Mostrar loading
+            loading.classList.add('active');
+            processBtn.disabled = true;
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    showResults(data);
+                }
+            } catch (err) {
+                showError('Error al procesar: ' + err.message);
+            } finally {
+                loading.classList.remove('active');
+                processBtn.disabled = false;
+            }
+        });
+        
+        function showError(message) {
+            // Convertir URLs en enlaces clickeables
+            let formattedMessage = message.replace(
+                /(https?:\/\/[^\s]+)/g,
+                '<a href="$1" target="_blank" class="error-link">$1</a>'
+            );
+            error.innerHTML = '❌ ' + formattedMessage;
+            error.classList.add('active');
+            // Scroll al error
+            error.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        
+        function showResults(data) {
+            const dataGrid = document.getElementById('dataGrid');
+            dataGrid.innerHTML = '';
+            
+            // Siempre mostrar campos requeridos primero
+            const camposRequeridos = [
+                { key: 'naviera', label: 'Naviera' },
+                { key: 'pol', label: 'POL (Puerto de Origen)' },
+                { key: 'pod', label: 'POD (Puerto de Destino)' },
+                { key: 'etd', label: 'ETD (Fecha de Salida)' },
+                { key: 'eta', label: 'ETA (Fecha de Llegada)' },
+            ];
+            
+            camposRequeridos.forEach(campo => {
+                const valor = data.datos[campo.key];
+                if (valor && valor !== 'No encontrada' && valor !== 'No encontrado' && valor !== 'None') {
+                    addDataItem(campo.label, valor);
+                }
+            });
+            
+            // Si hay múltiples naves, mostrarlas todas
+            if (data.datos.multiple_naves && data.datos.naves) {
+                // Agregar separador
+                const separator = document.createElement('div');
+                separator.style.gridColumn = '1 / -1';
+                separator.style.borderTop = '2px solid #366092';
+                separator.style.margin = '20px 0 10px 0';
+                separator.innerHTML = '<h3 style="color: #366092; margin: 10px 0;">Naves Encontradas (' + data.datos.total_naves + ')</h3>';
+                dataGrid.appendChild(separator);
+                
+                // Mostrar cada nave
+                data.datos.naves.forEach((nave, index) => {
+                    const naveHeader = document.createElement('div');
+                    naveHeader.style.gridColumn = '1 / -1';
+                    naveHeader.style.background = '#e3f2fd';
+                    naveHeader.style.padding = '10px';
+                    naveHeader.style.borderRadius = '5px';
+                    naveHeader.style.marginTop = index > 0 ? '15px' : '0';
+                    naveHeader.innerHTML = `<strong style="color: #366092;">Nave ${index + 1}: ${nave.nombre || nave.nombre_original || 'Sin nombre'}</strong>`;
+                    dataGrid.appendChild(naveHeader);
+                    
+                    // Campos de esta nave (priorizar campos requeridos)
+                    const naveCampos = [
+                        { key: 'naviera', label: 'Naviera' },
+                        { key: 'pol', label: 'POL' },
+                        { key: 'pod', label: 'POD' },
+                        { key: 'etd', label: 'ETD' },
+                        { key: 'eta', label: 'ETA' },
+                        { key: 'numero_viaje', label: 'Número Viaje' },
+                        { key: 'numero_contenedor', label: 'Número Contenedor' },
+                        { key: 'numero_booking', label: 'Número Booking' },
+                    ];
+                    
+                    naveCampos.forEach(campo => {
+                        const valor = nave[campo.key];
+                        if (valor && valor !== 'None' && valor !== 'No encontrada' && valor !== 'No encontrado') {
+                            addDataItem(campo.label, valor);
+                        }
+                    });
+                });
+            } else {
+                // Una sola nave - mostrar nave y campos adicionales
+                if (data.datos.nave && data.datos.nave !== 'No encontrada') {
+                    addDataItem('Nave', data.datos.nave);
+                }
+                
+                const camposAdicionales = [
+                    { key: 'fecha_normalizada', label: 'Fecha' },
+                    { key: 'semana_normalizada', label: 'Semana' },
+                    { key: 'numero_contenedor', label: 'Número de Contenedor' },
+                    { key: 'numero_booking', label: 'Número de Booking' },
+                    { key: 'numero_viaje', label: 'Número de Viaje' },
+                    { key: 'puertos', label: 'Puertos Encontrados' },
+                ];
+                
+                camposAdicionales.forEach(campo => {
+                    const valor = data.datos[campo.key];
+                    if (valor && valor !== 'No encontrada' && valor !== 'No encontrado' && valor !== 'No encontrados' && valor !== 'None') {
+                        addDataItem(campo.label, valor);
+                    }
+                });
+            }
+            
+            function addDataItem(label, value) {
+                const item = document.createElement('div');
+                item.className = 'data-item';
+                item.innerHTML = `
+                    <label>${label}</label>
+                    <value>${value}</value>
+                `;
+                dataGrid.appendChild(item);
+            }
+            
+            // Botones de descarga
+            document.getElementById('downloadExcel').href = data.archivos.excel;
+            document.getElementById('downloadPdf').href = data.archivos.pdf;
+            
+            // Texto completo
+            if (data.datos.texto_completo) {
+                const textoDiv = document.getElementById('textoCompleto');
+                const textoLargo = data.datos.texto_completo_largo || data.datos.texto_completo;
+                textoDiv.innerHTML = `
+                    <h3>Texto Extraído Completo</h3>
+                    <pre>${textoLargo}</pre>
+                    <small style="color: #666; margin-top: 10px; display: block;">
+                        Revisa este texto para verificar qué información se extrajo del OCR.
+                        Si falta algún dato, puede que no esté claro en la imagen o necesite ajustar los patrones de búsqueda.
+                    </small>
+                `;
+            }
+            
+            results.classList.add('active');
+        }
+    </script>
+</body>
+</html>

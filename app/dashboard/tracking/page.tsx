@@ -26,7 +26,8 @@ import {
     X,
     FilterX,
     Activity,
-    User as UserIcon
+    User as UserIcon,
+    Ship
 } from 'lucide-react';
 import { Registro } from '@/types/registros';
 import { ShipmentHito } from '@/types/tracking';
@@ -279,6 +280,7 @@ export default function TrackingPage() {
                         { label: 'Reportes', id: '/reportes', icon: BarChart3 },
                     ]
                     : []),
+                { label: 'Itinerario', id: '/itinerario', icon: Ship },
             ],
         },
         ...(isRodrigo

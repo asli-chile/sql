@@ -1,0 +1,52 @@
+===========================================
+INSTRUCCIONES PARA USAR LA INTERFAZ WEB
+===========================================
+
+METODO 1: Doble clic (MAS FACIL)
+----------------------------------
+1. Haz doble clic en el archivo: iniciar-web.bat
+2. Se abrira automaticamente tu navegador
+3. Sube una imagen de itinerario
+4. Descarga los archivos Excel y PDF
+
+METODO 2: Desde PowerShell
+---------------------------
+1. Abre PowerShell en esta carpeta
+2. Ejecuta: .\iniciar-web.ps1
+3. Se abrira automaticamente tu navegador
+
+METODO 3: Manual
+-----------------
+1. Abre PowerShell
+2. Ejecuta estos comandos:
+
+   cd "C:\Users\rodri\OneDrive\Documentos\TODO\DESARROLLO\ASLI\itinerario-processor"
+   .\venv\Scripts\Activate.ps1
+   pip install Flask Werkzeug
+   python app.py
+
+3. Abre tu navegador en: http://localhost:5000
+
+===========================================
+COMO USAR LA INTERFAZ WEB
+===========================================
+
+1. Arrastra una imagen o haz clic en "Seleccionar Imagen"
+2. (Opcional) Si Tesseract no se encuentra, pega la ruta:
+   Ejemplo: C:\Program Files\Tesseract-OCR\tesseract.exe
+3. Haz clic en "Procesar Itinerario"
+4. Espera unos segundos mientras procesa
+5. Veras los datos extraidos en pantalla
+6. Descarga el Excel o PDF con los botones
+
+===========================================
+VENTAJAS DE LA INTERFAZ WEB
+===========================================
+
+- No necesitas escribir comandos
+- Interfaz visual y amigable
+- Arrastra y suelta imagenes
+- Ve los resultados inmediatamente
+- Descarga archivos con un clic
+
+===========================================

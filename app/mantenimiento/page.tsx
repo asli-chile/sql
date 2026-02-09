@@ -13,6 +13,7 @@ import ConsignatariosManager from '@/components/consignatarios/ConsignatariosMan
 import { PlantillasManager } from '@/components/plantillas/PlantillasManager';
 import { EditorPlantillasExcel } from '@/components/plantillas/EditorPlantillasExcel';
 import { EditorPlantillasGoogleSheets } from '@/components/plantillas/EditorPlantillasGoogleSheets';
+import { ItinerariosManager } from '@/components/itinerarios/ItinerariosManager';
 import {
   LayoutDashboard,
   Ship,
@@ -83,7 +84,7 @@ export default function MantenimientoPage() {
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null);
   const [resetPasswordValue, setResetPasswordValue] = useState<Record<string, string>>({});
   const [bootstrapKey, setBootstrapKey] = useState('');
-  type TabType = 'usuarios' | 'consignatarios' | 'plantillas' | 'editor-plantillas' | 'editor-google-sheets';
+  type TabType = 'usuarios' | 'consignatarios' | 'plantillas' | 'itinerario' | 'editor-plantillas' | 'editor-google-sheets';
   const [activeTab, setActiveTab] = useState<TabType>('usuarios');
   
   // Helper para evitar problemas de type narrowing
@@ -92,7 +93,7 @@ export default function MantenimientoPage() {
 
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
-  const canAccess = isRodrigo;
+  const canAccess = isAdmin || isRodrigo;
 
   // Obtener usuario de auth
   useEffect(() => {
@@ -144,9 +145,10 @@ export default function MantenimientoPage() {
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-    ...(isRodrigo
+    ...(isRodrigo || isAdmin
       ? [
         {
           title: 'Mantenimiento',
@@ -421,14 +423,19 @@ export default function MantenimientoPage() {
               <div>
                 <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Mantenimiento</p>
                 <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  {activeTab === 'usuarios' ? 'Usuarios' : activeTab === 'consignatarios' ? 'Consignatarios' : 'Plantillas Proforma'}
+                  {activeTab === 'usuarios' ? 'Usuarios' 
+                    : activeTab === 'consignatarios' ? 'Consignatarios' 
+                    : activeTab === 'itinerario' ? 'Itinerario'
+                    : 'Plantillas Proforma'}
                 </h1>
                 <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {activeTab === 'usuarios' 
                     ? 'Gestiona usuarios, roles y permisos' 
                     : activeTab === 'consignatarios'
                       ? 'Gestiona información de consignatarios'
-                      : 'Gestiona plantillas Excel personalizadas'}
+                      : activeTab === 'itinerario'
+                        ? 'Gestiona itinerario de servicios marítimos'
+                        : 'Gestiona plantillas Excel personalizadas'}
                 </p>
               </div>
             </div>
@@ -494,6 +501,21 @@ export default function MantenimientoPage() {
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 <span>Plantillas</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('itinerario')}
+                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === 'itinerario'
+                    ? theme === 'dark'
+                      ? 'border-sky-500 text-sky-400'
+                      : 'border-blue-600 text-blue-600'
+                    : theme === 'dark'
+                      ? 'border-transparent text-slate-400 hover:text-slate-200'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Ship className="h-4 w-4" />
+                <span>Itinerario</span>
               </button>
               <button
                 onClick={() => setActiveTab('editor-plantillas')}
@@ -864,6 +886,8 @@ export default function MantenimientoPage() {
             <div className="mx-auto max-w-7xl">
               <PlantillasManager currentUser={currentUser} />
             </div>
+          ) : activeTab === 'itinerario' ? (
+            <ItinerariosManager />
           ) : isEditorTab ? (
             <div className="h-[calc(100vh-4rem)]">
               <EditorPlantillasExcel />

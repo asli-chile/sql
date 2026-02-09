@@ -1,76 +1,67 @@
-import { createClient } from '@/lib/supabase-browser';
-import type { Itinerario, ItinerarioEscala, ItinerarioWithEscalas } from '@/types/itinerarios';
+import type { ItinerarioWithEscalas } from '@/types/itinerarios';
 
 export async function fetchItinerarios(): Promise<ItinerarioWithEscalas[]> {
-  const supabase = createClient();
-  
-  const { data: itinerarios, error: itinerariosError } = await supabase
-    .from('itinerarios')
-    .select('*')
-    .order('servicio', { ascending: true })
-    .order('etd', { ascending: true });
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/admin/itinerarios`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
 
-  if (itinerariosError) {
-    console.error('Error fetching itinerarios:', itinerariosError);
-    throw itinerariosError;
-  }
-
-  if (!itinerarios || itinerarios.length === 0) {
-    return [];
-  }
-
-  // Obtener escalas para cada itinerario
-  const itinerarioIds = itinerarios.map((it) => it.id);
-  const { data: escalas, error: escalasError } = await supabase
-    .from('itinerario_escalas')
-    .select('*')
-    .in('itinerario_id', itinerarioIds)
-    .order('orden', { ascending: true });
-
-  if (escalasError) {
-    console.error('Error fetching escalas:', escalasError);
-    throw escalasError;
-  }
-
-  // Combinar itinerarios con sus escalas
-  const escalasMap = new Map<string, ItinerarioEscala[]>();
-  (escalas || []).forEach((escala) => {
-    if (!escalasMap.has(escala.itinerario_id)) {
-      escalasMap.set(escala.itinerario_id, []);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      // Si la tabla no existe, mostrar un mensaje más útil
+      if (errorData?.code === 'TABLE_NOT_FOUND') {
+        console.error('❌ Error: La tabla de itinerarios no existe en la base de datos.');
+        console.error('📝 Por favor, ejecuta el script SQL: scripts/create-itinerarios-table.sql');
+        console.error('💡 Ve a Supabase Dashboard > SQL Editor y ejecuta el script.');
+        throw new Error('La tabla de itinerarios no existe. Por favor, ejecuta el script de creación en Supabase SQL Editor.');
+      }
+      
+      throw new Error(errorData?.error || `Error ${response.status}: ${response.statusText}`);
     }
-    escalasMap.get(escala.itinerario_id)!.push(escala as ItinerarioEscala);
-  });
 
-  return (itinerarios as Itinerario[]).map((it) => ({
-    ...it,
-    escalas: escalasMap.get(it.id) || [],
-  }));
+    const result = await response.json();
+    return result.itinerarios || [];
+  } catch (error: any) {
+    console.error('Error fetching itinerarios:', error);
+    throw error;
+  }
 }
 
+// Nota: createItinerario ahora debería usar la API route POST /api/admin/itinerarios
+// Esta función se mantiene por compatibilidad pero debería actualizarse para usar la API
 export async function createItinerario(
   data: Omit<Itinerario, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'updated_by'>
 ): Promise<Itinerario> {
-  const supabase = createClient();
-  
-  const { data: itinerario, error } = await supabase
-    .from('itinerarios')
-    .insert({
-      servicio: data.servicio,
-      consorcio: data.consorcio,
-      nave: data.nave,
-      viaje: data.viaje,
-      semana: data.semana,
-      pol: data.pol,
-      etd: data.etd,
-    })
-    .select()
-    .single();
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/admin/itinerarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        servicio: data.servicio,
+        consorcio: data.consorcio,
+        nave: data.nave,
+        viaje: data.viaje || '',
+        semana: data.semana,
+        pol: data.pol,
+        etd: data.etd,
+        escalas: [], // Las escalas deben agregarse por separado
+      }),
+    });
 
-  if (error) {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData?.error || `Error ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.itinerario;
+  } catch (error: any) {
     console.error('Error creating itinerario:', error);
     throw error;
   }
-
-  return itinerario as Itinerario;
 }
 

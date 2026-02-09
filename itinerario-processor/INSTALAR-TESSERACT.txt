@@ -1,0 +1,54 @@
+===========================================
+COMO INSTALAR TESSERACT OCR (WINDOWS)
+===========================================
+
+PASO 1: Descargar Tesseract
+----------------------------
+1. Ve a esta pagina:
+   https://github.com/UB-Mannheim/tesseract/wiki
+
+2. Busca la seccion "Windows"
+3. Descarga el instalador mas reciente
+   (Ejemplo: tesseract-ocr-w64-setup-5.x.x.exe)
+
+PASO 2: Instalar Tesseract
+---------------------------
+1. Ejecuta el instalador descargado
+2. IMPORTANTE: Durante la instalacion, asegurate de seleccionar:
+   - Spanish (espanol)
+   - English
+3. Anota la ruta de instalacion (normalmente):
+   C:\Program Files\Tesseract-OCR\tesseract.exe
+
+PASO 3: Configurar en la Interfaz Web
+--------------------------------------
+1. Abre la interfaz web (iniciar-web.bat)
+2. En el campo "Ruta de Tesseract", pega la ruta completa:
+   C:\Program Files\Tesseract-OCR\tesseract.exe
+3. Ahora puedes procesar imagenes normalmente
+
+===========================================
+OPCION ALTERNATIVA: Agregar al PATH
+===========================================
+
+Si prefieres no escribir la ruta cada vez:
+
+1. Busca "Variables de entorno" en Windows
+2. Abre "Variables de entorno del sistema"
+3. Selecciona "Path" y haz clic en "Editar"
+4. Agrega esta ruta:
+   C:\Program Files\Tesseract-OCR
+5. Reinicia la aplicacion web
+
+Despues de esto, no necesitaras escribir la ruta.
+
+===========================================
+VERIFICAR INSTALACION
+===========================================
+
+Abre PowerShell y ejecuta:
+    tesseract --version
+
+Si ves la version, esta instalado correctamente.
+
+===========================================

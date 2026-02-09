@@ -692,18 +692,19 @@ function DashboardPage() {
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
           ]
           : []),
+        { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-    ...(isRodrigo
-      ? [
-        {
-          title: 'Mantenimiento',
-          items: [
-            { label: 'Usuarios', id: '/mantenimiento', icon: Users },
-          ],
-        },
-      ]
-      : []),
+        ...(isRodrigo || isAdmin
+          ? [
+            {
+              title: 'Mantenimiento',
+              items: [
+                { label: 'Usuarios', id: '/mantenimiento', icon: Users },
+              ],
+            },
+          ]
+          : []),
   ];
 
   return (

@@ -7,18 +7,22 @@ import type { ItinerarioFilters } from '@/types/itinerarios';
 interface ItinerarioFiltersProps {
   servicios: string[];
   consorcios: string[];
-  naves: string[];
+  serviciosPorNaviera?: Record<string, string[]>; // Servicios filtrados por naviera
   pols: string[];
+  regiones?: string[];
   filters: ItinerarioFilters;
   onFiltersChange: (filters: ItinerarioFilters) => void;
   onReset: () => void;
 }
 
+const REGIONES = ['ASIA', 'EUROPA', 'AMERICA', 'INDIA-MEDIOORIENTE'] as const;
+
 export function ItinerarioFilters({
   servicios,
   consorcios,
-  naves,
+  serviciosPorNaviera = {},
   pols,
+  regiones = [],
   filters,
   onFiltersChange,
   onReset,
@@ -27,8 +31,17 @@ export function ItinerarioFilters({
 
   const handleChange = (key: keyof ItinerarioFilters, value: string | number | undefined) => {
     const newFilters = { ...localFilters, [key]: value || undefined };
+    // Si cambia la naviera, limpiar el servicio
+    if (key === 'consorcio' && value !== localFilters.consorcio) {
+      newFilters.servicio = undefined;
+    }
     setLocalFilters(newFilters);
   };
+
+  // Obtener servicios filtrados por naviera seleccionada
+  const serviciosFiltrados = localFilters.consorcio && serviciosPorNaviera[localFilters.consorcio]
+    ? serviciosPorNaviera[localFilters.consorcio]
+    : servicios;
 
   const handleApply = () => {
     onFiltersChange(localFilters);
@@ -40,39 +53,62 @@ export function ItinerarioFilters({
     onReset();
   };
 
+  // Calcular semana actual y opciones de semanas
+  const calcularSemanaActual = () => {
+    const hoy = new Date();
+    const d = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
+  const semanaActual = calcularSemanaActual();
+  const opcionesSemanas = Array.from({ length: 6 }, (_, i) => {
+    const numSemanas = i + 1;
+    const semanaInicio = semanaActual;
+    const semanaFin = semanaActual + numSemanas - 1;
+    return {
+      value: numSemanas,
+      label: numSemanas === 1 
+        ? `1 semana (Semana ${semanaInicio})`
+        : `${numSemanas} semanas (Semana ${semanaInicio} - ${semanaFin})`
+    };
+  });
+
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-      <div className="flex flex-wrap items-end gap-4">
-        {/* Servicio */}
-        <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-            Servicio
+    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-sm">
+      <div className="flex flex-wrap items-end gap-2">
+        {/* Región */}
+        <div className="flex-1 min-w-[180px]">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+            Región
           </label>
           <select
-            value={localFilters.servicio || ''}
-            onChange={(e) => handleChange('servicio', e.target.value)}
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+            value={localFilters.region || ''}
+            onChange={(e) => handleChange('region', e.target.value)}
+            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
-            <option value="">Todos los servicios</option>
-            {servicios.map((servicio) => (
-              <option key={servicio} value={servicio}>
-                {servicio}
+            <option value="">Todas las regiones</option>
+            {REGIONES.map((region) => (
+              <option key={region} value={region}>
+                {region}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Consorcio */}
+        {/* Naviera (antes Consorcio) */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-            Consorcio
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+            Naviera
           </label>
           <select
             value={localFilters.consorcio || ''}
             onChange={(e) => handleChange('consorcio', e.target.value)}
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
-            <option value="">Todos los consorcios</option>
+            <option value="">Todas las navieras</option>
             {consorcios.map((consorcio) => (
               <option key={consorcio} value={consorcio}>
                 {consorcio}
@@ -81,50 +117,56 @@ export function ItinerarioFilters({
           </select>
         </div>
 
-        {/* Nave */}
+        {/* Servicio (filtrado por naviera) */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-            Nave
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+            Servicio
           </label>
           <select
-            value={localFilters.nave || ''}
-            onChange={(e) => handleChange('nave', e.target.value)}
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+            value={localFilters.servicio || ''}
+            onChange={(e) => handleChange('servicio', e.target.value)}
+            disabled={!localFilters.consorcio}
+            className={`w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent ${!localFilters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <option value="">Todas las naves</option>
-            {naves.map((nave) => (
-              <option key={nave} value={nave}>
-                {nave}
+            <option value="">
+              {localFilters.consorcio ? 'Todos los servicios' : 'Selecciona naviera primero'}
+            </option>
+            {serviciosFiltrados.map((servicio) => (
+              <option key={servicio} value={servicio}>
+                {servicio}
               </option>
             ))}
           </select>
         </div>
 
-        {/* Semana */}
-        <div className="w-32">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
-            Semana
+        {/* Semanas */}
+        <div className="flex-1 min-w-[180px]">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+            Semanas
           </label>
-          <input
-            type="number"
-            value={localFilters.semana || ''}
-            onChange={(e) => handleChange('semana', e.target.value ? parseInt(e.target.value) : undefined)}
-            placeholder="Ej: 42"
-            min="1"
-            max="53"
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
-          />
+          <select
+            value={localFilters.semanas || ''}
+            onChange={(e) => handleChange('semanas', e.target.value ? parseInt(e.target.value) : undefined)}
+            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
+          >
+            <option value="">Todas las semanas</option>
+            {opcionesSemanas.map((opcion) => (
+              <option key={opcion.value} value={opcion.value}>
+                {opcion.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* POL */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
             POL
           </label>
           <select
             value={localFilters.pol || ''}
             onChange={(e) => handleChange('pol', e.target.value)}
-            className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
             <option value="">Todos los POLs</option>
             {pols.map((pol) => (
@@ -136,16 +178,16 @@ export function ItinerarioFilters({
         </div>
 
         {/* Botones */}
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button
             onClick={handleReset}
-            className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
           >
             Reset
           </button>
           <button
             onClick={handleApply}
-            className="px-6 py-2 text-sm font-semibold text-white bg-[#00AEEF] hover:bg-[#4FC3F7] rounded-lg transition-all duration-150 shadow-sm hover:shadow-md"
+            className="px-4 py-1.5 text-xs font-semibold text-white bg-[#00AEEF] hover:bg-[#4FC3F7] rounded transition-all duration-150"
           >
             Filtrar
           </button>

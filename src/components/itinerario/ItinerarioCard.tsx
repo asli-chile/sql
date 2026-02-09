@@ -6,6 +6,7 @@ import type { ItinerarioWithEscalas } from '@/types/itinerarios';
 interface ItinerarioCardProps {
   itinerario: ItinerarioWithEscalas;
   onViewDetail: (itinerario: ItinerarioWithEscalas) => void;
+  etaViewMode?: 'dias' | 'fecha' | 'ambos';
 }
 
 function formatDate(dateString: string | null): string {
@@ -22,18 +23,59 @@ function formatDate(dateString: string | null): string {
   }
 }
 
-export function ItinerarioCard({ itinerario, onViewDetail }: ItinerarioCardProps) {
+export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' }: ItinerarioCardProps) {
   const escalasOrdenadas = [...(itinerario.escalas || [])].sort((a, b) => a.orden - b.orden);
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
-      {/* Header con servicio */}
+      {/* Header con naviera y servicio */}
       <div className="mb-3">
-        <div className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7] mb-2">
-          {itinerario.servicio}
-        </div>
         {itinerario.consorcio && (
-          <p className="text-xs text-slate-500 dark:text-slate-400">{itinerario.consorcio}</p>
+          <div className="flex items-center gap-2 mb-2">
+            {itinerario.consorcio.toUpperCase().includes('MSC') && (
+              <img
+                src="/msc.png"
+                alt="MSC Logo"
+                className="h-10 w-auto object-contain flex-shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+            {itinerario.consorcio.toUpperCase().includes('COSCO') && (
+              <img
+                src="/cosco.png"
+                alt="COSCO Logo"
+                className="h-10 w-auto object-contain flex-shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+            {itinerario.consorcio.toUpperCase().includes('EVERGREEN') && (
+              <img
+                src="/evergreen.png"
+                alt="EVERGREEN Logo"
+                className="h-10 w-auto object-contain flex-shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                {itinerario.consorcio}
+              </h2>
+              <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
+                Servicio: <span className="font-semibold">{itinerario.servicio}</span>
+              </p>
+            </div>
+          </div>
+        )}
+        {!itinerario.consorcio && (
+          <p className="text-[10px] text-slate-600 dark:text-slate-400 mb-2">
+            Servicio: <span className="font-semibold">{itinerario.servicio}</span>
+          </p>
         )}
       </div>
 
@@ -76,16 +118,33 @@ export function ItinerarioCard({ itinerario, onViewDetail }: ItinerarioCardProps
               <span className="text-slate-900 dark:text-slate-100 font-medium">
                 {escala.puerto_nombre || escala.puerto}
               </span>
-              <div className="flex items-center gap-2">
-                {escala.eta && (
-                  <span className="text-xs text-slate-600 dark:text-slate-400">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {etaViewMode === 'dias' && escala.dias_transito && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7]">
+                    {escala.dias_transito}d
+                  </span>
+                )}
+                {etaViewMode === 'fecha' && escala.eta && (
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
                     {formatDate(escala.eta)}
                   </span>
                 )}
-                {escala.dias_transito && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7]">
-                    ({escala.dias_transito}d)
-                  </span>
+                {etaViewMode === 'ambos' && (
+                  <>
+                    {escala.dias_transito && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7]">
+                        {escala.dias_transito}d
+                      </span>
+                    )}
+                    {escala.eta && (
+                      <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        {formatDate(escala.eta)}
+                      </span>
+                    )}
+                  </>
+                )}
+                {((etaViewMode === 'dias' && !escala.dias_transito) || (etaViewMode === 'fecha' && !escala.eta) || (etaViewMode === 'ambos' && !escala.dias_transito && !escala.eta)) && (
+                  <span className="text-xs text-slate-400">—</span>
                 )}
               </div>
             </div>
