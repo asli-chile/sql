@@ -1182,8 +1182,8 @@ export default function TransportesPage() {
                               {transportesColumns.map((column) => {
                                 // Checkbox especial para AT CONTROLADA
                                 if (column.key === 'atmosfera_controlada') {
-                                  const rawValue = item.atmosfera_controlada;
-                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
+                                  // Convertir a booleano de forma type-safe (boolean | null -> boolean)
+                                  const checkboxValue = item.atmosfera_controlada === true;
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1206,8 +1206,8 @@ export default function TransportesPage() {
 
                                 // Checkbox especial para LATE
                                 if (column.key === 'late') {
-                                  const rawValue = item.late;
-                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
+                                  // Convertir a booleano de forma type-safe (boolean | null -> boolean)
+                                  const checkboxValue = item.late === true;
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1230,8 +1230,8 @@ export default function TransportesPage() {
 
                                 // Checkbox especial para EXTRA LATE
                                 if (column.key === 'extra_late') {
-                                  const rawValue = item.extra_late;
-                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
+                                  // Convertir a booleano de forma type-safe (boolean | null -> boolean)
+                                  const checkboxValue = item.extra_late === true;
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1255,9 +1255,9 @@ export default function TransportesPage() {
                                 // Checkboxes booleanos adicionales
                                 const booleanCheckboxes = ['porteo', 'ingresado_stacking', 'sobreestadia', 'scanner'];
                                 if (booleanCheckboxes.includes(column.key)) {
-                                  const rawValue = item[column.key];
-                                  // Convertir a booleano explícitamente, manejando null, undefined, string "false", etc.
-                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
+                                  const rawValue = item[column.key] as boolean | null | undefined;
+                                  // Convertir a booleano de forma type-safe
+                                  const checkboxValue = rawValue === true;
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
