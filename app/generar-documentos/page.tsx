@@ -86,6 +86,18 @@ export default function GenerarDocumentosPage() {
   const [filterNave, setFilterNave] = useState<string | null>(null);
   const [selectedEspecie, setSelectedEspecie] = useState<string | null>(null);
 
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    if (!email) {
+      console.log('⚠️ No se encontró email del usuario en generar-documentos:', { currentUser: currentUser?.email });
+      return false;
+    }
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en generar-documentos:', { email, isSuperAdmin });
+    return isSuperAdmin;
+  }, [currentUser]);
+  
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   // Redirigir clientes al dashboard
@@ -373,11 +385,11 @@ export default function GenerarDocumentosPage() {
         ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
@@ -386,7 +398,7 @@ export default function GenerarDocumentosPage() {
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-    ...(isRodrigo
+    ...(isSuperAdmin
       ? [
         {
           title: 'Mantenimiento',

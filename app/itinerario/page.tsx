@@ -53,6 +53,18 @@ export default function ItinerarioPage() {
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    if (!email) {
+      console.log('⚠️ No se encontró email del usuario en itinerario:', { currentUser: currentUser?.email });
+      return false;
+    }
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en itinerario:', { email, isSuperAdmin });
+    return isSuperAdmin;
+  }, [currentUser]);
+  
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
 
@@ -112,11 +124,11 @@ export default function ItinerarioPage() {
         ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
@@ -125,7 +137,7 @@ export default function ItinerarioPage() {
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-    ...(isRodrigo || isAdmin
+    ...(isSuperAdmin || isAdmin
       ? [
         {
           title: 'Mantenimiento',

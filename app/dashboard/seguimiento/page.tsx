@@ -288,6 +288,18 @@ const SeguimientoPage = () => {
     setFocusedVesselName(null);
   };
 
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    const email = (userInfo?.email || user?.email || '').toLowerCase();
+    if (!email) {
+      console.log('⚠️ No se encontró email del usuario en seguimiento:', { userInfo: userInfo?.email, user: user?.email });
+      return false;
+    }
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en seguimiento:', { email, isSuperAdmin });
+    return isSuperAdmin;
+  }, [userInfo, user]);
+  
   const isRodrigo = userInfo?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = userInfo?.rol === 'admin';
 
@@ -307,11 +319,11 @@ const SeguimientoPage = () => {
         ...(userInfo && userInfo.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: true, icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
@@ -320,7 +332,7 @@ const SeguimientoPage = () => {
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-    ...(isRodrigo
+    ...(isSuperAdmin
       ? [
         {
           title: 'Mantenimiento',
@@ -337,7 +349,7 @@ const SeguimientoPage = () => {
   }
 
   // Proteger acceso: solo Rodrigo puede ver esta página
-  if (!isRodrigo) {
+  if (!isSuperAdmin) {
     router.push('/dashboard');
     return null;
   }

@@ -376,9 +376,22 @@ export default function ReportesPage() {
   const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
 
   const isAdmin = userInfo?.rol === 'admin';
-  const isRodrigo = userInfo?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
-  const canAccessMaintenance = isAdmin || isRodrigo;
-  const canAccessReportes = isRodrigo;
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    const email = (userInfo?.email || user?.email || '').toLowerCase();
+    if (!email) {
+      console.log('⚠️ No se encontró email del usuario:', { userInfo: userInfo?.email, user: user?.email });
+      return false;
+    }
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en reportes:', { email, isSuperAdmin, userInfo: userInfo?.email, user: user?.email });
+    return isSuperAdmin;
+  }, [userInfo, user]);
+  
+  const isRodrigo = (userInfo?.email || user?.email || '').toLowerCase() === 'rodrigo.caceres@asli.cl';
+  const isHans = (userInfo?.email || user?.email || '').toLowerCase() === 'hans.vasquez@asli.cl';
+  const canAccessMaintenance = isAdmin || isSuperAdmin;
+  const canAccessReportes = isSuperAdmin;
 
   const sidebarNav: SidebarSection[] = [
     {
@@ -396,11 +409,11 @@ export default function ReportesPage() {
         ...(userInfo && userInfo.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', isActive: true, icon: BarChart3 },
@@ -409,7 +422,7 @@ export default function ReportesPage() {
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-    ...(isRodrigo
+    ...(isSuperAdmin
       ? [
         {
           title: 'Mantenimiento',
@@ -429,9 +442,8 @@ export default function ReportesPage() {
     return null;
   }
 
-  // Verificar acceso solo para Rodrigo
-  // isRodrigo ya está definido más arriba en el componente
-  if (!isRodrigo) {
+  // Verificar acceso solo para superadmins (Hans o Rodrigo)
+  if (!isSuperAdmin) {
     return (
       <div className={`flex h-screen items-center justify-center ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
         <div className={`border p-8 text-center max-w-md ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>

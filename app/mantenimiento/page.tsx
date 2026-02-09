@@ -91,9 +91,17 @@ export default function MantenimientoPage() {
   const isEditorTab = activeTab === 'editor-plantillas';
   const isGoogleSheetsTab = activeTab === 'editor-google-sheets';
 
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    if (!currentUser?.email) return false;
+    const email = currentUser.email.toLowerCase();
+    return email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+  }, [currentUser]);
+  
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+  const isHans = currentUser?.email?.toLowerCase() === 'hans.vasquez@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
-  const canAccess = isAdmin || isRodrigo;
+  const canAccess = isAdmin || isSuperAdmin;
 
   // Obtener usuario de auth
   useEffect(() => {

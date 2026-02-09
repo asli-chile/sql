@@ -51,6 +51,7 @@ type EscalaInput = {
 
 type ItinerarioInput = {
   servicio: string;
+  servicio_id?: string | null; // ID del servicio desde la tabla servicios
   consorcio: string | null;
   nave: string;
   viaje: string;
@@ -172,19 +173,26 @@ export async function POST(request: Request) {
       .single();
 
     // Insertar itinerario
+    const insertData: any = {
+      servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
+      consorcio: payload.consorcio,
+      nave: payload.nave,
+      viaje: payload.viaje,
+      semana: payload.semana,
+      pol: payload.pol,
+      etd: payload.etd,
+      created_by: usuarioData?.email || validation.email,
+      updated_by: usuarioData?.email || validation.email,
+    };
+
+    // Si se proporciona servicio_id, incluirlo
+    if (payload.servicio_id) {
+      insertData.servicio_id = payload.servicio_id;
+    }
+
     const { data: itinerarioData, error: itinerarioError } = await adminClient
       .from('itinerarios')
-      .insert({
-        servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
-        consorcio: payload.consorcio,
-        nave: payload.nave,
-        viaje: payload.viaje,
-        semana: payload.semana,
-        pol: payload.pol,
-        etd: payload.etd,
-        created_by: usuarioData?.email || validation.email,
-        updated_by: usuarioData?.email || validation.email,
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -209,16 +217,23 @@ export async function POST(request: Request) {
           .eq('itinerario_id', existingItinerario.id);
 
         // Actualizar itinerario
+        const updateData: any = {
+          servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
+          consorcio: payload.consorcio,
+          semana: payload.semana,
+          pol: payload.pol,
+          etd: payload.etd,
+          updated_by: usuarioData?.email || validation.email,
+        };
+
+        // Si se proporciona servicio_id, incluirlo
+        if (payload.servicio_id) {
+          updateData.servicio_id = payload.servicio_id;
+        }
+
         const { data: updatedItinerario, error: updateError } = await adminClient
           .from('itinerarios')
-          .update({
-            servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
-            consorcio: payload.consorcio,
-            semana: payload.semana,
-            pol: payload.pol,
-            etd: payload.etd,
-            updated_by: usuarioData?.email || validation.email,
-          })
+          .update(updateData)
           .eq('id', existingItinerario.id)
           .select()
           .single();

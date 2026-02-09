@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import type { Itinerario, ItinerarioEscala } from '@/types/itinerarios';
-import { Plus, Trash2, Save, Calendar } from 'lucide-react';
+import { Plus, Trash2, Save, Calendar, Settings, X } from 'lucide-react';
+import { ServiciosManager } from './ServiciosManager';
 
 const AREAS = [
   'ASIA',
@@ -56,12 +57,14 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
   const [navesPorNaviera, setNavesPorNaviera] = useState<Record<string, string[]>>({});
   const [pols, setPols] = useState<string[]>([]);
   const [pods, setPods] = useState<string[]>([]);
-  const [serviciosExistentes, setServiciosExistentes] = useState<string[]>([]);
-  const [servicioNavieraMap, setServicioNavieraMap] = useState<Record<string, string>>({}); // Mapa servicio -> naviera
+  const [serviciosExistentes, setServiciosExistentes] = useState<Array<{ id: string; nombre: string; consorcio: string | null }>>([]);
+  const [navesPorServicio, setNavesPorServicio] = useState<Record<string, string[]>>({}); // Mapa servicio_id -> naves[]
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
+  const [showServiciosManager, setShowServiciosManager] = useState(false);
 
   // Formulario
-  const [servicio, setServicio] = useState('');
+  const [servicioId, setServicioId] = useState<string>('');
+  const [servicioNombre, setServicioNombre] = useState('');
   const [servicioNuevo, setServicioNuevo] = useState('');
   const [esServicioNuevo, setEsServicioNuevo] = useState(false);
   const [naviera, setNaviera] = useState('');
@@ -82,9 +85,8 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [itinerarioResultado, setItinerarioResultado] = useState<Itinerario | null>(null);
 
-  // Cargar catálogos desde la base de datos
-  useEffect(() => {
-    const cargarCatalogos = async () => {
+  // Función para cargar catálogos desde la base de datos
+  const cargarCatalogos = async () => {
       try {
         setLoadingCatalogos(true);
         const supabase = createClient();
@@ -167,124 +169,212 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
           }
         }
 
-        // 5. Cargar servicios existentes desde itinerarios y crear mapa servicio -> naviera
-        const { data: itinerariosData, error: itinerariosError } = await supabase
-          .from('itinerarios')
-          .select('servicio, consorcio, created_at')
-          .not('servicio', 'is', null)
-          .not('consorcio', 'is', null)
-          .order('created_at', { ascending: false }); // Ordenar por más reciente primero
+        // 5. Cargar servicios desde la tabla servicios
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        try {
+          const serviciosResponse = await fetch(`${apiUrl}/api/admin/servicios`);
+          const serviciosResult = await serviciosResponse.json();
+          
+          if (serviciosResponse.ok && serviciosResult.servicios) {
+            const serviciosList = serviciosResult.servicios
+              .filter((s: any) => s.activo)
+              .map((s: any) => ({
+                id: s.id,
+                nombre: s.nombre,
+                consorcio: s.consorcio,
+              }))
+              .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
+            
+            setServiciosExistentes(serviciosList);
 
-        if (!itinerariosError && itinerariosData) {
-          const serviciosUnicos = Array.from(new Set(itinerariosData.map((i: any) => i.servicio).filter(Boolean))).sort() as string[];
-          setServiciosExistentes(serviciosUnicos);
-
-          // Crear mapa de servicio -> naviera (usar el más reciente para cada servicio)
-          const servicioNavieraMapping: Record<string, string> = {};
-          itinerariosData.forEach((it: any) => {
-            if (it.servicio && it.consorcio) {
-              // Usar el primero (más reciente debido al orden) para cada servicio
-              if (!servicioNavieraMapping[it.servicio]) {
-                servicioNavieraMapping[it.servicio] = it.consorcio;
+            // Crear mapa de servicio_id -> naves[]
+            const navesPorServicioMap: Record<string, string[]> = {};
+            serviciosResult.servicios.forEach((servicio: any) => {
+              if (servicio.naves && Array.isArray(servicio.naves)) {
+                navesPorServicioMap[servicio.id] = servicio.naves
+                  .filter((n: any) => n.activo)
+                  .map((n: any) => n.nave_nombre)
+                  .sort();
               }
-            }
-          });
-          setServicioNavieraMap(servicioNavieraMapping);
+            });
+            console.log('📦 Mapa de naves por servicio cargado:', navesPorServicioMap);
+            setNavesPorServicio(navesPorServicioMap);
+          }
+        } catch (error) {
+          console.error('Error cargando servicios:', error);
+          // Fallback: cargar desde itinerarios si la tabla servicios no existe aún
+          const { data: itinerariosData } = await supabase
+            .from('itinerarios')
+            .select('servicio, consorcio')
+            .not('servicio', 'is', null)
+            .order('created_at', { ascending: false });
+
+          if (itinerariosData) {
+            const serviciosUnicos = Array.from(
+              new Set(itinerariosData.map((i: any) => i.servicio).filter(Boolean))
+            ).sort() as string[];
+            
+            setServiciosExistentes(
+              serviciosUnicos.map(nombre => ({ id: '', nombre, consorcio: null }))
+            );
+          }
         }
       } catch (error) {
         console.error('Error cargando catálogos:', error);
       } finally {
         setLoadingCatalogos(false);
       }
-    };
+  };
 
+  // Cargar catálogos al montar el componente
+  useEffect(() => {
     void cargarCatalogos();
   }, []);
 
-  // Naves disponibles para la naviera seleccionada
+  // Naves disponibles: si hay servicio seleccionado, mostrar naves del servicio; si no, mostrar todas de la naviera
   const navesDisponibles = useMemo(() => {
+    console.log('🔍 Calculando naves disponibles:', {
+      servicioId,
+      servicioNombre,
+      tieneMapa: !!navesPorServicio[servicioId],
+      navesEnMapa: servicioId ? navesPorServicio[servicioId] : null,
+      naviera,
+      navesPorNaviera: naviera ? navesPorNaviera[naviera] : null,
+      todasLasClaves: Object.keys(navesPorServicio)
+    });
+    
+    // Si hay servicio seleccionado, mostrar todas las naves del servicio
+    if (servicioId && navesPorServicio[servicioId]) {
+      const navesDelServicio = navesPorServicio[servicioId];
+      console.log('✅ Naves del servicio encontradas:', navesDelServicio);
+      
+      // Si también hay naviera seleccionada, filtrar para mostrar solo las naves que pertenecen a ambas
+      if (naviera && navesPorNaviera[naviera] && navesPorNaviera[naviera].length > 0) {
+        const navesFiltradas = navesDelServicio.filter(nave => 
+          navesPorNaviera[naviera].includes(nave)
+        );
+        console.log('🔍 Naves filtradas por naviera:', navesFiltradas);
+        // Si hay naves filtradas, mostrarlas; si no, mostrar todas las del servicio
+        return navesFiltradas.length > 0 ? navesFiltradas : navesDelServicio;
+      }
+      // Si no hay naviera o no hay naves de la naviera, mostrar todas las del servicio
+      return navesDelServicio;
+    }
+    
+    // Si hay servicio pero no hay naves en el mapa, mostrar mensaje de depuración
+    if (servicioId && !navesPorServicio[servicioId]) {
+      console.warn('⚠️ Servicio seleccionado pero no hay naves en el mapa:', {
+        servicioId,
+        serviciosEnMapa: Object.keys(navesPorServicio)
+      });
+    }
+    
+    // Si no hay servicio seleccionado, mostrar todas las naves de la naviera
     if (!naviera) return [];
     return navesPorNaviera[naviera] || [];
-  }, [naviera, navesPorNaviera]);
+  }, [servicioId, servicioNombre, naviera, navesPorNaviera, navesPorServicio]);
 
-  // Cuando cambia la naviera, resetear nave
+  // Cuando cambia la naviera o el servicio, resetear nave
   useEffect(() => {
-    if (naviera) {
+    if (naviera || servicioId) {
       setNave('');
       setEsNaveNueva(false);
       setNaveNueva('');
     }
-  }, [naviera]);
+  }, [naviera, servicioId]);
 
-  // Función para cargar escalas del último itinerario del servicio
+  // Función para cargar escalas del servicio desde servicios_escalas
   const cargarEscalasDelServicio = async () => {
-    if (!servicio || esServicioNuevo) {
+    if (!servicioId || esServicioNuevo) {
+      setErrorMessage('Por favor selecciona un servicio primero.');
       return;
     }
 
     try {
-      const supabase = createClient();
+      setErrorMessage(null);
+      setSuccessMessage(null);
       
-      // Buscar el último itinerario con este servicio que tenga escalas
-      const { data: itinerariosData, error } = await supabase
-        .from('itinerarios')
-        .select(`
-          id,
-          escalas:itinerario_escalas(
-            puerto,
-            puerto_nombre,
-            area,
-            orden
-          )
-        `)
-        .eq('servicio', servicio)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const response = await fetch(`${apiUrl}/api/admin/servicios`);
+      const result = await response.json();
 
-      if (error) {
-        console.error('Error buscando itinerario anterior:', error);
+      if (!response.ok) {
+        throw new Error(result?.error || 'Error al cargar servicios');
+      }
+
+      if (!result.servicios || !Array.isArray(result.servicios)) {
+        throw new Error('No se recibieron servicios válidos');
+      }
+
+      const servicio = result.servicios.find((s: any) => s.id === servicioId);
+      
+      if (!servicio) {
+        setErrorMessage(`No se encontró el servicio seleccionado.`);
         return;
       }
 
-      if (itinerariosData && itinerariosData.escalas && itinerariosData.escalas.length > 0) {
-        // Ordenar escalas por orden
-        const escalasOrdenadas = [...itinerariosData.escalas].sort((a, b) => a.orden - b.orden);
-        
-        // Pre-llenar el formulario con las escalas (sin fechas)
-        const escalasPrellenadas: EscalaForm[] = escalasOrdenadas.map((escala, index) => ({
-          puerto: escala.puerto || '',
-          puerto_nombre: escala.puerto_nombre || escala.puerto || '',
-          eta: '', // Sin fecha, el usuario debe completarla
-          orden: index + 1,
-          area: escala.area || 'ASIA',
-          esPuertoNuevo: false,
-        }));
+      console.log('🔍 Servicio encontrado:', {
+        id: servicio.id,
+        nombre: servicio.nombre,
+        escalas: servicio.escalas,
+        tieneEscalas: !!servicio.escalas,
+        cantidadEscalas: servicio.escalas?.length || 0
+      });
 
-        setEscalas(escalasPrellenadas);
-        setSuccessMessage(`Escalas cargadas del último itinerario del servicio "${servicio}". Completa las fechas ETA.`);
+      if (!servicio.escalas || !Array.isArray(servicio.escalas) || servicio.escalas.length === 0) {
+        setErrorMessage(`El servicio "${servicioNombre || servicio.nombre}" no tiene escalas definidas. Define las escalas en el gestor de servicios primero.`);
+        return;
       }
-    } catch (error) {
-      console.error('Error cargando escalas del servicio:', error);
+
+      // Filtrar solo escalas activas y ordenar por orden
+      const escalasActivas = servicio.escalas
+        .filter((e: any) => e.activo !== false)
+        .sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
+
+      if (escalasActivas.length === 0) {
+        setErrorMessage(`El servicio "${servicioNombre || servicio.nombre}" no tiene escalas activas.`);
+        return;
+      }
+
+      // Pre-llenar el formulario con las escalas (sin fechas)
+      const escalasPrellenadas: EscalaForm[] = escalasActivas.map((escala: any, index: number) => ({
+        puerto: escala.puerto || '',
+        puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+        eta: '', // Sin fecha, el usuario debe completarla
+        orden: escala.orden || index + 1,
+        area: escala.area || 'ASIA',
+        esPuertoNuevo: false,
+      }));
+
+      setEscalas(escalasPrellenadas);
+      setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
+      
+      console.log('✅ Escalas cargadas:', escalasPrellenadas);
+    } catch (error: any) {
+      console.error('❌ Error cargando escalas del servicio:', error);
+      setErrorMessage(`Error al cargar escalas: ${error?.message || 'Error desconocido'}`);
     }
   };
 
   // Seleccionar naviera automáticamente cuando se selecciona un servicio
   useEffect(() => {
-    if (servicio && !esServicioNuevo && servicioNavieraMap[servicio]) {
-      const navieraAsociada = servicioNavieraMap[servicio];
-      if (navieraAsociada && navieras.includes(navieraAsociada)) {
-        setNaviera(navieraAsociada);
+    if (servicioId && !esServicioNuevo) {
+      const servicioSeleccionado = serviciosExistentes.find(s => s.id === servicioId);
+      if (servicioSeleccionado?.consorcio && navieras.includes(servicioSeleccionado.consorcio)) {
+        setNaviera(servicioSeleccionado.consorcio);
       }
+      setServicioNombre(servicioSeleccionado?.nombre || '');
+    } else {
+      setServicioNombre('');
     }
-  }, [servicio, esServicioNuevo, servicioNavieraMap, navieras]);
+  }, [servicioId, esServicioNuevo, serviciosExistentes, navieras]);
 
   // Cargar escalas automáticamente cuando se selecciona un servicio existente (solo si no hay escalas)
   useEffect(() => {
-    if (servicio && !esServicioNuevo && escalas.length === 0) {
+    if (servicioId && !esServicioNuevo && escalas.length === 0) {
       void cargarEscalasDelServicio();
     }
-  }, [servicio, esServicioNuevo]);
+  }, [servicioId, esServicioNuevo]);
 
   // Función para convertir fecha ISO (YYYY-MM-DD) a formato latinoamericano (DD/MM/YYYY)
   const formatearFechaLatinoamericana = (fechaISO: string): string => {
@@ -385,11 +475,17 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
     setSuccessMessage(null);
     setItinerarioResultado(null);
 
-    const servicioFinal = esServicioNuevo ? servicioNuevo.trim() : servicio;
+    const servicioFinal = esServicioNuevo ? servicioNuevo.trim() : servicioNombre;
     const naveFinal = esNaveNueva ? naveNueva.trim() : nave;
 
     if (!servicioFinal || !naviera || !naveFinal || !viaje.trim() || !pol.trim() || !etd) {
       setErrorMessage('Completa todos los campos requeridos.');
+      return;
+    }
+
+    // Validar que la nave seleccionada pertenezca al servicio (si hay servicio seleccionado)
+    if (servicioId && navesPorServicio[servicioId] && !navesPorServicio[servicioId].includes(naveFinal)) {
+      setErrorMessage(`La nave "${naveFinal}" no está asignada al servicio seleccionado.`);
       return;
     }
 
@@ -566,6 +662,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           servicio: servicioFinal,
+          servicio_id: servicioId || null, // Incluir servicio_id si está disponible
           consorcio: naviera, // Consorcio ahora es naviera
           nave: naveFinal,
           viaje: viaje.trim(),
@@ -598,7 +695,6 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       }
       
       // Limpiar formulario (pero mantener el servicio para que pueda cargar escalas automáticamente)
-      // setServicio(''); // No limpiar servicio para mantener la selección
       setServicioNuevo('');
       setEsServicioNuevo(false);
       setNave('');
@@ -610,14 +706,36 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       setEtdFormatoLatino('');
       setEscalas([]); // Limpiar escalas para que se recarguen automáticamente si hay servicio
       
-      // Recargar catálogos para incluir nuevos servicios/naves
-      const { data: itinerariosData } = await supabase
-        .from('itinerarios')
-        .select('servicio')
-        .not('servicio', 'is', null);
-      if (itinerariosData) {
-        const serviciosUnicos = Array.from(new Set(itinerariosData.map((i: any) => i.servicio).filter(Boolean))).sort() as string[];
-        setServiciosExistentes(serviciosUnicos);
+      // Recargar servicios desde la API
+      try {
+        const serviciosResponse = await fetch(`${apiUrl}/api/admin/servicios`);
+        const serviciosResult = await serviciosResponse.json();
+        if (serviciosResponse.ok && serviciosResult.servicios) {
+          const serviciosList = serviciosResult.servicios
+            .filter((s: any) => s.activo)
+            .map((s: any) => ({
+              id: s.id,
+              nombre: s.nombre,
+              consorcio: s.consorcio,
+            }))
+            .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
+          
+          setServiciosExistentes(serviciosList);
+
+          const navesPorServicioMap: Record<string, string[]> = {};
+          serviciosResult.servicios.forEach((servicio: any) => {
+            if (servicio.naves && Array.isArray(servicio.naves)) {
+              navesPorServicioMap[servicio.id] = servicio.naves
+                .filter((n: any) => n.activo)
+                .map((n: any) => n.nave_nombre)
+                .sort();
+            }
+          });
+          console.log('📦 Mapa de naves por servicio recargado:', navesPorServicioMap);
+          setNavesPorServicio(navesPorServicioMap);
+        }
+      } catch (error) {
+        console.error('Error recargando servicios:', error);
       }
     } catch (error: any) {
       setErrorMessage(error?.message || 'Error inesperado al guardar.');
@@ -652,14 +770,19 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
               Servicio
               <div className="mt-2 flex gap-2">
                 <select
-                  value={esServicioNuevo ? '' : servicio}
+                  value={esServicioNuevo ? '' : servicioId}
                   onChange={(e) => {
                     if (e.target.value === '__nuevo__') {
                       setEsServicioNuevo(true);
-                      setServicio('');
+                      setServicioId('');
+                      setServicioNombre('');
+                    } else if (e.target.value === '__gestionar__') {
+                      setShowServiciosManager(true);
                     } else {
                       setEsServicioNuevo(false);
-                      setServicio(e.target.value);
+                      setServicioId(e.target.value);
+                      const servicioSeleccionado = serviciosExistentes.find(s => s.id === e.target.value);
+                      setServicioNombre(servicioSeleccionado?.nombre || '');
                     }
                   }}
                   disabled={esServicioNuevo}
@@ -667,9 +790,10 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                 >
                   <option value="">Selecciona servicio</option>
                   {serviciosExistentes.map(s => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s.id} value={s.id}>{s.nombre}</option>
                   ))}
                   <option value="__nuevo__">+ Nuevo servicio</option>
+                  <option value="__gestionar__">⚙️ Gestionar servicios</option>
                 </select>
               </div>
               {esServicioNuevo && (
@@ -681,6 +805,11 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                   placeholder="Escribe el nuevo servicio"
                   required
                 />
+              )}
+              {servicioId && navesPorServicio[servicioId] && (
+                <p className="mt-1 text-[10px] opacity-60">
+                  Naves disponibles: {navesPorServicio[servicioId].length}
+                </p>
               )}
             </label>
 
@@ -729,9 +858,15 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                       className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone} ${esNaveNueva ? 'opacity-50' : ''}`}
                     >
                       <option value="">Selecciona nave</option>
-                      {navesDisponibles.map(n => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
+                      {navesDisponibles.length > 0 ? (
+                        navesDisponibles.map(n => (
+                          <option key={n} value={n}>{n}</option>
+                        ))
+                      ) : (
+                        <option value="" disabled>
+                          {servicioId ? 'No hay naves asignadas a este servicio' : 'Selecciona una naviera primero'}
+                        </option>
+                      )}
                       <option value="__nueva__">+ Nueva nave</option>
                     </select>
                   </div>
@@ -834,7 +969,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold uppercase tracking-wide">Escalas (PODs)</h3>
             <div className="flex items-center gap-2">
-              {servicio && !esServicioNuevo && (
+              {servicioNombre && !esServicioNuevo && (
                 <button
                   type="button"
                   onClick={cargarEscalasDelServicio}
@@ -842,7 +977,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                     ? 'border-blue-500/60 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
                     : 'border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100'
                     }`}
-                  title={`Cargar escalas del último itinerario del servicio "${servicio}"`}
+                  title={`Cargar escalas definidas para el servicio "${servicioNombre}"`}
                 >
                   <Plus className="h-3 w-3" />
                   Cargar Escalas del Servicio
@@ -967,7 +1102,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         </button>
       </form>
 
-      {itinerarioResultado && (
+          {itinerarioResultado && (
         <div className={`mt-8 border p-6 sm:p-8 ${formTone}`}>
           <div className="flex flex-col gap-2 border-b pb-4 mb-6">
             <h2 className="text-lg sm:text-xl font-semibold">Itinerario Guardado</h2>
@@ -986,6 +1121,60 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
             escalas={itinerarioResultado.escalas || []}
             theme={theme}
           />
+        </div>
+      )}
+
+      {/* Modal para gestionar servicios */}
+      {showServiciosManager && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div 
+            className={`relative w-full max-w-4xl max-h-[90vh] overflow-hidden border shadow-2xl ${theme === 'dark'
+              ? 'bg-slate-800 border-slate-700'
+              : 'bg-white border-gray-200'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`flex items-center justify-between px-6 py-4 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+              <div>
+                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Gestionar Servicios
+                </h2>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Crea y administra servicios marítimos y sus naves asignadas
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowServiciosManager(false);
+                  void cargarCatalogos();
+                }}
+                className={`inline-flex h-9 w-9 items-center justify-center border transition ${theme === 'dark'
+                  ? 'border-slate-700 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 hover:bg-slate-700'
+                  : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+                title="Cerrar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto max-h-[calc(90vh-8rem)] p-6">
+              <ServiciosManager
+                onServicioChange={(id) => {
+                  if (id) {
+                    setServicioId(id);
+                    const servicioSeleccionado = serviciosExistentes.find(s => s.id === id);
+                    setServicioNombre(servicioSeleccionado?.nombre || '');
+                    setShowServiciosManager(false);
+                  }
+                }}
+                onServicioCreated={() => {
+                  // Recargar servicios cuando se crea/actualiza/elimina uno
+                  void cargarCatalogos();
+                }}
+                selectedServicioId={servicioId}
+              />
+            </div>
+          </div>
         </div>
       )}
     </div>

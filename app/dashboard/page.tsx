@@ -552,8 +552,16 @@ function DashboardPage() {
 
   const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
 
-  // Definir isRodrigo antes de usarlo en modules
-  const isRodrigo = userInfo?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+  // Verificar si es superadmin (Hans o Rodrigo) antes de usarlo en modules
+  const isSuperAdminForModules = useMemo(() => {
+    const email = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase();
+    if (!email) return false;
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin:', { email, isSuperAdmin, userInfo: userInfo?.email, currentUser: currentUser?.email, user: user?.email });
+    return isSuperAdmin;
+  }, [userInfo, currentUser, user]);
+  
+  const isRodrigo = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   const modules = [
     {
@@ -566,7 +574,7 @@ function DashboardPage() {
       available: true,
       stats: displayedStats
     },
-    ...(isRodrigo
+    ...(isSuperAdminForModules
       ? [
         {
           id: 'dashboard/seguimiento',
@@ -660,11 +668,20 @@ function DashboardPage() {
     isActive: selectedSeason === seasonKey,
   }));
 
-  const isAdmin = userInfo?.rol === 'admin';
-  const isEjecutivo = userInfo?.email?.endsWith('@asli.cl') || user?.email?.endsWith('@asli.cl');
+  const isAdmin = userInfo?.rol === 'admin' || currentUser?.rol === 'admin';
+  const isEjecutivo = (userInfo?.email || currentUser?.email || user?.email || '').endsWith('@asli.cl');
 
-  // isRodrigo ya está definido más arriba (antes del array modules)
-  const canAccessMaintenance = isAdmin || isRodrigo;
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    const email = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase();
+    if (!email) return false;
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en sidebar:', { email, isSuperAdmin, userInfo: userInfo?.email, currentUser: currentUser?.email, user: user?.email });
+    return isSuperAdmin;
+  }, [userInfo, currentUser, user]);
+  
+  const isRodrigo = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase() === 'rodrigo.caceres@asli.cl';
+  const canAccessMaintenance = isAdmin || isSuperAdmin;
 
   const sidebarNav: SidebarSection[] = [
     {
@@ -682,11 +699,11 @@ function DashboardPage() {
         ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
@@ -695,7 +712,7 @@ function DashboardPage() {
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
       ],
     },
-        ...(isRodrigo || isAdmin
+        ...(isSuperAdmin || isAdmin
           ? [
             {
               title: 'Mantenimiento',

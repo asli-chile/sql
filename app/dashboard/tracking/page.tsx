@@ -252,6 +252,19 @@ export default function TrackingPage() {
         [filteredShipments, selectedId]);
 
     const isAdmin = currentUser?.rol === 'admin';
+    
+    // Verificar si es superadmin (Hans o Rodrigo)
+    const isSuperAdmin = useMemo(() => {
+      const email = (currentUser?.email || '').toLowerCase();
+      if (!email) {
+        console.log('⚠️ No se encontró email del usuario en tracking:', { currentUser: currentUser?.email });
+        return false;
+      }
+      const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+      console.log('🔍 Verificando superadmin en tracking:', { email, isSuperAdmin });
+      return isSuperAdmin;
+    }, [currentUser]);
+    
     const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
     const sidebarNav = [
@@ -270,11 +283,11 @@ export default function TrackingPage() {
                 ...(currentUser && currentUser.rol !== 'cliente'
                   ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
                   : []),
-                ...(isRodrigo
+                ...(isSuperAdmin
                   ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
                   : []),
                 { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity, isActive: true, counter: trackingCount, tone: 'emerald' as const },
-                ...(isRodrigo
+                ...(isSuperAdmin
                     ? [
                         { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
                         { label: 'Reportes', id: '/reportes', icon: BarChart3 },
@@ -283,7 +296,7 @@ export default function TrackingPage() {
                 { label: 'Itinerario', id: '/itinerario', icon: Ship },
             ],
         },
-        ...(isRodrigo
+        ...(isSuperAdmin
             ? [
                 {
                     title: 'Mantenimiento',
@@ -497,7 +510,7 @@ export default function TrackingPage() {
                                                     hito={hito}
                                                     isLast={index === tracking.length - 1}
                                                     theme={theme}
-                                                    canEdit={isAdmin || isRodrigo}
+                                                    canEdit={isAdmin || isSuperAdmin}
                                                     onEdit={(h) => setEditingHito(h)}
                                                 />
                                             ))}

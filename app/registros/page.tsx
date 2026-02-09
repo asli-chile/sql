@@ -2712,6 +2712,19 @@ export default function RegistrosPage() {
   }
 
   const totalRegistros = new Set(registrosVisibles.map(r => r.refAsli).filter(Boolean)).size;
+  
+  // Verificar si es superadmin (Hans o Rodrigo)
+  const isSuperAdmin = useMemo(() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    if (!email) {
+      console.log('⚠️ No se encontró email del usuario en registros:', { currentUser: currentUser?.email });
+      return false;
+    }
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en registros:', { email, isSuperAdmin });
+    return isSuperAdmin;
+  }, [currentUser]);
+  
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   const toneBadgeClasses = {
@@ -2736,11 +2749,11 @@ export default function RegistrosPage() {
         ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isRodrigo
+        ...(isSuperAdmin
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
@@ -2755,7 +2768,7 @@ export default function RegistrosPage() {
         { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet', icon: Trash2 },
       ],
     },
-    ...(isRodrigo
+    ...(isSuperAdmin
       ? [
         {
           title: 'Mantenimiento',
