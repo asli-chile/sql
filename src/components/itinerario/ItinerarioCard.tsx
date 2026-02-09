@@ -35,7 +35,7 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
           <div className="flex items-center gap-2 mb-2">
             {(() => {
               const consorcioUpper = itinerario.consorcio.toUpperCase();
-              const logos: JSX.Element[] = [];
+              const logos: React.ReactElement[] = [];
               
               if (consorcioUpper.includes('MSC')) {
                 logos.push(

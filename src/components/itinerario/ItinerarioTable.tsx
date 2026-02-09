@@ -100,7 +100,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                 {/* Mostrar todos los logos de consorcios */}
                 {group.consorcios.map((consorcio) => {
                   const consorcioUpper = consorcio.toUpperCase();
-                  const logos: JSX.Element[] = [];
+                  const logos: React.ReactElement[] = [];
                   
                   // Detectar y mostrar logos
                   if (consorcioUpper.includes('MSC')) {
