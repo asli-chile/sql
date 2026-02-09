@@ -98,40 +98,59 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
             <div className="bg-[#0A203F] dark:bg-[#0F1C33] px-3 py-2 border-b border-[#00AEEF]/30 flex-shrink-0">
               <div className="flex items-center gap-2.5 flex-wrap">
                 {/* Mostrar todos los logos de consorcios */}
-                {group.consorcios.map((consorcio) => (
-                  <React.Fragment key={consorcio}>
-                    {consorcio.toUpperCase().includes('MSC') && (
+                {group.consorcios.map((consorcio) => {
+                  const consorcioUpper = consorcio.toUpperCase();
+                  const logos: JSX.Element[] = [];
+                  
+                  // Detectar y mostrar logos
+                  if (consorcioUpper.includes('MSC')) {
+                    logos.push(
                       <img
+                        key="msc"
                         src="/msc.png"
                         alt="MSC Logo"
                         className="h-12 w-auto object-contain flex-shrink-0"
+                        style={{ display: 'block', maxWidth: '100px' }}
+                        onLoad={() => console.log('Logo MSC cargado correctamente')}
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
+                          console.error('Error cargando logo MSC para:', consorcio, e);
                         }}
                       />
-                    )}
-                    {consorcio.toUpperCase().includes('COSCO') && (
+                    );
+                  }
+                  if (consorcioUpper.includes('COSCO')) {
+                    logos.push(
                       <img
+                        key="cosco"
                         src="/cosco.png"
                         alt="COSCO Logo"
                         className="h-12 w-auto object-contain flex-shrink-0"
+                        style={{ display: 'block', maxWidth: '100px' }}
+                        onLoad={() => console.log('Logo COSCO cargado correctamente')}
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
+                          console.error('Error cargando logo COSCO para:', consorcio, e);
                         }}
                       />
-                    )}
-                    {consorcio.toUpperCase().includes('EVERGREEN') && (
+                    );
+                  }
+                  if (consorcioUpper.includes('EVERGREEN')) {
+                    logos.push(
                       <img
+                        key="evergreen"
                         src="/evergreen.png"
                         alt="EVERGREEN Logo"
                         className="h-12 w-auto object-contain flex-shrink-0"
+                        style={{ display: 'block', maxWidth: '100px' }}
+                        onLoad={() => console.log('Logo EVERGREEN cargado correctamente')}
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
+                          console.error('Error cargando logo EVERGREEN para:', consorcio, e);
                         }}
                       />
-                    )}
-                  </React.Fragment>
-                ))}
+                    );
+                  }
+                  
+                  return <React.Fragment key={consorcio}>{logos}</React.Fragment>;
+                })}
                 <div className="flex-1 min-w-0">
                   {group.consorcios.length > 0 ? (
                     <>

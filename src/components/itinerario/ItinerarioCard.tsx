@@ -32,36 +32,46 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
       <div className="mb-3">
         {itinerario.consorcio && (
           <div className="flex items-center gap-2 mb-2">
-            {itinerario.consorcio.toUpperCase().includes('MSC') && (
-              <img
-                src="/msc.png"
-                alt="MSC Logo"
-                className="h-10 w-auto object-contain flex-shrink-0"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
-            {itinerario.consorcio.toUpperCase().includes('COSCO') && (
-              <img
-                src="/cosco.png"
-                alt="COSCO Logo"
-                className="h-10 w-auto object-contain flex-shrink-0"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
-            {itinerario.consorcio.toUpperCase().includes('EVERGREEN') && (
-              <img
-                src="/evergreen.png"
-                alt="EVERGREEN Logo"
-                className="h-10 w-auto object-contain flex-shrink-0"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            )}
+            {(() => {
+              const consorcioUpper = itinerario.consorcio.toUpperCase();
+              const logos: JSX.Element[] = [];
+              
+              if (consorcioUpper.includes('MSC')) {
+                logos.push(
+                  <img
+                    key="msc"
+                    src="/msc.png"
+                    alt="MSC Logo"
+                    className="h-10 w-auto object-contain flex-shrink-0"
+                    style={{ display: 'block' }}
+                  />
+                );
+              }
+              if (consorcioUpper.includes('COSCO')) {
+                logos.push(
+                  <img
+                    key="cosco"
+                    src="/cosco.png"
+                    alt="COSCO Logo"
+                    className="h-10 w-auto object-contain flex-shrink-0"
+                    style={{ display: 'block' }}
+                  />
+                );
+              }
+              if (consorcioUpper.includes('EVERGREEN')) {
+                logos.push(
+                  <img
+                    key="evergreen"
+                    src="/evergreen.png"
+                    alt="EVERGREEN Logo"
+                    className="h-10 w-auto object-contain flex-shrink-0"
+                    style={{ display: 'block' }}
+                  />
+                );
+              }
+              
+              return logos;
+            })()}
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
                 {itinerario.consorcio}
