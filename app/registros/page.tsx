@@ -2703,6 +2703,15 @@ export default function RegistrosPage() {
     clientesAbrMap
   ]);
 
+  // Verificar si es superadmin (Hans o Rodrigo) - DEBE estar antes de los returns condicionales
+  const isSuperAdmin = (() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    if (!email) {
+      return false;
+    }
+    return email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+  })();
+
   if (loading) {
     return null; // El PageWrapper manejará el loading
   }
@@ -2712,18 +2721,6 @@ export default function RegistrosPage() {
   }
 
   const totalRegistros = new Set(registrosVisibles.map(r => r.refAsli).filter(Boolean)).size;
-  
-  // Verificar si es superadmin (Hans o Rodrigo)
-  const isSuperAdmin = useMemo(() => {
-    const email = (currentUser?.email || '').toLowerCase();
-    if (!email) {
-      console.log('⚠️ No se encontró email del usuario en registros:', { currentUser: currentUser?.email });
-      return false;
-    }
-    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
-    console.log('🔍 Verificando superadmin en registros:', { email, isSuperAdmin });
-    return isSuperAdmin;
-  }, [currentUser]);
   
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
 
