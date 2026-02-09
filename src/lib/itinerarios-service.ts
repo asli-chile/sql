@@ -1,4 +1,4 @@
-import type { ItinerarioWithEscalas } from '@/types/itinerarios';
+import type { Itinerario, ItinerarioWithEscalas } from '@/types/itinerarios';
 
 export async function fetchItinerarios(): Promise<ItinerarioWithEscalas[]> {
   try {
