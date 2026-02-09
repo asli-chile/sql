@@ -1182,6 +1182,8 @@ export default function TransportesPage() {
                               {transportesColumns.map((column) => {
                                 // Checkbox especial para AT CONTROLADA
                                 if (column.key === 'atmosfera_controlada') {
+                                  const rawValue = item.atmosfera_controlada;
+                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1190,7 +1192,7 @@ export default function TransportesPage() {
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={item.atmosfera_controlada || false}
+                                        checked={checkboxValue}
                                         onChange={(e) => handleToggleAtmosferaControlada(item, e.target.checked)}
                                         disabled={!canEdit}
                                         className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
@@ -1204,6 +1206,8 @@ export default function TransportesPage() {
 
                                 // Checkbox especial para LATE
                                 if (column.key === 'late') {
+                                  const rawValue = item.late;
+                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1212,7 +1216,7 @@ export default function TransportesPage() {
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={item.late || false}
+                                        checked={checkboxValue}
                                         onChange={(e) => handleToggleLate(item, e.target.checked)}
                                         disabled={!canEdit}
                                         className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
@@ -1226,6 +1230,8 @@ export default function TransportesPage() {
 
                                 // Checkbox especial para EXTRA LATE
                                 if (column.key === 'extra_late') {
+                                  const rawValue = item.extra_late;
+                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1234,7 +1240,7 @@ export default function TransportesPage() {
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={item.extra_late || false}
+                                        checked={checkboxValue}
                                         onChange={(e) => handleToggleExtraLate(item, e.target.checked)}
                                         disabled={!canEdit}
                                         className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'
@@ -1249,7 +1255,9 @@ export default function TransportesPage() {
                                 // Checkboxes booleanos adicionales
                                 const booleanCheckboxes = ['porteo', 'ingresado_stacking', 'sobreestadia', 'scanner'];
                                 if (booleanCheckboxes.includes(column.key)) {
-                                  const checkboxValue = item[column.key] as boolean | null;
+                                  const rawValue = item[column.key];
+                                  // Convertir a booleano explícitamente, manejando null, undefined, string "false", etc.
+                                  const checkboxValue = rawValue === true || rawValue === 'true' || rawValue === 1 || rawValue === '1';
                                   return (
                                     <td
                                       key={`${item.id}-${column.header}`}
@@ -1258,7 +1266,7 @@ export default function TransportesPage() {
                                     >
                                       <input
                                         type="checkbox"
-                                        checked={checkboxValue || false}
+                                        checked={checkboxValue}
                                         onChange={(e) => handleToggleBoolean(item, column.key, e.target.checked)}
                                         disabled={!canEdit}
                                         className={`h-4 w-4 rounded ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'} ${theme === 'dark'

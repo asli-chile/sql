@@ -438,8 +438,64 @@ export function TransporteCard({
       {/* Botones de acción */}
       <div className="flex justify-center gap-2 p-3 pt-0">
         <button onClick={() => {
-          const content = `📦 CONTENEDOR: ${transporte.contenedor || 'N/A'}\n🚢 Booking: ${transporte.booking || 'N/A'}`;
-          navigator.clipboard.writeText(content).then(() => alert('Copiado!'));
+          const formatDate = (dateStr: string | null | undefined) => {
+            if (!dateStr) return 'N/A';
+            try {
+              const date = new Date(dateStr);
+              if (isNaN(date.getTime())) return dateStr;
+              return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            } catch {
+              return dateStr;
+            }
+          };
+
+          const content = `📦 TRANSPORTE - INFORMACIÓN COMPLETA
+
+📋 REFERENCIAS:
+REF CLIENTE: ${transporte.ref_cliente || 'N/A'}
+REF ASLI: ${transporte.ref_asli || 'N/A'}
+
+🚢 EMBARQUE:
+BOOKING: ${transporte.booking || 'N/A'}
+NAVIERA: ${transporte.naviera || 'N/A'}
+NAVE: ${transporte.nave || 'N/A'}
+POL: ${transporte.pol || 'N/A'}
+POD: ${transporte.pod || 'N/A'}
+EXPORTACIÓN: ${transporte.exportacion || 'N/A'}
+SHIPPER: ${transporte.shipper || 'N/A'}
+ESPECIE: ${transporte.especie || 'N/A'}
+${transporte.temperatura !== null && transporte.temperatura !== undefined ? `TEMPERATURA: ${transporte.temperatura}°C\n` : ''}
+
+📦 CONTENEDOR:
+CONTENEDOR: ${transporte.contenedor || 'N/A'}
+SELLO: ${transporte.sello || 'N/A'}
+TARA: ${transporte.tara || 'N/A'}
+${transporte.atmosfera_controlada ? 'ATMOSFERA CONTROLADA: Sí\n' : ''}
+
+🏭 DEPÓSITO Y PLANTA:
+DEPÓSITO: ${transporte.deposito || 'N/A'}
+PLANTA: ${transporte.planta || 'N/A'}
+FECHA PRESENTACIÓN: ${transporte.dia_presentacion || 'N/A'}
+HORA PRESENTACIÓN: ${transporte.hora_presentacion || 'N/A'}
+
+📅 FECHAS:
+INICIO STACKING: ${formatDate(transporte.stacking)}
+FIN STACKING: ${formatDate(transporte.fin_stacking)}
+CUT OFF: ${formatDate(transporte.cut_off)}
+${transporte.fecha_planta ? `FECHA PLANTA: ${formatDate(transporte.fecha_planta)}\n` : ''}
+
+🚛 TRANSPORTE:
+TRANSPORTE: ${transporte.transporte || 'N/A'}
+CONDUCTOR: ${transporte.conductor || 'N/A'}
+RUT: ${transporte.rut || 'N/A'}
+TELÉFONO: ${transporte.telefono || 'N/A'}
+PATENTE: ${transporte.patente || 'N/A'}
+${transporte.patente_remolque ? `PATENTE REMOLQUE: ${transporte.patente_remolque}\n` : ''}
+
+📝 OBSERVACIONES:
+${transporte.observaciones ? `OBSERVACIONES: ${transporte.observaciones}\n` : ''}${transporte.observacion ? `OBSERVACIÓN: ${transporte.observacion}` : ''}`;
+
+          navigator.clipboard.writeText(content).then(() => alert('✅ Información completa copiada al portapapeles!'));
         }} className={`px-4 py-2 border font-black text-sm ${theme === 'dark' ? 'bg-sky-600 text-white border-sky-500/60' : 'bg-blue-600 text-white border-blue-500/60'}`}>
           📋 Copiar
         </button>
