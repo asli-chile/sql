@@ -553,13 +553,15 @@ function DashboardPage() {
   const toggleSidebar = () => setIsSidebarCollapsed((prev) => !prev);
 
   // Verificar si es superadmin (Hans o Rodrigo) antes de usarlo en modules
-  const isSuperAdminForModules = useMemo(() => {
-    const email = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase();
+  const getSuperAdminEmail = () => {
+    return (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase();
+  };
+  
+  const isSuperAdminForModules = (() => {
+    const email = getSuperAdminEmail();
     if (!email) return false;
-    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
-    console.log('🔍 Verificando superadmin:', { email, isSuperAdmin, userInfo: userInfo?.email, currentUser: currentUser?.email, user: user?.email });
-    return isSuperAdmin;
-  }, [userInfo, currentUser, user]);
+    return email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+  })();
 
   const modules = [
     {
@@ -670,13 +672,11 @@ function DashboardPage() {
   const isEjecutivo = (userInfo?.email || currentUser?.email || user?.email || '').endsWith('@asli.cl');
 
   // Verificar si es superadmin (Hans o Rodrigo)
-  const isSuperAdmin = useMemo(() => {
-    const email = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase();
+  const isSuperAdmin = (() => {
+    const email = getSuperAdminEmail();
     if (!email) return false;
-    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
-    console.log('🔍 Verificando superadmin en sidebar:', { email, isSuperAdmin, userInfo: userInfo?.email, currentUser: currentUser?.email, user: user?.email });
-    return isSuperAdmin;
-  }, [userInfo, currentUser, user]);
+    return email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+  })();
   
   const canAccessMaintenance = isAdmin || isSuperAdmin;
 
