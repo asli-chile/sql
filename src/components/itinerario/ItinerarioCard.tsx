@@ -37,14 +37,28 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
               const consorcioUpper = itinerario.consorcio.toUpperCase();
               const logos: React.ReactElement[] = [];
               
+              // Usar assetPrefix si está disponible (para producción)
+              const getImageSrc = (filename: string) => {
+                const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX;
+                if (assetPrefix && typeof window !== 'undefined') {
+                  // En producción con assetPrefix, construir la URL completa
+                  return `${assetPrefix}${filename}`;
+                }
+                return filename;
+              };
+              
               if (consorcioUpper.includes('MSC')) {
                 logos.push(
                   <img
                     key="msc"
-                    src="/msc.png"
-                    alt="MSC Logo"
+                    src={getImageSrc('/msc.png')}
+                    alt=""
                     className="h-10 w-auto object-contain flex-shrink-0"
                     style={{ display: 'block' }}
+                    onError={(e) => {
+                      console.error('Error cargando logo MSC');
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 );
               }
@@ -52,10 +66,14 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
                 logos.push(
                   <img
                     key="cosco"
-                    src="/cosco.png"
-                    alt="COSCO Logo"
+                    src={getImageSrc('/cosco.png')}
+                    alt=""
                     className="h-10 w-auto object-contain flex-shrink-0"
                     style={{ display: 'block' }}
+                    onError={(e) => {
+                      console.error('Error cargando logo COSCO');
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 );
               }
@@ -63,10 +81,14 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
                 logos.push(
                   <img
                     key="evergreen"
-                    src="/evergreen.png"
-                    alt="EVERGREEN Logo"
+                    src={getImageSrc('/evergreen.png')}
+                    alt=""
                     className="h-10 w-auto object-contain flex-shrink-0"
                     style={{ display: 'block' }}
+                    onError={(e) => {
+                      console.error('Error cargando logo EVERGREEN');
+                      e.currentTarget.style.display = 'none';
+                    }}
                   />
                 );
               }

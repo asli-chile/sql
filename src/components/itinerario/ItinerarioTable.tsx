@@ -103,17 +103,29 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                   const logos: React.ReactElement[] = [];
                   
                   // Detectar y mostrar logos
+                  // Usar assetPrefix si está disponible (para producción)
+                  const getImageSrc = (filename: string) => {
+                    const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX;
+                    if (assetPrefix && typeof window !== 'undefined') {
+                      // En producción con assetPrefix, construir la URL completa
+                      return `${assetPrefix}${filename}`;
+                    }
+                    return filename;
+                  };
+                  
                   if (consorcioUpper.includes('MSC')) {
                     logos.push(
                       <img
                         key="msc"
-                        src="/msc.png"
-                        alt="MSC Logo"
+                        src={getImageSrc('/msc.png')}
+                        alt=""
                         className="h-12 w-auto object-contain flex-shrink-0"
                         style={{ display: 'block', maxWidth: '100px' }}
                         onLoad={() => console.log('Logo MSC cargado correctamente')}
                         onError={(e) => {
                           console.error('Error cargando logo MSC para:', consorcio, e);
+                          console.error('Ruta intentada:', getImageSrc('/msc.png'));
+                          e.currentTarget.style.display = 'none';
                         }}
                       />
                     );
@@ -122,13 +134,15 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                     logos.push(
                       <img
                         key="cosco"
-                        src="/cosco.png"
-                        alt="COSCO Logo"
+                        src={getImageSrc('/cosco.png')}
+                        alt=""
                         className="h-12 w-auto object-contain flex-shrink-0"
                         style={{ display: 'block', maxWidth: '100px' }}
                         onLoad={() => console.log('Logo COSCO cargado correctamente')}
                         onError={(e) => {
                           console.error('Error cargando logo COSCO para:', consorcio, e);
+                          console.error('Ruta intentada:', getImageSrc('/cosco.png'));
+                          e.currentTarget.style.display = 'none';
                         }}
                       />
                     );
@@ -137,13 +151,15 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                     logos.push(
                       <img
                         key="evergreen"
-                        src="/evergreen.png"
-                        alt="EVERGREEN Logo"
+                        src={getImageSrc('/evergreen.png')}
+                        alt=""
                         className="h-12 w-auto object-contain flex-shrink-0"
                         style={{ display: 'block', maxWidth: '100px' }}
                         onLoad={() => console.log('Logo EVERGREEN cargado correctamente')}
                         onError={(e) => {
                           console.error('Error cargando logo EVERGREEN para:', consorcio, e);
+                          console.error('Ruta intentada:', getImageSrc('/evergreen.png'));
+                          e.currentTarget.style.display = 'none';
                         }}
                       />
                     );
