@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { Eye } from 'lucide-react';
 import type { ItinerarioWithEscalas } from '@/types/itinerarios';
 
