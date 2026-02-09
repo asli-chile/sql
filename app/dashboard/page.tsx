@@ -560,8 +560,6 @@ function DashboardPage() {
     console.log('🔍 Verificando superadmin:', { email, isSuperAdmin, userInfo: userInfo?.email, currentUser: currentUser?.email, user: user?.email });
     return isSuperAdmin;
   }, [userInfo, currentUser, user]);
-  
-  const isRodrigo = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase() === 'rodrigo.caceres@asli.cl';
 
   const modules = [
     {
@@ -608,7 +606,7 @@ function DashboardPage() {
       available: true,
       stats: null
     },
-    ...(isRodrigo
+    ...(isSuperAdminForModules
       ? [
         {
           id: 'finanzas',
@@ -680,7 +678,6 @@ function DashboardPage() {
     return isSuperAdmin;
   }, [userInfo, currentUser, user]);
   
-  const isRodrigo = (userInfo?.email || currentUser?.email || user?.email || '').toLowerCase() === 'rodrigo.caceres@asli.cl';
   const canAccessMaintenance = isAdmin || isSuperAdmin;
 
   const sidebarNav: SidebarSection[] = [
