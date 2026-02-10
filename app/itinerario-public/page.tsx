@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
+import Link from 'next/link';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
 import { ItinerarioCard } from '@/components/itinerario/ItinerarioCard';
@@ -10,7 +11,7 @@ import type { ItinerarioWithEscalas, ItinerarioFilters as FiltersType } from '@/
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function ItinerarioPublicPage() {
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const [itinerarios, setItinerarios] = useState<ItinerarioWithEscalas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,92 +106,58 @@ export default function ItinerarioPublicPage() {
   }, [itinerarios, filters]);
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
-      {/* Header */}
-      <header className={`sticky top-0 z-40 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
-        <div className="container mx-auto px-4 sm:px-6 py-4">
+    <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#202020]' : 'bg-[#F5F5F5]'}`}>
+      {/* Header - Estilo Windows Fluent */}
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-sm ${theme === 'dark' 
+        ? 'border-[#3D3D3D] bg-[#2D2D2D]/95' 
+        : 'border-[#E1E1E1] bg-[#FFFFFF]/95'
+      }`}>
+        <div className="w-full px-3 py-2.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <Link href="/" className="flex items-center gap-3 group">
               <img
                 src="https://asli.cl/img/logoblanco.png"
                 alt="ASLI Logo"
-                className="h-10 w-auto object-contain"
+                className="h-9 w-auto object-contain group-hover:opacity-90 transition-opacity"
               />
               <div>
-                <h1 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Itinerario
+                <h1 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                  ITINERARIO
                 </h1>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                <p className={`text-xs ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
                   Vista de solo lectura
                 </p>
               </div>
-            </div>
+            </Link>
             <div className="flex items-center gap-2">
-              {/* Toggle de vista ETA */}
-              <div className={`flex items-center gap-0 border rounded-md overflow-hidden ${theme === 'dark'
-                ? 'border-slate-700/60 bg-slate-800/60'
-                : 'border-gray-300 bg-white'
-                }`}>
-                <button
-                  onClick={() => setEtaViewMode('dias')}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                    etaViewMode === 'dias'
-                      ? theme === 'dark'
-                        ? 'bg-[#00AEEF] text-white'
-                        : 'bg-[#00AEEF] text-white'
-                      : theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                  title="Mostrar días de tránsito"
-                >
-                  Días
-                </button>
-                <button
-                  onClick={() => setEtaViewMode('fecha')}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors border-l ${
-                    theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'
-                  } ${
-                    etaViewMode === 'fecha'
-                      ? theme === 'dark'
-                        ? 'bg-[#00AEEF] text-white'
-                        : 'bg-[#00AEEF] text-white'
-                      : theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                  title="Mostrar fecha de llegada"
-                >
-                  Fecha
-                </button>
-                <button
-                  onClick={() => setEtaViewMode('ambos')}
-                  className={`px-3 py-1.5 text-xs font-medium transition-colors border-l ${
-                    theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'
-                  } ${
-                    etaViewMode === 'ambos'
-                      ? theme === 'dark'
-                        ? 'bg-[#00AEEF] text-white'
-                        : 'bg-[#00AEEF] text-white'
-                      : theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
-                        : 'text-gray-600 hover:bg-gray-100'
-                  }`}
-                  title="Mostrar días y fecha"
-                >
-                  Ambos
-                </button>
-              </div>
+              {/* Botón Día/Noche */}
+              <button
+                onClick={toggleTheme}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border transition-all duration-150 ${
+                  theme === 'dark'
+                    ? 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
+                    : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                }`}
+                style={{ borderRadius: '4px' }}
+                title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-3.5 w-3.5" />
+                ) : (
+                  <Moon className="h-3.5 w-3.5" />
+                )}
+                <span>{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 sm:px-6 py-6">
-        <div className="flex flex-col space-y-4">
+      {/* Main Content - Pantalla completa */}
+      <main className="w-full px-3 py-2">
+        <div className="flex flex-col gap-2 w-full">
           {/* Filtros */}
-          <div className="flex-shrink-0">
+          <div className="flex-shrink-0 w-full">
             <ItinerarioFilters
               servicios={servicios}
               consorcios={consorcios}
@@ -199,31 +166,39 @@ export default function ItinerarioPublicPage() {
               filters={filters}
               onFiltersChange={setFilters}
               onReset={() => setFilters({})}
+              etaViewMode={etaViewMode}
+              onEtaViewModeChange={setEtaViewMode}
             />
           </div>
 
           {/* Contenido */}
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             {isLoading ? (
-              <div className="flex items-center justify-center py-12 rounded-2xl border border-slate-800/60 bg-slate-950/60">
+              <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
+                ? 'border-[#3D3D3D] bg-[#2D2D2D]'
+                : 'border-[#E1E1E1] bg-white'
+              }`} style={{ borderRadius: '4px' }}>
                 <div className="flex items-center justify-center gap-2">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#00AEEF] border-t-transparent" />
-                  <span className="text-sm text-slate-400">Cargando itinerarios...</span>
+                  <div className={`h-5 w-5 animate-spin rounded-full border-2 ${theme === 'dark' ? 'border-[#0078D4]' : 'border-[#0078D4]'} border-t-transparent`} />
+                  <span className={`text-sm ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Cargando itinerarios...</span>
                 </div>
               </div>
             ) : error ? (
-              <div className="flex items-center justify-center py-12 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-8">
+              <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
+                ? 'border-[#D83B01] bg-[#D83B01]/10'
+                : 'border-[#D83B01] bg-[#FFF4F1]'
+              }`} style={{ borderRadius: '4px' }}>
                 <div className="space-y-4 text-center">
-                  <div className="text-amber-400 text-lg font-semibold">
+                  <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-[#FF6B47]' : 'text-[#D83B01]'}`}>
                     ⚠️ Error
                   </div>
-                  <div className="text-slate-300 text-sm">{error}</div>
+                  <div className={`text-sm ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#323130]'}`}>{error}</div>
                 </div>
               </div>
             ) : (
               <>
                 {/* Vista Desktop (Tabla) */}
-                <div className="hidden lg:block">
+                <div className="hidden lg:block w-full">
                   <ItinerarioTable
                     itinerarios={filteredItinerarios}
                     onViewDetail={() => {}} // Sin acción en modo solo lectura
@@ -233,10 +208,13 @@ export default function ItinerarioPublicPage() {
                 </div>
 
                 {/* Vista Mobile (Cards) */}
-                <div className="lg:hidden space-y-4">
+                <div className="lg:hidden space-y-2 w-full">
                   {filteredItinerarios.length === 0 ? (
-                    <div className="flex items-center justify-center py-12 rounded-2xl border border-slate-800/60 bg-slate-950/60">
-                      <p className="text-slate-400">No hay itinerarios disponibles</p>
+                    <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
+                      ? 'border-[#3D3D3D] bg-[#2D2D2D]'
+                      : 'border-[#E1E1E1] bg-white'
+                    }`} style={{ borderRadius: '4px' }}>
+                      <p className={theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}>No hay itinerarios disponibles</p>
                     </div>
                   ) : (
                     filteredItinerarios.map((itinerario) => (

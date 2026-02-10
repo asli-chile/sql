@@ -21,6 +21,8 @@ type EscalaForm = {
   orden: number;
   area: string;
   esPuertoNuevo?: boolean;
+  ajusteDias?: number; // Ajuste de días de tránsito (+/-)
+  etaBase?: string; // ETA original sin ajustes (para calcular correctamente)
 };
 
 // PUERTOS_DESTINO ahora se carga desde la base de datos
@@ -384,6 +386,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
               orden: escala.orden || index + 1,
               area: escala.area || 'ASIA',
               esPuertoNuevo: false,
+              ajusteDias: 0,
             }));
             setEscalas(escalasPrellenadas);
             setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". ETD inválido, completa las fechas ETA manualmente.`);
@@ -488,6 +491,8 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                         orden: index + 1,
                         area: escalaServicio.area || 'ASIA',
                         esPuertoNuevo: false,
+                        ajusteDias: 0,
+                        etaBase: fechaFormateada, // Guardar ETA base original para ajustes
                       });
                     } else {
                       escalasOrdenadas.push({
@@ -497,6 +502,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                         orden: index + 1,
                         area: escalaServicio.area || 'ASIA',
                         esPuertoNuevo: false,
+                        ajusteDias: 0,
                       });
                     }
                   }
@@ -513,6 +519,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                       orden: escalasOrdenadas.length + 1,
                       area: escalaServicio.area || 'ASIA',
                       esPuertoNuevo: false,
+                      ajusteDias: 0,
                     });
                   }
                 });
@@ -553,6 +560,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
               orden: escala.orden || index + 1,
               area: escala.area || 'ASIA',
               esPuertoNuevo: false,
+              ajusteDias: 0,
             }));
             setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
           }
@@ -689,9 +697,12 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
               const dia = String(nuevaEta.getDate()).padStart(2, '0');
               const fechaFormateada = `${año}-${mes}-${dia}`;
               
+              // Guardar etaBase si no existe (primera vez que se calcula)
+              const etaBaseAGuardar = escalaActual.etaBase || fechaFormateada;
               return {
                 ...escalaActual,
                 eta: fechaFormateada,
+                etaBase: etaBaseAGuardar, // Guardar como etaBase si no existe
               };
             }
             
@@ -788,6 +799,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       orden: escalas.length + 1,
       area: 'ASIA', // Valor por defecto
       esPuertoNuevo: false,
+      ajusteDias: 0, // Inicializar ajuste en 0
     };
     setEscalas([...escalas, nuevaEscala]);
   };
@@ -797,9 +809,106 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
     setEscalas(nuevasEscalas);
   };
 
-  const actualizarEscala = (index: number, campo: keyof EscalaForm, valor: string | boolean) => {
+  const actualizarEscala = (index: number, campo: keyof EscalaForm, valor: string | boolean | number) => {
     const nuevasEscalas = [...escalas];
-    nuevasEscalas[index] = { ...nuevasEscalas[index], [campo]: valor };
+    const escalaOriginal = escalas[index];
+    
+    // Si se ajusta días de tránsito, calcular primero ANTES de actualizar el estado
+    if (campo === 'ajusteDias' && typeof valor === 'number') {
+      // Si no hay ETA, no se puede ajustar
+      if (!escalaOriginal.eta) {
+        console.warn('⚠️ No hay ETA para ajustar días');
+        return;
+      }
+      
+      try {
+        console.log('🔧 Iniciando ajuste de días:', {
+          index,
+          valor,
+          etaActual: escalaOriginal.eta,
+          ajusteAnterior: escalaOriginal.ajusteDias,
+          etaBaseExistente: escalaOriginal.etaBase
+        });
+        
+        // Obtener la ETA base: si existe etaBase, usarla; si no, calcularla desde la ETA actual
+        let etaBase = escalaOriginal.etaBase;
+        
+        if (!etaBase) {
+          // Primera vez que se ajusta: necesitamos obtener la ETA original
+          // Si hay un ajuste previo, revertirlo para obtener la base
+          if (escalaOriginal.ajusteDias && escalaOriginal.ajusteDias !== 0) {
+            // Revertir el ajuste previo para obtener la base
+            const etaActual = new Date(escalaOriginal.eta);
+            etaActual.setDate(etaActual.getDate() - escalaOriginal.ajusteDias);
+            const año = etaActual.getFullYear();
+            const mes = String(etaActual.getMonth() + 1).padStart(2, '0');
+            const dia = String(etaActual.getDate()).padStart(2, '0');
+            etaBase = `${año}-${mes}-${dia}`;
+            console.log('📐 ETA base calculada revirtiendo ajuste:', etaBase);
+          } else {
+            // No hay ajuste previo, usar la ETA actual como base
+            etaBase = escalaOriginal.eta;
+            console.log('📐 ETA base establecida desde ETA actual:', etaBase);
+          }
+        } else {
+          console.log('📐 Usando ETA base existente:', etaBase);
+        }
+        
+        // Calcular nueva ETA desde la ETA base + el nuevo ajuste
+        // Parsear fecha en zona horaria local para evitar problemas
+        let etaBaseDate: Date;
+        if (etaBase.includes('T')) {
+          // Formato ISO, extraer solo la fecha
+          const fechaISO = new Date(etaBase);
+          etaBaseDate = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+        } else {
+          // Formato YYYY-MM-DD, crear fecha en zona horaria local
+          const [año, mes, dia] = etaBase.split('-');
+          etaBaseDate = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+        }
+        
+        if (isNaN(etaBaseDate.getTime())) {
+          console.error('❌ ETA base inválida:', etaBase);
+          return;
+        }
+        
+        const nuevaEta = new Date(etaBaseDate);
+        nuevaEta.setDate(nuevaEta.getDate() + valor);
+        
+        // Formatear fecha en formato YYYY-MM-DD
+        const año = nuevaEta.getFullYear();
+        const mes = String(nuevaEta.getMonth() + 1).padStart(2, '0');
+        const dia = String(nuevaEta.getDate()).padStart(2, '0');
+        const fechaFormateada = `${año}-${mes}-${dia}`;
+        
+        console.log('✅ Nueva ETA calculada:', {
+          etaBase,
+          ajuste: valor,
+          nuevaEta: fechaFormateada
+        });
+        
+        // Actualizar la escala con el nuevo ajuste y ETA, preservando etaBase
+        nuevasEscalas[index] = {
+          ...escalaOriginal,
+          ajusteDias: valor,
+          eta: fechaFormateada,
+          etaBase: etaBase, // Preservar o establecer etaBase
+        };
+        
+        console.log('💾 Actualizando escalas con:', nuevasEscalas[index]);
+        setEscalas(nuevasEscalas);
+        return; // Salir temprano para evitar procesamiento adicional
+      } catch (error) {
+        console.error('❌ Error calculando nueva ETA:', error);
+      }
+    }
+    
+    // Si se actualiza la ETA manualmente, guardar como etaBase si no existe
+    if (campo === 'eta' && typeof valor === 'string' && valor && !escalaOriginal.etaBase) {
+      nuevasEscalas[index] = { ...escalaOriginal, [campo]: valor, etaBase: valor };
+    } else {
+      nuevasEscalas[index] = { ...escalaOriginal, [campo]: valor };
+    }
     
     // Si se selecciona un puerto existente, actualizar el nombre
     if (campo === 'puerto' && typeof valor === 'string') {
@@ -822,10 +931,66 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
 
   const calcularDiasTransito = (etd: string, eta: string): number => {
     if (!etd || !eta) return 0;
-    const fechaETD = new Date(etd);
-    const fechaETA = new Date(eta);
-    const diffTime = fechaETA.getTime() - fechaETD.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    try {
+      // Parsear fechas en zona horaria local para evitar problemas de UTC
+      let fechaETD: Date;
+      let fechaETA: Date;
+      
+      // Parsear ETD
+      if (etd.includes('T')) {
+        // Formato ISO, extraer solo la fecha y crear en zona horaria local
+        const fechaISO = new Date(etd);
+        fechaETD = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+      } else if (etd.includes('/')) {
+        // Formato DD/MM/YYYY
+        const fechaParseada = parsearFechaLatinoamericana(etd);
+        if (fechaParseada) {
+          fechaETD = fechaParseada;
+        } else {
+          fechaETD = new Date(etd);
+        }
+      } else {
+        // Formato YYYY-MM-DD, crear fecha en zona horaria local
+        const [año, mes, dia] = etd.split('-');
+        fechaETD = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+      }
+      
+      // Parsear ETA
+      if (eta.includes('T')) {
+        // Formato ISO, extraer solo la fecha y crear en zona horaria local
+        const fechaISO = new Date(eta);
+        fechaETA = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+      } else if (eta.includes('/')) {
+        // Formato DD/MM/YYYY
+        const fechaParseada = parsearFechaLatinoamericana(eta);
+        if (fechaParseada) {
+          fechaETA = fechaParseada;
+        } else {
+          fechaETA = new Date(eta);
+        }
+      } else {
+        // Formato YYYY-MM-DD, crear fecha en zona horaria local
+        const [año, mes, dia] = eta.split('-');
+        fechaETA = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+      }
+      
+      // Verificar que las fechas sean válidas
+      if (isNaN(fechaETD.getTime()) || isNaN(fechaETA.getTime())) {
+        return 0;
+      }
+      
+      // Calcular diferencia en milisegundos
+      const diffTime = fechaETA.getTime() - fechaETD.getTime();
+      
+      // Convertir a días (usar Math.round para redondear correctamente)
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays >= 0 ? diffDays : 0;
+    } catch (error) {
+      console.error('Error calculando días de tránsito:', error);
+      return 0;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1427,8 +1592,70 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                     </label>
                   </div>
                   {escala.eta && etd && (
-                    <div className="mt-2 text-xs opacity-70">
-                      Días de tránsito: {calcularDiasTransito(etd, escala.eta)} días
+                    <div className="mt-3 space-y-2">
+                      <div className="text-xs opacity-70">
+                        Días de tránsito: {calcularDiasTransito(etd, escala.eta)} días
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs font-semibold uppercase tracking-wide flex-1">
+                          Ajustar días:
+                        </label>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const ajusteActual = escala.ajusteDias || 0;
+                              const nuevoAjuste = ajusteActual - 1;
+                              console.log('🔽 Restando día:', { ajusteActual, nuevoAjuste });
+                              actualizarEscala(index, 'ajusteDias', nuevoAjuste);
+                            }}
+                            className={`px-2 py-1 border text-sm font-bold transition ${theme === 'dark'
+                              ? 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600'
+                              : 'border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                            title="Restar 1 día"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            value={escala.ajusteDias ?? 0}
+                            onChange={(e) => {
+                              const valor = parseInt(e.target.value) || 0;
+                              console.log('✏️ Cambiando ajuste manualmente:', valor);
+                              actualizarEscala(index, 'ajusteDias', valor);
+                            }}
+                            className={`w-16 border px-2 py-1 text-sm text-center outline-none focus:ring-2 ${inputTone}`}
+                            placeholder="0"
+                            title="Ajuste de días de tránsito (+/-)"
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const ajusteActual = escala.ajusteDias || 0;
+                              const nuevoAjuste = ajusteActual + 1;
+                              console.log('🔼 Sumando día:', { ajusteActual, nuevoAjuste });
+                              actualizarEscala(index, 'ajusteDias', nuevoAjuste);
+                            }}
+                            className={`px-2 py-1 border text-sm font-bold transition ${theme === 'dark'
+                              ? 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600'
+                              : 'border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                            title="Sumar 1 día"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                      {escala.ajusteDias && escala.ajusteDias !== 0 && (
+                        <div className={`text-xs ${escala.ajusteDias > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {escala.ajusteDias > 0 ? '+' : ''}{escala.ajusteDias} día{escala.ajusteDias !== 1 && escala.ajusteDias !== -1 ? 's' : ''} de ajuste
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

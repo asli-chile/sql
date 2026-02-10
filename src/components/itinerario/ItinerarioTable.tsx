@@ -119,8 +119,8 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
 
   if (itinerarios.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-12 text-center">
-        <p className="text-slate-500 dark:text-slate-400">No hay itinerarios disponibles</p>
+      <div className="border border-[#E1E1E1] dark:border-[#3D3D3D] bg-white dark:bg-[#2D2D2D] p-12 text-center" style={{ borderRadius: '4px' }}>
+        <p className="text-[#6B6B6B] dark:text-[#A0A0A0]">No hay itinerarios disponibles</p>
       </div>
     );
   }
@@ -133,10 +133,11 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
         return (
           <div
             key={group.servicio}
-            className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 overflow-hidden shadow-sm flex flex-col"
+            className="border border-[#E1E1E1] dark:border-[#3D3D3D] bg-white dark:bg-[#2D2D2D] overflow-hidden flex flex-col"
+            style={{ borderRadius: '4px' }}
           >
             {/* Header del servicio */}
-            <div className="bg-[#0A203F] dark:bg-[#0F1C33] px-3 py-2 border-b border-[#00AEEF]/30 flex-shrink-0">
+            <div className="bg-[#0078D4] dark:bg-[#0F1C33] px-3 py-2 border-b border-[#005A9E] dark:border-[#00AEEF]/30 flex-shrink-0">
               <div className="flex items-center gap-2.5 flex-wrap">
                 {/* Mostrar todos los logos de consorcios */}
                 {group.consorcios.map((consorcio) => {
@@ -208,18 +209,18 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                   
                   return <React.Fragment key={consorcio}>{logos}</React.Fragment>;
                 })}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 text-center">
                   {group.consorcios.length > 0 ? (
                     <>
-                      <h2 className="text-lg font-bold text-white leading-tight">
+                      <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
                         {group.consorcios.join(' / ')}
                       </h2>
-                      <p className="text-xs text-[#4FC3F7] mt-0.5">
+                      <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
                         Servicio: <span className="font-semibold">{group.servicio}</span>
                       </p>
                     </>
                   ) : (
-                    <p className="text-xs text-[#4FC3F7]">
+                    <p className="text-xs text-white/90 dark:text-[#4FC3F7]">
                       Servicio: <span className="font-semibold">{group.servicio}</span>
                     </p>
                   )}
@@ -230,42 +231,42 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
             {/* Tabla */}
             <div className="overflow-auto">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
+                <thead className="bg-[#E8F4F8] dark:bg-[#1F1F1F] border-b border-[#C0E0F0] dark:border-[#3D3D3D] sticky top-0 z-20">
                   <tr>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky left-0 bg-slate-50 dark:bg-slate-900/50 z-30">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky left-0 bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
                       Consorcio
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky left-[80px] bg-slate-50 dark:bg-slate-900/50 z-30">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky left-[80px] bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
                       Nave
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
                       Viaje
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
                       Semana
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
                       POL
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
                       ETD
                     </th>
                     {groupPODs.map((pod) => (
                       <th
                         key={pod}
-                        className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide"
+                        className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide"
                       >
                         {pod}
                       </th>
                     ))}
                     {!hideActionColumn && (
-                      <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky right-0 bg-slate-50 dark:bg-slate-900/50 z-30">
+                      <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky right-0 bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
                         Acción
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                <tbody className="divide-y divide-[#E1E1E1] dark:divide-[#3D3D3D]">
                   {group.items.map((itinerario, index) => {
                     // Crear mapa de escalas por puerto para acceso rápido
                     const escalasMap = new Map(
@@ -280,28 +281,28 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                       <React.Fragment key={itinerario.id}>
                         {isNewConsorcioGroup && index > 0 && (
                           <tr>
-                            <td colSpan={(hideActionColumn ? 7 : 8) + groupPODs.length} className="px-2 py-1 bg-slate-100 dark:bg-slate-900/50 border-t border-slate-300 dark:border-slate-600"></td>
+                            <td colSpan={(hideActionColumn ? 7 : 8) + groupPODs.length} className="px-2 py-1 bg-[#F3F3F3] dark:bg-[#1F1F1F] border-t border-[#E1E1E1] dark:border-[#3D3D3D]"></td>
                           </tr>
                         )}
                         <tr
-                          className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors"
+                          className="hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-colors"
                         >
-                          <td className="px-2 py-1.5 text-center text-xs font-medium text-slate-700 dark:text-slate-300 sticky left-0 bg-white dark:bg-slate-800 z-10">
+                          <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-0 bg-white dark:bg-[#2D2D2D] z-10">
                             {itinerario.consorcio || '—'}
                           </td>
-                          <td className="px-2 py-1.5 text-center text-xs font-medium text-slate-900 dark:text-slate-100 sticky left-[80px] bg-white dark:bg-slate-800 z-10">
+                          <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-[80px] bg-white dark:bg-[#2D2D2D] z-10">
                             {itinerario.nave}
                           </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
                           {itinerario.viaje}
                         </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
                           {itinerario.semana || '—'}
                         </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
                           {itinerario.pol}
                         </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
                           {formatDate(itinerario.etd)}
                         </td>
                         {groupPODs.map((pod) => {
@@ -315,40 +316,41 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                               className="px-2 py-1.5 text-center text-xs"
                             >
                               {etaViewMode === 'dias' && hasDias ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7]">
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#E8F4FD] text-[#0078D4] dark:bg-[#1A3A52] dark:text-[#4FC3F7]" style={{ borderRadius: '4px' }}>
                                   {escala.dias_transito}d
                                 </span>
                               ) : etaViewMode === 'fecha' && hasFecha ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#DFF6DD] text-[#107C10] dark:bg-[#1A3A1A] dark:text-[#6FCF97]" style={{ borderRadius: '4px' }}>
                                   {formatDate(escala.eta)}
                                 </span>
                               ) : etaViewMode === 'ambos' ? (
                                 <div className="flex flex-col items-center gap-0.5">
                                   {hasDias && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[#00AEEF]/10 text-[#00AEEF] dark:bg-[#4FC3F7]/20 dark:text-[#4FC3F7]">
+                                    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#E8F4FD] text-[#0078D4] dark:bg-[#1A3A52] dark:text-[#4FC3F7]" style={{ borderRadius: '4px' }}>
                                       {escala.dias_transito}d
                                     </span>
                                   )}
                                   {hasFecha && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+                                    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#DFF6DD] text-[#107C10] dark:bg-[#1A3A1A] dark:text-[#6FCF97]" style={{ borderRadius: '4px' }}>
                                       {formatDate(escala.eta)}
                                     </span>
                                   )}
                                   {!hasDias && !hasFecha && (
-                                    <span className="text-slate-400">—</span>
+                                    <span className="text-[#6B6B6B] dark:text-[#A0A0A0]">—</span>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-slate-400">—</span>
+                                <span className="text-[#6B6B6B] dark:text-[#A0A0A0]">—</span>
                               )}
                             </td>
                           );
                         })}
                         {!hideActionColumn && (
-                          <td className="px-2 py-1.5 text-center sticky right-0 bg-white dark:bg-slate-800 z-10">
+                          <td className="px-2 py-1.5 text-center sticky right-0 bg-white dark:bg-[#2D2D2D] z-10">
                             <button
                               onClick={() => onViewDetail(itinerario)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#00AEEF] hover:text-[#4FC3F7] hover:bg-[#00AEEF]/10 dark:hover:bg-[#4FC3F7]/20 rounded transition-all duration-150"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#0078D4] hover:text-[#005A9E] hover:bg-[#E8F4FD] dark:hover:bg-[#3D3D3D] transition-all duration-150"
+                              style={{ borderRadius: '4px' }}
                             >
                               <Eye className="h-3 w-3" />
                               Ver

@@ -181,6 +181,95 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
       .filter(n => n.length > 0);
   };
 
+  // Función para reconstruir consorcioNavierasServicios desde el campo consorcio
+  // Maneja dos formatos:
+  // 1. Formato nuevo: "MSC INCA / Hapag AX1 / ONE AN1" (con / y nombres de servicios)
+  // 2. Formato antiguo: "MSC + Hapag + ONE" (con + y sin nombres de servicios)
+  const reconstruirConsorcioNavierasServicios = (consorcio: string | null, nombreServicio: string): Array<{ naviera: string; servicio_nombre: string }> => {
+    if (!consorcio) return [];
+    
+    const resultado: Array<{ naviera: string; servicio_nombre: string }> = [];
+    
+    // Si el nombre del servicio tiene formato "INCA/AX1/AN1", usar esos nombres
+    const serviciosDelNombre = nombreServicio.split('/').map(s => s.trim()).filter(s => s.length > 0);
+    
+    // Intentar primero el formato nuevo (con /)
+    if (consorcio.includes('/')) {
+      const partes = consorcio.split('/').map(p => p.trim()).filter(p => p.length > 0);
+      
+      partes.forEach((parte, index) => {
+        // Buscar la naviera al inicio de la parte
+        const navierasConocidas = ['MSC', 'Hapag', 'HAPAG', 'COSCO', 'ONE', 'Evergreen', 'EVERGREEN', 'CMA', 'CMA CGM', 'OOCL', 'Yang Ming', 'ZIM', 'HMM', 'Hyundai', 'Maersk'];
+        
+        let navieraEncontrada = '';
+        let servicioNombre = '';
+        
+        // Intentar encontrar una naviera conocida al inicio
+        for (const naviera of navierasConocidas) {
+          if (parte.toUpperCase().startsWith(naviera.toUpperCase())) {
+            navieraEncontrada = naviera;
+            servicioNombre = parte.substring(naviera.length).trim();
+            break;
+          }
+        }
+        
+        // Si no se encontró naviera conocida, intentar separar por espacio
+        if (!navieraEncontrada) {
+          const palabras = parte.split(/\s+/);
+          if (palabras.length >= 2) {
+            // Asumir que la primera palabra es la naviera
+            navieraEncontrada = palabras[0];
+            servicioNombre = palabras.slice(1).join(' ');
+          } else if (palabras.length === 1) {
+            // Si solo hay una palabra, es probable que sea solo la naviera
+            navieraEncontrada = palabras[0];
+            servicioNombre = serviciosDelNombre[index] || palabras[0];
+          }
+        }
+        
+        // Si tenemos un servicio del nombre del servicio, usarlo
+        if (serviciosDelNombre[index]) {
+          servicioNombre = serviciosDelNombre[index];
+        }
+        
+        if (navieraEncontrada && servicioNombre) {
+          resultado.push({
+            naviera: navieraEncontrada.trim(),
+            servicio_nombre: servicioNombre.trim(),
+          });
+        }
+      });
+    } 
+    // Si no tiene /, intentar formato antiguo (con +)
+    else if (consorcio.includes('+')) {
+      const navieras = consorcio.split('+').map(n => n.trim()).filter(n => n.length > 0);
+      
+      navieras.forEach((naviera, index) => {
+        // Usar el nombre del servicio correspondiente si está disponible
+        const servicioNombre = serviciosDelNombre[index] || naviera;
+        
+        resultado.push({
+          naviera: naviera.trim(),
+          servicio_nombre: servicioNombre.trim(),
+        });
+      });
+    }
+    // Si no tiene ni / ni +, asumir que es una sola naviera
+    else {
+      const naviera = consorcio.trim();
+      const servicioNombre = serviciosDelNombre[0] || naviera;
+      
+      if (naviera) {
+        resultado.push({
+          naviera: naviera,
+          servicio_nombre: servicioNombre,
+        });
+      }
+    }
+    
+    return resultado;
+  };
+
   // Abrir modal para crear nuevo servicio
   const abrirModalCrear = () => {
     setEditingServicio(null);
@@ -228,7 +317,13 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
           const servicioContieneConsorcio = nombreServicioNormalizado?.includes(nombreConsorcioNormalizado || '');
           const consorcioContieneServicio = nombreConsorcioNormalizado?.includes(nombreServicioNormalizado || '');
           
-          return coincideExacto || servicioContieneConsorcio || consorcioContieneServicio;
+          // También buscar por el campo consorcio del servicio (formato "MSC INCA / Hapag AX1")
+          const consorcioDelServicio = servicio.consorcio?.toUpperCase() || '';
+          const consorcioTieneNavierasDelServicio = c.navierasServicios?.some((rel: any) => 
+            consorcioDelServicio.includes(rel.naviera?.toUpperCase() || '')
+          );
+          
+          return coincideExacto || servicioContieneConsorcio || consorcioContieneServicio || consorcioTieneNavierasDelServicio;
         });
         
         console.log('🔍 Consorcio encontrado:', consorcioEncontrado);
@@ -240,13 +335,20 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
               naviera: rel.naviera,
               servicio_nombre: rel.servicio_nombre,
             }));
-          console.log('✅ ConsorcioNavierasServicios cargado:', consorcioNavierasServicios);
+          console.log('✅ ConsorcioNavierasServicios cargado desde consorcio estructurado:', consorcioNavierasServicios);
         } else {
-          console.warn('⚠️ Consorcio encontrado pero sin navierasServicios válidas');
+          console.warn('⚠️ Consorcio encontrado pero sin navierasServicios válidas, reconstruyendo desde campo consorcio');
         }
       }
     } catch (err) {
       console.warn('Error cargando consorcio estructurado:', err);
+    }
+    
+    // Si no se encontró consorcio estructurado o está vacío, reconstruir desde el campo consorcio
+    if (consorcioNavierasServicios.length === 0 && servicio.consorcio) {
+      console.log('🔄 Reconstruyendo consorcioNavierasServicios desde campo consorcio:', servicio.consorcio);
+      consorcioNavierasServicios = reconstruirConsorcioNavierasServicios(servicio.consorcio, servicio.nombre);
+      console.log('✅ ConsorcioNavierasServicios reconstruido:', consorcioNavierasServicios);
     }
     
     // Preparar escalas - incluir todas, no solo activas, para que el usuario pueda verlas
@@ -263,20 +365,32 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     console.log('📋 Datos del servicio al editar:', {
       id: servicio.id,
       nombre: servicio.nombre,
+      consorcio: servicio.consorcio,
       escalasRaw: servicio.escalas,
       cantidadEscalasRaw: servicio.escalas?.length || 0,
       escalasFormateadas: escalasFormateadas.length,
-      naves: servicio.naves?.length || 0,
-      consorcioNavierasServicios: consorcioNavierasServicios.length
+      naves: servicio.naves?.map(n => n.nave_nombre) || [],
+      cantidadNaves: servicio.naves?.length || 0,
+      consorcioNavierasServicios: consorcioNavierasServicios,
+      cantidadNavieras: consorcioNavierasServicios.length
     });
+    
+    // Asegurarse de que todas las naves del servicio se incluyan
+    const navesDelServicio = servicio.naves?.map(n => n.nave_nombre) || [];
     
     setFormData({
       nombre: servicio.nombre,
       navierasSeleccionadas: navierasDelConsorcio,
-      consorcioNavierasServicios,
+      consorcioNavierasServicios, // Las navieras se cargan automáticamente aquí
       descripcion: servicio.descripcion || '',
-      naves: servicio.naves.map(n => n.nave_nombre),
+      naves: navesDelServicio, // Todas las naves del servicio
       escalas: escalasFormateadas,
+    });
+    
+    console.log('✅ FormData actualizado con:', {
+      consorcioNavierasServicios: consorcioNavierasServicios.length,
+      naves: navesDelServicio.length,
+      navieras: consorcioNavierasServicios.map(c => c.naviera).join(', ')
     });
     setNaveInput('');
     setEsNaveNueva(false);
@@ -285,35 +399,55 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     setIsModalOpen(true);
   };
 
-  // Calcular naves disponibles según los servicios del consorcio
+  // Calcular naves disponibles: mostrar todas las naves del servicio actual que se está editando
   const navesDisponiblesFiltradas = useMemo(() => {
-    if (formData.consorcioNavierasServicios.length === 0) {
-      return navesDisponibles;
+    // Si estamos editando un servicio, mostrar todas sus naves asignadas + todas las naves disponibles
+    if (editingServicio) {
+      const navesDelServicio = new Set<string>();
+      
+      // Agregar todas las naves del servicio actual
+      editingServicio.naves?.forEach(nave => {
+        if (nave.activo !== false) {
+          navesDelServicio.add(nave.nave_nombre);
+        }
+      });
+      
+      // También agregar todas las naves disponibles para poder agregar nuevas
+      navesDisponibles.forEach(nave => navesDelServicio.add(nave));
+      
+      return Array.from(navesDelServicio).sort();
     }
     
-    // Obtener todas las naves de los servicios del consorcio
-    const serviciosIds = servicios
-      .filter(s => formData.consorcioNavierasServicios.some(
-        cons => cons.servicio_nombre && s.nombre.includes(cons.servicio_nombre)
-      ))
-      .map(s => s.id);
+    // Si hay servicios del consorcio seleccionados, mostrar naves de esos servicios
+    if (formData.consorcioNavierasServicios.length > 0) {
+      const navesDelConsorcio = new Set<string>();
+      
+      // Obtener todas las naves de los servicios del consorcio
+      servicios.forEach(servicio => {
+        const servicioCoincide = formData.consorcioNavierasServicios.some(
+          cons => cons.servicio_nombre && servicio.nombre.includes(cons.servicio_nombre)
+        );
+        
+        if (servicioCoincide) {
+          servicio.naves?.forEach(nave => {
+            if (nave.activo !== false) {
+              navesDelConsorcio.add(nave.nave_nombre);
+            }
+          });
+        }
+      });
+      
+      // También agregar todas las naves disponibles para poder agregar nuevas
+      navesDisponibles.forEach(nave => navesDelConsorcio.add(nave));
+      
+      return navesDelConsorcio.size > 0 
+        ? Array.from(navesDelConsorcio).sort()
+        : navesDisponibles;
+    }
     
-    const navesDelConsorcio = new Set<string>();
-    servicios.forEach(servicio => {
-      if (serviciosIds.includes(servicio.id)) {
-        servicio.naves?.forEach(nave => {
-          if (nave.activo) {
-            navesDelConsorcio.add(nave.nave_nombre);
-          }
-        });
-      }
-    });
-    
-    // Si hay naves del consorcio, usarlas; si no, usar todas las disponibles
-    return navesDelConsorcio.size > 0 
-      ? Array.from(navesDelConsorcio).sort()
-      : navesDisponibles;
-  }, [formData.consorcioNavierasServicios, servicios, navesDisponibles]);
+    // Si no hay filtros, mostrar todas las naves disponibles
+    return navesDisponibles;
+  }, [editingServicio, formData.consorcioNavierasServicios, servicios, navesDisponibles]);
 
   // Agregar nave al formulario
   const agregarNave = async (naveNombre?: string) => {
@@ -524,14 +658,19 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
           
           if (!consorcioResponse.ok) {
             const consorcioError = await consorcioResponse.json();
-            console.warn('Error guardando consorcio estructurado:', consorcioError.error);
+            console.warn('⚠️ Error guardando consorcio estructurado:', consorcioError.error);
+            console.warn('⚠️ Continuando con el guardado del servicio, pero el consorcio estructurado no se guardó');
             // No fallar el guardado del servicio si falla el consorcio
+            // El campo consorcio legacy se guardará de todas formas
           } else {
-            console.log('✅ Consorcio guardado correctamente:', await consorcioResponse.json());
+            const consorcioResult = await consorcioResponse.json();
+            console.log('✅ Consorcio guardado correctamente:', consorcioResult);
           }
         } catch (consorcioErr) {
-          console.warn('Error guardando consorcio estructurado:', consorcioErr);
+          console.warn('⚠️ Error guardando consorcio estructurado:', consorcioErr);
+          console.warn('⚠️ Continuando con el guardado del servicio, pero el consorcio estructurado no se guardó');
           // Continuar con el guardado del servicio aunque falle el consorcio
+          // El campo consorcio legacy se guardará de todas formas
         }
       } else if (formData.navierasSeleccionadas.length > 0) {
         // Fallback a formato legacy
@@ -617,6 +756,7 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
       await cargarServicios();
       
       // Notificar al componente padre que se creó/actualizó un servicio
+      // Esto hará que se recarguen los itinerarios y se reflejen los nuevos destinos
       if (onServicioCreated) {
         onServicioCreated();
       }
@@ -625,6 +765,9 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
       if (onServicioChange && result.servicio) {
         onServicioChange(result.servicio.id);
       }
+      
+      // Si se editó un servicio y se agregaron nuevas escalas, las fechas se calcularán
+      // automáticamente cuando se recarguen los itinerarios en la página principal
     } catch (err: any) {
       setError(err?.message || 'Error al guardar servicio');
     }

@@ -678,7 +678,21 @@ export default function ItinerarioPage() {
               {/* Contenido del modal */}
               <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
                 <div className="p-4 sm:p-6">
-                  <ServiciosManager />
+                  <ServiciosManager 
+                    onServicioCreated={async () => {
+                      // Recargar itinerarios cuando se crea/actualiza un servicio
+                      try {
+                        setIsLoading(true);
+                        const data = await fetchItinerarios();
+                        setItinerarios(data);
+                      } catch (error) {
+                        console.error('Error reloading itinerarios:', error);
+                        setError('Error al recargar itinerarios');
+                      } finally {
+                        setIsLoading(false);
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </div>

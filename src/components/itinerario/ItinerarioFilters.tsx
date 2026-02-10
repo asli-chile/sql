@@ -11,6 +11,8 @@ interface ItinerarioFiltersProps {
   filters: ItinerarioFilters;
   onFiltersChange: (filters: ItinerarioFilters) => void;
   onReset: () => void;
+  etaViewMode?: 'dias' | 'fecha' | 'ambos';
+  onEtaViewModeChange?: (mode: 'dias' | 'fecha' | 'ambos') => void;
 }
 
 const REGIONES = ['ASIA', 'EUROPA', 'AMERICA', 'INDIA-MEDIOORIENTE'] as const;
@@ -24,6 +26,8 @@ export function ItinerarioFilters({
   filters,
   onFiltersChange,
   onReset,
+  etaViewMode,
+  onEtaViewModeChange,
 }: ItinerarioFiltersProps) {
   const handleChange = (key: keyof ItinerarioFilters, value: string | number | undefined) => {
     const newFilters: ItinerarioFilters = { ...filters, [key]: value || undefined };
@@ -68,17 +72,18 @@ export function ItinerarioFilters({
   });
 
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 shadow-sm">
+    <div className="border border-[#E1E1E1] dark:border-[#3D3D3D] bg-white dark:bg-[#2D2D2D] p-2" style={{ borderRadius: '4px' }}>
       <div className="flex flex-wrap items-end gap-2">
         {/* Región */}
         <div className="flex-1 min-w-[180px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
             Región
           </label>
           <select
             value={filters.region || ''}
             onChange={(e) => handleChange('region', e.target.value)}
-            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
+            className="w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all"
+            style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">Todas las regiones</option>
             {REGIONES.map((region) => (
@@ -91,13 +96,14 @@ export function ItinerarioFilters({
 
         {/* Naviera (antes Consorcio) */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
             Naviera
           </label>
           <select
             value={filters.consorcio || ''}
             onChange={(e) => handleChange('consorcio', e.target.value)}
-            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
+            className="w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all"
+            style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">Todas las navieras</option>
             {consorcios.map((consorcio) => (
@@ -110,14 +116,15 @@ export function ItinerarioFilters({
 
         {/* Servicio (filtrado por naviera) */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
             Servicio
           </label>
           <select
             value={filters.servicio || ''}
             onChange={(e) => handleChange('servicio', e.target.value)}
             disabled={!filters.consorcio}
-            className={`w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent ${!filters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all ${!filters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
+            style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">
               {filters.consorcio ? 'Todos los servicios' : 'Selecciona naviera primero'}
@@ -132,13 +139,14 @@ export function ItinerarioFilters({
 
         {/* Semanas */}
         <div className="flex-1 min-w-[180px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
             Semanas
           </label>
           <select
             value={filters.semanas || ''}
             onChange={(e) => handleChange('semanas', e.target.value ? parseInt(e.target.value) : undefined)}
-            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
+            className="w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all"
+            style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">Todas las semanas</option>
             {opcionesSemanas.map((opcion) => (
@@ -151,13 +159,14 @@ export function ItinerarioFilters({
 
         {/* POL */}
         <div className="flex-1 min-w-[200px]">
-          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 uppercase tracking-wide">
+          <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
             POL
           </label>
           <select
             value={filters.pol || ''}
             onChange={(e) => handleChange('pol', e.target.value)}
-            className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
+            className="w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all"
+            style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">Todos los POLs</option>
             {pols.map((pol) => (
@@ -168,11 +177,31 @@ export function ItinerarioFilters({
           </select>
         </div>
 
+        {/* Vista (ETA View Mode) */}
+        {etaViewMode !== undefined && onEtaViewModeChange && (
+          <div className="flex-1 min-w-[180px]">
+            <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
+              Vista
+            </label>
+            <select
+              value={etaViewMode}
+              onChange={(e) => onEtaViewModeChange(e.target.value as 'dias' | 'fecha' | 'ambos')}
+              className="w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all"
+              style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
+            >
+              <option value="dias">Días de tránsito</option>
+              <option value="fecha">Fecha de llegada</option>
+              <option value="ambos">Días y fecha</option>
+            </select>
+          </div>
+        )}
+
         {/* Botones */}
         <div className="flex gap-1.5">
           <button
             onClick={handleReset}
-            className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+            className="px-3 py-1.5 text-xs font-medium text-[#323130] dark:text-[#C0C0C0] hover:text-[#1F1F1F] dark:hover:text-white hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-all"
+            style={{ borderRadius: '4px' }}
           >
             Reset
           </button>
