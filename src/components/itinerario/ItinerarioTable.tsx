@@ -231,22 +231,22 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
               <table className="w-full text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-20">
                   <tr>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky left-0 bg-slate-50 dark:bg-slate-900/50 z-30">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky left-0 bg-slate-50 dark:bg-slate-900/50 z-30">
                       Consorcio
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky left-[80px] bg-slate-50 dark:bg-slate-900/50 z-30">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky left-[80px] bg-slate-50 dark:bg-slate-900/50 z-30">
                       Nave
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                       Viaje
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                       Semana
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                       POL
                     </th>
-                    <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
                       ETD
                     </th>
                     {groupPODs.map((pod) => (
@@ -283,22 +283,22 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                         <tr
                           className="hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors"
                         >
-                          <td className="px-2 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 sticky left-0 bg-white dark:bg-slate-800 z-10">
+                          <td className="px-2 py-1.5 text-center text-xs font-medium text-slate-700 dark:text-slate-300 sticky left-0 bg-white dark:bg-slate-800 z-10">
                             {itinerario.consorcio || '—'}
                           </td>
-                          <td className="px-2 py-1.5 text-xs font-medium text-slate-900 dark:text-slate-100 sticky left-[80px] bg-white dark:bg-slate-800 z-10">
+                          <td className="px-2 py-1.5 text-center text-xs font-medium text-slate-900 dark:text-slate-100 sticky left-[80px] bg-white dark:bg-slate-800 z-10">
                             {itinerario.nave}
                           </td>
-                        <td className="px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
                           {itinerario.viaje}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
                           {itinerario.semana || '—'}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
                           {itinerario.pol}
                         </td>
-                        <td className="px-2 py-1.5 text-xs text-slate-700 dark:text-slate-300">
+                        <td className="px-2 py-1.5 text-center text-xs text-slate-700 dark:text-slate-300">
                           {formatDate(itinerario.etd)}
                         </td>
                         {groupPODs.map((pod) => {
