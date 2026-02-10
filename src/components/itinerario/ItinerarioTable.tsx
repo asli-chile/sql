@@ -9,6 +9,7 @@ interface ItinerarioTableProps {
   itinerarios: ItinerarioWithEscalas[];
   onViewDetail: (itinerario: ItinerarioWithEscalas) => void;
   etaViewMode?: 'dias' | 'fecha' | 'ambos';
+  hideActionColumn?: boolean;
 }
 
 // Agrupar itinerarios por servicio
@@ -110,7 +111,7 @@ function formatDate(dateString: string | null): string {
   }
 }
 
-export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias' }: ItinerarioTableProps) {
+export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias', hideActionColumn = false }: ItinerarioTableProps) {
   const grouped = useMemo(() => groupByService(itinerarios), [itinerarios]);
   
   // Obtener todos los PODs únicos para crear columnas dinámicas
@@ -257,9 +258,11 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                         {pod}
                       </th>
                     ))}
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky right-0 bg-slate-50 dark:bg-slate-900/50 z-30">
-                      Acción
-                    </th>
+                    {!hideActionColumn && (
+                      <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide sticky right-0 bg-slate-50 dark:bg-slate-900/50 z-30">
+                        Acción
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
@@ -277,7 +280,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                       <React.Fragment key={itinerario.id}>
                         {isNewConsorcioGroup && index > 0 && (
                           <tr>
-                            <td colSpan={8 + groupPODs.length} className="px-2 py-1 bg-slate-100 dark:bg-slate-900/50 border-t border-slate-300 dark:border-slate-600"></td>
+                            <td colSpan={(hideActionColumn ? 7 : 8) + groupPODs.length} className="px-2 py-1 bg-slate-100 dark:bg-slate-900/50 border-t border-slate-300 dark:border-slate-600"></td>
                           </tr>
                         )}
                         <tr
@@ -341,15 +344,17 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                             </td>
                           );
                         })}
-                        <td className="px-2 py-1.5 text-center sticky right-0 bg-white dark:bg-slate-800 z-10">
-                          <button
-                            onClick={() => onViewDetail(itinerario)}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#00AEEF] hover:text-[#4FC3F7] hover:bg-[#00AEEF]/10 dark:hover:bg-[#4FC3F7]/20 rounded transition-all duration-150"
-                          >
-                            <Eye className="h-3 w-3" />
-                            Ver
-                          </button>
-                        </td>
+                        {!hideActionColumn && (
+                          <td className="px-2 py-1.5 text-center sticky right-0 bg-white dark:bg-slate-800 z-10">
+                            <button
+                              onClick={() => onViewDetail(itinerario)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#00AEEF] hover:text-[#4FC3F7] hover:bg-[#00AEEF]/10 dark:hover:bg-[#4FC3F7]/20 rounded transition-all duration-150"
+                            >
+                              <Eye className="h-3 w-3" />
+                              Ver
+                            </button>
+                          </td>
+                        )}
                       </tr>
                       </React.Fragment>
                     );

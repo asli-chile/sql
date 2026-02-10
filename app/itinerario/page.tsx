@@ -20,7 +20,8 @@ import {
   Activity,
   Plus,
   Settings,
-  Download
+  Download,
+  Eye
 } from 'lucide-react';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
@@ -57,6 +58,9 @@ export default function ItinerarioPage() {
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showServiciosManager, setShowServiciosManager] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewModalFilters, setViewModalFilters] = useState<FiltersType>({});
+  const [viewModalEtaMode, setViewModalEtaMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
 
   // Verificar si es superadmin (Hans o Rodrigo)
   const isSuperAdmin = useMemo(() => {
@@ -248,6 +252,29 @@ export default function ItinerarioPage() {
     });
   }, [itinerarios, filters]);
 
+  // Filtrar itinerarios para el modal de vista
+  const filteredItinerariosForModal = useMemo(() => {
+    const semanaActual = calcularSemanaActual();
+    
+    return itinerarios.filter((it) => {
+      if (viewModalFilters.servicio && it.servicio !== viewModalFilters.servicio) return false;
+      if (viewModalFilters.consorcio && it.consorcio !== viewModalFilters.consorcio) return false;
+      if (viewModalFilters.pol && it.pol !== viewModalFilters.pol) return false;
+      if (viewModalFilters.region) {
+        // Filtrar por región: el itinerario debe tener al menos una escala con esa región
+        const hasRegion = it.escalas?.some((escala) => escala.area === viewModalFilters.region);
+        if (!hasRegion) return false;
+      }
+      if (viewModalFilters.semanas && it.semana) {
+        // Filtrar por rango de semanas: desde semana actual hasta semana actual + (semanas - 1)
+        const semanaInicio = semanaActual;
+        const semanaFin = semanaActual + viewModalFilters.semanas - 1;
+        if (it.semana < semanaInicio || it.semana > semanaFin) return false;
+      }
+      return true;
+    });
+  }, [itinerarios, viewModalFilters]);
+
   const handleViewDetail = (itinerario: ItinerarioWithEscalas) => {
     setSelectedItinerario(itinerario);
     setIsDrawerOpen(true);
@@ -379,6 +406,22 @@ export default function ItinerarioPage() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              {/* Botón Ver Itinerario */}
+              <button
+                onClick={() => {
+                  setViewModalFilters(filters);
+                  setViewModalEtaMode(etaViewMode);
+                  setShowViewModal(true);
+                }}
+                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
+                  ? 'border-blue-600 bg-blue-700/60 text-blue-200 hover:bg-blue-700 hover:border-blue-500'
+                  : 'border-blue-500 bg-blue-500 text-white hover:bg-blue-600 hover:border-blue-600'
+                  }`}
+                title="Ver Itinerario"
+              >
+                <Eye className="h-4 w-4" />
+                <span className="hidden sm:inline">Ver Itinerario</span>
+              </button>
               {/* Botón Descargar PDF */}
               <button
                 onClick={handleDownloadPDF}
@@ -636,6 +679,160 @@ export default function ItinerarioPage() {
               <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
                 <div className="p-4 sm:p-6">
                   <ServiciosManager />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Vista de Itinerario (Solo Lectura) */}
+        {showViewModal && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-black/60">
+            <div className={`flex-1 overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
+              {/* Header del modal */}
+              <div className={`flex items-center justify-between px-4 sm:px-6 py-3 border-b flex-shrink-0 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+                <div>
+                  <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Ver Itinerario
+                  </h2>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Vista de solo lectura con filtros y opciones de visualización
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Toggle de vista ETA en el modal */}
+                  <div className={`flex items-center gap-0 border rounded-md overflow-hidden ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-slate-800/60'
+                    : 'border-gray-300 bg-white'
+                    }`}>
+                    <button
+                      onClick={() => setViewModalEtaMode('dias')}
+                      className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-medium transition-colors ${
+                        viewModalEtaMode === 'dias'
+                          ? theme === 'dark'
+                            ? 'bg-[#00AEEF] text-white'
+                            : 'bg-[#00AEEF] text-white'
+                          : theme === 'dark'
+                            ? 'text-slate-300 hover:bg-slate-700'
+                            : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                      title="Mostrar días de tránsito"
+                    >
+                      Días
+                    </button>
+                    <button
+                      onClick={() => setViewModalEtaMode('fecha')}
+                      className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border-l ${
+                        theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'
+                      } ${
+                        viewModalEtaMode === 'fecha'
+                          ? theme === 'dark'
+                            ? 'bg-[#00AEEF] text-white'
+                            : 'bg-[#00AEEF] text-white'
+                          : theme === 'dark'
+                            ? 'text-slate-300 hover:bg-slate-700'
+                            : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                      title="Mostrar fecha de llegada"
+                    >
+                      Fecha
+                    </button>
+                    <button
+                      onClick={() => setViewModalEtaMode('ambos')}
+                      className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border-l ${
+                        theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'
+                      } ${
+                        viewModalEtaMode === 'ambos'
+                          ? theme === 'dark'
+                            ? 'bg-[#00AEEF] text-white'
+                            : 'bg-[#00AEEF] text-white'
+                          : theme === 'dark'
+                            ? 'text-slate-300 hover:bg-slate-700'
+                            : 'text-gray-600 hover:bg-gray-100'
+                      }`}
+                      title="Mostrar días y fecha"
+                    >
+                      Ambos
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setShowViewModal(false)}
+                    className={`p-1.5 rounded-md transition-colors ${theme === 'dark'
+                      ? 'text-slate-400 hover:text-white hover:bg-slate-700'
+                      : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                  >
+                    <ChevronRight className="h-5 w-5 rotate-90" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Contenido del modal */}
+              <div className="flex-1 overflow-auto min-h-0">
+                <div className="flex flex-col mx-auto w-full max-w-[1600px] px-2 sm:px-3 py-2 space-y-2">
+                  {/* Filtros */}
+                  <div className="flex-shrink-0">
+                    <ItinerarioFilters
+                      servicios={servicios}
+                      consorcios={consorcios}
+                      serviciosPorNaviera={serviciosPorNaviera}
+                      pols={pols}
+                      filters={viewModalFilters}
+                      onFiltersChange={setViewModalFilters}
+                      onReset={() => setViewModalFilters({})}
+                    />
+                  </div>
+
+                  {/* Tabla de Itinerarios */}
+                  <div className="flex-1 min-h-0">
+                    {isLoading ? (
+                      <div className="h-full flex items-center justify-center rounded-2xl border border-slate-800/60 bg-slate-950/60">
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#00AEEF] border-t-transparent" />
+                          <span className="text-sm text-slate-400">Cargando itinerarios...</span>
+                        </div>
+                      </div>
+                    ) : error ? (
+                      <div className="h-full flex items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 p-8">
+                        <div className="space-y-4 text-center">
+                          <div className="text-amber-400 text-lg font-semibold">
+                            ⚠️ Error
+                          </div>
+                          <div className="text-slate-300 text-sm">{error}</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Vista Desktop (Tabla) */}
+                        <div className="hidden lg:block">
+                          <ItinerarioTable
+                            itinerarios={filteredItinerariosForModal}
+                            onViewDetail={() => {}} // Sin acción en modo solo lectura
+                            etaViewMode={viewModalEtaMode}
+                            hideActionColumn={true}
+                          />
+                        </div>
+
+                        {/* Vista Mobile (Cards) */}
+                        <div className="lg:hidden space-y-4">
+                          {filteredItinerariosForModal.length === 0 ? (
+                            <div className="flex items-center justify-center py-12 rounded-2xl border border-slate-800/60 bg-slate-950/60">
+                              <p className="text-slate-400">No hay itinerarios disponibles</p>
+                            </div>
+                          ) : (
+                            filteredItinerariosForModal.map((itinerario) => (
+                              <ItinerarioCard
+                                key={itinerario.id}
+                                itinerario={itinerario}
+                                onViewDetail={() => {}} // Sin acción en modo solo lectura
+                                etaViewMode={viewModalEtaMode}
+                              />
+                            ))
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

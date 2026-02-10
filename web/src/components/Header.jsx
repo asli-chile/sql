@@ -95,38 +95,48 @@ const Header = () => {
             </a>
           </div>
 
-          {/* Dólar Observado - Centro */}
-          <div className="flex justify-center items-center">
-            {loadingDolar ? (
-              <div className="text-white text-sm md:text-base animate-pulse">
-                Cargando...
-              </div>
-            ) : dolarObservado ? (
-              <div className="text-center">
-                <div className="text-white text-xs md:text-sm font-medium hidden sm:block">
-                  Dólar Observado
+          {/* Dólar Observado + Botón Itinerario - Centro */}
+          <div className="flex justify-center items-center gap-4">
+            <div className="flex flex-col items-center">
+              {loadingDolar ? (
+                <div className="text-white text-sm md:text-base animate-pulse">
+                  Cargando...
                 </div>
-                <div className="text-white text-sm md:text-base lg:text-lg font-bold">
-                  ${dolarObservado.valor.toLocaleString('es-CL', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                  })}
-                </div>
-                {dolarObservado.fecha && (
-                  <div className="text-white text-xs opacity-80 mt-0.5">
-                    {new Date(dolarObservado.fecha).toLocaleDateString('es-CL', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric'
+              ) : dolarObservado ? (
+                <div className="text-center">
+                  <div className="text-white text-xs md:text-sm font-medium hidden sm:block">
+                    Dólar Observado
+                  </div>
+                  <div className="text-white text-sm md:text-base lg:text-lg font-bold">
+                    ${dolarObservado.valor.toLocaleString('es-CL', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2
                     })}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-white text-xs md:text-sm opacity-70">
-                No disponible
-              </div>
-            )}
+                  {dolarObservado.fecha && (
+                    <div className="text-white text-xs opacity-80 mt-0.5">
+                      {new Date(dolarObservado.fecha).toLocaleDateString('es-CL', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-white text-xs md:text-sm opacity-70">
+                  No disponible
+                </div>
+              )}
+            </div>
+
+            {/* Botón Itinerario (modo vista, accesible para cualquier persona) */}
+            <a
+              href="/itinerario-public"
+              className="inline-flex items-center px-4 py-2 rounded-md text-xs md:text-sm font-semibold text-asli-dark bg-white hover:bg-asli-primary hover:text-white transition-colors duration-200 shadow-sm"
+            >
+              ITINERARIO
+            </a>
           </div>
 
           {/* Menu Button - Always visible */}

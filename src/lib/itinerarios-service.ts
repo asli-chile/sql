@@ -1,5 +1,33 @@
 import type { Itinerario, ItinerarioWithEscalas } from '@/types/itinerarios';
 
+// Función pública para obtener itinerarios (sin autenticación)
+export async function fetchPublicItinerarios(): Promise<ItinerarioWithEscalas[]> {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+    const response = await fetch(`${apiUrl}/api/public/itinerarios`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      if (errorData?.code === 'TABLE_NOT_FOUND') {
+        console.error('❌ Error: La tabla de itinerarios no existe en la base de datos.');
+        throw new Error('La tabla de itinerarios no existe.');
+      }
+      
+      throw new Error(errorData?.error || `Error ${response.status}: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.itinerarios || [];
+  } catch (error: any) {
+    console.error('Error fetching public itinerarios:', error);
+    throw error;
+  }
+}
+
 export async function fetchItinerarios(): Promise<ItinerarioWithEscalas[]> {
   try {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';

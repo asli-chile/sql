@@ -34,6 +34,7 @@ const nextConfig = {
       { source: "/facturas/:path*", destination: `${erpBaseUrl}/facturas/:path*` },
       { source: "/facturar-preview/:path*", destination: `${erpBaseUrl}/facturar-preview/:path*` },
       { source: "/itinerario/:path*", destination: `${erpBaseUrl}/itinerario/:path*` },
+      { source: "/itinerario-public", destination: `${erpBaseUrl}/itinerario-public` },
       { source: "/mantenimiento/:path*", destination: `${erpBaseUrl}/mantenimiento/:path*` },
       { source: "/profile/:path*", destination: `${erpBaseUrl}/profile/:path*` },
       { source: "/registros/:path*", destination: `${erpBaseUrl}/registros/:path*` },
