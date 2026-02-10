@@ -341,22 +341,21 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
       if (!navesDisponibles.includes(nave)) {
         // Agregar a catalogos_naves con la naviera asociada
         const supabase = createClient();
-        supabase
-          .from('catalogos_naves')
-          .insert({
-            nombre: nave,
-            naviera: navieraParaNaveNueva || null,
-            activo: true,
-          })
-          .then(({ error }) => {
-            if (!error) {
-              // Recargar naves disponibles
-              cargarNavieras();
-            }
-          })
-          .catch((err) => {
-            console.warn('Error agregando nave al catálogo:', err);
-          });
+        try {
+          const { error } = await supabase
+            .from('catalogos_naves')
+            .insert({
+              nombre: nave,
+              naviera: navieraParaNaveNueva || null,
+              activo: true,
+            });
+          if (!error) {
+            // Recargar naves disponibles
+            cargarNavieras();
+          }
+        } catch (err) {
+          console.warn('Error agregando nave al catálogo:', err);
+        }
       }
     }
   };
