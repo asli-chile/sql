@@ -18,16 +18,20 @@ import {
   ChevronRight, 
   Anchor, 
   Activity,
-  Plus
+  Plus,
+  Settings,
+  Download
 } from 'lucide-react';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
 import { ItinerarioCard } from '@/components/itinerario/ItinerarioCard';
 import { VoyageDrawer } from '@/components/itinerario/VoyageDrawer';
 import { ItinerariosManager } from '@/components/itinerarios/ItinerariosManager';
+import { ServiciosManager } from '@/components/itinerarios/ServiciosManager';
 import { fetchItinerarios } from '@/lib/itinerarios-service';
 import type { ItinerarioWithEscalas, ItinerarioFilters as FiltersType } from '@/types/itinerarios';
 import LoadingScreen from '@/components/ui/LoadingScreen';
+import { generateItinerarioPDFByRegion } from '@/lib/generate-itinerario-pdf';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -52,12 +56,15 @@ export default function ItinerarioPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [showServiciosManager, setShowServiciosManager] = useState(false);
 
   // Verificar si es superadmin (Hans o Rodrigo)
   const isSuperAdmin = useMemo(() => {
-    const email = (currentUser?.email || '').toLowerCase();
+    if (!currentUser) {
+      return false; // Esperar a que se cargue el usuario
+    }
+    const email = (currentUser.email || '').toLowerCase();
     if (!email) {
-      console.log('⚠️ No se encontró email del usuario en itinerario:', { currentUser: currentUser?.email });
       return false;
     }
     const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
@@ -271,6 +278,25 @@ export default function ItinerarioPage() {
     }
   };
 
+  const handleDownloadPDF = async () => {
+    try {
+      // Usar itinerarios filtrados o todos si no hay filtro
+      const itinerariosParaPDF = filteredItinerarios.length > 0 
+        ? filteredItinerarios 
+        : itinerarios;
+      
+      if (itinerariosParaPDF.length === 0) {
+        alert('No hay itinerarios para generar el PDF');
+        return;
+      }
+
+      await generateItinerarioPDFByRegion(itinerariosParaPDF);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alert('Error al generar el PDF. Por favor, intenta nuevamente.');
+    }
+  };
+
   const handleCreateSuccess = async () => {
     setIsCreateModalOpen(false);
     // Recargar itinerarios
@@ -353,6 +379,32 @@ export default function ItinerarioPage() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              {/* Botón Descargar PDF */}
+              <button
+                onClick={handleDownloadPDF}
+                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
+                  ? 'border-emerald-600 bg-emerald-700/60 text-emerald-200 hover:bg-emerald-700 hover:border-emerald-500'
+                  : 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 hover:border-emerald-600'
+                  }`}
+                title="Descargar Itinerario en PDF"
+              >
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Descargar PDF</span>
+              </button>
+              {/* Botón Gestionar Servicios (solo para superadmin) */}
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setShowServiciosManager(true)}
+                  className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
+                    ? 'border-slate-600 bg-slate-700/60 text-slate-200 hover:bg-slate-700 hover:border-slate-500'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                    }`}
+                  title="Gestionar Servicios"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Gestionar Servicios</span>
+                </button>
+              )}
               {/* Botón Agregar */}
               <button
                 onClick={() => setIsCreateModalOpen(true)}
@@ -549,6 +601,41 @@ export default function ItinerarioPage() {
               <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
                 <div className="p-4 sm:p-6">
                   <ItinerariosManager onSuccess={handleCreateSuccess} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Gestión de Servicios */}
+        {showServiciosManager && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+            <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-lg shadow-xl ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+              {/* Header del modal */}
+              <div className={`flex items-center justify-between px-4 sm:px-6 py-3 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                <div>
+                  <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                    Gestionar Servicios
+                  </h2>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Crea y administra servicios marítimos, naves y escalas
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowServiciosManager(false)}
+                  className={`p-1.5 rounded-md transition-colors ${theme === 'dark'
+                    ? 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                    }`}
+                >
+                  <ChevronRight className="h-5 w-5 rotate-90" />
+                </button>
+              </div>
+
+              {/* Contenido del modal */}
+              <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
+                <div className="p-4 sm:p-6">
+                  <ServiciosManager />
                 </div>
               </div>
             </div>

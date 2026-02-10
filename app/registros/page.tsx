@@ -561,43 +561,65 @@ export default function RegistrosPage() {
       await loadEstadosFromCatalog();
 
       // ============================================================
-      // CARGAR DESDE NUEVAS TABLAS SEPARADAS
+      // CARGAR DESDE NUEVAS TABLAS SEPARADAS - EN PARALELO
       // ============================================================
+      // Ejecutar todas las consultas en paralelo para mejorar rendimiento
 
-      // 1. Navieras desde catalogos_navieras
-      const { data: navierasData, error: navierasError } = await supabase
-        .from('catalogos_navieras')
-        .select('nombre')
-        .eq('activo', true)
-        .order('nombre');
+      const [
+        { data: navierasData, error: navierasError },
+        { data: ejecutivosData, error: ejecutivosError },
+        { data: clientesData, error: clientesError },
+        { data: destinosData, error: destinosError },
+        { data: navesData, error: navesError },
+        { data: condicionesData, error: condicionesError }
+      ] = await Promise.all([
+        supabase
+          .from('catalogos_navieras')
+          .select('nombre')
+          .eq('activo', true)
+          .order('nombre'),
+        supabase
+          .from('catalogos_ejecutivos')
+          .select('nombre')
+          .eq('activo', true)
+          .order('nombre'),
+        supabase
+          .from('catalogos_clientes')
+          .select('*')
+          .eq('activo', true)
+          .order('nombre'),
+        supabase
+          .from('catalogos_destinos')
+          .select('nombre')
+          .eq('activo', true)
+          .order('nombre'),
+        supabase
+          .from('catalogos_naves')
+          .select('nombre, naviera_nombre')
+          .eq('activo', true)
+          .order('nombre'),
+        supabase
+          .from('catalogos_condiciones')
+          .select('tipo, valor')
+          .eq('activo', true)
+          .order('valor')
+      ]);
 
+      // Procesar resultados de navieras
       if (!navierasError && navierasData) {
         const navieras = navierasData.map((n: any) => n.nombre).filter(Boolean);
         setNavierasUnicas(navieras);
         setNavierasFiltro(navieras);
       }
 
-      // 2. Ejecutivos desde catalogos_ejecutivos
-      const { data: ejecutivosData, error: ejecutivosError } = await supabase
-        .from('catalogos_ejecutivos')
-        .select('nombre')
-        .eq('activo', true)
-        .order('nombre');
-
+      // Procesar resultados de ejecutivos
       if (!ejecutivosError && ejecutivosData) {
         const ejecutivos = ejecutivosData.map((e: any) => e.nombre).filter(Boolean);
         setEjecutivosUnicos(ejecutivos);
         setEjecutivosFiltro(ejecutivos);
       }
 
-      // 3. Clientes desde catalogos_clientes (con abreviatura si existe)
-      // Cargar todos los campos disponibles
-      const { data: clientesData, error: clientesError } = await supabase
-        .from('catalogos_clientes')
-        .select('*')
-        .eq('activo', true)
-        .order('nombre');
-      
+      // Procesar resultados de clientes
       if (clientesError) {
         console.error('Error cargando clientes:', clientesError);
       }
@@ -644,26 +666,14 @@ export default function RegistrosPage() {
         }
       }
 
-      // 4. Destinos desde catalogos_destinos
-      const { data: destinosData, error: destinosError } = await supabase
-        .from('catalogos_destinos')
-        .select('nombre')
-        .eq('activo', true)
-        .order('nombre');
-
+      // Procesar resultados de destinos
       if (!destinosError && destinosData) {
         const destinos = destinosData.map((d: any) => d.nombre).filter(Boolean);
         setDestinosUnicos(destinos);
         setDestinosFiltro(destinos);
       }
 
-      // 5. Naves desde catalogos_naves (con relación a navieras)
-      const { data: navesData, error: navesError } = await supabase
-        .from('catalogos_naves')
-        .select('nombre, naviera_nombre')
-        .eq('activo', true)
-        .order('nombre');
-
+      // Procesar resultados de naves
       if (!navesError && navesData) {
         // Filtrar solo las naves que tienen naviera_nombre (excluir las que no tienen naviera asignada)
         const navesConNaviera = navesData.filter((n: any) => n.naviera_nombre && n.naviera_nombre.trim() !== '' && n.nombre && n.nombre.trim() !== '');
@@ -692,12 +702,7 @@ export default function RegistrosPage() {
         setNavierasNavesMappingCatalog(navesMapping);
       }
 
-      // 5. Condiciones desde catalogos_condiciones (temperatura, co2, o2, cbm, tratamiento_frio)
-      const { data: condicionesData, error: condicionesError } = await supabase
-        .from('catalogos_condiciones')
-        .select('tipo, valor')
-        .eq('activo', true)
-        .order('valor');
+      // Procesar resultados de condiciones
 
       if (!condicionesError && condicionesData) {
         const condicionesPorTipo: Record<string, string[]> = {};

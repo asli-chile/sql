@@ -261,9 +261,11 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       return navesDelServicio;
     }
     
-    // Si hay servicio pero no hay naves en el mapa, mostrar mensaje de depuración
+    // Si hay servicio pero no hay naves en el mapa, intentar cargar desde el servicio directamente
     if (servicioId && !navesPorServicio[servicioId]) {
-      console.warn('⚠️ Servicio seleccionado pero no hay naves en el mapa:', {
+      // No mostrar warning si el servicio no tiene naves asignadas (es válido)
+      // Solo loguear para depuración
+      console.log('ℹ️ Servicio seleccionado sin naves en el mapa (puede ser que no tenga naves asignadas):', {
         servicioId,
         serviciosEnMapa: Object.keys(navesPorServicio)
       });
@@ -321,40 +323,397 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         cantidadEscalas: servicio.escalas?.length || 0
       });
 
-      if (!servicio.escalas || !Array.isArray(servicio.escalas) || servicio.escalas.length === 0) {
+      // Verificar escalas - puede ser un array vacío o undefined
+      const escalasDelServicio = servicio.escalas || [];
+      
+      if (!Array.isArray(escalasDelServicio) || escalasDelServicio.length === 0) {
         setErrorMessage(`El servicio "${servicioNombre || servicio.nombre}" no tiene escalas definidas. Define las escalas en el gestor de servicios primero.`);
         return;
       }
 
-      // Filtrar solo escalas activas y ordenar por orden
-      const escalasActivas = servicio.escalas
-        .filter((e: any) => e.activo !== false)
-        .sort((a: any, b: any) => (a.orden || 0) - (b.orden || 0));
+      // Filtrar solo escalas activas (el orden se determinará por ETA del primer viaje)
+      const escalasActivas = escalasDelServicio
+        .filter((e: any) => e.activo !== false && e.activo !== null);
 
       if (escalasActivas.length === 0) {
-        setErrorMessage(`El servicio "${servicioNombre || servicio.nombre}" no tiene escalas activas.`);
+        setErrorMessage(`El servicio "${servicioNombre || servicio.nombre}" no tiene escalas activas. Todas las escalas están inactivas.`);
         return;
       }
 
-      // Pre-llenar el formulario con las escalas (sin fechas)
-      const escalasPrellenadas: EscalaForm[] = escalasActivas.map((escala: any, index: number) => ({
-        puerto: escala.puerto || '',
-        puerto_nombre: escala.puerto_nombre || escala.puerto || '',
-        eta: '', // Sin fecha, el usuario debe completarla
-        orden: escala.orden || index + 1,
-        area: escala.area || 'ASIA',
-        esPuertoNuevo: false,
-      }));
+      // Verificar si hay un ETD ingresado y si existen viajes anteriores para calcular fechas automáticamente
+      let escalasPrellenadas: EscalaForm[] = [];
+      
+      console.log('🔍 Cargando escalas del servicio:', {
+        servicioId,
+        servicioNombre,
+        tieneETD: !!etd,
+        etd: etd,
+        cantidadEscalasActivas: escalasActivas.length
+      });
+      
+      if (etd) {
+        try {
+          // Normalizar ETD a fecha local (sin considerar hora) para cálculos precisos
+          let etdDate: Date;
+          if (etd.includes('/')) {
+            // Formato DD/MM/YYYY
+            const fechaParseada = parsearFechaLatinoamericana(etd);
+            if (!fechaParseada) {
+              console.warn('⚠️ No se pudo parsear el ETD, usando formato ISO');
+              etdDate = new Date(etd);
+            } else {
+              // Crear fecha en zona horaria local con mediodía para evitar problemas
+              etdDate = new Date(fechaParseada.getFullYear(), fechaParseada.getMonth(), fechaParseada.getDate(), 12, 0, 0);
+            }
+          } else if (etd.includes('-') && !etd.includes('T')) {
+            // Formato YYYY-MM-DD, crear fecha en zona horaria local
+            const [año, mes, dia] = etd.split('-');
+            etdDate = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+          } else {
+            // Formato ISO, extraer solo la fecha y crear en zona horaria local
+            const fechaISO = new Date(etd);
+            etdDate = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+          }
+          
+          if (isNaN(etdDate.getTime())) {
+            console.warn('⚠️ ETD inválido, cargando escalas sin fechas');
+            escalasPrellenadas = escalasActivas.map((escala: any, index: number) => ({
+              puerto: escala.puerto || '',
+              puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+              eta: '',
+              orden: escala.orden || index + 1,
+              area: escala.area || 'ASIA',
+              esPuertoNuevo: false,
+            }));
+            setEscalas(escalasPrellenadas);
+            setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". ETD inválido, completa las fechas ETA manualmente.`);
+            return;
+          }
+          
+          // Buscar itinerarios existentes del mismo servicio
+          const apiUrlItinerarios = process.env.NEXT_PUBLIC_API_URL || '';
+          const responseItinerarios = await fetch(`${apiUrlItinerarios}/api/admin/itinerarios`);
+          
+          if (responseItinerarios.ok) {
+            const resultItinerarios = await responseItinerarios.json();
+            const itinerariosDelServicio = (resultItinerarios.itinerarios || []).filter((it: any) => 
+              (it.servicio_id === servicioId) || (it.servicio === servicioNombre || it.servicio === servicio.nombre)
+            );
+            
+            console.log('🔍 Itinerarios del servicio encontrados:', {
+              cantidad: itinerariosDelServicio.length,
+              itinerarios: itinerariosDelServicio.map((it: any) => ({ id: it.id, viaje: it.viaje, etd: it.etd }))
+            });
+            
+            if (itinerariosDelServicio.length > 0) {
+              // Ordenar todos los viajes por ETD (ascendente - del más antiguo al más reciente)
+              const itinerariosOrdenados = [...itinerariosDelServicio].sort((a: any, b: any) => 
+                new Date(a.etd).getTime() - new Date(b.etd).getTime()
+              );
+              
+              // El primer viaje (el más antiguo) es el que usaremos como base para las ETAs y para calcular la diferencia
+              const primerViaje = itinerariosOrdenados[0];
+              
+              // Normalizar ETD del primer viaje a fecha local (sin considerar hora) para cálculos precisos
+              let etdPrimerViaje: Date;
+              if (primerViaje.etd && typeof primerViaje.etd === 'string') {
+                if (primerViaje.etd.includes('T')) {
+                  // Si es formato ISO, extraer solo la fecha y crear en zona horaria local
+                  const fechaISO = new Date(primerViaje.etd);
+                  etdPrimerViaje = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+                } else {
+                  // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+                  const [año, mes, dia] = primerViaje.etd.split('-');
+                  etdPrimerViaje = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+                }
+              } else {
+                const fechaISO = new Date(primerViaje.etd);
+                etdPrimerViaje = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+              }
+              
+              // Calcular diferencia en días entre el primer ETD y el nuevo ETD (el que se está ingresando)
+              // Usar solo las partes de fecha (año, mes, día) para evitar problemas de zona horaria
+              const diffTime = etdDate.getTime() - etdPrimerViaje.getTime();
+              const diferenciaDias = Math.round(diffTime / (1000 * 60 * 60 * 24));
+              
+              console.log(`📅 Usando primer viaje (${primerViaje.viaje}, ETD: ${primerViaje.etd}) como base`);
+              console.log(`📅 Diferencia entre primer ETD (${primerViaje.etd}) y nuevo ETD (${etd}): ${diferenciaDias} días`);
+              
+              // Obtener escalas del primer viaje ordenadas por ETA (orden del primer registro)
+              if (primerViaje.escalas && primerViaje.escalas.length > 0) {
+                // Ordenar escalas del primer viaje por ETA (de menor a mayor)
+                const escalasPrimerViaje = primerViaje.escalas.sort((a: any, b: any) => {
+                  // Ordenar por ETA (fecha de arribo) de menor a mayor
+                  if (!a.eta && !b.eta) return (a.orden || 0) - (b.orden || 0);
+                  if (!a.eta) return 1;
+                  if (!b.eta) return -1;
+                  return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+                });
+                
+                // Crear un mapa de escalas del servicio por puerto para búsqueda rápida
+                const escalasServicioMap = new Map<string, any>();
+                escalasActivas.forEach((escala: any) => {
+                  const key = escala.puerto || escala.puerto_nombre || '';
+                  escalasServicioMap.set(key, escala);
+                });
+                
+                // Mapear escalas siguiendo el orden del primer viaje (por ETA)
+                const escalasOrdenadas: EscalaForm[] = [];
+                const puertosProcesados = new Set<string>();
+                
+                // Primero, agregar escalas que están en el primer viaje, en el orden de sus ETAs
+                escalasPrimerViaje.forEach((escalaPrimera: any, index: number) => {
+                  const puertoKey = escalaPrimera.puerto || escalaPrimera.puerto_nombre || '';
+                  const escalaServicio = escalasServicioMap.get(puertoKey);
+                  
+                  if (escalaServicio) {
+                    puertosProcesados.add(puertoKey);
+                    
+                    if (escalaPrimera.eta) {
+                      // Calcular nueva ETA sumando la diferencia de días
+                      const etaPrimera = new Date(escalaPrimera.eta);
+                      const nuevaEta = new Date(etaPrimera);
+                      nuevaEta.setDate(nuevaEta.getDate() + diferenciaDias);
+                      
+                      // Formatear fecha en zona horaria local (no UTC) para evitar pérdida de días
+                      const año = nuevaEta.getFullYear();
+                      const mes = String(nuevaEta.getMonth() + 1).padStart(2, '0');
+                      const dia = String(nuevaEta.getDate()).padStart(2, '0');
+                      const fechaFormateada = `${año}-${mes}-${dia}`;
+                      
+                      escalasOrdenadas.push({
+                        puerto: escalaServicio.puerto || '',
+                        puerto_nombre: escalaServicio.puerto_nombre || escalaServicio.puerto || '',
+                        eta: fechaFormateada,
+                        orden: index + 1,
+                        area: escalaServicio.area || 'ASIA',
+                        esPuertoNuevo: false,
+                      });
+                    } else {
+                      escalasOrdenadas.push({
+                        puerto: escalaServicio.puerto || '',
+                        puerto_nombre: escalaServicio.puerto_nombre || escalaServicio.puerto || '',
+                        eta: '',
+                        orden: index + 1,
+                        area: escalaServicio.area || 'ASIA',
+                        esPuertoNuevo: false,
+                      });
+                    }
+                  }
+                });
+                
+                // Luego, agregar escalas del servicio que no están en el primer viaje
+                escalasActivas.forEach((escalaServicio: any) => {
+                  const puertoKey = escalaServicio.puerto || escalaServicio.puerto_nombre || '';
+                  if (!puertosProcesados.has(puertoKey)) {
+                    escalasOrdenadas.push({
+                      puerto: escalaServicio.puerto || '',
+                      puerto_nombre: escalaServicio.puerto_nombre || escalaServicio.puerto || '',
+                      eta: '',
+                      orden: escalasOrdenadas.length + 1,
+                      area: escalaServicio.area || 'ASIA',
+                      esPuertoNuevo: false,
+                    });
+                  }
+                });
+                
+                escalasPrellenadas = escalasOrdenadas;
+                
+                setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) con fechas calculadas automáticamente (diferencia: ${diferenciaDias} días desde el primer viaje).`);
+              } else {
+                // No hay escalas en el primer viaje, cargar sin fechas
+                escalasPrellenadas = escalasActivas.map((escala: any, index: number) => ({
+                  puerto: escala.puerto || '',
+                  puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+                  eta: '',
+                  orden: escala.orden || index + 1,
+                  area: escala.area || 'ASIA',
+                  esPuertoNuevo: false,
+                }));
+                setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
+              }
+            } else {
+              // No hay viajes anteriores, es el primer viaje
+              escalasPrellenadas = escalasActivas.map((escala: any, index: number) => ({
+                puerto: escala.puerto || '',
+                puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+                eta: '',
+                orden: escala.orden || index + 1,
+                area: escala.area || 'ASIA',
+                esPuertoNuevo: false,
+              }));
+              setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
+            }
+          } else {
+            // Error al cargar itinerarios, cargar escalas sin fechas
+            escalasPrellenadas = escalasActivas.map((escala: any, index: number) => ({
+              puerto: escala.puerto || '',
+              puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+              eta: '',
+              orden: escala.orden || index + 1,
+              area: escala.area || 'ASIA',
+              esPuertoNuevo: false,
+            }));
+            setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
+          }
+        } catch (errorItinerarios: any) {
+          console.warn('⚠️ Error al buscar itinerarios para calcular fechas:', errorItinerarios);
+          // En caso de error, cargar escalas sin fechas
+          escalasPrellenadas = escalasActivas.map((escala: any, index: number) => ({
+            puerto: escala.puerto || '',
+            puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+            eta: '',
+            orden: escala.orden || index + 1,
+            area: escala.area || 'ASIA',
+            esPuertoNuevo: false,
+          }));
+          setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
+        }
+      } else {
+        // No hay ETD, cargar escalas sin fechas
+        escalasPrellenadas = escalasActivas.map((escala: any, index: number) => ({
+          puerto: escala.puerto || '',
+          puerto_nombre: escala.puerto_nombre || escala.puerto || '',
+          eta: '',
+          orden: escala.orden || index + 1,
+          area: escala.area || 'ASIA',
+          esPuertoNuevo: false,
+        }));
+        setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Ingresa el ETD y vuelve a cargar las escalas para calcular fechas automáticamente.`);
+      }
 
       setEscalas(escalasPrellenadas);
-      setSuccessMessage(`✅ ${escalasPrellenadas.length} escala(s) cargada(s) del servicio "${servicioNombre || servicio.nombre}". Completa las fechas ETA.`);
-      
       console.log('✅ Escalas cargadas:', escalasPrellenadas);
     } catch (error: any) {
       console.error('❌ Error cargando escalas del servicio:', error);
       setErrorMessage(`Error al cargar escalas: ${error?.message || 'Error desconocido'}`);
     }
   };
+
+  // Recalcular fechas automáticamente cuando cambia el ETD y hay escalas cargadas
+  useEffect(() => {
+    const recalcularFechasAutomaticamente = async () => {
+      // Solo recalcular si hay ETD, escalas cargadas, servicio seleccionado y no es servicio nuevo
+      if (!etd || escalas.length === 0 || !servicioId || esServicioNuevo) {
+        return;
+      }
+
+      try {
+        // Buscar itinerarios existentes del mismo servicio
+        const apiUrlItinerarios = process.env.NEXT_PUBLIC_API_URL || '';
+        const responseItinerarios = await fetch(`${apiUrlItinerarios}/api/admin/itinerarios`);
+        
+        if (!responseItinerarios.ok) return;
+
+        const resultItinerarios = await responseItinerarios.json();
+        const itinerariosDelServicio = (resultItinerarios.itinerarios || []).filter((it: any) => 
+          (it.servicio_id === servicioId) || (it.servicio === servicioNombre)
+        );
+        
+        if (itinerariosDelServicio.length === 0) {
+          // Es el primer viaje, no calcular
+          return;
+        }
+
+        // Ordenar todos los viajes por ETD (ascendente - del más antiguo al más reciente)
+        const itinerariosOrdenados = [...itinerariosDelServicio].sort((a: any, b: any) => 
+          new Date(a.etd).getTime() - new Date(b.etd).getTime()
+        );
+        
+        // El primer viaje (el más antiguo) es el que usaremos como base para las ETAs y para calcular la diferencia
+        const primerViaje = itinerariosOrdenados[0];
+        
+        // Normalizar ETD a fecha local (sin considerar hora) para cálculos precisos
+        let etdDateNormalizado: Date;
+        if (etd.includes('-') && !etd.includes('T')) {
+          // Formato YYYY-MM-DD, crear fecha en zona horaria local
+          const [año, mes, dia] = etd.split('-');
+          etdDateNormalizado = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+        } else {
+          // Formato ISO, extraer solo la fecha y crear en zona horaria local
+          const fechaISO = new Date(etd);
+          etdDateNormalizado = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+        }
+        
+        // Normalizar ETD del primer viaje a fecha local (sin considerar hora) para cálculos precisos
+        let etdPrimerViaje: Date;
+        if (primerViaje.etd && typeof primerViaje.etd === 'string') {
+          if (primerViaje.etd.includes('T')) {
+            // Si es formato ISO, extraer solo la fecha y crear en zona horaria local
+            const fechaISO = new Date(primerViaje.etd);
+            etdPrimerViaje = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+          } else {
+            // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+            const [año, mes, dia] = primerViaje.etd.split('-');
+            etdPrimerViaje = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+          }
+        } else {
+          const fechaISO = new Date(primerViaje.etd);
+          etdPrimerViaje = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+        }
+        
+        // Calcular diferencia en días entre el primer ETD y el nuevo ETD (el que se está ingresando)
+        // Usar solo las partes de fecha (año, mes, día) para evitar problemas de zona horaria
+        const diffTime = etdDateNormalizado.getTime() - etdPrimerViaje.getTime();
+        const diferenciaDias = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        
+        console.log(`📅 Usando primer viaje (${primerViaje.viaje}, ETD: ${primerViaje.etd}) como base`);
+        console.log(`📅 Recalculando fechas automáticamente: diferencia de ${diferenciaDias} días entre primer ETD (${primerViaje.etd}) y nuevo ETD (${etd})`);
+        
+        // Obtener escalas del primer viaje
+        if (primerViaje.escalas && primerViaje.escalas.length > 0) {
+          const escalasPrimerViaje = primerViaje.escalas.sort((a: any, b: any) => {
+            // Ordenar por ETA (fecha de arribo) - orden del primer registro
+            if (!a.eta && !b.eta) return (a.orden || 0) - (b.orden || 0);
+            if (!a.eta) return 1;
+            if (!b.eta) return -1;
+            return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+          });
+          
+          // Actualizar escalas con fechas calculadas
+          const escalasActualizadas = escalas.map((escalaActual) => {
+            // Buscar la escala correspondiente en el primer viaje por puerto
+            const escalaPrimera = escalasPrimerViaje.find((ep: any) => 
+              ep.puerto === escalaActual.puerto || ep.puerto_nombre === escalaActual.puerto_nombre
+            );
+            
+            if (escalaPrimera && escalaPrimera.eta) {
+              // Calcular nueva ETA sumando la diferencia de días
+              const etaPrimera = new Date(escalaPrimera.eta);
+              const nuevaEta = new Date(etaPrimera);
+              nuevaEta.setDate(nuevaEta.getDate() + diferenciaDias);
+              
+              // Formatear fecha en zona horaria local (no UTC) para evitar pérdida de días
+              const año = nuevaEta.getFullYear();
+              const mes = String(nuevaEta.getMonth() + 1).padStart(2, '0');
+              const dia = String(nuevaEta.getDate()).padStart(2, '0');
+              const fechaFormateada = `${año}-${mes}-${dia}`;
+              
+              return {
+                ...escalaActual,
+                eta: fechaFormateada,
+              };
+            }
+            
+            // Si no se encuentra, mantener la escala actual
+            return escalaActual;
+          });
+          
+          setEscalas(escalasActualizadas);
+          setSuccessMessage(`✅ Fechas recalculadas automáticamente (diferencia: ${diferenciaDias} días desde el viaje anterior).`);
+        }
+      } catch (error: any) {
+        console.warn('⚠️ Error al recalcular fechas automáticamente:', error);
+      }
+    };
+
+    // Debounce para evitar cálculos excesivos
+    const timeoutId = setTimeout(() => {
+      recalcularFechasAutomaticamente();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [etd, servicioId, servicioNombre]); // Recalcular cuando cambia el ETD o el servicio
 
   // Seleccionar naviera automáticamente cuando se selecciona un servicio
   useEffect(() => {
@@ -1213,7 +1572,14 @@ function ItinerarioTable({
     return `${dia}-${mes}`;
   };
 
-  const escalasOrdenadas = [...escalas].sort((a, b) => a.orden - b.orden);
+  // Ordenar escalas por ETA (de menor a mayor) - orden del primer registro
+  const escalasOrdenadas = [...escalas].sort((a, b) => {
+    // Ordenar por ETA (fecha de arribo) de menor a mayor
+    if (!a.eta && !b.eta) return a.orden - b.orden;
+    if (!a.eta) return 1;
+    if (!b.eta) return -1;
+    return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+  });
 
   return (
     <div className="overflow-x-auto">

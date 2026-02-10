@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import { Plus, Trash2, Save, Edit2, X, Check } from 'lucide-react';
@@ -46,13 +46,17 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [navieras, setNavieras] = useState<string[]>([]);
+  const [navesDisponibles, setNavesDisponibles] = useState<string[]>([]);
+  const [esNaveNueva, setEsNaveNueva] = useState(false);
+  const [navieraParaNaveNueva, setNavieraParaNaveNueva] = useState<string>('');
   
   // Estado para crear/editar servicio
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingServicio, setEditingServicio] = useState<Servicio | null>(null);
   const [formData, setFormData] = useState({
     nombre: '',
-    navierasSeleccionadas: [] as string[], // Array de navieras seleccionadas
+    navierasSeleccionadas: [] as string[], // Array de navieras seleccionadas (legacy, para compatibilidad)
+    consorcioNavierasServicios: [] as Array<{ naviera: string; servicio_nombre: string }>, // Nueva estructura: naviera + servicio
     descripcion: '',
     naves: [] as string[],
     escalas: [] as Array<{ puerto: string; puerto_nombre: string; area: string; orden: number }>,
@@ -64,6 +68,11 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     puerto_nombre: '',
     area: 'ASIA',
     esNuevoPod: false, // Flag para saber si estamos creando un POD nuevo
+  });
+  // Estado para el formulario de consorcio
+  const [consorcioForm, setConsorcioForm] = useState({
+    naviera: '',
+    servicio_nombre: '',
   });
 
   // Cargar servicios
@@ -79,9 +88,9 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
         throw new Error(result?.error || 'Error al cargar servicios');
       }
 
-      // Filtrar solo servicios activos para mostrar (los eliminados aparecen como inactivos)
-      const serviciosActivos = (result.servicios || []).filter((s: Servicio) => s.activo === true);
-      setServicios(serviciosActivos);
+      // Mostrar todos los servicios (activos e inactivos) para que el usuario pueda verlos
+      // Los inactivos se mostrarán con un indicador visual
+      setServicios(result.servicios || []);
     } catch (err: any) {
       setError(err?.message || 'Error al cargar servicios');
     } finally {
@@ -89,7 +98,7 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     }
   };
 
-  // Cargar navieras y PODs disponibles
+  // Cargar navieras, naves y PODs disponibles
   const cargarNavieras = async () => {
     try {
       const supabase = createClient();
@@ -104,6 +113,18 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
         setNavieras(navierasList);
       }
 
+      // Cargar naves desde catalogos_naves
+      const { data: navesData, error: navesError } = await supabase
+        .from('catalogos_naves')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
+
+      if (!navesError && navesData) {
+        const navesList = [...new Set(navesData.map((n: any) => n.nombre).filter(Boolean))].sort();
+        setNavesDisponibles(navesList);
+      }
+
       // Cargar PODs desde catalogos_destinos
       const { data: destinosData, error: destinosError } = await supabase
         .from('catalogos_destinos')
@@ -116,7 +137,7 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
         setPods(podsList);
       }
     } catch (err) {
-      console.error('Error cargando navieras/PODs:', err);
+      console.error('Error cargando navieras/naves/PODs:', err);
     }
   };
 
@@ -124,6 +145,31 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     void cargarServicios();
     void cargarNavieras();
   }, []);
+
+  // Actualizar automáticamente el nombre del servicio cuando cambian los servicios del consorcio
+  useEffect(() => {
+    if (formData.consorcioNavierasServicios.length > 0) {
+      const nombreGenerado = formData.consorcioNavierasServicios
+        .map(item => item.servicio_nombre.trim())
+        .filter(n => n.length > 0)
+        .join('/');
+      
+      // Solo actualizar si el nombre actual no coincide con el generado
+      if (nombreGenerado && nombreGenerado !== formData.nombre) {
+        setFormData(prev => ({
+          ...prev,
+          nombre: nombreGenerado,
+        }));
+      }
+    } else if (formData.consorcioNavierasServicios.length === 0 && formData.nombre.includes('/')) {
+      // Si se eliminan todos los servicios del consorcio, limpiar el nombre si tiene formato de consorcio
+      setFormData(prev => ({
+        ...prev,
+        nombre: '',
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(formData.consorcioNavierasServicios.map(c => c.servicio_nombre))]); // Depender del contenido serializado
 
   // Función para parsear consorcio y obtener navieras seleccionadas
   const parsearConsorcio = (consorcio: string | null): string[] => {
@@ -141,6 +187,7 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     setFormData({
       nombre: '',
       navierasSeleccionadas: [],
+      consorcioNavierasServicios: [],
       descripcion: '',
       naves: [],
       escalas: [],
@@ -151,37 +198,166 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
   };
 
   // Abrir modal para editar servicio
-  const abrirModalEditar = (servicio: Servicio) => {
+  const abrirModalEditar = async (servicio: Servicio) => {
     setEditingServicio(servicio);
     const navierasDelConsorcio = parsearConsorcio(servicio.consorcio);
+    
+    // Intentar cargar consorcio estructurado si existe
+    let consorcioNavierasServicios: Array<{ naviera: string; servicio_nombre: string }> = [];
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const consorcioResponse = await fetch(`${apiUrl}/api/admin/consorcios`);
+      if (consorcioResponse.ok) {
+        const consorciosData = await consorcioResponse.json();
+        console.log('🔍 Buscando consorcio para servicio:', {
+          servicioNombre: servicio.nombre,
+          consorciosDisponibles: consorciosData.consorcios?.map((c: any) => c.nombre)
+        });
+        
+        // Buscar consorcio que coincida con el nombre del servicio
+        // El nombre del servicio es "INCA/AX1/AN1" y el consorcio también debería tener ese nombre
+        const consorcioEncontrado = consorciosData.consorcios?.find((c: any) => {
+          // Normalizar nombres para comparación (sin espacios, en mayúsculas)
+          const nombreServicioNormalizado = servicio.nombre?.replace(/\s+/g, '').toUpperCase();
+          const nombreConsorcioNormalizado = c.nombre?.replace(/\s+/g, '').toUpperCase();
+          
+          // Buscar por nombre exacto (normalizado)
+          const coincideExacto = nombreServicioNormalizado === nombreConsorcioNormalizado;
+          
+          // Buscar si el nombre del servicio contiene partes del consorcio o viceversa
+          const servicioContieneConsorcio = nombreServicioNormalizado?.includes(nombreConsorcioNormalizado || '');
+          const consorcioContieneServicio = nombreConsorcioNormalizado?.includes(nombreServicioNormalizado || '');
+          
+          return coincideExacto || servicioContieneConsorcio || consorcioContieneServicio;
+        });
+        
+        console.log('🔍 Consorcio encontrado:', consorcioEncontrado);
+        
+        if (consorcioEncontrado?.navierasServicios && Array.isArray(consorcioEncontrado.navierasServicios)) {
+          consorcioNavierasServicios = consorcioEncontrado.navierasServicios
+            .filter((rel: any) => rel.activo !== false)
+            .map((rel: any) => ({
+              naviera: rel.naviera,
+              servicio_nombre: rel.servicio_nombre,
+            }));
+          console.log('✅ ConsorcioNavierasServicios cargado:', consorcioNavierasServicios);
+        } else {
+          console.warn('⚠️ Consorcio encontrado pero sin navierasServicios válidas');
+        }
+      }
+    } catch (err) {
+      console.warn('Error cargando consorcio estructurado:', err);
+    }
+    
+    // Preparar escalas - incluir todas, no solo activas, para que el usuario pueda verlas
+    const escalasFormateadas = (servicio.escalas || [])
+      .filter(e => e.activo !== false) // Incluir activas y null (asumir activas si no tienen flag)
+      .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+      .map(e => ({
+        puerto: e.puerto,
+        puerto_nombre: e.puerto_nombre || e.puerto,
+        area: e.area || 'ASIA',
+        orden: e.orden || 0,
+      }));
+    
+    console.log('📋 Datos del servicio al editar:', {
+      id: servicio.id,
+      nombre: servicio.nombre,
+      escalasRaw: servicio.escalas,
+      cantidadEscalasRaw: servicio.escalas?.length || 0,
+      escalasFormateadas: escalasFormateadas.length,
+      naves: servicio.naves?.length || 0,
+      consorcioNavierasServicios: consorcioNavierasServicios.length
+    });
+    
     setFormData({
       nombre: servicio.nombre,
       navierasSeleccionadas: navierasDelConsorcio,
+      consorcioNavierasServicios,
       descripcion: servicio.descripcion || '',
       naves: servicio.naves.map(n => n.nave_nombre),
-      escalas: (servicio.escalas || [])
-        .filter(e => e.activo)
-        .sort((a, b) => a.orden - b.orden)
-        .map(e => ({
-          puerto: e.puerto,
-          puerto_nombre: e.puerto_nombre || e.puerto,
-          area: e.area,
-          orden: e.orden,
-        })),
+      escalas: escalasFormateadas,
     });
     setNaveInput('');
+    setEsNaveNueva(false);
+    setConsorcioForm({ naviera: '', servicio_nombre: '' });
     setEscalaForm({ puerto: '', puerto_nombre: '', area: 'ASIA', esNuevoPod: false });
     setIsModalOpen(true);
   };
 
+  // Calcular naves disponibles según los servicios del consorcio
+  const navesDisponiblesFiltradas = useMemo(() => {
+    if (formData.consorcioNavierasServicios.length === 0) {
+      return navesDisponibles;
+    }
+    
+    // Obtener todas las naves de los servicios del consorcio
+    const serviciosIds = servicios
+      .filter(s => formData.consorcioNavierasServicios.some(
+        cons => cons.servicio_nombre && s.nombre.includes(cons.servicio_nombre)
+      ))
+      .map(s => s.id);
+    
+    const navesDelConsorcio = new Set<string>();
+    servicios.forEach(servicio => {
+      if (serviciosIds.includes(servicio.id)) {
+        servicio.naves?.forEach(nave => {
+          if (nave.activo) {
+            navesDelConsorcio.add(nave.nave_nombre);
+          }
+        });
+      }
+    });
+    
+    // Si hay naves del consorcio, usarlas; si no, usar todas las disponibles
+    return navesDelConsorcio.size > 0 
+      ? Array.from(navesDelConsorcio).sort()
+      : navesDisponibles;
+  }, [formData.consorcioNavierasServicios, servicios, navesDisponibles]);
+
   // Agregar nave al formulario
-  const agregarNave = () => {
-    if (naveInput.trim() && !formData.naves.includes(naveInput.trim())) {
+  const agregarNave = async (naveNombre?: string) => {
+    const nave = naveNombre || naveInput.trim();
+    if (!nave) return;
+    
+    // Si es una nave nueva, verificar que se haya seleccionado una naviera
+    if (!naveNombre && !navesDisponibles.includes(nave)) {
+      if (!navieraParaNaveNueva) {
+        setError('Por favor selecciona la naviera del servicio a la que pertenece esta nave');
+        return;
+      }
+    }
+    
+    if (nave && !formData.naves.includes(nave)) {
       setFormData({
         ...formData,
-        naves: [...formData.naves, naveInput.trim()],
+        naves: [...formData.naves, nave],
       });
       setNaveInput('');
+      setEsNaveNueva(false);
+      setNavieraParaNaveNueva('');
+      
+      // Si es una nave nueva que no está en el catálogo, agregarla al catálogo
+      if (!navesDisponibles.includes(nave)) {
+        // Agregar a catalogos_naves con la naviera asociada
+        const supabase = createClient();
+        supabase
+          .from('catalogos_naves')
+          .insert({
+            nombre: nave,
+            naviera: navieraParaNaveNueva || null,
+            activo: true,
+          })
+          .then(({ error }) => {
+            if (!error) {
+              // Recargar naves disponibles
+              cargarNavieras();
+            }
+          })
+          .catch((err) => {
+            console.warn('Error agregando nave al catálogo:', err);
+          });
+      }
     }
   };
 
@@ -290,16 +466,84 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
         ? `${apiUrl}/api/admin/servicios`
         : `${apiUrl}/api/admin/servicios`;
       
-      // Formatear consorcio desde navieras seleccionadas
-      const consorcioTexto = formData.navierasSeleccionadas.length > 0
-        ? formData.navierasSeleccionadas.join(' + ')
-        : null;
+      // Si hay servicios del consorcio, generar el nombre del servicio automáticamente
+      let nombreServicio = formData.nombre.trim();
+      let consorcioTexto: string | null = null;
+      
+      if (formData.consorcioNavierasServicios.length > 0) {
+        // Generar nombre del servicio desde los servicios individuales separados por "/"
+        nombreServicio = formData.consorcioNavierasServicios
+          .map(item => item.servicio_nombre.trim())
+          .filter(n => n.length > 0)
+          .join('/');
+        
+        // Formatear consorcio para el campo legacy (opcional, para compatibilidad)
+        consorcioTexto = formData.consorcioNavierasServicios
+          .map(item => `${item.naviera} ${item.servicio_nombre}`)
+          .join(' / ');
+        
+        // Guardar consorcio estructurado en la tabla de consorcios
+        try {
+          const consorcioNombre = nombreServicio; // Usar el mismo nombre que el servicio
+          
+          // Buscar si el consorcio ya existe
+          const consorciosResponse = await fetch(`${apiUrl}/api/admin/consorcios`);
+          let consorcioExistente = null;
+          if (consorciosResponse.ok) {
+            const consorciosData = await consorciosResponse.json();
+            consorcioExistente = consorciosData.consorcios?.find((c: any) => 
+              c.nombre === consorcioNombre || c.nombre === formData.nombre
+            );
+          }
+          
+          // Guardar o actualizar consorcio estructurado
+          let consorcioResponse;
+          if (consorcioExistente) {
+            // Actualizar consorcio existente
+            consorcioResponse = await fetch(`${apiUrl}/api/admin/consorcios`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: consorcioExistente.id,
+                nombre: consorcioNombre,
+                descripcion: formData.descripcion.trim() || `Consorcio: ${consorcioTexto}`,
+                navierasServicios: formData.consorcioNavierasServicios,
+              }),
+            });
+          } else {
+            // Crear nuevo consorcio
+            consorcioResponse = await fetch(`${apiUrl}/api/admin/consorcios`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                nombre: consorcioNombre,
+                descripcion: formData.descripcion.trim() || `Consorcio: ${consorcioTexto}`,
+                navierasServicios: formData.consorcioNavierasServicios,
+              }),
+            });
+          }
+          
+          if (!consorcioResponse.ok) {
+            const consorcioError = await consorcioResponse.json();
+            console.warn('Error guardando consorcio estructurado:', consorcioError.error);
+            // No fallar el guardado del servicio si falla el consorcio
+          } else {
+            console.log('✅ Consorcio guardado correctamente:', await consorcioResponse.json());
+          }
+        } catch (consorcioErr) {
+          console.warn('Error guardando consorcio estructurado:', consorcioErr);
+          // Continuar con el guardado del servicio aunque falle el consorcio
+        }
+      } else if (formData.navierasSeleccionadas.length > 0) {
+        // Fallback a formato legacy
+        consorcioTexto = formData.navierasSeleccionadas.join(' + ');
+      }
 
       const method = editingServicio ? 'PUT' : 'POST';
       const body = editingServicio
         ? {
             id: editingServicio.id,
-            nombre: formData.nombre.trim(),
+            nombre: nombreServicio,
             consorcio: consorcioTexto,
             descripcion: formData.descripcion.trim() || null,
             naves: formData.naves.map((nave, index) => ({
@@ -315,10 +559,14 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
             })),
           }
         : {
-            nombre: formData.nombre.trim(),
+            nombre: nombreServicio,
             consorcio: consorcioTexto,
             descripcion: formData.descripcion.trim() || null,
-            naves: formData.naves,
+            naves: formData.naves.map((nave, index) => ({
+              nave_nombre: nave,
+              activo: true,
+              orden: index + 1,
+            })),
             escalas: formData.escalas.map((escala, index) => ({
               puerto: escala.puerto,
               puerto_nombre: escala.puerto_nombre,
@@ -327,19 +575,43 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
             })),
           };
 
+      console.log('📤 Enviando servicio:', { method, body });
+      
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result?.error || 'Error al guardar servicio');
+      let result;
+      try {
+        result = await response.json();
+      } catch (parseError) {
+        // Si no se puede parsear el JSON, obtener el texto de la respuesta
+        const text = await response.text();
+        console.error('❌ Error parseando respuesta del servidor:', { status: response.status, text });
+        throw new Error(`Error del servidor (${response.status}): ${text || 'Error desconocido'}`);
       }
 
-      setSuccess(editingServicio ? 'Servicio actualizado exitosamente' : 'Servicio creado exitosamente');
+      if (!response.ok) {
+        console.error('❌ Error al guardar servicio:', {
+          status: response.status,
+          statusText: response.statusText,
+          result,
+          body: JSON.stringify(body, null, 2)
+        });
+        const errorMessage = result?.error || result?.message || `Error ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
+      }
+      
+      console.log('✅ Servicio guardado correctamente:', result);
+
+      const mensaje = editingServicio 
+        ? 'Servicio actualizado exitosamente' 
+        : result.reactivado 
+        ? 'Servicio reactivado exitosamente' 
+        : 'Servicio creado exitosamente';
+      setSuccess(mensaje);
       setIsModalOpen(false);
       
       // Recargar servicios primero
@@ -359,9 +631,9 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
     }
   };
 
-  // Eliminar servicio (marcar como inactivo)
+  // Eliminar servicio definitivamente
   const eliminarServicio = async (id: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
+    if (!confirm('¿Estás seguro de que deseas eliminar DEFINITIVAMENTE este servicio? Esta acción no se puede deshacer.')) {
       return;
     }
 
@@ -602,57 +874,138 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
                 </label>
 
                 <label className={`block text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Consorcio (Navieras)
-                  <div className="mt-2 space-y-2">
-                    <div className={`border p-3 min-h-[100px] max-h-[200px] overflow-y-auto ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-gray-50'}`}>
-                      {navieras.length === 0 ? (
-                        <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                          Cargando navieras...
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {navieras.map((naviera) => (
-                            <label
-                              key={naviera}
-                              className={`flex items-center gap-2 p-2 cursor-pointer rounded transition ${theme === 'dark'
-                                ? 'hover:bg-slate-800'
-                                : 'hover:bg-gray-100'
+                  Consorcio (Navieras + Servicios)
+                  <p className={`text-[10px] mt-1 mb-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                    Selecciona naviera y servicio para cada miembro del consorcio (ej: MSC + INCA, ONE + AX1)
+                  </p>
+                  <div className="mt-2 space-y-3">
+                    {/* Lista de navieras + servicios seleccionados */}
+                    {formData.consorcioNavierasServicios.length > 0 && (
+                      <div className="space-y-2">
+                        {formData.consorcioNavierasServicios.map((item, index) => (
+                          <div
+                            key={index}
+                            className={`group flex items-center gap-2 p-3 border rounded ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-gray-50'}`}
+                          >
+                            <div className="flex-1 grid grid-cols-2 gap-2">
+                              <div>
+                                <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Naviera:</span>
+                                <span className={`ml-2 text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}`}>
+                                  {item.naviera}
+                                </span>
+                              </div>
+                              <div>
+                                <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Servicio:</span>
+                                <span className={`ml-2 text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-700'}`}>
+                                  {item.servicio_nombre}
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                // Verificar si el botón está realmente visible usando getComputedStyle
+                                const computedStyle = window.getComputedStyle(e.currentTarget);
+                                if (computedStyle.opacity === '0' || computedStyle.pointerEvents === 'none') {
+                                  return;
+                                }
+                                setFormData({
+                                  ...formData,
+                                  consorcioNavierasServicios: formData.consorcioNavierasServicios.filter((_, i) => i !== index),
+                                });
+                              }}
+                              className={`p-1.5 border transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto ${theme === 'dark'
+                                ? 'border-slate-700 text-slate-300 hover:border-red-500/60 hover:text-red-400'
+                                : 'border-gray-300 text-gray-600 hover:border-red-400 hover:text-red-600'
                               }`}
+                              title="Eliminar"
                             >
-                              <input
-                                type="checkbox"
-                                checked={formData.navierasSeleccionadas.includes(naviera)}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setFormData({
-                                      ...formData,
-                                      navierasSeleccionadas: [...formData.navierasSeleccionadas, naviera],
-                                    });
-                                  } else {
-                                    setFormData({
-                                      ...formData,
-                                      navierasSeleccionadas: formData.navierasSeleccionadas.filter(n => n !== naviera),
-                                    });
-                                  }
-                                }}
-                                className={`w-4 h-4 ${theme === 'dark'
-                                  ? 'accent-sky-500'
-                                  : 'accent-blue-500'
-                                }`}
-                              />
-                              <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                                {naviera}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    {formData.navierasSeleccionadas.length > 0 && (
-                      <div className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        Seleccionadas: {formData.navierasSeleccionadas.join(' + ')}
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     )}
+
+                    {/* Formulario para agregar nueva naviera + servicio */}
+                    <div className={`border p-3 ${theme === 'dark' ? 'border-slate-700 bg-slate-900' : 'border-gray-300 bg-gray-50'}`}>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            Naviera
+                          </label>
+                          <select
+                            value={consorcioForm.naviera}
+                            onChange={(e) => setConsorcioForm({ ...consorcioForm, naviera: e.target.value })}
+                            className={`w-full border px-2 py-1.5 text-sm outline-none focus:ring-2 ${inputTone}`}
+                          >
+                            <option value="">Seleccionar naviera</option>
+                            {navieras.map((naviera) => (
+                              <option key={naviera} value={naviera}>
+                                {naviera}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                            Servicio
+                          </label>
+                          <input
+                            type="text"
+                            value={consorcioForm.servicio_nombre}
+                            onChange={(e) => setConsorcioForm({ ...consorcioForm, servicio_nombre: e.target.value })}
+                            placeholder="Ej: INCA, AX1, AN1"
+                            className={`w-full border px-2 py-1.5 text-sm outline-none focus:ring-2 ${inputTone}`}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (consorcioForm.naviera && consorcioForm.servicio_nombre.trim()) {
+                                  setFormData({
+                                    ...formData,
+                                    consorcioNavierasServicios: [
+                                      ...formData.consorcioNavierasServicios,
+                                      { naviera: consorcioForm.naviera, servicio_nombre: consorcioForm.servicio_nombre.trim() }
+                                    ],
+                                  });
+                                  setConsorcioForm({ naviera: '', servicio_nombre: '' });
+                                }
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (consorcioForm.naviera && consorcioForm.servicio_nombre.trim()) {
+                            setFormData({
+                              ...formData,
+                              consorcioNavierasServicios: [
+                                ...formData.consorcioNavierasServicios,
+                                { naviera: consorcioForm.naviera, servicio_nombre: consorcioForm.servicio_nombre.trim() }
+                              ],
+                            });
+                            setConsorcioForm({ naviera: '', servicio_nombre: '' });
+                          }
+                        }}
+                        disabled={!consorcioForm.naviera || !consorcioForm.servicio_nombre.trim()}
+                        className={`mt-2 w-full border px-3 py-1.5 text-xs font-semibold transition flex items-center justify-center gap-1 ${
+                          consorcioForm.naviera && consorcioForm.servicio_nombre.trim()
+                            ? theme === 'dark'
+                              ? 'border-slate-600 bg-slate-800 text-slate-200 hover:bg-slate-700'
+                              : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                            : theme === 'dark'
+                              ? 'border-slate-700 bg-slate-900 text-slate-500 cursor-not-allowed'
+                              : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Agregar al Consorcio
+                      </button>
+                    </div>
                   </div>
                 </label>
 
@@ -672,31 +1025,127 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
                     Naves Asignadas
                   </label>
                   
-                  {/* Input para agregar nave */}
-                  <div className="flex gap-2 mb-4">
-                    <input
-                      type="text"
-                      value={naveInput}
-                      onChange={(e) => setNaveInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          agregarNave();
-                        }
-                      }}
-                      className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
-                      placeholder="Nombre de la nave"
-                    />
-                    <button
-                      type="button"
-                      onClick={agregarNave}
-                      className={`px-4 py-2 border transition ${theme === 'dark'
-                        ? 'border-[#00AEEF]/60 bg-[#00AEEF]/20 text-[#00AEEF] hover:bg-[#00AEEF]/30'
-                        : 'border-[#00AEEF] bg-[#00AEEF] text-white hover:bg-[#0099D6]'
-                      }`}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                  {/* Select para agregar nave */}
+                  <div className="space-y-2 mb-4">
+                    {!esNaveNueva ? (
+                      <div className="flex gap-2">
+                        <select
+                          value={naveInput}
+                          onChange={(e) => {
+                            if (e.target.value === '__nueva__') {
+                              setEsNaveNueva(true);
+                              setNaveInput('');
+                            } else if (e.target.value) {
+                              agregarNave(e.target.value);
+                            }
+                          }}
+                          className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                        >
+                          <option value="">Seleccionar nave</option>
+                          {navesDisponiblesFiltradas
+                            .filter(nave => !formData.naves.includes(nave))
+                            .map((nave) => (
+                              <option key={nave} value={nave}>
+                                {nave}
+                              </option>
+                            ))}
+                          <option value="__nueva__">➕ Agregar nueva nave</option>
+                        </select>
+                        {naveInput && naveInput !== '__nueva__' && (
+                          <button
+                            type="button"
+                            onClick={() => agregarNave(naveInput)}
+                            className={`px-4 py-2 border transition ${theme === 'dark'
+                              ? 'border-[#00AEEF]/60 bg-[#00AEEF]/20 text-[#00AEEF] hover:bg-[#00AEEF]/30'
+                              : 'border-[#00AEEF] bg-[#00AEEF] text-white hover:bg-[#0099D6]'
+                            }`}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex gap-2">
+                          <select
+                            value={navieraParaNaveNueva}
+                            onChange={(e) => setNavieraParaNaveNueva(e.target.value)}
+                            className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                            required
+                          >
+                            <option value="">Seleccionar naviera del servicio</option>
+                            {formData.consorcioNavierasServicios.length > 0 ? (
+                              formData.consorcioNavierasServicios
+                                .map((cons, idx) => cons.naviera)
+                                .filter((naviera, idx, arr) => arr.indexOf(naviera) === idx)
+                                .map((naviera) => (
+                                  <option key={naviera} value={naviera}>
+                                    {naviera}
+                                  </option>
+                                ))
+                            ) : (
+                              navieras.map((naviera) => (
+                                <option key={naviera} value={naviera}>
+                                  {naviera}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={naveInput}
+                            onChange={(e) => setNaveInput(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (naveInput.trim()) {
+                                  agregarNave();
+                                }
+                              }
+                            }}
+                            className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                            placeholder="Nombre de la nueva nave"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (naveInput.trim()) {
+                                agregarNave();
+                              }
+                            }}
+                            disabled={!naveInput.trim() || !navieraParaNaveNueva}
+                            className={`px-4 py-2 border transition ${
+                              naveInput.trim() && navieraParaNaveNueva
+                                ? theme === 'dark'
+                                  ? 'border-[#00AEEF]/60 bg-[#00AEEF]/20 text-[#00AEEF] hover:bg-[#00AEEF]/30'
+                                  : 'border-[#00AEEF] bg-[#00AEEF] text-white hover:bg-[#0099D6]'
+                                : theme === 'dark'
+                                  ? 'border-slate-700 bg-slate-900 text-slate-500 cursor-not-allowed'
+                                  : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            <Check className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEsNaveNueva(false);
+                              setNaveInput('');
+                              setNavieraParaNaveNueva('');
+                            }}
+                            className={`px-4 py-2 border transition ${theme === 'dark'
+                              ? 'border-slate-700 text-slate-300 hover:bg-slate-700'
+                              : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                            }`}
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Lista de naves */}
@@ -705,7 +1154,7 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
                       {formData.naves.map((nave, index) => (
                         <div
                           key={index}
-                          className={`flex items-center justify-between p-3 border ${theme === 'dark' 
+                          className={`group flex items-center justify-between p-3 border ${theme === 'dark' 
                             ? 'border-slate-700 bg-slate-900' 
                             : 'border-gray-300 bg-gray-50'
                           }`}
@@ -715,8 +1164,17 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
                           </span>
                           <button
                             type="button"
-                            onClick={() => eliminarNave(index)}
-                            className={`p-1.5 border transition ${theme === 'dark'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              // Verificar si el botón está realmente visible usando getComputedStyle
+                              const computedStyle = window.getComputedStyle(e.currentTarget);
+                              if (computedStyle.opacity === '0' || computedStyle.pointerEvents === 'none') {
+                                return;
+                              }
+                              eliminarNave(index);
+                            }}
+                            className={`p-1.5 border transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto ${theme === 'dark'
                               ? 'border-slate-700 text-slate-300 hover:border-red-500/60 hover:text-red-400 hover:bg-slate-700'
                               : 'border-gray-300 text-gray-600 hover:border-red-400 hover:text-red-600 hover:bg-gray-100'
                             }`}
@@ -830,7 +1288,7 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
                       {formData.escalas.map((escala, index) => (
                         <div
                           key={index}
-                          className={`flex items-center justify-between p-3 border ${theme === 'dark' 
+                          className={`group flex items-center justify-between p-3 border ${theme === 'dark' 
                             ? 'border-slate-700 bg-slate-900' 
                             : 'border-gray-300 bg-gray-50'
                           }`}
@@ -853,8 +1311,17 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
                           </div>
                           <button
                             type="button"
-                            onClick={() => eliminarEscala(index)}
-                            className={`p-1.5 border transition ${theme === 'dark'
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              // Verificar si el botón está realmente visible usando getComputedStyle
+                              const computedStyle = window.getComputedStyle(e.currentTarget);
+                              if (computedStyle.opacity === '0' || computedStyle.pointerEvents === 'none') {
+                                return;
+                              }
+                              eliminarEscala(index);
+                            }}
+                            className={`p-1.5 border transition opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto ${theme === 'dark'
                               ? 'border-slate-700 text-slate-300 hover:border-red-500/60 hover:text-red-400 hover:bg-slate-700'
                               : 'border-gray-300 text-gray-600 hover:border-red-400 hover:text-red-600 hover:bg-gray-100'
                             }`}

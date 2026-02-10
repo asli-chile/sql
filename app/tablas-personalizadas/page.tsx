@@ -19,7 +19,9 @@ import {
   RefreshCw,
   Send,
   X,
-  ChevronDown
+  ChevronDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/useToast';
@@ -62,9 +64,25 @@ export default function TablasPersonalizadasPage() {
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
   const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
   const [gridApi, setGridApi] = useState<any>(null);
+  const preferencesLoadedRef = useRef(false);
   // Componente de header personalizado que integra el filtro
   const CustomHeaderWithFilter = (props: IHeaderParams) => {
     const [filterValue, setFilterValue] = useState('');
+    const [currentSort, setCurrentSort] = useState<string | null | undefined>(props.column.getSort());
+    
+    // Actualizar el estado cuando cambie el sort
+    useEffect(() => {
+      const updateSort = () => {
+        setCurrentSort(props.column.getSort());
+      };
+      
+      // Suscribirse a cambios de sort
+      props.api.addEventListener('sortChanged', updateSort);
+      
+      return () => {
+        props.api.removeEventListener('sortChanged', updateSort);
+      };
+    }, [props.api, props.column]);
     
     const applyFilter = useCallback(async (value: string) => {
       try {
@@ -137,6 +155,30 @@ export default function TablasPersonalizadasPage() {
                             props.column.getColDef().filterParams.values.length > 0;
     const isDateFilter = getFilterType() === 'agDateColumnFilter';
     const isNumberFilter = getFilterType() === 'agNumberColumnFilter';
+    
+    // Función para manejar el click en la flecha de ordenamiento
+    const handleSortClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const sort = props.column.getSort();
+      let newSort: 'asc' | 'desc' | null;
+      
+      if (sort === 'asc') {
+        // Si está ascendente (mayor a menor), cambiar a descendente (menor a mayor)
+        newSort = 'desc';
+      } else {
+        // Si está descendente o no hay orden, poner ascendente (mayor a menor)
+        newSort = 'asc';
+      }
+      
+      // Actualizar el estado local primero para que el componente se re-renderice
+      setCurrentSort(newSort);
+      
+      // Luego aplicar el sort al grid
+      props.setSort(newSort, false);
+    };
+
+    // Determinar qué flecha mostrar: arriba por defecto, abajo si está ordenado descendente
+    const showDownArrow = currentSort === 'desc';
 
     return (
       <div className="flex flex-col h-full w-full">
@@ -145,26 +187,21 @@ export default function TablasPersonalizadasPage() {
             {props.displayName}
           </span>
           {props.enableSorting && (
-            <div className="flex flex-col ml-1">
-              <button
-                onClick={() => {
-                  props.setSort('asc', false);
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-[10px] leading-none"
-                title="Ordenar ascendente"
-              >
-                ▲
-              </button>
-              <button
-                onClick={() => {
-                  props.setSort('desc', false);
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-[10px] leading-none"
-                title="Ordenar descendente"
-              >
-                ▼
-              </button>
-            </div>
+            <button
+              onClick={handleSortClick}
+              className="ml-2 p-0.5 rounded transition-colors text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+              title={
+                showDownArrow 
+                  ? 'Ordenar ascendente (mayor a menor)' 
+                  : 'Ordenar descendente (menor a mayor)'
+              }
+            >
+              {showDownArrow ? (
+                <ArrowDown className="w-4 h-4" />
+              ) : (
+                <ArrowUp className="w-4 h-4" />
+              )}
+            </button>
           )}
         </div>
         <div className="flex-1 px-1 pb-1">
@@ -952,6 +989,78 @@ export default function TablasPersonalizadasPage() {
     },
   ], [navierasUnicas, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos, temporadasUnicas]);
 
+  // Función para cargar el orden de columnas guardado desde Supabase
+  const loadColumnOrderFromSupabase = useCallback(async () => {
+    if (!gridApi || !user) {
+      console.log('loadColumnOrderFromSupabase: faltan gridApi o user', { gridApi: !!gridApi, user: !!user });
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('preferencias_usuario')
+        .select('valor')
+        .eq('usuario_id', user.id)
+        .eq('pagina', 'tablas-personalizadas')
+        .eq('clave', 'column-order')
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error loading column order from Supabase:', error);
+        return;
+      }
+
+      if (!data || !data.valor) {
+        console.log('No hay orden de columnas guardado');
+        return;
+      }
+
+      try {
+        const savedColumnState = data.valor as any[];
+        console.log('Orden de columnas encontrado:', savedColumnState.length, 'columnas');
+        
+        // Obtener el estado actual de todas las columnas
+        const currentColumnState = gridApi.getColumnState();
+        const savedColIds = new Set(savedColumnState.map((col: any) => col.colId));
+        
+        // Crear un mapa del estado guardado por colId
+        const savedStateMap = new Map(savedColumnState.map((col: any) => [col.colId, col]));
+        
+        // Combinar: usar el estado guardado si existe, sino usar el estado actual
+        // Mantener el orden de las columnas guardadas, y agregar las nuevas al final
+        const mergedState: any[] = [];
+        
+        // Primero agregar las columnas guardadas en el orden guardado
+        savedColumnState.forEach((savedCol: any) => {
+          const { sort, sortIndex, ...rest } = savedCol;
+          mergedState.push(rest);
+        });
+        
+        // Luego agregar las columnas que no estaban guardadas (nuevas columnas)
+        currentColumnState.forEach((currentCol: any) => {
+          if (!savedColIds.has(currentCol.colId)) {
+            const { sort, sortIndex, ...rest } = currentCol;
+            mergedState.push(rest);
+          }
+        });
+        
+        console.log('Aplicando orden de columnas...', mergedState.length, 'columnas');
+        // Aplicar el estado de las columnas (orden, ancho, visibilidad, etc.) sin el sort
+        gridApi.applyColumnState({
+          state: mergedState,
+          defaultState: { sort: null },
+          applyOrder: true // Importante: aplicar el orden de las columnas
+        });
+        console.log('Orden de columnas aplicado correctamente');
+      } catch (parseError) {
+        console.error('Error parsing column state:', parseError);
+      }
+    } catch (error) {
+      console.error('Error loading column order:', error);
+    }
+  }, [gridApi, user]);
+
   // Función para cargar el orden guardado desde Supabase
   const loadSortOrderFromSupabase = useCallback(async () => {
     if (!gridApi || !user) return;
@@ -989,13 +1098,33 @@ export default function TablasPersonalizadasPage() {
 
   const onGridReady = async (params: GridReadyEvent) => {
     setGridApi(params.api);
-    
-    // Cargar el orden guardado desde Supabase
-    // Esperar un momento para que el usuario esté cargado
-    setTimeout(() => {
-      loadSortOrderFromSupabase();
-    }, 500);
   };
+
+  // Cargar preferencias cuando gridApi, user y rowData estén listos
+  useEffect(() => {
+    if (!gridApi || !user || rowData.length === 0 || preferencesLoadedRef.current) return;
+
+    // Marcar como cargado para evitar múltiples cargas
+    preferencesLoadedRef.current = true;
+
+    // Esperar un momento para asegurar que el grid esté completamente renderizado
+    const timeoutId = setTimeout(async () => {
+      try {
+        console.log('Cargando preferencias de columnas...', { gridApi: !!gridApi, user: !!user, rowDataLength: rowData.length });
+        // Primero cargar el orden de columnas
+        await loadColumnOrderFromSupabase();
+        // Luego cargar el ordenamiento (con un pequeño delay para asegurar que el orden de columnas se aplicó primero)
+        setTimeout(() => {
+          loadSortOrderFromSupabase();
+        }, 100);
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+        preferencesLoadedRef.current = false; // Permitir reintentar si falla
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [gridApi, user, rowData.length, loadColumnOrderFromSupabase, loadSortOrderFromSupabase]);
 
   // Configurar el comportamiento del header checkbox para toggle después de que el grid esté listo
   useEffect(() => {
@@ -1056,6 +1185,40 @@ export default function TablasPersonalizadasPage() {
       clearTimeout(timeoutId);
     };
   }, [gridApi, rowData]);
+
+  // Guardar el orden de columnas cuando cambie
+  const onColumnMoved = useCallback(async () => {
+    if (!gridApi || !user) return;
+    
+    try {
+      const supabase = createClient();
+      
+      // Obtener el estado completo de las columnas (incluyendo orden, ancho, visibilidad, etc.)
+      const columnState = gridApi.getColumnState();
+      console.log('Guardando orden de columnas...', columnState.length, 'columnas');
+      
+      // Guardar el estado completo de las columnas
+      const { error } = await supabase
+        .from('preferencias_usuario')
+        .upsert({
+          usuario_id: user.id,
+          pagina: 'tablas-personalizadas',
+          clave: 'column-order',
+          valor: columnState,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'usuario_id,pagina,clave'
+        });
+
+      if (error) {
+        console.error('Error saving column order to Supabase:', error);
+      } else {
+        console.log('Orden de columnas guardado correctamente');
+      }
+    } catch (error) {
+      console.error('Error saving column order:', error);
+    }
+  }, [gridApi, user]);
 
   // Guardar el orden cuando cambie
   // Guardar el orden cuando cambie en Supabase
@@ -1490,6 +1653,7 @@ export default function TablasPersonalizadasPage() {
                 onGridReady={onGridReady}
                 onSelectionChanged={onSelectionChanged}
                 onSortChanged={onSortChanged}
+                onColumnMoved={onColumnMoved}
                 animateRows={true}
                 getRowStyle={getRowStyle}
                 rowHeight={35}

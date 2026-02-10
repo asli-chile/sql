@@ -25,7 +25,14 @@ function formatDate(dateString: string | null): string {
 }
 
 export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' }: ItinerarioCardProps) {
-  const escalasOrdenadas = [...(itinerario.escalas || [])].sort((a, b) => a.orden - b.orden);
+  // Ordenar escalas por ETA (de menor a mayor) - orden del primer registro
+  const escalasOrdenadas = [...(itinerario.escalas || [])].sort((a, b) => {
+    // Ordenar por ETA (fecha de arribo) de menor a mayor
+    if (!a.eta && !b.eta) return a.orden - b.orden;
+    if (!a.eta) return 1;
+    if (!b.eta) return -1;
+    return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+  });
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">

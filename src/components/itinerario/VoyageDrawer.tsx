@@ -23,14 +23,44 @@ export function VoyageDrawer({
 }: VoyageDrawerProps) {
   const { success, error } = useToast();
   const [escalas, setEscalas] = useState<ItinerarioEscala[]>([]);
+  const [pol, setPol] = useState<string>('');
+  const [pols, setPols] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Cargar POLs disponibles
+  useEffect(() => {
+    const cargarPols = async () => {
+      try {
+        const supabase = createClient();
+        const { data: registrosData, error: registrosError } = await supabase
+          .from('registros')
+          .select('pol')
+          .not('pol', 'is', null)
+          .is('deleted_at', null);
+
+        if (!registrosError && registrosData) {
+          const polsUnicos = Array.from(
+            new Set(registrosData.map((r: any) => r.pol).filter(Boolean))
+          ).sort() as string[];
+          setPols(polsUnicos);
+        }
+      } catch (err) {
+        console.error('Error cargando POLs:', err);
+      }
+    };
+
+    if (isOpen) {
+      cargarPols();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (itinerario) {
       setEscalas(
         [...(itinerario.escalas || [])].sort((a, b) => a.orden - b.orden)
       );
+      setPol(itinerario.pol || '');
     }
   }, [itinerario]);
 
@@ -86,6 +116,14 @@ export function VoyageDrawer({
     try {
       const supabase = createClient();
 
+      // Actualizar el POL del itinerario
+      const { error: updateError } = await supabase
+        .from('itinerarios')
+        .update({ pol: pol || null })
+        .eq('id', itinerario.id);
+
+      if (updateError) throw updateError;
+
       // Eliminar escalas existentes y crear nuevas
       const { error: deleteError } = await supabase
         .from('itinerario_escalas')
@@ -97,14 +135,27 @@ export function VoyageDrawer({
       // Insertar escalas actualizadas
       const escalasToInsert = escalas
         .filter((e) => e.puerto) // Solo escalas con puerto
-        .map((e, index) => ({
-          itinerario_id: itinerario.id,
-          puerto: e.puerto,
-          puerto_nombre: e.puerto_nombre,
-          eta: e.eta,
-          dias_transito: e.dias_transito,
-          orden: index + 1,
-        }));
+        .map((e, index) => {
+          // Convertir fecha ETA a formato ISO con hora local (no UTC) para evitar pérdida de días
+          let etaFormateada = e.eta;
+          if (etaFormateada && !etaFormateada.includes('T')) {
+            // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+            const [año, mes, dia] = etaFormateada.split('-');
+            const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0); // Usar mediodía para evitar problemas de zona horaria
+            
+            // Convertir a ISO string - al usar mediodía, la conversión a UTC no cambiará el día
+            etaFormateada = fechaLocal.toISOString();
+          }
+          
+          return {
+            itinerario_id: itinerario.id,
+            puerto: e.puerto,
+            puerto_nombre: e.puerto_nombre,
+            eta: etaFormateada,
+            dias_transito: e.dias_transito,
+            orden: index + 1,
+          };
+        });
 
       if (escalasToInsert.length > 0) {
         const { error: insertError } = await supabase
@@ -227,12 +278,21 @@ export function VoyageDrawer({
                   </p>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5 block">
                     POL
                   </label>
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                    {itinerario.pol}
-                  </p>
+                  <select
+                    value={pol}
+                    onChange={(e) => setPol(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+                  >
+                    <option value="">Seleccionar POL</option>
+                    {pols.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div>

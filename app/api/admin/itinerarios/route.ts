@@ -115,9 +115,70 @@ export async function GET() {
       }, { status: 400 });
     }
 
+    // Agrupar itinerarios por servicio y ordenar escalas según ETA del primer viaje
+    const serviciosMap = new Map<string, any[]>();
+    (itinerarios || []).forEach((it: any) => {
+      const servicioKey = it.servicio_id || it.servicio || 'sin-servicio';
+      if (!serviciosMap.has(servicioKey)) {
+        serviciosMap.set(servicioKey, []);
+      }
+      serviciosMap.get(servicioKey)!.push(it);
+    });
+
+    // Para cada servicio, encontrar el primer viaje y ordenar todas las escalas según su ETA
+    const itinerariosConEscalasOrdenadas = (itinerarios || []).map((it: any) => {
+      const servicioKey = it.servicio_id || it.servicio || 'sin-servicio';
+      const viajesDelServicio = serviciosMap.get(servicioKey) || [];
+      
+      if (viajesDelServicio.length === 0 || !it.escalas || it.escalas.length === 0) {
+        return it;
+      }
+
+      // Encontrar el primer viaje del servicio (el más antiguo por ETD)
+      const primerViaje = viajesDelServicio
+        .filter((v: any) => v.escalas && v.escalas.length > 0)
+        .sort((a: any, b: any) => {
+          if (!a.etd || !b.etd) return 0;
+          return new Date(a.etd).getTime() - new Date(b.etd).getTime();
+        })[0];
+
+      if (!primerViaje || !primerViaje.escalas) {
+        return it;
+      }
+
+      // Ordenar escalas del primer viaje por ETA (de menor a mayor)
+      const escalasPrimerViajeOrdenadas = [...primerViaje.escalas].sort((a: any, b: any) => {
+        if (!a.eta && !b.eta) return (a.orden || 0) - (b.orden || 0);
+        if (!a.eta) return 1;
+        if (!b.eta) return -1;
+        return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+      });
+
+      // Crear un mapa de orden basado en las ETAs del primer viaje
+      const ordenPorPuerto = new Map<string, number>();
+      escalasPrimerViajeOrdenadas.forEach((escala: any, index: number) => {
+        const puertoKey = escala.puerto || escala.puerto_nombre || '';
+        ordenPorPuerto.set(puertoKey, index + 1);
+      });
+
+      // Ordenar escalas del viaje actual según el orden del primer viaje
+      const escalasOrdenadas = [...it.escalas].sort((a: any, b: any) => {
+        const puertoA = a.puerto || a.puerto_nombre || '';
+        const puertoB = b.puerto || b.puerto_nombre || '';
+        const ordenA = ordenPorPuerto.get(puertoA) ?? 999;
+        const ordenB = ordenPorPuerto.get(puertoB) ?? 999;
+        return ordenA - ordenB;
+      });
+
+      return {
+        ...it,
+        escalas: escalasOrdenadas,
+      };
+    });
+
     return NextResponse.json({
       success: true,
-      itinerarios: itinerarios || [],
+      itinerarios: itinerariosConEscalasOrdenadas || [],
     });
   } catch (error: any) {
     return NextResponse.json({ 
@@ -141,29 +202,232 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan campos requeridos: nave, viaje, pol, etd.' }, { status: 400 });
     }
 
-    if (!payload.escalas || payload.escalas.length === 0) {
-      return NextResponse.json({ error: 'Debe incluir al menos una escala (POD).' }, { status: 400 });
-    }
+    // Las escalas pueden venir vacías si es un viaje posterior (se calcularán automáticamente)
 
-    const etdDate = new Date(payload.etd);
+    // Normalizar ETD a fecha local (sin considerar hora) para cálculos precisos
+    let etdDate: Date;
+    if (payload.etd && !payload.etd.includes('T')) {
+      // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+      const [año, mes, dia] = payload.etd.split('-');
+      etdDate = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+    } else {
+      etdDate = new Date(payload.etd);
+    }
+    
     if (isNaN(etdDate.getTime())) {
       return NextResponse.json({ error: 'Fecha ETD inválida.' }, { status: 400 });
     }
 
-    // Validar y calcular días de tránsito para cada escala
-    const escalasConDias = payload.escalas.map((escala, index) => {
-      const etaDate = new Date(escala.eta);
-      if (isNaN(etaDate.getTime())) {
-        throw new Error(`Fecha ETA inválida para escala ${index + 1} (${escala.puerto}).`);
-      }
-      const diasTransito = calcularDiasTransito(etdDate, etaDate);
-      return {
-        ...escala,
-        dias_transito: diasTransito,
-      };
-    });
-
     const adminClient = getAdminClient();
+
+    // Verificar si ya existen itinerarios para este servicio
+    let escalasConDias: any[] = [];
+    let esPrimerViaje = false;
+
+    try {
+      // Buscar itinerarios existentes del mismo servicio
+      const servicioFiltro = payload.servicio_id 
+        ? { servicio_id: payload.servicio_id }
+        : { servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS' };
+
+      const { data: itinerariosExistentes, error: errorBusqueda } = await adminClient
+        .from('itinerarios')
+        .select('id, etd, nave, viaje')
+        .match(servicioFiltro)
+        .order('etd', { ascending: true });
+
+      if (errorBusqueda && !errorBusqueda.message?.includes('does not exist')) {
+        console.warn('⚠️ Error buscando itinerarios existentes:', errorBusqueda);
+      }
+
+      // Si no hay itinerarios existentes o solo hay uno (el que estamos creando), es el primer viaje
+      if (!itinerariosExistentes || itinerariosExistentes.length === 0) {
+        esPrimerViaje = true;
+        console.log('✅ Este es el primer viaje del servicio');
+      } else {
+        // Ordenar todos los viajes por ETD (ascendente - del más antiguo al más reciente)
+        const itinerariosOrdenados = [...itinerariosExistentes].sort((a: any, b: any) => 
+          new Date(a.etd).getTime() - new Date(b.etd).getTime()
+        );
+        
+        // El primer viaje (el más antiguo) es el que usaremos como base para las ETAs y para calcular la diferencia
+        const primerViaje = itinerariosOrdenados[0];
+        
+        // Normalizar ETD del primer viaje a fecha local (sin considerar hora) para cálculos precisos
+        let etdPrimerViaje: Date;
+        if (primerViaje.etd && typeof primerViaje.etd === 'string') {
+          if (primerViaje.etd.includes('T')) {
+            // Si es formato ISO, extraer solo la fecha y crear en zona horaria local
+            const fechaISO = new Date(primerViaje.etd);
+            etdPrimerViaje = new Date(fechaISO.getFullYear(), fechaISO.getMonth(), fechaISO.getDate(), 12, 0, 0);
+          } else {
+            // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+            const [año, mes, dia] = primerViaje.etd.split('-');
+            etdPrimerViaje = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+          }
+        } else {
+          etdPrimerViaje = new Date(primerViaje.etd);
+        }
+        
+        // Calcular diferencia en días entre el primer ETD y el nuevo ETD (el que se está ingresando)
+        // Usar solo las partes de fecha (año, mes, día) para evitar problemas de zona horaria
+        const diffTime = etdDate.getTime() - etdPrimerViaje.getTime();
+        const diferenciaDias = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        console.log(`📅 Usando primer viaje (${primerViaje.viaje}, ETD: ${primerViaje.etd}) como base`);
+        console.log(`📅 Diferencia entre primer ETD (${primerViaje.etd}) y nuevo ETD (${payload.etd}): ${diferenciaDias} días`);
+
+          // Obtener las escalas del primer viaje ordenadas por ETA (orden del primer registro)
+          const { data: escalasPrimerViaje, error: errorEscalas } = await adminClient
+            .from('itinerario_escalas')
+            .select('*')
+            .eq('itinerario_id', primerViaje.id)
+            .order('eta', { ascending: true, nullsLast: true });
+
+          if (!errorEscalas && escalasPrimerViaje && escalasPrimerViaje.length > 0) {
+            console.log(`✅ Encontradas ${escalasPrimerViaje.length} escalas del primer viaje`);
+            
+            // Si el payload ya tiene escalas, usarlas; si no, calcularlas automáticamente
+            if (payload.escalas && payload.escalas.length > 0) {
+              // El usuario proporcionó escalas, calcular días de tránsito normalmente
+              escalasConDias = payload.escalas.map((escala, index) => {
+                const etaDate = new Date(escala.eta);
+                if (isNaN(etaDate.getTime())) {
+                  throw new Error(`Fecha ETA inválida para escala ${index + 1} (${escala.puerto}).`);
+                }
+                const diasTransito = calcularDiasTransito(etdDate, etaDate);
+                return {
+                  ...escala,
+                  dias_transito: diasTransito,
+                };
+              });
+            } else {
+              // Ordenar escalas del primer viaje por ETA (orden del primer registro)
+              const escalasOrdenadasPorEta = [...escalasPrimerViaje].sort((a: any, b: any) => {
+                if (!a.eta && !b.eta) return (a.orden || 0) - (b.orden || 0);
+                if (!a.eta) return 1;
+                if (!b.eta) return -1;
+                return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+              });
+              
+              // Calcular automáticamente las escalas basándose en el primer viaje (ordenadas por ETA)
+              escalasConDias = escalasOrdenadasPorEta.map((escalaPrimera: any, index: number) => {
+                if (!escalaPrimera.eta) {
+                  // Si el primer viaje no tiene ETA, usar la del payload si existe
+                  const escalaPayload = payload.escalas?.[index];
+                  if (escalaPayload?.eta) {
+                    const etaDate = new Date(escalaPayload.eta);
+                    const diasTransito = calcularDiasTransito(etdDate, etaDate);
+                    return {
+                      puerto: escalaPayload.puerto || escalaPrimera.puerto,
+                      puerto_nombre: escalaPayload.puerto_nombre || escalaPrimera.puerto_nombre || escalaPrimera.puerto,
+                      area: escalaPayload.area || escalaPrimera.area || 'ASIA',
+                      orden: escalaPayload.orden !== undefined ? escalaPayload.orden : index + 1,
+                      eta: escalaPayload.eta,
+                      dias_transito: diasTransito,
+                    };
+                  }
+                  // Si no hay ETA en el payload, calcular basándose en días de tránsito del primer viaje
+                  const nuevaEta = new Date(etdDate);
+                  nuevaEta.setDate(nuevaEta.getDate() + (escalaPrimera.dias_transito || 0));
+                  
+                  // Formatear fecha en zona horaria local (no UTC) para evitar pérdida de días
+                  const año = nuevaEta.getFullYear();
+                  const mes = String(nuevaEta.getMonth() + 1).padStart(2, '0');
+                  const dia = String(nuevaEta.getDate()).padStart(2, '0');
+                  const fechaFormateada = `${año}-${mes}-${dia}`;
+                  
+                  return {
+                    puerto: escalaPrimera.puerto,
+                    puerto_nombre: escalaPrimera.puerto_nombre || escalaPrimera.puerto,
+                    area: escalaPrimera.area || 'ASIA',
+                    orden: index + 1,
+                    eta: fechaFormateada,
+                    dias_transito: escalaPrimera.dias_transito || 0,
+                  };
+                }
+
+                // Calcular nueva ETA sumando la diferencia de días a la ETA del primer viaje
+                const etaPrimera = new Date(escalaPrimera.eta);
+                const nuevaEta = new Date(etaPrimera);
+                nuevaEta.setDate(nuevaEta.getDate() + diferenciaDias);
+                
+                // Formatear fecha en zona horaria local (no UTC) para evitar pérdida de días
+                const año = nuevaEta.getFullYear();
+                const mes = String(nuevaEta.getMonth() + 1).padStart(2, '0');
+                const dia = String(nuevaEta.getDate()).padStart(2, '0');
+                const fechaFormateada = `${año}-${mes}-${dia}`;
+                
+                // Calcular días de tránsito para el nuevo viaje
+                const diasTransito = calcularDiasTransito(etdDate, nuevaEta);
+
+                return {
+                  puerto: escalaPrimera.puerto,
+                  puerto_nombre: escalaPrimera.puerto_nombre || escalaPrimera.puerto,
+                  area: escalaPrimera.area || 'ASIA',
+                  orden: index + 1,
+                  eta: fechaFormateada,
+                  dias_transito: diasTransito,
+                };
+              });
+              
+              console.log(`✅ Calculadas automáticamente ${escalasConDias.length} escalas basadas en el primer viaje`);
+            }
+          } else {
+            // No se encontraron escalas del primer viaje, usar las del payload
+            console.warn('⚠️ No se encontraron escalas del primer viaje, usando escalas del payload');
+            if (payload.escalas && payload.escalas.length > 0) {
+              escalasConDias = payload.escalas.map((escala, index) => {
+                const etaDate = new Date(escala.eta);
+                if (isNaN(etaDate.getTime())) {
+                  throw new Error(`Fecha ETA inválida para escala ${index + 1} (${escala.puerto}).`);
+                }
+                const diasTransito = calcularDiasTransito(etdDate, etaDate);
+                return {
+                  ...escala,
+                  dias_transito: diasTransito,
+                };
+              });
+            } else {
+              // No hay escalas en el payload ni en el primer viaje, cargar sin fechas
+              escalasConDias = [];
+            }
+          }
+      }
+    } catch (error: any) {
+      console.warn('⚠️ Error al buscar itinerarios existentes, usando escalas del payload:', error);
+      // En caso de error, usar las escalas del payload normalmente
+      escalasConDias = payload.escalas.map((escala, index) => {
+        const etaDate = new Date(escala.eta);
+        if (isNaN(etaDate.getTime())) {
+          throw new Error(`Fecha ETA inválida para escala ${index + 1} (${escala.puerto}).`);
+        }
+        const diasTransito = calcularDiasTransito(etdDate, etaDate);
+        return {
+          ...escala,
+          dias_transito: diasTransito,
+        };
+      });
+    }
+
+    // Si no se calcularon escalas automáticamente, calcularlas del payload
+    if (escalasConDias.length === 0 && payload.escalas && payload.escalas.length > 0) {
+      escalasConDias = payload.escalas.map((escala, index) => {
+        const etaDate = new Date(escala.eta);
+        if (isNaN(etaDate.getTime())) {
+          throw new Error(`Fecha ETA inválida para escala ${index + 1} (${escala.puerto}).`);
+        }
+        const diasTransito = calcularDiasTransito(etdDate, etaDate);
+        return {
+          ...escala,
+          dias_transito: diasTransito,
+        };
+      });
+    }
+
+    // Validar que tenemos escalas
+    if (!escalasConDias || escalasConDias.length === 0) {
+      return NextResponse.json({ error: 'Debe incluir al menos una escala (POD).' }, { status: 400 });
+    }
 
     // Obtener información del usuario para auditoría
     const { data: usuarioData } = await adminClient
@@ -172,6 +436,17 @@ export async function POST(request: Request) {
       .eq('auth_user_id', validation.userId)
       .single();
 
+    // Convertir ETD a formato ISO con hora local (no UTC) para evitar pérdida de días
+    let etdFormateado = payload.etd;
+    if (etdFormateado && !etdFormateado.includes('T')) {
+      // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+      const [año, mes, dia] = etdFormateado.split('-');
+      const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0); // Usar mediodía para evitar problemas de zona horaria
+      
+      // Convertir a ISO string - al usar mediodía, la conversión a UTC no cambiará el día
+      etdFormateado = fechaLocal.toISOString();
+    }
+    
     // Insertar itinerario
     const insertData: any = {
       servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
@@ -180,7 +455,7 @@ export async function POST(request: Request) {
       viaje: payload.viaje,
       semana: payload.semana,
       pol: payload.pol,
-      etd: payload.etd,
+      etd: etdFormateado,
       created_by: usuarioData?.email || validation.email,
       updated_by: usuarioData?.email || validation.email,
     };
@@ -216,13 +491,24 @@ export async function POST(request: Request) {
           .delete()
           .eq('itinerario_id', existingItinerario.id);
 
+        // Convertir ETD a formato ISO con hora local (no UTC) para evitar pérdida de días
+        let etdFormateado = payload.etd;
+        if (etdFormateado && !etdFormateado.includes('T')) {
+          // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+          const [año, mes, dia] = etdFormateado.split('-');
+          const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0); // Usar mediodía para evitar problemas de zona horaria
+          
+          // Convertir a ISO string - al usar mediodía, la conversión a UTC no cambiará el día
+          etdFormateado = fechaLocal.toISOString();
+        }
+        
         // Actualizar itinerario
         const updateData: any = {
           servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
           consorcio: payload.consorcio,
           semana: payload.semana,
           pol: payload.pol,
-          etd: payload.etd,
+          etd: etdFormateado,
           updated_by: usuarioData?.email || validation.email,
         };
 
@@ -243,15 +529,28 @@ export async function POST(request: Request) {
         }
 
         // Insertar nuevas escalas
-        const escalasToInsert = escalasConDias.map((escala) => ({
-          itinerario_id: existingItinerario.id,
-          puerto: escala.puerto,
-          puerto_nombre: escala.puerto_nombre,
-          eta: escala.eta,
-          dias_transito: escala.dias_transito,
-          orden: escala.orden,
-          area: escala.area || 'ASIA',
-        }));
+        const escalasToInsert = escalasConDias.map((escala) => {
+          // Convertir fecha ETA a formato ISO con hora local (no UTC) para evitar pérdida de días
+          let etaFormateada = escala.eta;
+          if (etaFormateada && !etaFormateada.includes('T')) {
+            // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+            const [año, mes, dia] = etaFormateada.split('-');
+            const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0); // Usar mediodía para evitar problemas de zona horaria
+            
+            // Convertir a ISO string - al usar mediodía, la conversión a UTC no cambiará el día
+            etaFormateada = fechaLocal.toISOString();
+          }
+          
+          return {
+            itinerario_id: existingItinerario.id,
+            puerto: escala.puerto,
+            puerto_nombre: escala.puerto_nombre,
+            eta: etaFormateada,
+            dias_transito: escala.dias_transito,
+            orden: escala.orden,
+            area: escala.area || 'ASIA',
+          };
+        });
 
         const { error: escalasError } = await adminClient
           .from('itinerario_escalas')
@@ -286,15 +585,28 @@ export async function POST(request: Request) {
     }
 
     // Insertar escalas
-    const escalasToInsert = escalasConDias.map((escala) => ({
-      itinerario_id: itinerarioData.id,
-      puerto: escala.puerto,
-      puerto_nombre: escala.puerto_nombre,
-      eta: escala.eta,
-      dias_transito: escala.dias_transito,
-      orden: escala.orden,
-      area: escala.area || 'ASIA',
-    }));
+    const escalasToInsert = escalasConDias.map((escala) => {
+      // Convertir fecha ETA a formato ISO con hora local (no UTC) para evitar pérdida de días
+      let etaFormateada = escala.eta;
+      if (etaFormateada && !etaFormateada.includes('T')) {
+        // Si es formato YYYY-MM-DD, crear fecha en zona horaria local
+        const [año, mes, dia] = etaFormateada.split('-');
+        const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0); // Usar mediodía para evitar problemas de zona horaria
+        
+        // Convertir a ISO string - al usar mediodía, la conversión a UTC no cambiará el día
+        etaFormateada = fechaLocal.toISOString();
+      }
+      
+      return {
+        itinerario_id: itinerarioData.id,
+        puerto: escala.puerto,
+        puerto_nombre: escala.puerto_nombre,
+        eta: etaFormateada,
+        dias_transito: escala.dias_transito,
+        orden: escala.orden,
+        area: escala.area || 'ASIA',
+      };
+    });
 
     const { error: escalasError } = await adminClient
       .from('itinerario_escalas')

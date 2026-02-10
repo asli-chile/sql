@@ -44,15 +44,55 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
   });
 }
 
-// Obtener todos los PODs únicos de un grupo de servicios
+// Obtener todos los PODs únicos de un grupo de servicios, ordenados por ETA del primer viaje
 function getAllPODs(itinerarios: ItinerarioWithEscalas[]): string[] {
-  const pods = new Set<string>();
+  if (itinerarios.length === 0) return [];
+  
+  // Encontrar el primer viaje (el más antiguo por ETD)
+  const primerViaje = [...itinerarios]
+    .filter((it) => it.escalas && it.escalas.length > 0)
+    .sort((a, b) => {
+      if (!a.etd || !b.etd) return 0;
+      return new Date(a.etd).getTime() - new Date(b.etd).getTime();
+    })[0];
+  
+  if (!primerViaje || !primerViaje.escalas) {
+    // Si no hay primer viaje con escalas, usar orden alfabético como fallback
+    const pods = new Set<string>();
+    itinerarios.forEach((it) => {
+      it.escalas?.forEach((escala) => {
+        pods.add(escala.puerto);
+      });
+    });
+    return Array.from(pods).sort();
+  }
+  
+  // Ordenar escalas del primer viaje por ETA (de menor a mayor)
+  const escalasPrimerViajeOrdenadas = [...primerViaje.escalas].sort((a, b) => {
+    // Ordenar por ETA (fecha de arribo) de menor a mayor
+    if (!a.eta && !b.eta) return (a.orden || 0) - (b.orden || 0);
+    if (!a.eta) return 1;
+    if (!b.eta) return -1;
+    return new Date(a.eta).getTime() - new Date(b.eta).getTime();
+  });
+  
+  // Extraer los PODs en el orden del primer viaje
+  const podsOrdenados = escalasPrimerViajeOrdenadas.map((escala) => escala.puerto);
+  
+  // Agregar cualquier POD que no esté en el primer viaje (al final, ordenados alfabéticamente)
+  const podsSet = new Set(podsOrdenados);
   itinerarios.forEach((it) => {
     it.escalas?.forEach((escala) => {
-      pods.add(escala.puerto);
+      if (!podsSet.has(escala.puerto)) {
+        podsSet.add(escala.puerto);
+        podsOrdenados.push(escala.puerto);
+      }
     });
   });
-  return Array.from(pods).sort();
+  
+  // Ordenar los PODs adicionales alfabéticamente y agregarlos al final
+  const podsAdicionales = podsOrdenados.slice(escalasPrimerViajeOrdenadas.length).sort();
+  return [...podsOrdenados.slice(0, escalasPrimerViajeOrdenadas.length), ...podsAdicionales];
 }
 
 // Formatear fecha
@@ -85,7 +125,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-itinerario-table>
       {grouped.map((group) => {
         const groupPODs = getAllPODs(group.items);
         
