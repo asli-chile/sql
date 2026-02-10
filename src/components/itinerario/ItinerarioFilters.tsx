@@ -1,6 +1,5 @@
 'use client';
 
-import { Search, X } from 'lucide-react';
 import type { ItinerarioFilters } from '@/types/itinerarios';
 
 interface ItinerarioFiltersProps {
@@ -121,7 +120,7 @@ export function ItinerarioFilters({
             className={`w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent ${!filters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <option value="">
-              {localFilters.consorcio ? 'Todos los servicios' : 'Selecciona naviera primero'}
+              {filters.consorcio ? 'Todos los servicios' : 'Selecciona naviera primero'}
             </option>
             {serviciosFiltrados.map((servicio) => (
               <option key={servicio} value={servicio}>
