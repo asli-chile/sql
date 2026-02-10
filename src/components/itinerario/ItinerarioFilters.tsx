@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import type { ItinerarioFilters } from '@/types/itinerarios';
 
@@ -27,29 +26,22 @@ export function ItinerarioFilters({
   onFiltersChange,
   onReset,
 }: ItinerarioFiltersProps) {
-  const [localFilters, setLocalFilters] = useState<ItinerarioFilters>(filters);
-
   const handleChange = (key: keyof ItinerarioFilters, value: string | number | undefined) => {
-    const newFilters = { ...localFilters, [key]: value || undefined };
+    const newFilters: ItinerarioFilters = { ...filters, [key]: value || undefined };
     // Si cambia la naviera, limpiar el servicio
-    if (key === 'consorcio' && value !== localFilters.consorcio) {
+    if (key === 'consorcio' && value !== filters.consorcio) {
       newFilters.servicio = undefined;
     }
-    setLocalFilters(newFilters);
+    onFiltersChange(newFilters);
   };
 
   // Obtener servicios filtrados por naviera seleccionada
-  const serviciosFiltrados = localFilters.consorcio && serviciosPorNaviera[localFilters.consorcio]
-    ? serviciosPorNaviera[localFilters.consorcio]
+  const serviciosFiltrados = filters.consorcio && serviciosPorNaviera[filters.consorcio]
+    ? serviciosPorNaviera[filters.consorcio]
     : servicios;
-
-  const handleApply = () => {
-    onFiltersChange(localFilters);
-  };
 
   const handleReset = () => {
     const emptyFilters: ItinerarioFilters = {};
-    setLocalFilters(emptyFilters);
     onReset();
   };
 
@@ -85,7 +77,7 @@ export function ItinerarioFilters({
             Región
           </label>
           <select
-            value={localFilters.region || ''}
+            value={filters.region || ''}
             onChange={(e) => handleChange('region', e.target.value)}
             className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
@@ -104,7 +96,7 @@ export function ItinerarioFilters({
             Naviera
           </label>
           <select
-            value={localFilters.consorcio || ''}
+            value={filters.consorcio || ''}
             onChange={(e) => handleChange('consorcio', e.target.value)}
             className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
@@ -123,10 +115,10 @@ export function ItinerarioFilters({
             Servicio
           </label>
           <select
-            value={localFilters.servicio || ''}
+            value={filters.servicio || ''}
             onChange={(e) => handleChange('servicio', e.target.value)}
-            disabled={!localFilters.consorcio}
-            className={`w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent ${!localFilters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
+            disabled={!filters.consorcio}
+            className={`w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent ${!filters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <option value="">
               {localFilters.consorcio ? 'Todos los servicios' : 'Selecciona naviera primero'}
@@ -145,7 +137,7 @@ export function ItinerarioFilters({
             Semanas
           </label>
           <select
-            value={localFilters.semanas || ''}
+            value={filters.semanas || ''}
             onChange={(e) => handleChange('semanas', e.target.value ? parseInt(e.target.value) : undefined)}
             className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
@@ -164,7 +156,7 @@ export function ItinerarioFilters({
             POL
           </label>
           <select
-            value={localFilters.pol || ''}
+            value={filters.pol || ''}
             onChange={(e) => handleChange('pol', e.target.value)}
             className="w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-[#00AEEF] focus:border-transparent"
           >
@@ -184,12 +176,6 @@ export function ItinerarioFilters({
             className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
           >
             Reset
-          </button>
-          <button
-            onClick={handleApply}
-            className="px-4 py-1.5 text-xs font-semibold text-white bg-[#00AEEF] hover:bg-[#4FC3F7] rounded transition-all duration-150"
-          >
-            Filtrar
           </button>
         </div>
       </div>

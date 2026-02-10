@@ -281,7 +281,7 @@ export async function POST(request: Request) {
             .from('itinerario_escalas')
             .select('*')
             .eq('itinerario_id', primerViaje.id)
-            .order('eta', { ascending: true, nullsLast: true });
+            .order('eta', { ascending: true });
 
           if (!errorEscalas && escalasPrimerViaje && escalasPrimerViaje.length > 0) {
             console.log(`✅ Encontradas ${escalasPrimerViaje.length} escalas del primer viaje`);
