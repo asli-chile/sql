@@ -181,9 +181,10 @@ export async function GET() {
       itinerarios: itinerariosConEscalasOrdenadas || [],
     });
   } catch (error: any) {
+    console.error('Error en GET /api/admin/itinerarios:', error);
     return NextResponse.json({ 
       error: error?.message || 'Error inesperado.',
-      details: error 
+      details: error?.stack || error 
     }, { status: 500 });
   }
 }

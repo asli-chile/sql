@@ -12,12 +12,56 @@ interface ItinerarioTableProps {
   hideActionColumn?: boolean;
 }
 
-// Agrupar itinerarios por servicio
+// Normalizar nombre de servicio para agrupar variantes del mismo servicio
+function normalizarNombreServicio(nombre: string): string {
+  if (!nombre) return nombre;
+  
+  // Remover espacios extra y convertir a mayúsculas para comparación
+  let normalizado = nombre.trim().toUpperCase();
+  
+  // Detectar servicios con variantes como "ANDES EXPRESS/AX1/AN1" y "ANDES EXPRESS/AX2/AN2"
+  // Estos deberían agruparse como "ANDES EXPRESS"
+  
+  // Patrón: Servicio con variantes separadas por barras
+  // Ejemplos:
+  // - "ANDES EXPRESS/AX1/AN1" -> "ANDES EXPRESS"
+  // - "ANDES EXPRESS/AX2/AN2" -> "ANDES EXPRESS"
+  // - "SERVICIO/VARIANTE1/VARIANTE2" -> "SERVICIO"
+  
+  const partes = normalizado.split('/').map(p => p.trim()).filter(p => p.length > 0);
+  
+  if (partes.length >= 2) {
+    // Si tiene al menos 2 partes separadas por barras
+    const primeraParte = partes[0];
+    
+    // Verificar si las partes siguientes parecen ser variantes (códigos cortos, números, etc.)
+    const sonVariantes = partes.slice(1).every(parte => {
+      // Una variante típicamente es:
+      // - Un código corto (2-4 caracteres) como "AX1", "AN2", "INCA"
+      // - O contiene números y letras mezclados
+      return parte.length <= 6 && /^[A-Z0-9]+$/.test(parte);
+    });
+    
+    if (sonVariantes && primeraParte.length > 3) {
+      // Si las partes siguientes son variantes y la primera parte es suficientemente descriptiva,
+      // usar solo la primera parte como base para agrupar
+      return primeraParte;
+    }
+  }
+  
+  // Si no coincide con el patrón de variantes, devolver el nombre completo normalizado
+  return normalizado;
+}
+
+// Agrupar itinerarios por servicio (normalizado)
 function groupByService(itinerarios: ItinerarioWithEscalas[]) {
   const grouped = new Map<string, ItinerarioWithEscalas[]>();
   
   itinerarios.forEach((it) => {
-    const key = it.servicio;
+    // Normalizar el nombre del servicio para agrupar variantes
+    const servicioNormalizado = normalizarNombreServicio(it.servicio);
+    const key = servicioNormalizado;
+    
     if (!grouped.has(key)) {
       grouped.set(key, []);
     }
@@ -30,8 +74,21 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
       items.map(it => it.consorcio).filter((c): c is string => !!c)
     )).sort();
     
-    // Ordenar items por consorcio para agruparlos visualmente
+    // Ordenar items primero por ETD (ascendente), luego por consorcio
     const itemsOrdenados = [...items].sort((a, b) => {
+      // Primero ordenar por ETD
+      if (a.etd && b.etd) {
+        const etdA = new Date(a.etd).getTime();
+        const etdB = new Date(b.etd).getTime();
+        if (etdA !== etdB) {
+          return etdA - etdB;
+        }
+      } else if (a.etd && !b.etd) {
+        return -1; // a tiene ETD, b no -> a primero
+      } else if (!a.etd && b.etd) {
+        return 1; // b tiene ETD, a no -> b primero
+      }
+      // Si tienen el mismo ETD o ambos no tienen ETD, ordenar por consorcio
       const consorcioA = a.consorcio || '';
       const consorcioB = b.consorcio || '';
       return consorcioA.localeCompare(consorcioB);

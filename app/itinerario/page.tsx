@@ -28,7 +28,8 @@ import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
 import { ItinerarioCard } from '@/components/itinerario/ItinerarioCard';
 import { VoyageDrawer } from '@/components/itinerario/VoyageDrawer';
 import { ItinerariosManager } from '@/components/itinerarios/ItinerariosManager';
-import { ServiciosManager } from '@/components/itinerarios/ServiciosManager';
+import { ServiciosUnicosManager } from '@/components/itinerarios/ServiciosUnicosManager';
+import { ConsorciosManager } from '@/components/itinerarios/ConsorciosManager';
 import { fetchItinerarios } from '@/lib/itinerarios-service';
 import type { ItinerarioWithEscalas, ItinerarioFilters as FiltersType } from '@/types/itinerarios';
 import LoadingScreen from '@/components/ui/LoadingScreen';
@@ -58,6 +59,7 @@ export default function ItinerarioPage() {
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [showServiciosManager, setShowServiciosManager] = useState(false);
+  const [serviciosManagerTab, setServiciosManagerTab] = useState<'unicos' | 'consorcios'>('unicos');
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewModalFilters, setViewModalFilters] = useState<FiltersType>({});
   const [viewModalEtaMode, setViewModalEtaMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
@@ -675,24 +677,76 @@ export default function ItinerarioPage() {
                 </button>
               </div>
 
+              {/* Tabs para separar Servicios Únicos y Consorcios */}
+              <div className={`border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                <div className="flex">
+                  <button
+                    onClick={() => setServiciosManagerTab('unicos')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      serviciosManagerTab === 'unicos'
+                        ? theme === 'dark'
+                          ? 'border-b-2 border-blue-500 text-blue-400'
+                          : 'border-b-2 border-blue-500 text-blue-600'
+                        : theme === 'dark'
+                          ? 'text-slate-400 hover:text-slate-200'
+                          : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Servicios Únicos
+                  </button>
+                  <button
+                    onClick={() => setServiciosManagerTab('consorcios')}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      serviciosManagerTab === 'consorcios'
+                        ? theme === 'dark'
+                          ? 'border-b-2 border-blue-500 text-blue-400'
+                          : 'border-b-2 border-blue-500 text-blue-600'
+                        : theme === 'dark'
+                          ? 'text-slate-400 hover:text-slate-200'
+                          : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Consorcios
+                  </button>
+                </div>
+              </div>
+
               {/* Contenido del modal */}
-              <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
+              <div className="overflow-y-auto max-h-[calc(90vh-8rem)]">
                 <div className="p-4 sm:p-6">
-                  <ServiciosManager 
-                    onServicioCreated={async () => {
-                      // Recargar itinerarios cuando se crea/actualiza un servicio
-                      try {
-                        setIsLoading(true);
-                        const data = await fetchItinerarios();
-                        setItinerarios(data);
-                      } catch (error) {
-                        console.error('Error reloading itinerarios:', error);
-                        setError('Error al recargar itinerarios');
-                      } finally {
-                        setIsLoading(false);
-                      }
-                    }}
-                  />
+                  {serviciosManagerTab === 'unicos' ? (
+                    <ServiciosUnicosManager 
+                      onServicioCreated={async () => {
+                        // Recargar itinerarios cuando se crea/actualiza un servicio único
+                        try {
+                          setIsLoading(true);
+                          const data = await fetchItinerarios();
+                          setItinerarios(data);
+                        } catch (error) {
+                          console.error('Error reloading itinerarios:', error);
+                          setError('Error al recargar itinerarios');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <ConsorciosManager 
+                      onConsorcioCreated={async () => {
+                        // Recargar itinerarios cuando se crea/actualiza un consorcio
+                        try {
+                          setIsLoading(true);
+                          const data = await fetchItinerarios();
+                          setItinerarios(data);
+                        } catch (error) {
+                          console.error('Error reloading itinerarios:', error);
+                          setError('Error al recargar itinerarios');
+                        } finally {
+                          setIsLoading(false);
+                        }
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>

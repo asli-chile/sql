@@ -171,56 +171,84 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
           }
         }
 
-        // 5. Cargar servicios desde la tabla servicios
+        // 5. Cargar servicios únicos y consorcios
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-        try {
-          const serviciosResponse = await fetch(`${apiUrl}/api/admin/servicios`);
-          const serviciosResult = await serviciosResponse.json();
-          
-          if (serviciosResponse.ok && serviciosResult.servicios) {
-            const serviciosList = serviciosResult.servicios
-              .filter((s: any) => s.activo)
-              .map((s: any) => ({
-                id: s.id,
-                nombre: s.nombre,
-                consorcio: s.consorcio,
-              }))
-              .sort((a: any, b: any) => a.nombre.localeCompare(b.nombre));
-            
-            setServiciosExistentes(serviciosList);
+        const serviciosList: Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }> = [];
+        const navesPorServicioMap: Record<string, string[]> = {};
 
-            // Crear mapa de servicio_id -> naves[]
-            const navesPorServicioMap: Record<string, string[]> = {};
-            serviciosResult.servicios.forEach((servicio: any) => {
-              if (servicio.naves && Array.isArray(servicio.naves)) {
-                navesPorServicioMap[servicio.id] = servicio.naves
-                  .filter((n: any) => n.activo)
-                  .map((n: any) => n.nave_nombre)
-                  .sort();
-              }
-            });
-            console.log('📦 Mapa de naves por servicio cargado:', navesPorServicioMap);
-            setNavesPorServicio(navesPorServicioMap);
+        try {
+          // Cargar servicios únicos
+          const serviciosUnicosResponse = await fetch(`${apiUrl}/api/admin/servicios-unicos`);
+          const serviciosUnicosResult = await serviciosUnicosResponse.json();
+          
+          if (serviciosUnicosResponse.ok && serviciosUnicosResult.servicios) {
+            serviciosUnicosResult.servicios
+              .filter((s: any) => s.activo)
+              .forEach((servicio: any) => {
+                serviciosList.push({
+                  id: servicio.id,
+                  nombre: servicio.nombre,
+                  consorcio: servicio.naviera_nombre || null,
+                  tipo: 'servicio_unico',
+                });
+
+                // Crear mapa de naves para este servicio único
+                if (servicio.naves && Array.isArray(servicio.naves)) {
+                  navesPorServicioMap[servicio.id] = servicio.naves
+                    .filter((n: any) => n.activo)
+                    .map((n: any) => n.nave_nombre)
+                    .sort();
+                }
+              });
           }
         } catch (error) {
-          console.error('Error cargando servicios:', error);
-          // Fallback: cargar desde itinerarios si la tabla servicios no existe aún
-          const { data: itinerariosData } = await supabase
-            .from('itinerarios')
-            .select('servicio, consorcio')
-            .not('servicio', 'is', null)
-            .order('created_at', { ascending: false });
-
-          if (itinerariosData) {
-            const serviciosUnicos = Array.from(
-              new Set(itinerariosData.map((i: any) => i.servicio).filter(Boolean))
-            ).sort() as string[];
-            
-            setServiciosExistentes(
-              serviciosUnicos.map(nombre => ({ id: '', nombre, consorcio: null }))
-            );
-          }
+          console.error('Error cargando servicios únicos:', error);
         }
+
+        try {
+          // Cargar consorcios
+          const consorciosResponse = await fetch(`${apiUrl}/api/admin/consorcios`);
+          const consorciosResult = await consorciosResponse.json();
+          
+          if (consorciosResponse.ok && consorciosResult.consorcios) {
+            consorciosResult.consorcios
+              .filter((c: any) => c.activo)
+              .forEach((consorcio: any) => {
+                serviciosList.push({
+                  id: consorcio.id,
+                  nombre: consorcio.nombre,
+                  consorcio: 'Consorcio',
+                  tipo: 'consorcio',
+                });
+
+                // Para consorcios, obtener naves de todos los servicios únicos incluidos
+                if (consorcio.servicios && Array.isArray(consorcio.servicios)) {
+                  const todasLasNaves: string[] = [];
+                  consorcio.servicios.forEach((cs: any) => {
+                    if (cs.servicio_unico?.naves) {
+                      cs.servicio_unico.naves
+                        .filter((n: any) => n.activo)
+                        .forEach((n: any) => {
+                          if (!todasLasNaves.includes(n.nave_nombre)) {
+                            todasLasNaves.push(n.nave_nombre);
+                          }
+                        });
+                    }
+                  });
+                  navesPorServicioMap[consorcio.id] = todasLasNaves.sort();
+                }
+              });
+          }
+        } catch (error) {
+          console.error('Error cargando consorcios:', error);
+        }
+
+        // Ordenar servicios por nombre
+        serviciosList.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        setServiciosExistentes(serviciosList);
+        console.log('📦 Servicios cargados:', serviciosList);
+        console.log('📦 Mapa de naves por servicio cargado:', navesPorServicioMap);
+        setNavesPorServicio(navesPorServicioMap);
       } catch (error) {
         console.error('Error cargando catálogos:', error);
       } finally {
@@ -287,7 +315,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
     }
   }, [naviera, servicioId]);
 
-  // Función para cargar escalas del servicio desde servicios_escalas
+  // Función para cargar escalas del servicio desde servicios_unicos o consorcios
   const cargarEscalasDelServicio = async () => {
     if (!servicioId || esServicioNuevo) {
       setErrorMessage('Por favor selecciona un servicio primero.');
@@ -299,19 +327,68 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       setSuccessMessage(null);
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${apiUrl}/api/admin/servicios`);
-      const result = await response.json();
+      let escalasDelServicio: any[] = [];
+      let servicio: any = null;
 
-      if (!response.ok) {
-        throw new Error(result?.error || 'Error al cargar servicios');
+      // Buscar primero en servicios únicos
+      try {
+        const serviciosUnicosResponse = await fetch(`${apiUrl}/api/admin/servicios-unicos`);
+        const serviciosUnicosResult = await serviciosUnicosResponse.json();
+        
+        if (serviciosUnicosResponse.ok && serviciosUnicosResult.servicios) {
+          servicio = serviciosUnicosResult.servicios.find((s: any) => s.id === servicioId);
+          if (servicio && servicio.destinos) {
+            escalasDelServicio = servicio.destinos.map((destino: any) => ({
+              puerto: destino.puerto,
+              puerto_nombre: destino.puerto_nombre || destino.puerto,
+              area: destino.area || 'ASIA',
+              orden: destino.orden || 0,
+              activo: destino.activo !== false,
+            }));
+            console.log('✅ Servicio único encontrado:', {
+              id: servicio.id,
+              nombre: servicio.nombre,
+              cantidadDestinos: escalasDelServicio.length
+            });
+          }
+        }
+      } catch (error) {
+        console.warn('Error cargando servicios únicos:', error);
       }
 
-      if (!result.servicios || !Array.isArray(result.servicios)) {
-        throw new Error('No se recibieron servicios válidos');
+      // Si no se encontró en servicios únicos, buscar en consorcios
+      if (!servicio || escalasDelServicio.length === 0) {
+        try {
+          const consorciosResponse = await fetch(`${apiUrl}/api/admin/consorcios`);
+          const consorciosResult = await consorciosResponse.json();
+          
+          if (consorciosResponse.ok && consorciosResult.consorcios) {
+            servicio = consorciosResult.consorcios.find((c: any) => c.id === servicioId);
+            if (servicio && servicio.destinos_activos) {
+              // Obtener destinos activos del consorcio, ordenados por orden
+              escalasDelServicio = servicio.destinos_activos
+                .filter((da: any) => da.activo !== false && da.destino)
+                .map((da: any) => ({
+                  puerto: da.destino.puerto,
+                  puerto_nombre: da.destino.puerto_nombre || da.destino.puerto,
+                  area: da.destino.area || 'ASIA',
+                  orden: da.orden || 0,
+                  activo: true,
+                }))
+                .sort((a: any, b: any) => a.orden - b.orden);
+              
+              console.log('✅ Consorcio encontrado:', {
+                id: servicio.id,
+                nombre: servicio.nombre,
+                cantidadDestinos: escalasDelServicio.length
+              });
+            }
+          }
+        } catch (error) {
+          console.warn('Error cargando consorcios:', error);
+        }
       }
 
-      const servicio = result.servicios.find((s: any) => s.id === servicioId);
-      
       if (!servicio) {
         setErrorMessage(`No se encontró el servicio seleccionado.`);
         return;
@@ -320,13 +397,10 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       console.log('🔍 Servicio encontrado:', {
         id: servicio.id,
         nombre: servicio.nombre,
-        escalas: servicio.escalas,
-        tieneEscalas: !!servicio.escalas,
-        cantidadEscalas: servicio.escalas?.length || 0
+        escalas: escalasDelServicio,
+        tieneEscalas: escalasDelServicio.length > 0,
+        cantidadEscalas: escalasDelServicio.length
       });
-
-      // Verificar escalas - puede ser un array vacío o undefined
-      const escalasDelServicio = servicio.escalas || [];
       
       if (!Array.isArray(escalasDelServicio) || escalasDelServicio.length === 0) {
         setErrorMessage(`El servicio "${servicioNombre || servicio.nombre}" no tiene escalas definidas. Define las escalas en el gestor de servicios primero.`);

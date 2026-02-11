@@ -25,6 +25,8 @@ export function VoyageDrawer({
   const [escalas, setEscalas] = useState<ItinerarioEscala[]>([]);
   const [pol, setPol] = useState<string>('');
   const [pols, setPols] = useState<string[]>([]);
+  const [etd, setEtd] = useState<string>('');
+  const [viaje, setViaje] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -61,10 +63,32 @@ export function VoyageDrawer({
         [...(itinerario.escalas || [])].sort((a, b) => a.orden - b.orden)
       );
       setPol(itinerario.pol || '');
+      setEtd(itinerario.etd ? itinerario.etd.split('T')[0] : '');
+      setViaje(itinerario.viaje || '');
     }
   }, [itinerario]);
 
   if (!isOpen || !itinerario) return null;
+
+  const calcularDiasTransito = (etdValue: string, etaValue: string): number | null => {
+    if (!etdValue || !etaValue) return null;
+    
+    try {
+      // Parsear fechas en zona horaria local
+      const [añoEtd, mesEtd, diaEtd] = etdValue.includes('T') ? etdValue.split('T')[0].split('-') : etdValue.split('-');
+      const [añoEta, mesEta, diaEta] = etaValue.includes('T') ? etaValue.split('T')[0].split('-') : etaValue.split('-');
+      
+      const etdDate = new Date(parseInt(añoEtd), parseInt(mesEtd) - 1, parseInt(diaEtd), 12, 0, 0);
+      const etaDate = new Date(parseInt(añoEta), parseInt(mesEta) - 1, parseInt(diaEta), 12, 0, 0);
+      
+      const diffTime = etaDate.getTime() - etdDate.getTime();
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+      
+      return diffDays >= 0 ? diffDays : null;
+    } catch {
+      return null;
+    }
+  };
 
   const handleEtaChange = (escalaId: string, eta: string) => {
     setEscalas((prev) =>
@@ -73,21 +97,32 @@ export function VoyageDrawer({
           const newEta = eta || null;
           // Calcular días de tránsito si hay ETD y ETA
           let diasTransito = e.dias_transito;
-          if (itinerario.etd && newEta) {
-            try {
-              const etdDate = new Date(itinerario.etd);
-              const etaDate = new Date(newEta);
-              const diffTime = etaDate.getTime() - etdDate.getTime();
-              diasTransito = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            } catch {
-              // Ignorar errores de fecha
-            }
+          const etdValue = etd || itinerario.etd || '';
+          if (etdValue && newEta) {
+            const calculado = calcularDiasTransito(etdValue, newEta);
+            diasTransito = calculado;
           }
           return { ...e, eta: newEta, dias_transito: diasTransito };
         }
         return e;
       })
     );
+  };
+
+  const handleEtdChange = (newEtd: string) => {
+    setEtd(newEtd);
+    // Recalcular días de tránsito para todas las escalas cuando cambia el ETD
+    if (newEtd) {
+      setEscalas((prev) =>
+        prev.map((e) => {
+          if (e.eta) {
+            const calculado = calcularDiasTransito(newEtd, e.eta);
+            return { ...e, dias_transito: calculado };
+          }
+          return e;
+        })
+      );
+    }
   };
 
   const handleAddEscala = () => {
@@ -116,10 +151,22 @@ export function VoyageDrawer({
     try {
       const supabase = createClient();
 
-      // Actualizar el POL del itinerario
+      // Formatear ETD en zona horaria local para evitar pérdida de días
+      let etdFormateada = null;
+      if (etd) {
+        const [año, mes, dia] = etd.split('-');
+        const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
+        etdFormateada = fechaLocal.toISOString();
+      }
+
+      // Actualizar el POL, ETD y viaje del itinerario
       const { error: updateError } = await supabase
         .from('itinerarios')
-        .update({ pol: pol || null })
+        .update({ 
+          pol: pol || null,
+          etd: etdFormateada,
+          viaje: viaje || null
+        })
         .eq('id', itinerario.id);
 
       if (updateError) throw updateError;
@@ -261,12 +308,16 @@ export function VoyageDrawer({
                 </p>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5 block">
                   Viaje
                 </label>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                  {itinerario.viaje}
-                </p>
+                <input
+                  type="text"
+                  value={viaje}
+                  onChange={(e) => setViaje(e.target.value)}
+                  placeholder="Número de viaje"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -296,14 +347,15 @@ export function VoyageDrawer({
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5 block">
                   ETD
                 </label>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                  {itinerario.etd
-                    ? new Date(itinerario.etd).toLocaleDateString('es-CL')
-                    : '—'}
-                </p>
+                <input
+                  type="date"
+                  value={etd}
+                  onChange={(e) => handleEtdChange(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+                />
               </div>
             </div>
 
