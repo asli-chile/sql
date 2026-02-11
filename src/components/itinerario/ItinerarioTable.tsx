@@ -344,20 +344,11 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                       itinerario.escalas?.map((e) => [e.puerto, e]) || []
                     );
                     
-                    // Detectar si es el primer item de una naviera diferente
-                    const prevNaviera = index > 0 ? group.items[index - 1].naviera : null;
-                    const isNewNavieraGroup = itinerario.naviera !== prevNaviera;
-
                     return (
-                      <React.Fragment key={itinerario.id}>
-                        {isNewNavieraGroup && index > 0 && (
-                          <tr>
-                            <td colSpan={(hideActionColumn ? 7 : 8) + groupPODs.length} className="px-2 py-1 bg-[#F3F3F3] dark:bg-[#1F1F1F] border-t border-[#E1E1E1] dark:border-[#3D3D3D]"></td>
-                          </tr>
-                        )}
-                        <tr
-                          className="hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-colors"
-                        >
+                      <tr
+                        key={itinerario.id}
+                        className="hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-colors"
+                      >
                           <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-0 bg-white dark:bg-[#2D2D2D] z-10">
                             {itinerario.naviera || '—'}
                           </td>
@@ -429,7 +420,6 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                           </td>
                         )}
                       </tr>
-                      </React.Fragment>
                     );
                   })}
                 </tbody>
