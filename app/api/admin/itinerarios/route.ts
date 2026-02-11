@@ -116,6 +116,64 @@ export async function GET() {
       }, { status: 400 });
     }
 
+    // Función para obtener navieras del servicio/consorcio
+    const obtenerNavierasDelServicio = async (servicioNombre: string, servicioId: string | null) => {
+      try {
+        // Si hay servicio_id, buscar en servicios_unicos
+        if (servicioId) {
+          const { data: servicioUnico } = await adminClient
+            .from('servicios_unicos')
+            .select(`
+              id,
+              naviera_id,
+              naviera:naviera_id (
+                id,
+                nombre
+              )
+            `)
+            .eq('id', servicioId)
+            .single();
+          
+          if (servicioUnico?.naviera?.nombre) {
+            return [servicioUnico.naviera.nombre];
+          }
+        }
+        
+        // Si no hay servicio_id o no se encontró, buscar consorcio por nombre
+        const { data: consorcio } = await adminClient
+          .from('consorcios')
+          .select(`
+            id,
+            servicios_unicos:consorcios_servicios(
+              servicio_unico:servicios_unicos(
+                naviera_id,
+                naviera:naviera_id (
+                  id,
+                  nombre
+                )
+              )
+            )
+          `)
+          .eq('nombre', servicioNombre)
+          .single();
+        
+        if (consorcio?.servicios_unicos) {
+          const navierasSet = new Set<string>();
+          consorcio.servicios_unicos.forEach((su: any) => {
+            if (su.servicio_unico?.naviera?.nombre) {
+              navierasSet.add(su.servicio_unico.naviera.nombre);
+            }
+          });
+          return Array.from(navierasSet).sort();
+        }
+        
+        return [];
+      } catch (error) {
+        console.error('Error al obtener navieras del servicio:', error);
+        return [];
+      }
+    };
+
     // Agrupar itinerarios por servicio y ordenar escalas según ETA del primer viaje
     const serviciosMap = new Map<string, any[]>();
     (itinerarios || []).forEach((it: any) => {
@@ -127,12 +185,19 @@ export async function GET() {
     });
 
     // Para cada servicio, encontrar el primer viaje y ordenar todas las escalas según su ETA
-    const itinerariosConEscalasOrdenadas = (itinerarios || []).map((it: any) => {
+    // También obtener navieras del servicio/consorcio
+    const itinerariosConEscalasOrdenadas = await Promise.all((itinerarios || []).map(async (it: any) => {
       const servicioKey = it.servicio_id || it.servicio || 'sin-servicio';
       const viajesDelServicio = serviciosMap.get(servicioKey) || [];
       
+      // Obtener navieras del servicio/consorcio
+      const navierasDelServicio = await obtenerNavierasDelServicio(it.servicio, it.servicio_id);
+      
       if (viajesDelServicio.length === 0 || !it.escalas || it.escalas.length === 0) {
-        return it;
+        return {
+          ...it,
+          navierasDelServicio,
+        };
       }
 
       // Encontrar el primer viaje del servicio (el más antiguo por ETD)
@@ -144,7 +209,10 @@ export async function GET() {
         })[0];
 
       if (!primerViaje || !primerViaje.escalas) {
-        return it;
+        return {
+          ...it,
+          navierasDelServicio,
+        };
       }
 
       // Ordenar escalas del primer viaje por ETA (de menor a mayor)
@@ -174,8 +242,9 @@ export async function GET() {
       return {
         ...it,
         escalas: escalasOrdenadas,
+        navierasDelServicio,
       };
-    });
+    }));
 
     return NextResponse.json({
       success: true,
@@ -198,10 +267,27 @@ export async function POST(request: Request) {
     }
 
     const payload = (await request.json()) as ItinerarioInput;
+    
+    console.log('📥 Payload recibido en POST itinerarios:', JSON.stringify(payload, null, 2));
 
     // Validaciones
     if (!payload.nave || !payload.viaje || !payload.pol || !payload.etd) {
-      return NextResponse.json({ error: 'Faltan campos requeridos: nave, viaje, pol, etd.' }, { status: 400 });
+      console.log('❌ Error: Faltan campos requeridos:', {
+        nave: !!payload.nave,
+        viaje: !!payload.viaje,
+        pol: !!payload.pol,
+        etd: !!payload.etd,
+        payload
+      });
+      return NextResponse.json({ 
+        error: 'Faltan campos requeridos: nave, viaje, pol, etd.',
+        details: {
+          nave: payload.nave || 'FALTANTE',
+          viaje: payload.viaje || 'FALTANTE',
+          pol: payload.pol || 'FALTANTE',
+          etd: payload.etd || 'FALTANTE'
+        }
+      }, { status: 400 });
     }
 
     // Las escalas pueden venir vacías si es un viaje posterior (se calcularán automáticamente)
@@ -468,6 +554,8 @@ export async function POST(request: Request) {
       insertData.servicio_id = payload.servicio_id;
     }
 
+    console.log('📝 Insertando itinerario con datos:', JSON.stringify(insertData, null, 2));
+    
     const { data: itinerarioData, error: itinerarioError } = await adminClient
       .from('itinerarios')
       .insert(insertData)
@@ -475,6 +563,41 @@ export async function POST(request: Request) {
       .single();
 
     if (itinerarioError) {
+      console.error('❌ Error al insertar itinerario:', {
+        message: itinerarioError.message,
+        code: itinerarioError.code,
+        details: itinerarioError.details,
+        hint: itinerarioError.hint,
+        insertData
+      });
+      
+      // Si el error es porque la columna naviera no existe, intentar sin ella
+      if (itinerarioError.message?.includes('naviera') || itinerarioError.code === '42703') {
+        console.log('⚠️ Columna naviera no existe, intentando sin ella...');
+        const insertDataSinNaviera = { ...insertData };
+        delete insertDataSinNaviera.naviera;
+        
+        const { data: itinerarioDataRetry, error: itinerarioErrorRetry } = await adminClient
+          .from('itinerarios')
+          .insert(insertDataSinNaviera)
+          .select()
+          .single();
+          
+        if (itinerarioErrorRetry) {
+          return NextResponse.json({ 
+            error: `Error al crear el itinerario: ${itinerarioErrorRetry.message}`,
+            details: itinerarioErrorRetry.details || itinerarioErrorRetry.hint,
+            code: itinerarioErrorRetry.code
+          }, { status: 400 });
+        }
+        
+        // Si funcionó sin naviera, usar ese resultado
+        return NextResponse.json({ 
+          error: 'Error al crear el itinerario. La columna naviera no existe en la base de datos. Por favor, ejecuta el script: scripts/add-naviera-itinerarios.sql',
+          details: itinerarioError.message,
+          code: 'COLUMN_NOT_FOUND'
+        }, { status: 400 });
+      }
       // Si es error de duplicado, actualizar en lugar de crear
       if (itinerarioError.code === '23505') {
         const { data: existingItinerario, error: fetchError } = await adminClient

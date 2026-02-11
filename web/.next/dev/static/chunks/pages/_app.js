@@ -1,12 +1,12 @@
 __turbopack_load_page_chunks__("/_app", [
-  "static/chunks/6cf18_next_dist_compiled_967a3cfc._.js",
-  "static/chunks/6cf18_next_dist_shared_lib_ec66fd04._.js",
-  "static/chunks/6cf18_next_dist_client_9bba116c._.js",
-  "static/chunks/6cf18_next_dist_3007221d._.js",
-  "static/chunks/6cf18_react-dom_7c670b8b._.js",
-  "static/chunks/6cf18_79e111ae._.js",
-  "static/chunks/[root-of-the-server]__118228b0._.js",
-  "static/chunks/OneDrive_Documentos_TODO_DESARROLLO_ASLI_web_src_index_16678afb.css",
-  "static/chunks/OneDrive_Documentos_TODO_DESARROLLO_ASLI_web_pages__app_2da965e7._.js",
-  "static/chunks/turbopack-OneDrive_Documentos_TODO_DESARROLLO_ASLI_web_pages__app_4d80acfd._.js"
+  "static/chunks/41bb5_next_dist_compiled_38adf49f._.js",
+  "static/chunks/41bb5_next_dist_shared_lib_918ebe54._.js",
+  "static/chunks/41bb5_next_dist_client_d178c9b6._.js",
+  "static/chunks/41bb5_next_dist_a6375fe4._.js",
+  "static/chunks/41bb5_react-dom_e9542e32._.js",
+  "static/chunks/41bb5_c7ac6861._.js",
+  "static/chunks/[root-of-the-server]__6f882e28._.js",
+  "static/chunks/OneDrive_Desktop_DESARROLLO_ASLI_web_src_index_0d0f35f2.css",
+  "static/chunks/OneDrive_Desktop_DESARROLLO_ASLI_web_pages__app_2da965e7._.js",
+  "static/chunks/turbopack-OneDrive_Desktop_DESARROLLO_ASLI_web_pages__app_350e98d3._.js"
 ])

@@ -104,7 +104,9 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
             })()}
             <div className="flex-1 min-w-0">
               <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                {itinerario.consorcio}
+                {itinerario.navierasDelServicio && itinerario.navierasDelServicio.length > 0
+                  ? itinerario.navierasDelServicio.join(' - ')
+                  : (itinerario.consorcio || itinerario.naviera || '—')}
               </h2>
               <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-0.5">
                 Servicio: <span className="font-semibold">{itinerario.servicio}</span>

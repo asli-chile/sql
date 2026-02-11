@@ -1,7 +1,4 @@
 self.__BUILD_MANIFEST = {
-  "/": [
-    "static/chunks/pages/index.js"
-  ],
   "__rewrites": {
     "afterFiles": [
       {
@@ -54,6 +51,9 @@ self.__BUILD_MANIFEST = {
       },
       {
         "source": "/itinerario/:path*"
+      },
+      {
+        "source": "/itinerario-public"
       },
       {
         "source": "/mantenimiento/:path*"

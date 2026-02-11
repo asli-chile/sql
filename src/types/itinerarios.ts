@@ -32,6 +32,7 @@ export type ItinerarioEscala = {
 
 export type ItinerarioWithEscalas = Itinerario & {
   escalas: ItinerarioEscala[];
+  navierasDelServicio?: string[]; // Navieras que conforman el servicio/consorcio
 };
 
 export type ItinerarioFilters = {

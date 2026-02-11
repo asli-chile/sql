@@ -88,10 +88,10 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
       } else if (!a.etd && b.etd) {
         return 1; // b tiene ETD, a no -> b primero
       }
-      // Si tienen el mismo ETD o ambos no tienen ETD, ordenar por consorcio
-      const consorcioA = a.consorcio || '';
-      const consorcioB = b.consorcio || '';
-      return consorcioA.localeCompare(consorcioB);
+      // Si tienen el mismo ETD o ambos no tienen ETD, ordenar por naviera
+      const navieraA = a.naviera || '';
+      const navieraB = b.naviera || '';
+      return navieraA.localeCompare(navieraB);
     });
     
     return {
@@ -267,20 +267,34 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                   return <React.Fragment key={consorcio}>{logos}</React.Fragment>;
                 })}
                 <div className="flex-1 min-w-0 text-center">
-                  {group.consorcios.length > 0 ? (
-                    <>
-                      <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
-                        {group.consorcios.join(' / ')}
-                      </h2>
-                      <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
+                  {(() => {
+                    // Obtener navieras únicas de todos los itinerarios del grupo
+                    const navierasUnicas = new Set<string>();
+                    group.items.forEach((it: any) => {
+                      if (it.navierasDelServicio && it.navierasDelServicio.length > 0) {
+                        it.navierasDelServicio.forEach((nav: string) => navierasUnicas.add(nav));
+                      } else if (it.consorcio) {
+                        navierasUnicas.add(it.consorcio);
+                      } else if (it.naviera) {
+                        navierasUnicas.add(it.naviera);
+                      }
+                    });
+                    
+                    const navierasTexto = navierasUnicas.size > 0 
+                      ? Array.from(navierasUnicas).join(' - ')
+                      : (group.consorcios.length > 0 ? group.consorcios.join(' / ') : group.servicio);
+                    
+                    return (
+                      <>
+                        <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
+                          {navierasTexto}
+                        </h2>
+                        <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
                         Servicio: <span className="font-semibold">{group.servicio}</span>
                       </p>
                     </>
-                  ) : (
-                    <p className="text-xs text-white/90 dark:text-[#4FC3F7]">
-                      Servicio: <span className="font-semibold">{group.servicio}</span>
-                    </p>
-                  )}
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -291,7 +305,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                 <thead className="bg-[#E8F4F8] dark:bg-[#1F1F1F] border-b border-[#C0E0F0] dark:border-[#3D3D3D] sticky top-0 z-20">
                   <tr>
                     <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky left-0 bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
-                      Consorcio
+                      Naviera
                     </th>
                     <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky left-[80px] bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
                       Nave
@@ -330,13 +344,13 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                       itinerario.escalas?.map((e) => [e.puerto, e]) || []
                     );
                     
-                    // Detectar si es el primer item de un consorcio diferente
-                    const prevConsorcio = index > 0 ? group.items[index - 1].consorcio : null;
-                    const isNewConsorcioGroup = itinerario.consorcio !== prevConsorcio;
+                    // Detectar si es el primer item de una naviera diferente
+                    const prevNaviera = index > 0 ? group.items[index - 1].naviera : null;
+                    const isNewNavieraGroup = itinerario.naviera !== prevNaviera;
 
                     return (
                       <React.Fragment key={itinerario.id}>
-                        {isNewConsorcioGroup && index > 0 && (
+                        {isNewNavieraGroup && index > 0 && (
                           <tr>
                             <td colSpan={(hideActionColumn ? 7 : 8) + groupPODs.length} className="px-2 py-1 bg-[#F3F3F3] dark:bg-[#1F1F1F] border-t border-[#E1E1E1] dark:border-[#3D3D3D]"></td>
                           </tr>
@@ -345,7 +359,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                           className="hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-colors"
                         >
                           <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-0 bg-white dark:bg-[#2D2D2D] z-10">
-                            {itinerario.consorcio || '—'}
+                            {itinerario.naviera || '—'}
                           </td>
                           <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-[80px] bg-white dark:bg-[#2D2D2D] z-10">
                             {itinerario.nave}
