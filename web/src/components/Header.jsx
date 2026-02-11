@@ -132,7 +132,7 @@ const Header = () => {
 
             {/* Botón Itinerario (modo vista, accesible para cualquier persona) */}
             <a
-              href="/itinerario-public"
+              href="/itinerario-asli"
               className="inline-flex items-center px-4 py-2 rounded-md text-xs md:text-sm font-semibold text-asli-dark bg-white hover:bg-asli-primary hover:text-white transition-colors duration-200 shadow-sm"
             >
               ITINERARIO

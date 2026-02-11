@@ -461,8 +461,8 @@ Todas las fechas se manejan en zona horaria local para evitar problemas de conve
 
 ### Página Pública de Itinerarios
 
-**Ubicación:** `app/itinerario-public/page.tsx`
-**URL:** `/itinerario-public`
+**Ubicación:** `app/itinerario-asli/page.tsx`
+**URL:** `/itinerario-asli`
 
 Vista de solo lectura accesible sin autenticación desde el sitio web principal.
 
@@ -510,7 +510,7 @@ const fechaUTC = new Date(fechaString); // ❌
 ### Permisos
 
 - **Vista privada (`/itinerario`):** Requiere autenticación
-- **Vista pública (`/itinerario-public`):** Acceso libre
+- **Vista pública (`/itinerario-asli`):** Acceso libre
 - **Edición:** Solo usuarios autenticados
 - **Creación:** Solo usuarios autenticados
 
