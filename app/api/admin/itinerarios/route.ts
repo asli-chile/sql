@@ -123,48 +123,64 @@ export async function GET() {
         if (servicioId) {
           const { data: servicioUnico } = await adminClient
             .from('servicios_unicos')
-            .select(`
-              id,
-              naviera_id,
-              naviera:naviera_id (
-                id,
-                nombre
-              )
-            `)
+            .select('id, naviera_id')
             .eq('id', servicioId)
             .single();
           
-          if (servicioUnico?.naviera?.nombre) {
-            return [servicioUnico.naviera.nombre];
+          if (servicioUnico?.naviera_id) {
+            const { data: navieraData } = await adminClient
+              .from('catalogos_navieras')
+              .select('id, nombre')
+              .eq('id', servicioUnico.naviera_id)
+              .single();
+            
+            if (navieraData?.nombre) {
+              return [navieraData.nombre];
+            }
           }
         }
         
         // Si no hay servicio_id o no se encontró, buscar consorcio por nombre
         const { data: consorcio } = await adminClient
           .from('consorcios')
-          .select(`
-            id,
-            servicios_unicos:consorcios_servicios(
-              servicio_unico:servicios_unicos(
-                naviera_id,
-                naviera:naviera_id (
-                  id,
-                  nombre
-                )
-              )
-            )
-          `)
+          .select('id')
           .eq('nombre', servicioNombre)
           .single();
         
-        if (consorcio?.servicios_unicos) {
-          const navierasSet = new Set<string>();
-          consorcio.servicios_unicos.forEach((su: any) => {
-            if (su.servicio_unico?.naviera?.nombre) {
-              navierasSet.add(su.servicio_unico.naviera.nombre);
+        if (consorcio?.id) {
+          // Obtener servicios únicos del consorcio
+          const { data: consorcioServicios } = await adminClient
+            .from('consorcios_servicios')
+            .select(`
+              servicio_unico_id,
+              servicio_unico:servicios_unicos(
+                naviera_id
+              )
+            `)
+            .eq('consorcio_id', consorcio.id)
+            .eq('activo', true);
+          
+          if (consorcioServicios && consorcioServicios.length > 0) {
+            // Obtener todos los naviera_ids únicos
+            const navieraIds = new Set<string>();
+            consorcioServicios.forEach((cs: any) => {
+              if (cs.servicio_unico?.naviera_id) {
+                navieraIds.add(cs.servicio_unico.naviera_id);
+              }
+            });
+            
+            // Obtener las navieras
+            if (navieraIds.size > 0) {
+              const { data: navieras } = await adminClient
+                .from('catalogos_navieras')
+                .select('id, nombre')
+                .in('id', Array.from(navieraIds));
+              
+              if (navieras && navieras.length > 0) {
+                return navieras.map((n: any) => n.nombre).sort();
+              }
             }
-          });
-          return Array.from(navierasSet).sort();
+          }
         }
         
         return [];
