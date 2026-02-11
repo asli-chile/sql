@@ -197,7 +197,7 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
     if (puertoNombre) {
       const nuevoDestino = {
         puerto: puertoNombre,
-        puerto_nombre: escalaForm.puerto_nombre.trim() || null,
+        puerto_nombre: escalaForm.puerto_nombre.trim() || puertoNombre,
         area: escalaForm.area,
         orden: formData.destinos.length,
       };
