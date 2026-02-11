@@ -59,8 +59,9 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
   const [navesPorNaviera, setNavesPorNaviera] = useState<Record<string, string[]>>({});
   const [pols, setPols] = useState<string[]>([]);
   const [pods, setPods] = useState<string[]>([]);
-  const [serviciosExistentes, setServiciosExistentes] = useState<Array<{ id: string; nombre: string; consorcio: string | null }>>([]);
+  const [serviciosExistentes, setServiciosExistentes] = useState<Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }>>([]);
   const [navesPorServicio, setNavesPorServicio] = useState<Record<string, string[]>>({}); // Mapa servicio_id -> naves[]
+  const [navierasPorServicio, setNavierasPorServicio] = useState<Record<string, string[]>>({}); // Mapa servicio_id -> navieras[]
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
   const [showServiciosManager, setShowServiciosManager] = useState(false);
 
@@ -175,6 +176,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
         const serviciosList: Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }> = [];
         const navesPorServicioMap: Record<string, string[]> = {};
+        const navierasPorServicioMap: Record<string, string[]> = {};
 
         try {
           // Cargar servicios únicos
@@ -192,12 +194,27 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                   tipo: 'servicio_unico',
                 });
 
+                // Crear mapa de navieras para este servicio único (solo la naviera del servicio)
+                if (servicio.naviera_nombre) {
+                  navierasPorServicioMap[servicio.id] = [servicio.naviera_nombre];
+                }
+
                 // Crear mapa de naves para este servicio único
                 if (servicio.naves && Array.isArray(servicio.naves)) {
-                  navesPorServicioMap[servicio.id] = servicio.naves
-                    .filter((n: any) => n.activo)
+                  // La API ya filtra por activo=true, pero verificamos por si acaso
+                  const navesActivas = servicio.naves
+                    .filter((n: any) => n.activo !== false && n.nave_nombre)
                     .map((n: any) => n.nave_nombre)
                     .sort();
+                  
+                  if (navesActivas.length > 0) {
+                    navesPorServicioMap[servicio.id] = navesActivas;
+                    console.log(`✅ Servicio ${servicio.nombre} (${servicio.id}): ${navesActivas.length} naves cargadas`, navesActivas);
+                  } else {
+                    console.warn(`⚠️ Servicio ${servicio.nombre} (${servicio.id}): No tiene naves activas o el campo nave_nombre está vacío`, servicio.naves);
+                  }
+                } else {
+                  console.warn(`⚠️ Servicio ${servicio.nombre} (${servicio.id}): No tiene array de naves`, servicio);
                 }
               });
           }
@@ -221,13 +238,24 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                   tipo: 'consorcio',
                 });
 
-                // Para consorcios, obtener naves de todos los servicios únicos incluidos
+                // Para consorcios, obtener navieras y naves de todos los servicios únicos incluidos
                 if (consorcio.servicios && Array.isArray(consorcio.servicios)) {
+                  const todasLasNavieras = new Set<string>();
                   const todasLasNaves: string[] = [];
+                  
                   consorcio.servicios.forEach((cs: any) => {
-                    if (cs.servicio_unico?.naves) {
+                    // Agregar naviera del servicio único (puede venir como objeto naviera o como naviera_nombre)
+                    const navieraNombre = cs.servicio_unico?.naviera?.nombre || 
+                                         cs.servicio_unico?.naviera_nombre || 
+                                         null;
+                    if (navieraNombre) {
+                      todasLasNavieras.add(navieraNombre);
+                    }
+                    
+                    // Agregar naves del servicio único
+                    if (cs.servicio_unico?.naves && Array.isArray(cs.servicio_unico.naves)) {
                       cs.servicio_unico.naves
-                        .filter((n: any) => n.activo)
+                        .filter((n: any) => n.activo !== false && n.nave_nombre)
                         .forEach((n: any) => {
                           if (!todasLasNaves.includes(n.nave_nombre)) {
                             todasLasNaves.push(n.nave_nombre);
@@ -235,7 +263,15 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                         });
                     }
                   });
+                  
+                  const navierasArray = Array.from(todasLasNavieras).sort();
+                  navierasPorServicioMap[consorcio.id] = navierasArray;
                   navesPorServicioMap[consorcio.id] = todasLasNaves.sort();
+                  
+                  console.log(`✅ Consorcio ${consorcio.nombre} (${consorcio.id}): ${navierasArray.length} navieras, ${todasLasNaves.length} naves`, {
+                    navieras: navierasArray,
+                    naves: todasLasNaves.slice(0, 5)
+                  });
                 }
               });
           }
@@ -248,7 +284,9 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         setServiciosExistentes(serviciosList);
         console.log('📦 Servicios cargados:', serviciosList);
         console.log('📦 Mapa de naves por servicio cargado:', navesPorServicioMap);
+        console.log('📦 Mapa de navieras por servicio cargado:', navierasPorServicioMap);
         setNavesPorServicio(navesPorServicioMap);
+        setNavierasPorServicio(navierasPorServicioMap);
       } catch (error) {
         console.error('Error cargando catálogos:', error);
       } finally {
@@ -260,6 +298,17 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
   useEffect(() => {
     void cargarCatalogos();
   }, []);
+
+  // Navieras disponibles: filtrar según el servicio seleccionado
+  const navierasDisponibles = useMemo(() => {
+    if (servicioId && navierasPorServicio[servicioId]) {
+      // Filtrar navieras del servicio/consorcio seleccionado
+      const navierasDelServicio = navierasPorServicio[servicioId];
+      return navieras.filter(n => navierasDelServicio.includes(n));
+    }
+    // Si no hay servicio seleccionado, mostrar todas
+    return navieras;
+  }, [servicioId, navierasPorServicio, navieras]);
 
   // Naves disponibles: si hay servicio seleccionado, mostrar naves del servicio; si no, mostrar todas de la naviera
   const navesDisponibles = useMemo(() => {
@@ -273,12 +322,12 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       todasLasClaves: Object.keys(navesPorServicio)
     });
     
-    // Si hay servicio seleccionado, mostrar todas las naves del servicio
+    // Si hay servicio seleccionado, mostrar naves del servicio filtradas por naviera si está seleccionada
     if (servicioId && navesPorServicio[servicioId]) {
       const navesDelServicio = navesPorServicio[servicioId];
       console.log('✅ Naves del servicio encontradas:', navesDelServicio);
       
-      // Si también hay naviera seleccionada, filtrar para mostrar solo las naves que pertenecen a ambas
+      // Si hay naviera seleccionada, filtrar para mostrar solo las naves que pertenecen a esa naviera
       if (naviera && navesPorNaviera[naviera] && navesPorNaviera[naviera].length > 0) {
         const navesFiltradas = navesDelServicio.filter(nave => 
           navesPorNaviera[naviera].includes(nave)
@@ -287,7 +336,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         // Si hay naves filtradas, mostrarlas; si no, mostrar todas las del servicio
         return navesFiltradas.length > 0 ? navesFiltradas : navesDelServicio;
       }
-      // Si no hay naviera o no hay naves de la naviera, mostrar todas las del servicio
+      // Si no hay naviera seleccionada, mostrar todas las naves del servicio
       return navesDelServicio;
     }
     
@@ -306,6 +355,17 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
     return navesPorNaviera[naviera] || [];
   }, [servicioId, servicioNombre, naviera, navesPorNaviera, navesPorServicio]);
 
+  // Cuando cambia el servicio, resetear naviera si no está en las navieras del servicio
+  useEffect(() => {
+    if (servicioId && navierasPorServicio[servicioId]) {
+      const navierasDelServicio = navierasPorServicio[servicioId];
+      // Si la naviera actual no está en las navieras del servicio, resetearla
+      if (naviera && !navierasDelServicio.includes(naviera)) {
+        setNaviera('');
+      }
+    }
+  }, [servicioId, navierasPorServicio, naviera]);
+
   // Cuando cambia la naviera o el servicio, resetear nave
   useEffect(() => {
     if (naviera || servicioId) {
@@ -314,6 +374,38 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       setNaveNueva('');
     }
   }, [naviera, servicioId]);
+
+  // Rellenar naviera automáticamente cuando se selecciona una nave
+  useEffect(() => {
+    if (nave && !esNaveNueva) {
+      // Buscar a qué naviera pertenece esta nave
+      for (const [nombreNaviera, navesDeNaviera] of Object.entries(navesPorNaviera)) {
+        if (navesDeNaviera.includes(nave)) {
+          // Si la naviera actual es diferente, actualizarla
+          if (naviera !== nombreNaviera) {
+            setNaviera(nombreNaviera);
+            console.log(`✅ Naviera actualizada automáticamente a "${nombreNaviera}" para la nave "${nave}"`);
+          }
+          return;
+        }
+      }
+      
+      // Si la nave viene del servicio, buscar en navesPorServicio
+      if (servicioId && navesPorServicio[servicioId]?.includes(nave)) {
+        // La nave pertenece al servicio, pero necesitamos encontrar su naviera
+        // Buscar en todas las navieras
+        for (const [nombreNaviera, navesDeNaviera] of Object.entries(navesPorNaviera)) {
+          if (navesDeNaviera.includes(nave)) {
+            if (naviera !== nombreNaviera) {
+              setNaviera(nombreNaviera);
+              console.log(`✅ Naviera actualizada automáticamente a "${nombreNaviera}" para la nave "${nave}" desde servicio`);
+            }
+            return;
+          }
+        }
+      }
+    }
+  }, [nave, esNaveNueva, navesPorNaviera, naviera, servicioId, navesPorServicio]);
 
   // Función para cargar escalas del servicio desde servicios_unicos o consorcios
   const cargarEscalasDelServicio = async () => {
@@ -365,22 +457,35 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
           if (consorciosResponse.ok && consorciosResult.consorcios) {
             servicio = consorciosResult.consorcios.find((c: any) => c.id === servicioId);
             if (servicio && servicio.destinos_activos) {
-              // Obtener destinos activos del consorcio, ordenados por orden
-              escalasDelServicio = servicio.destinos_activos
+              // Obtener destinos activos del consorcio y eliminar duplicados por código de puerto
+              const destinosMap = new Map<string, any>();
+              
+              servicio.destinos_activos
                 .filter((da: any) => da.activo !== false && da.destino)
-                .map((da: any) => ({
-                  puerto: da.destino.puerto,
-                  puerto_nombre: da.destino.puerto_nombre || da.destino.puerto,
-                  area: da.destino.area || 'ASIA',
-                  orden: da.orden || 0,
-                  activo: true,
-                }))
-                .sort((a: any, b: any) => a.orden - b.orden);
+                .forEach((da: any) => {
+                  const puerto = da.destino.puerto;
+                  // Si el puerto no existe en el mapa, agregarlo (esto elimina duplicados)
+                  if (puerto && !destinosMap.has(puerto)) {
+                    destinosMap.set(puerto, {
+                      puerto: puerto,
+                      puerto_nombre: da.destino.puerto_nombre || puerto,
+                      area: da.destino.area || 'ASIA',
+                      orden: da.orden || 0,
+                      activo: true,
+                    });
+                  }
+                });
+              
+              // Convertir mapa a array y ordenar por orden
+              escalasDelServicio = Array.from(destinosMap.values())
+                .sort((a: any, b: any) => a.orden - b.orden)
+                .map((escala, index) => ({ ...escala, orden: index })); // Reordenar secuencialmente
               
               console.log('✅ Consorcio encontrado:', {
                 id: servicio.id,
                 nombre: servicio.nombre,
-                cantidadDestinos: escalasDelServicio.length
+                cantidadDestinosAntes: servicio.destinos_activos.length,
+                cantidadDestinosUnicos: escalasDelServicio.length
               });
             }
           }
@@ -1261,7 +1366,8 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         body: JSON.stringify({
           servicio: servicioFinal,
           servicio_id: servicioId || null, // Incluir servicio_id si está disponible
-          consorcio: naviera, // Consorcio ahora es naviera
+          consorcio: serviciosExistentes.find(s => s.id === servicioId)?.consorcio || null, // Consorcio del servicio
+          naviera: naviera, // Naviera seleccionada
           nave: naveFinal,
           viaje: viaje.trim(),
           semana,
@@ -1406,7 +1512,10 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
               )}
               {servicioId && navesPorServicio[servicioId] && (
                 <p className="mt-1 text-[10px] opacity-60">
-                  Naves disponibles: {navesPorServicio[servicioId].length}
+                  Naves disponibles: {navesPorServicio[servicioId] ? navesPorServicio[servicioId].length : 0}
+                  {!navesPorServicio[servicioId] && (
+                    <span className="text-orange-500 ml-1">(Verificando...)</span>
+                  )}
                 </p>
               )}
             </label>
@@ -1418,22 +1527,24 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                 onChange={(e) => setNaviera(e.target.value)}
                 className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                 required
+                disabled={!servicioId || navierasDisponibles.length === 0}
               >
-                <option value="">Selecciona naviera</option>
-                {navieras.map(n => (
+                <option value="">
+                  {!servicioId 
+                    ? 'Selecciona servicio primero' 
+                    : navierasDisponibles.length === 0 
+                      ? 'No hay navieras disponibles' 
+                      : 'Selecciona naviera'}
+                </option>
+                {navierasDisponibles.map(n => (
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
-            </label>
-
-            <label className="text-xs font-semibold uppercase tracking-wide">
-              Operador
-              <input
-                type="text"
-                value={naviera}
-                readOnly
-                className={`mt-2 w-full border px-3 py-2 text-sm outline-none ${inputTone} opacity-60 cursor-not-allowed`}
-              />
+              {servicioId && navierasDisponibles.length > 0 && (
+                <p className="mt-1 text-[10px] opacity-60">
+                  Navieras del servicio: {navierasDisponibles.length}
+                </p>
+              )}
             </label>
 
             <label className="text-xs font-semibold uppercase tracking-wide">
@@ -1502,17 +1613,8 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
             />
           </label>
 
-          <label className="text-xs font-semibold uppercase tracking-wide">
-            Semana
-            <input
-              type="number"
-              value={semana || ''}
-              readOnly
-              className={`mt-2 w-full border px-3 py-2 text-sm outline-none ${inputTone} opacity-60 cursor-not-allowed`}
-              placeholder="Se calcula automáticamente"
-            />
-            <p className="mt-1 text-[10px] opacity-60">Se calcula automáticamente desde ETD</p>
-          </label>
+          {/* Campo Semana oculto - se calcula y guarda automáticamente */}
+          <input type="hidden" value={semana || ''} />
 
           <label className="text-xs font-semibold uppercase tracking-wide">
             POL (Puerto de Origen)
@@ -1775,7 +1877,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
             nave={itinerarioResultado.nave}
             viaje={itinerarioResultado.viaje}
             semana={itinerarioResultado.semana}
-            operador={itinerarioResultado.consorcio || ''}
+            naviera={itinerarioResultado.naviera || itinerarioResultado.consorcio || ''}
             pol={itinerarioResultado.pol}
             etd={itinerarioResultado.etd}
             escalas={itinerarioResultado.escalas || []}
@@ -1847,7 +1949,7 @@ function ItinerarioTable({
   nave,
   viaje,
   semana,
-  operador,
+  naviera,
   pol,
   etd,
   escalas,
@@ -1858,7 +1960,7 @@ function ItinerarioTable({
   nave: string;
   viaje: string;
   semana: number | null;
-  operador: string;
+  naviera: string;
   pol: string;
   etd: string | null;
   escalas: ItinerarioEscala[];
@@ -1894,7 +1996,7 @@ function ItinerarioTable({
           <tr>
             <th className={`border p-2 text-left ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-gray-100 border-gray-300'}`}>Nave</th>
             <th className={`border p-2 text-center ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-gray-100 border-gray-300'}`}>Semana</th>
-            <th className={`border p-2 text-center ${theme === 'dark' ? 'bg-amber-600/30 border-amber-500/50' : 'bg-amber-200 border-amber-300'}`}>Operador</th>
+            <th className={`border p-2 text-center ${theme === 'dark' ? 'bg-amber-600/30 border-amber-500/50' : 'bg-amber-200 border-amber-300'}`}>Naviera</th>
             <th className={`border p-2 text-center ${theme === 'dark' ? 'bg-amber-600/30 border-amber-500/50' : 'bg-amber-200 border-amber-300'}`}>POL</th>
             {escalasOrdenadas.map((escala) => (
               <th key={escala.id} className={`border p-2 text-center ${theme === 'dark' ? 'bg-yellow-600/30 border-yellow-500/50' : 'bg-yellow-200 border-yellow-300'}`}>
@@ -1912,7 +2014,7 @@ function ItinerarioTable({
               </div>
             </td>
             <td className={`border p-2 text-center ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>{semana || '-'}</td>
-            <td className={`border p-2 text-center ${theme === 'dark' ? 'bg-amber-600/20 border-amber-500/50' : 'bg-amber-100 border-amber-300'}`}>{operador}</td>
+            <td className={`border p-2 text-center ${theme === 'dark' ? 'bg-amber-600/20 border-amber-500/50' : 'bg-amber-100 border-amber-300'}`}>{naviera}</td>
             <td className={`border p-2 text-center ${theme === 'dark' ? 'bg-amber-600/20 border-amber-500/50' : 'bg-amber-100 border-amber-300'}`}>
               {etd ? formatearFecha(etd) : '-'}
             </td>

@@ -53,6 +53,7 @@ type ItinerarioInput = {
   servicio: string;
   servicio_id?: string | null; // ID del servicio desde la tabla servicios
   consorcio: string | null;
+  naviera?: string | null; // Naviera seleccionada (nuevo campo)
   nave: string;
   viaje: string;
   semana: number | null;
@@ -452,6 +453,7 @@ export async function POST(request: Request) {
     const insertData: any = {
       servicio: payload.servicio || 'AX2/AN2/ANDES EXPRESS',
       consorcio: payload.consorcio,
+      naviera: payload.naviera || null, // Agregar naviera si está disponible
       nave: payload.nave,
       viaje: payload.viaje,
       semana: payload.semana,

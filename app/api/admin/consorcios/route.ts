@@ -67,6 +67,43 @@ export async function GET() {
           .eq('activo', true)
           .order('orden', { ascending: true });
 
+        // Obtener naves y destinos para cada servicio único
+        const serviciosConNaves = await Promise.all(
+          (consorcioServicios || []).map(async (cs: any) => {
+            if (!cs.servicio_unico) return cs;
+
+            // Obtener naves del servicio único
+            const { data: naves } = await adminClient
+              .from('servicios_unicos_naves')
+              .select('*')
+              .eq('servicio_unico_id', cs.servicio_unico.id)
+              .eq('activo', true)
+              .order('orden', { ascending: true });
+
+            // Obtener destinos del servicio único
+            const { data: destinos } = await adminClient
+              .from('servicios_unicos_destinos')
+              .select('*')
+              .eq('servicio_unico_id', cs.servicio_unico.id)
+              .eq('activo', true)
+              .order('orden', { ascending: true });
+
+            // Obtener nombre de naviera
+            const navieraNombre = cs.servicio_unico?.naviera?.nombre || null;
+            
+            return {
+              ...cs,
+              servicio_unico: {
+                ...cs.servicio_unico,
+                naviera_nombre: navieraNombre, // Agregar naviera_nombre para facilitar acceso
+                naviera: cs.servicio_unico.naviera, // Mantener objeto naviera también
+                naves: naves || [],
+                destinos: destinos || [],
+              },
+            };
+          })
+        );
+
         // Obtener destinos activos del consorcio
         const { data: destinosActivos } = await adminClient
           .from('consorcios_destinos_activos')
@@ -80,7 +117,7 @@ export async function GET() {
 
         return {
           ...consorcio,
-          servicios: consorcioServicios || [],
+          servicios: serviciosConNaves,
           destinos_activos: destinosActivos || [],
         };
       })
@@ -246,9 +283,9 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Crear destinos activos
-    // Si no se especifican destinos, usar todos los destinos de cada servicio único
-    const destinosActivosToInsert: any[] = [];
+    // Crear destinos activos - CONSOLIDAR DESTINOS ÚNICOS
+    // Recopilar todos los destinos de todos los servicios únicos
+    const todosLosDestinos: Map<string, { destino_id: string; orden: number; servicio_unico_id: string }> = new Map();
 
     for (const servicio of servicios_unicos) {
       const servicioUnicoId = servicio.servicio_unico_id;
@@ -268,7 +305,7 @@ export async function POST(request: Request) {
           ? servicio.destinos_activos
           : destinosDelServicio.map((d: any) => ({ destino_id: d.id, orden: d.orden }));
 
-        // Agregar destinos activos al consorcio
+        // Agregar destinos al mapa (solo si no existe ya - destinos únicos por destino_id)
         destinosSeleccionados.forEach((destinoConfig: any, index: number) => {
           const destinoId = typeof destinoConfig === 'string' 
             ? destinoConfig 
@@ -276,31 +313,39 @@ export async function POST(request: Request) {
           
           const destinoOriginal = destinosDelServicio.find((d: any) => d.id === destinoId);
           
-          // Validar que el destino existe en el servicio único
-          if (!destinoOriginal && servicio.destinos_activos && servicio.destinos_activos.length > 0) {
-            console.warn(`⚠️ Destino ${destinoId} no encontrado en servicio único ${servicioUnicoId}`);
-            // Continuar de todas formas, pero usar el orden del índice
+          // Si el destino_id no existe en el mapa, agregarlo (consolidación de duplicados)
+          if (!todosLosDestinos.has(destinoId)) {
+            todosLosDestinos.set(destinoId, {
+              destino_id: destinoId,
+              orden: destinoConfig.orden !== undefined ? destinoConfig.orden : (destinoOriginal?.orden || index),
+              servicio_unico_id: servicioUnicoId, // Guardar el primer servicio que tiene este destino
+            });
           }
-          
-          destinosActivosToInsert.push({
-            consorcio_id: nuevoConsorcio.id,
-            servicio_unico_id: servicioUnicoId,
-            destino_id: destinoId,
-            activo: true,
-            orden: destinoConfig.orden !== undefined ? destinoConfig.orden : (destinoOriginal?.orden || index),
-          });
         });
       }
     }
 
-    // Insertar destinos activos si hay alguno
-    if (destinosActivosToInsert.length > 0) {
-      console.log(`📝 Insertando ${destinosActivosToInsert.length} destinos activos`);
-      console.log('📋 Destinos a insertar:', JSON.stringify(destinosActivosToInsert.slice(0, 3), null, 2));
+    // Convertir mapa a array y ordenar por orden
+    const destinosUnicosArray = Array.from(todosLosDestinos.values())
+      .sort((a, b) => a.orden - b.orden)
+      .map((destino, index) => ({
+        consorcio_id: nuevoConsorcio.id,
+        servicio_unico_id: destino.servicio_unico_id,
+        destino_id: destino.destino_id,
+        activo: true,
+        orden: index, // Reordenar secuencialmente desde 0
+      }));
+
+    console.log(`📝 Consolidando ${destinosUnicosArray.length} destinos únicos (eliminando duplicados)`);
+
+    // Insertar destinos activos únicos si hay alguno
+    if (destinosUnicosArray.length > 0) {
+      console.log(`📝 Insertando ${destinosUnicosArray.length} destinos activos únicos`);
+      console.log('📋 Destinos únicos a insertar:', JSON.stringify(destinosUnicosArray.slice(0, 3), null, 2));
       
       const { error: destinosError } = await adminClient
         .from('consorcios_destinos_activos')
-        .insert(destinosActivosToInsert);
+        .insert(destinosUnicosArray);
 
       if (destinosError) {
         console.error('❌ Error al insertar destinos activos:', destinosError);
@@ -466,6 +511,12 @@ export async function PUT(request: Request) {
       .delete()
       .eq('consorcio_id', id);
 
+    // Eliminar destinos activos antiguos
+    await adminClient
+      .from('consorcios_destinos_activos')
+      .delete()
+      .eq('consorcio_id', id);
+
     // Crear nuevas relaciones con servicios únicos
     const consorcioServiciosToInsert = servicios_unicos.map((servicio: any, index: number) => ({
       consorcio_id: id,
@@ -484,8 +535,8 @@ export async function PUT(request: Request) {
       }, { status: 400 });
     }
 
-    // Crear destinos activos
-    const destinosActivosToInsert: any[] = [];
+    // Crear destinos activos - CONSOLIDAR DESTINOS ÚNICOS (igual que en POST)
+    const todosLosDestinos: Map<string, { destino_id: string; orden: number; servicio_unico_id: string }> = new Map();
 
     for (const servicio of servicios_unicos) {
       const servicioUnicoId = servicio.servicio_unico_id;
@@ -509,21 +560,34 @@ export async function PUT(request: Request) {
           
           const destinoOriginal = destinosDelServicio.find((d: any) => d.id === destinoId);
           
-          destinosActivosToInsert.push({
-            consorcio_id: id,
-            servicio_unico_id: servicioUnicoId,
-            destino_id: destinoId,
-            activo: true,
-            orden: destinoConfig.orden !== undefined ? destinoConfig.orden : (destinoOriginal?.orden || index),
-          });
+          // Si el destino_id no existe en el mapa, agregarlo (consolidación de duplicados)
+          if (!todosLosDestinos.has(destinoId)) {
+            todosLosDestinos.set(destinoId, {
+              destino_id: destinoId,
+              orden: destinoConfig.orden !== undefined ? destinoConfig.orden : (destinoOriginal?.orden || index),
+              servicio_unico_id: servicioUnicoId,
+            });
+          }
         });
       }
     }
 
-    if (destinosActivosToInsert.length > 0) {
+    // Convertir mapa a array y ordenar por orden
+    const destinosUnicosArray = Array.from(todosLosDestinos.values())
+      .sort((a, b) => a.orden - b.orden)
+      .map((destino, index) => ({
+        consorcio_id: id,
+        servicio_unico_id: destino.servicio_unico_id,
+        destino_id: destino.destino_id,
+        activo: true,
+        orden: index, // Reordenar secuencialmente desde 0
+      }));
+
+    if (destinosUnicosArray.length > 0) {
+      console.log(`📝 Actualizando con ${destinosUnicosArray.length} destinos únicos consolidados`);
       const { error: destinosError } = await adminClient
         .from('consorcios_destinos_activos')
-        .insert(destinosActivosToInsert);
+        .insert(destinosUnicosArray);
 
       if (destinosError) {
         return NextResponse.json({ 

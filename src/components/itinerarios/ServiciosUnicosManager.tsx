@@ -42,6 +42,7 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
     esNuevoPod: false,
   });
   const [puertoInputTexto, setPuertoInputTexto] = useState(''); // Para agregar destinos nuevos
+  const [servicioParaCopiar, setServicioParaCopiar] = useState<string>(''); // ID del servicio a copiar
 
   // Cargar servicios únicos
   const cargarServicios = async () => {
@@ -127,6 +128,54 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
     void cargarCatalogos();
   }, []);
 
+  // Copiar naves y destinos de un servicio existente
+  const copiarDeServicio = (servicioId: string) => {
+    if (!servicioId) {
+      setServicioParaCopiar('');
+      // Si se deselecciona, limpiar naves y destinos si estaban vacíos antes
+      if (formData.naves.length === 0 && formData.destinos.length === 0) {
+        setFormData(prev => ({
+          ...prev,
+          naves: [],
+          destinos: [],
+        }));
+      }
+      return;
+    }
+
+    const servicioSeleccionado = servicios.find(s => s.id === servicioId);
+    if (!servicioSeleccionado) {
+      setServicioParaCopiar('');
+      return;
+    }
+
+    setServicioParaCopiar(servicioId);
+    
+    // Copiar naves
+    const navesCopiadas = servicioSeleccionado.naves?.map(n => n.nave_nombre) || [];
+    
+    // Copiar destinos (reordenar por orden)
+    const destinosCopiados = (servicioSeleccionado.destinos || [])
+      .map(d => ({
+        puerto: d.puerto,
+        puerto_nombre: d.puerto_nombre || d.puerto,
+        area: d.area || 'ASIA',
+        orden: d.orden || 0,
+      }))
+      .sort((a, b) => a.orden - b.orden)
+      .map((d, index) => ({ ...d, orden: index })); // Reordenar desde 0
+
+    // Actualizar formData con los datos copiados
+    setFormData(prev => ({
+      ...prev,
+      naves: navesCopiadas,
+      destinos: destinosCopiados,
+      // Solo copiar naviera y puerto_origen si están vacíos
+      naviera_id: prev.naviera_id || servicioSeleccionado.naviera_id || '',
+      puerto_origen: prev.puerto_origen || servicioSeleccionado.puerto_origen || '',
+    }));
+  };
+
   // Abrir modal para crear
   const abrirModalCrear = () => {
     setEditingServicio(null);
@@ -142,6 +191,7 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
     setNaveInputTexto('');
     setPolInputTexto('');
     setPuertoInputTexto('');
+    setServicioParaCopiar('');
     setEscalaForm({ puerto: '', puerto_nombre: '', area: 'ASIA', esNuevoPod: false });
     setIsModalOpen(true);
   };
@@ -491,6 +541,32 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
                   required
                 />
               </label>
+
+              {/* Copiar de servicio existente (solo al crear) */}
+              {!editingServicio && servicios.length > 0 && (
+                <label className="block">
+                  <span className="text-xs font-semibold uppercase tracking-wide">
+                    📋 Copiar naves y destinos de un servicio existente (opcional)
+                  </span>
+                  <select
+                    value={servicioParaCopiar}
+                    onChange={(e) => copiarDeServicio(e.target.value)}
+                    className={`mt-1 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                  >
+                    <option value="">-- Seleccionar servicio para copiar --</option>
+                    {servicios.map((servicio) => (
+                      <option key={servicio.id} value={servicio.id}>
+                        {servicio.nombre} ({servicio.naves?.length || 0} naves, {servicio.destinos?.length || 0} destinos)
+                      </option>
+                    ))}
+                  </select>
+                  {servicioParaCopiar && (
+                    <p className="mt-1 text-xs text-green-600 dark:text-green-400">
+                      ✓ Naves y destinos copiados. Puedes modificarlos antes de guardar.
+                    </p>
+                  )}
+                </label>
+              )}
 
               {/* Naviera */}
               <label className="block">

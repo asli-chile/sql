@@ -195,8 +195,9 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
       const url = `${apiUrl}/api/admin/consorcios`;
       const method = editingConsorcio ? 'PUT' : 'POST';
 
+      // La API consolidará automáticamente los destinos únicos
       const payload = editingConsorcio ? { id: editingConsorcio.id, ...formData } : formData;
-      console.log('📤 Enviando payload al crear consorcio:', JSON.stringify(payload, null, 2));
+      console.log('📤 Enviando payload al crear consorcio (la API consolidará destinos únicos):', JSON.stringify(payload, null, 2));
 
       const response = await fetch(url, {
         method,
@@ -297,23 +298,93 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
         </div>
       ) : (
         <div className="space-y-2">
-          {consorcios.map((consorcio) => (
-            <div
-              key={consorcio.id}
-              className={`p-4 border rounded ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-white'}`}
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold">{consorcio.nombre}</h3>
-                  <p className="text-sm text-gray-500">
-                    Servicios: {consorcio.servicios?.length || 0}
-                  </p>
-                  {consorcio.requiere_revision && (
-                    <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                      ⚠️ Requiere revisión
-                    </p>
-                  )}
-                </div>
+          {consorcios.map((consorcio) => {
+            // Calcular naves únicas del consorcio
+            const navesUnicas = new Set<string>();
+            if (consorcio.servicios && Array.isArray(consorcio.servicios)) {
+              consorcio.servicios.forEach((cs: any) => {
+                // Debug: verificar estructura
+                if (cs.servicio_unico) {
+                  console.log('🔍 Servicio único encontrado:', {
+                    nombre: cs.servicio_unico.nombre,
+                    tieneNaves: !!cs.servicio_unico.naves,
+                    naves: cs.servicio_unico.naves,
+                    tipoNaves: typeof cs.servicio_unico.naves,
+                    esArray: Array.isArray(cs.servicio_unico.naves),
+                  });
+                }
+                
+                if (cs.servicio_unico?.naves && Array.isArray(cs.servicio_unico.naves)) {
+                  cs.servicio_unico.naves
+                    .filter((n: any) => n.activo !== false && n.nave_nombre)
+                    .forEach((n: any) => {
+                      navesUnicas.add(n.nave_nombre);
+                    });
+                }
+              });
+            }
+            
+            console.log(`📊 Consorcio ${consorcio.nombre}: ${navesUnicas.size} naves únicas`, Array.from(navesUnicas));
+
+            // Calcular destinos únicos del consorcio (por código de puerto, no por ID)
+            // Los destinos únicos deben ser por puerto, ya que el mismo puerto puede estar en diferentes servicios
+            const destinosUnicosPorPuerto = new Set<string>();
+            const destinosUnicosPorId = new Set<string>();
+            
+            // Primero, contar desde destinos_activos del consorcio (ya consolidados por la API)
+            if (consorcio.destinos_activos && Array.isArray(consorcio.destinos_activos)) {
+              consorcio.destinos_activos.forEach((da: any) => {
+                // Contar por ID del destino
+                if (da.destino?.id) {
+                  destinosUnicosPorId.add(da.destino.id);
+                } else if (da.destino_id) {
+                  destinosUnicosPorId.add(da.destino_id);
+                }
+                
+                // También contar por código de puerto (más preciso para destinos únicos)
+                if (da.destino?.puerto) {
+                  destinosUnicosPorPuerto.add(da.destino.puerto);
+                }
+              });
+            }
+            
+            // Si no hay destinos_activos, calcular desde los servicios únicos
+            if (destinosUnicosPorId.size === 0 && consorcio.servicios && Array.isArray(consorcio.servicios)) {
+              consorcio.servicios.forEach((cs: any) => {
+                if (cs.servicio_unico?.destinos && Array.isArray(cs.servicio_unico.destinos)) {
+                  cs.servicio_unico.destinos
+                    .filter((d: any) => d.activo !== false && d.puerto)
+                    .forEach((d: any) => {
+                      destinosUnicosPorPuerto.add(d.puerto);
+                    });
+                }
+              });
+            }
+            
+            // Usar el conteo por puerto si está disponible, sino por ID
+            const destinosUnicos = destinosUnicosPorPuerto.size > 0 ? destinosUnicosPorPuerto.size : destinosUnicosPorId.size;
+            
+            console.log(`📊 Consorcio ${consorcio.nombre}: ${destinosUnicos} destinos únicos (por puerto: ${destinosUnicosPorPuerto.size}, por ID: ${destinosUnicosPorId.size})`);
+
+            return (
+              <div
+                key={consorcio.id}
+                className={`p-4 border rounded ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-white'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{consorcio.nombre}</h3>
+                    <div className="text-sm text-gray-500 space-y-1 mt-1">
+                      <p>Servicios: {consorcio.servicios?.length || 0}</p>
+                      <p>Naves únicas: {navesUnicas.size}</p>
+                      <p>Destinos únicos: {destinosUnicos}</p>
+                    </div>
+                    {consorcio.requiere_revision && (
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                        ⚠️ Requiere revisión
+                      </p>
+                    )}
+                  </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => abrirModalEditar(consorcio)}
@@ -330,7 +401,8 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                 </div>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
