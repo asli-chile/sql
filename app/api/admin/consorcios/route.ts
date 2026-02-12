@@ -145,17 +145,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    console.log('📥 Body recibido en POST consorcios:', JSON.stringify(body, null, 2));
     const { nombre, descripcion, servicios_unicos } = body;
 
     // Validaciones
     if (!nombre || !nombre.trim()) {
-      console.log('❌ Error: nombre faltante o vacío');
       return NextResponse.json({ error: 'El nombre del consorcio es requerido' }, { status: 400 });
     }
 
     if (!servicios_unicos || !Array.isArray(servicios_unicos) || servicios_unicos.length === 0) {
-      console.log('❌ Error: servicios_unicos inválido:', servicios_unicos);
       return NextResponse.json({ 
         error: 'Debe incluir al menos un servicio único',
         details: `servicios_unicos recibido: ${JSON.stringify(servicios_unicos)}`
@@ -165,7 +162,6 @@ export async function POST(request: Request) {
     // Validar estructura de servicios_unicos
     for (const servicio of servicios_unicos) {
       if (!servicio.servicio_unico_id) {
-        console.log('❌ Error: servicio sin servicio_unico_id:', servicio);
         return NextResponse.json({ 
           error: 'Cada servicio único debe tener un servicio_unico_id',
           details: `Servicio inválido: ${JSON.stringify(servicio)}`
@@ -190,18 +186,13 @@ export async function POST(request: Request) {
 
     // Validar que todos los servicios únicos existen y están activos
     const servicioUnicoIds = servicios_unicos.map((s: any) => s.servicio_unico_id);
-    console.log('🔍 Validando servicios únicos con IDs:', servicioUnicoIds);
     
     const { data: serviciosValidos, error: serviciosError } = await adminClient
       .from('servicios_unicos')
       .select('id, nombre, activo')
       .in('id', servicioUnicoIds);
 
-    console.log('📊 Servicios válidos encontrados:', serviciosValidos);
-    console.log('❌ Error en consulta:', serviciosError);
-
     if (serviciosError) {
-      console.log('❌ Error al consultar servicios:', serviciosError);
       return NextResponse.json({ 
         error: 'Error al validar servicios únicos',
         details: serviciosError.message
@@ -209,38 +200,29 @@ export async function POST(request: Request) {
     }
 
     if (!serviciosValidos || serviciosValidos.length !== servicioUnicoIds.length) {
-      console.log(`❌ Servicios no encontrados. Esperados: ${servicioUnicoIds.length}, Encontrados: ${serviciosValidos?.length || 0}`);
       return NextResponse.json({ 
         error: 'Uno o más servicios únicos no existen',
         details: `IDs esperados: ${servicioUnicoIds.join(', ')}, IDs encontrados: ${serviciosValidos?.map((s: any) => s.id).join(', ') || 'ninguno'}`
       }, { status: 400 });
     }
-    console.log('✅ Validación de cantidad de servicios pasada');
 
     // Verificar que no hay servicios inactivos
     const serviciosInactivos = serviciosValidos.filter((s: any) => !s.activo);
-    console.log(`🔍 Servicios inactivos encontrados: ${serviciosInactivos.length}`);
     if (serviciosInactivos.length > 0) {
-      console.log('❌ Hay servicios inactivos:', serviciosInactivos.map((s: any) => s.nombre));
       return NextResponse.json({ 
         error: `Los siguientes servicios están inactivos: ${serviciosInactivos.map((s: any) => s.nombre).join(', ')}` 
       }, { status: 400 });
     }
-    console.log('✅ Validación de servicios activos pasada');
 
     // Verificar que no hay servicios duplicados
     const idsUnicos = new Set(servicioUnicoIds);
-    console.log(`🔍 IDs únicos: ${idsUnicos.size}, IDs totales: ${servicioUnicoIds.length}`);
     if (idsUnicos.size !== servicioUnicoIds.length) {
-      console.log('❌ Hay servicios duplicados');
       return NextResponse.json({ 
         error: 'No se puede incluir el mismo servicio único dos veces en un consorcio' 
       }, { status: 400 });
     }
-    console.log('✅ Validación de duplicados pasada');
 
     // Crear consorcio
-    console.log('📝 Creando consorcio con nombre:', nombre.trim());
     const { data: nuevoConsorcio, error: consorcioError } = await adminClient
       .from('consorcios')
       .insert({
@@ -252,16 +234,12 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    console.log('📊 Resultado creación consorcio:', { nuevoConsorcio, consorcioError });
-
     if (consorcioError || !nuevoConsorcio) {
-      console.log('❌ Error al crear consorcio:', consorcioError);
       return NextResponse.json({ 
         error: consorcioError?.message || 'Error al crear el consorcio',
         details: consorcioError?.details || consorcioError?.hint || JSON.stringify(consorcioError)
       }, { status: 400 });
     }
-    console.log('✅ Consorcio creado con ID:', nuevoConsorcio.id);
 
     // Crear relaciones con servicios únicos
     const consorcioServiciosToInsert = servicios_unicos.map((servicio: any, index: number) => ({
@@ -336,12 +314,9 @@ export async function POST(request: Request) {
         orden: index, // Reordenar secuencialmente desde 0
       }));
 
-    console.log(`📝 Consolidando ${destinosUnicosArray.length} destinos únicos (eliminando duplicados)`);
 
     // Insertar destinos activos únicos si hay alguno
     if (destinosUnicosArray.length > 0) {
-      console.log(`📝 Insertando ${destinosUnicosArray.length} destinos activos únicos`);
-      console.log('📋 Destinos únicos a insertar:', JSON.stringify(destinosUnicosArray.slice(0, 3), null, 2));
       
       const { error: destinosError } = await adminClient
         .from('consorcios_destinos_activos')
@@ -357,7 +332,6 @@ export async function POST(request: Request) {
           details: destinosError.details || destinosError.hint || JSON.stringify(destinosError)
         }, { status: 400 });
       }
-      console.log('✅ Destinos activos insertados correctamente');
     }
 
     // Obtener consorcio completo con detalles
@@ -584,7 +558,6 @@ export async function PUT(request: Request) {
       }));
 
     if (destinosUnicosArray.length > 0) {
-      console.log(`📝 Actualizando con ${destinosUnicosArray.length} destinos únicos consolidados`);
       const { error: destinosError } = await adminClient
         .from('consorcios_destinos_activos')
         .insert(destinosUnicosArray);

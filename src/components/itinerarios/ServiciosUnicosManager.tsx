@@ -371,7 +371,6 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
       const method = editingServicio ? 'PUT' : 'POST';
 
       const payload = editingServicio ? { id: editingServicio.id, ...formData } : formData;
-      console.log('📤 Enviando payload al guardar servicio único:', JSON.stringify(payload, null, 2));
 
       const response = await fetch(url, {
         method,

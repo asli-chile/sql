@@ -53,7 +53,7 @@ export async function fetchItinerarios(): Promise<ItinerarioWithEscalas[]> {
     const result = await response.json();
     return result.itinerarios || [];
   } catch (error: any) {
-    console.error('Error fetching itinerarios:', error);
+    console.error('❌ [FETCH] Error fetching itinerarios:', error);
     throw error;
   }
 }

@@ -85,17 +85,14 @@ export async function GET() {
           
           if (escalasError) {
             if (escalasError.message.includes('Could not find the table')) {
-              console.warn(`⚠️ La tabla servicios_escalas no existe para servicio ${servicio.nombre} (${servicio.id})`);
+              // La tabla servicios_escalas no existe
               return { ...servicio, escalas: [] };
             }
-            console.warn(`Error cargando escalas para servicio ${servicio.nombre} (${servicio.id}):`, escalasError);
+            // Error cargando escalas
             return { ...servicio, escalas: [] };
           }
           
-          console.log(`✅ Escalas cargadas para servicio ${servicio.nombre} (${servicio.id}):`, {
-            cantidad: escalasData?.length || 0,
-            escalas: escalasData
-          });
+          // Escalas cargadas
           return { ...servicio, escalas: escalasData || [] };
         } catch (error: any) {
           if (error?.message?.includes('Could not find the table')) {
@@ -183,14 +180,12 @@ export async function POST(request: Request) {
       console.error('Error verificando servicio existente:', servicioExistenteError);
     }
 
-    console.log('🔍 Servicio existente encontrado:', servicioExistente);
 
     let servicioData: any;
     let esServicioReactivado = false;
 
     if (servicioExistente) {
       if (servicioExistente.activo) {
-        console.log('⚠️ Servicio activo ya existe:', servicioExistente);
         return NextResponse.json({ 
           error: 'Ya existe un servicio activo con ese nombre. Por favor, usa un nombre diferente o edita el servicio existente.' 
         }, { status: 400 });
@@ -286,7 +281,6 @@ export async function POST(request: Request) {
 
     // Si se proporcionaron escalas, asignarlas al servicio
     if (escalas && Array.isArray(escalas) && escalas.length > 0) {
-      console.log('📝 Procesando escalas para servicio:', { servicioId: servicioData.id, cantidadEscalas: escalas.length, escalas });
       
       try {
         // Verificar si la tabla existe
@@ -296,8 +290,7 @@ export async function POST(request: Request) {
           .limit(1);
 
         if (tableCheckError && tableCheckError.message.includes('Could not find the table')) {
-          console.warn('⚠️ La tabla servicios_escalas no existe. Las escalas no se guardarán.');
-          console.warn('💡 Ejecuta el script: scripts/create-servicios-escalas-table.sql para crear la tabla.');
+          // La tabla servicios_escalas no existe. Las escalas no se guardarán.
           // Continuar sin error, simplemente no guardar las escalas
         } else {
           const escalasToInsert = escalas
@@ -333,7 +326,6 @@ export async function POST(request: Request) {
                 }, { status: 400 });
               }
             } else {
-              console.log('✅ Escalas insertadas correctamente:', escalasInsertadas);
             }
           } else {
             console.warn('⚠️ No hay escalas válidas para insertar después del filtrado');
@@ -344,7 +336,6 @@ export async function POST(request: Request) {
         // Continuar sin error, simplemente no guardar las escalas
       }
     } else {
-      console.log('ℹ️ No se proporcionaron escalas o el array está vacío');
     }
 
     // Obtener el servicio completo con naves
@@ -494,7 +485,6 @@ export async function PUT(request: Request) {
 
     // Si se proporcionaron escalas, actualizar la relación
     if (escalas !== undefined && Array.isArray(escalas)) {
-      console.log('📝 Actualizando escalas para servicio:', { servicioId: id, cantidadEscalas: escalas.length, escalas });
       
       try {
         // Verificar si la tabla existe intentando hacer una consulta simple
@@ -504,8 +494,7 @@ export async function PUT(request: Request) {
           .limit(1);
 
         if (tableCheckError && tableCheckError.message.includes('Could not find the table')) {
-          console.warn('⚠️ La tabla servicios_escalas no existe. Las escalas no se guardarán.');
-          console.warn('💡 Ejecuta el script: scripts/create-servicios-escalas-table.sql para crear la tabla.');
+          // La tabla servicios_escalas no existe. Las escalas no se guardarán.
           // Continuar sin error, simplemente no guardar las escalas
         } else {
           // Eliminar todas las escalas existentes
@@ -533,7 +522,6 @@ export async function PUT(request: Request) {
                 updated_by: usuarioData?.email || validation.email,
               }));
 
-            console.log('📝 Escalas a insertar:', escalasToInsert);
 
             if (escalasToInsert.length > 0) {
               const { data: escalasInsertadas, error: escalasError } = await adminClient
@@ -553,20 +541,14 @@ export async function PUT(request: Request) {
                   }, { status: 400 });
                 }
               } else {
-                console.log('✅ Escalas actualizadas correctamente:', escalasInsertadas);
               }
             } else {
-              console.warn('⚠️ No hay escalas válidas para insertar después del filtrado');
             }
           } else {
-            console.log('ℹ️ Se eliminaron todas las escalas (array vacío)');
           }
         }
       } catch (error: any) {
-        console.warn('⚠️ Error al procesar escalas (la tabla puede no existir):', error);
-        if (error?.message?.includes('Could not find the table')) {
-          console.warn('💡 Ejecuta el script: scripts/create-servicios-escalas-table.sql para crear la tabla.');
-        }
+        // Error al procesar escalas (la tabla puede no existir)
         // Continuar sin error, simplemente no guardar las escalas
       }
     }
@@ -629,9 +611,8 @@ export async function PUT(request: Request) {
             .eq('servicio_id', id);
 
           if (updateError) {
-            console.warn('⚠️ Error actualizando nombre del servicio en itinerarios:', updateError);
+            // Error actualizando nombre del servicio en itinerarios
           } else {
-            console.log(`✅ Actualizados ${itinerariosPorId.length} itinerarios con el nuevo nombre del servicio (por servicio_id)`);
           }
         }
 
@@ -656,11 +637,10 @@ export async function PUT(request: Request) {
           if (updateErrorNombre) {
             console.warn('⚠️ Error actualizando nombre del servicio en itinerarios (por nombre):', updateErrorNombre);
           } else {
-            console.log(`✅ Actualizados ${itinerariosPorNombre.length} itinerarios con el nuevo nombre del servicio (por nombre)`);
           }
         }
       } catch (error: any) {
-        console.warn('⚠️ Error al actualizar itinerarios relacionados:', error);
+        // Error al actualizar itinerarios relacionados
         // No fallar la actualización del servicio si falla la actualización de itinerarios
       }
     }
@@ -707,7 +687,7 @@ export async function DELETE(request: Request) {
       .limit(1);
 
     if (itinerariosError) {
-      console.warn('Error verificando itinerarios:', itinerariosError);
+      // Error verificando itinerarios
     }
 
     if (itinerarios && itinerarios.length > 0) {

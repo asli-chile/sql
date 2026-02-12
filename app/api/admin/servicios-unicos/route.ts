@@ -232,7 +232,7 @@ export async function POST(request: Request) {
           });
 
         if (crearNaveError) {
-          console.warn(`No se pudo crear la nave ${naveNombreTrim} en el catálogo:`, crearNaveError);
+          // No se pudo crear la nave en el catálogo
           // Continuar de todas formas, no es crítico
         }
       }
@@ -279,7 +279,7 @@ export async function POST(request: Request) {
           });
 
         if (crearDestinoError) {
-          console.warn(`No se pudo crear el destino ${puertoCodigo} en el catálogo:`, crearDestinoError);
+          // No se pudo crear el destino en el catálogo
           // Continuar de todas formas, no es crítico
         }
       }
@@ -362,26 +362,21 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    console.log('📥 Body recibido en PUT servicios-unicos:', JSON.stringify(body, null, 2));
     const { id, nombre, naviera_id, descripcion, puerto_origen, naves, destinos, activo } = body;
 
     if (!id) {
-      console.log('❌ Error: ID faltante');
       return NextResponse.json({ error: 'El ID del servicio es requerido' }, { status: 400 });
     }
 
     if (!nombre || !nombre.trim()) {
-      console.log('❌ Error: nombre faltante o vacío');
       return NextResponse.json({ error: 'El nombre del servicio es requerido' }, { status: 400 });
     }
 
     if (!naviera_id) {
-      console.log('❌ Error: naviera_id faltante');
       return NextResponse.json({ error: 'La naviera es requerida' }, { status: 400 });
     }
 
     if (!puerto_origen || !puerto_origen.trim()) {
-      console.log('❌ Error: puerto_origen faltante o vacío. Body recibido:', JSON.stringify(body));
       return NextResponse.json({ 
         error: 'El puerto de origen es requerido',
         details: 'El campo puerto_origen es obligatorio. Asegúrate de seleccionar un puerto de origen desde el catálogo de POLs.'
@@ -449,7 +444,7 @@ export async function PUT(request: Request) {
             });
 
           if (crearNaveError) {
-            console.warn(`No se pudo crear la nave ${naveNombreTrim} en el catálogo:`, crearNaveError);
+            // No se pudo crear la nave en el catálogo
             // Continuar de todas formas, no es crítico
           }
         }
@@ -478,7 +473,7 @@ export async function PUT(request: Request) {
             });
 
           if (crearDestinoError) {
-            console.warn(`No se pudo crear el destino ${puertoCodigo} en el catálogo:`, crearDestinoError);
+            // No se pudo crear el destino en el catálogo
             // Continuar de todas formas, no es crítico
           }
         }

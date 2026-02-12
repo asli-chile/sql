@@ -628,17 +628,6 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
             const navesUnicas = new Set<string>();
             if (consorcio.servicios && Array.isArray(consorcio.servicios)) {
               consorcio.servicios.forEach((cs: any) => {
-                // Debug: verificar estructura
-                if (cs.servicio_unico) {
-                  console.log('🔍 Servicio único encontrado:', {
-                    nombre: cs.servicio_unico.nombre,
-                    tieneNaves: !!cs.servicio_unico.naves,
-                    naves: cs.servicio_unico.naves,
-                    tipoNaves: typeof cs.servicio_unico.naves,
-                    esArray: Array.isArray(cs.servicio_unico.naves),
-                  });
-                }
-                
                 if (cs.servicio_unico?.naves && Array.isArray(cs.servicio_unico.naves)) {
                   cs.servicio_unico.naves
                     .filter((n: any) => n.activo !== false && n.nave_nombre)
@@ -648,8 +637,6 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                 }
               });
             }
-            
-            console.log(`📊 Consorcio ${consorcio.nombre}: ${navesUnicas.size} naves únicas`, Array.from(navesUnicas));
 
             // Calcular destinos únicos del consorcio (por código de puerto, no por ID)
             // Los destinos únicos deben ser por puerto, ya que el mismo puerto puede estar en diferentes servicios
@@ -688,8 +675,6 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
             
             // Usar el conteo por puerto si está disponible, sino por ID
             const destinosUnicos = destinosUnicosPorPuerto.size > 0 ? destinosUnicosPorPuerto.size : destinosUnicosPorId.size;
-            
-            console.log(`📊 Consorcio ${consorcio.nombre}: ${destinosUnicos} destinos únicos (por puerto: ${destinosUnicosPorPuerto.size}, por ID: ${destinosUnicosPorId.size})`);
 
             return (
               <div

@@ -326,8 +326,6 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
           return coincideExacto || servicioContieneConsorcio || consorcioContieneServicio || consorcioTieneNavierasDelServicio;
         });
         
-        console.log('🔍 Consorcio encontrado:', consorcioEncontrado);
-        
         if (consorcioEncontrado?.navierasServicios && Array.isArray(consorcioEncontrado.navierasServicios)) {
           consorcioNavierasServicios = consorcioEncontrado.navierasServicios
             .filter((rel: any) => rel.activo !== false)
@@ -335,20 +333,15 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
               naviera: rel.naviera,
               servicio_nombre: rel.servicio_nombre,
             }));
-          console.log('✅ ConsorcioNavierasServicios cargado desde consorcio estructurado:', consorcioNavierasServicios);
-        } else {
-          console.warn('⚠️ Consorcio encontrado pero sin navierasServicios válidas, reconstruyendo desde campo consorcio');
         }
       }
     } catch (err) {
-      console.warn('Error cargando consorcio estructurado:', err);
+      // Error cargando consorcio estructurado
     }
     
     // Si no se encontró consorcio estructurado o está vacío, reconstruir desde el campo consorcio
     if (consorcioNavierasServicios.length === 0 && servicio.consorcio) {
-      console.log('🔄 Reconstruyendo consorcioNavierasServicios desde campo consorcio:', servicio.consorcio);
       consorcioNavierasServicios = reconstruirConsorcioNavierasServicios(servicio.consorcio, servicio.nombre);
-      console.log('✅ ConsorcioNavierasServicios reconstruido:', consorcioNavierasServicios);
     }
     
     // Preparar escalas - incluir todas, no solo activas, para que el usuario pueda verlas
@@ -362,19 +355,6 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
         orden: e.orden || 0,
       }));
     
-    console.log('📋 Datos del servicio al editar:', {
-      id: servicio.id,
-      nombre: servicio.nombre,
-      consorcio: servicio.consorcio,
-      escalasRaw: servicio.escalas,
-      cantidadEscalasRaw: servicio.escalas?.length || 0,
-      escalasFormateadas: escalasFormateadas.length,
-      naves: servicio.naves?.map(n => n.nave_nombre) || [],
-      cantidadNaves: servicio.naves?.length || 0,
-      consorcioNavierasServicios: consorcioNavierasServicios,
-      cantidadNavieras: consorcioNavierasServicios.length
-    });
-    
     // Asegurarse de que todas las naves del servicio se incluyan
     const navesDelServicio = servicio.naves?.map(n => n.nave_nombre) || [];
     
@@ -387,11 +367,6 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
       escalas: escalasFormateadas,
     });
     
-    console.log('✅ FormData actualizado con:', {
-      consorcioNavierasServicios: consorcioNavierasServicios.length,
-      naves: navesDelServicio.length,
-      navieras: consorcioNavierasServicios.map(c => c.naviera).join(', ')
-    });
     setNaveInput('');
     setEsNaveNueva(false);
     setConsorcioForm({ naviera: '', servicio_nombre: '' });
@@ -658,17 +633,14 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
           
           if (!consorcioResponse.ok) {
             const consorcioError = await consorcioResponse.json();
-            console.warn('⚠️ Error guardando consorcio estructurado:', consorcioError.error);
-            console.warn('⚠️ Continuando con el guardado del servicio, pero el consorcio estructurado no se guardó');
+            // Error guardando consorcio estructurado, continuando con el guardado del servicio
             // No fallar el guardado del servicio si falla el consorcio
             // El campo consorcio legacy se guardará de todas formas
           } else {
             const consorcioResult = await consorcioResponse.json();
-            console.log('✅ Consorcio guardado correctamente:', consorcioResult);
           }
         } catch (consorcioErr) {
-          console.warn('⚠️ Error guardando consorcio estructurado:', consorcioErr);
-          console.warn('⚠️ Continuando con el guardado del servicio, pero el consorcio estructurado no se guardó');
+          // Error guardando consorcio estructurado, continuando con el guardado del servicio
           // Continuar con el guardado del servicio aunque falle el consorcio
           // El campo consorcio legacy se guardará de todas formas
         }
@@ -713,7 +685,6 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
             })),
           };
 
-      console.log('📤 Enviando servicio:', { method, body });
       
       const response = await fetch(url, {
         method,
@@ -742,7 +713,6 @@ export function ServiciosManager({ onServicioChange, selectedServicioId, onServi
         throw new Error(errorMessage);
       }
       
-      console.log('✅ Servicio guardado correctamente:', result);
 
       const mensaje = editingServicio 
         ? 'Servicio actualizado exitosamente' 

@@ -53,6 +53,7 @@ export default function ItinerarioPage() {
   const [itinerarios, setItinerarios] = useState<ItinerarioWithEscalas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [filters, setFilters] = useState<FiltersType>({ semanas: 6 });
   const [selectedItinerario, setSelectedItinerario] = useState<ItinerarioWithEscalas | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -171,7 +172,7 @@ export default function ItinerarioPage() {
         const data = await fetchItinerarios();
         setItinerarios(data);
       } catch (error: any) {
-        console.error('Error loading itinerarios:', error);
+        console.error('❌ [FRONTEND] Error loading itinerarios:', error);
         setError(error?.message || 'Error al cargar itinerarios');
       } finally {
         setIsLoading(false);
@@ -263,18 +264,31 @@ export default function ItinerarioPage() {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); // Inicio del día para comparar solo fechas
     
+    // Verificar si hay filtros manuales activos (excluyendo el filtro de semanas que es automático)
+    const hayFiltrosManuales = !!(filters.servicio || filters.consorcio || filters.pol || filters.region);
+    
     // Primero aplicar todos los filtros excepto el de semanas
     let filtered = itinerarios.filter((it) => {
-      // Filtrar solo itinerarios con ETD >= fecha actual (aún no cumplido)
-      if (it.etd) {
-        const etdDate = new Date(it.etd);
-        etdDate.setHours(0, 0, 0, 0);
-        if (etdDate < hoy) return false; // Excluir ETD pasados
+      // FILTRO AUTOMÁTICO: Filtrar solo itinerarios con ETD >= fecha actual (aún no cumplido)
+      // Este filtro solo se aplica cuando NO hay filtros manuales activos
+      // Si hay filtros manuales, mostramos todos los itinerarios que coincidan, incluso con ETD pasado
+      if (!hayFiltrosManuales) {
+        if (it.etd) {
+          const etdDate = new Date(it.etd);
+          etdDate.setHours(0, 0, 0, 0);
+          if (etdDate < hoy) return false; // Excluir ETD pasados solo si no hay filtros manuales
+        }
       }
       
-      if (filters.servicio && it.servicio !== filters.servicio) return false;
-      if (filters.consorcio && it.consorcio !== filters.consorcio) return false;
-      if (filters.pol && it.pol !== filters.pol) return false;
+      if (filters.servicio && it.servicio !== filters.servicio) {
+        return false;
+      }
+      if (filters.consorcio && it.consorcio !== filters.consorcio) {
+        return false;
+      }
+      if (filters.pol && it.pol !== filters.pol) {
+        return false;
+      }
       if (filters.region) {
         // Filtrar por región: el itinerario debe tener al menos una escala con esa región
         const hasRegion = it.escalas?.some((escala) => escala.area === filters.region);
@@ -283,7 +297,10 @@ export default function ItinerarioPage() {
       return true;
     });
     
-    // Si hay filtro de semanas, agrupar por servicio y limitar N filas por servicio
+    // Guardar el count antes de aplicar el límite de semanas para calcular exclusiones
+    const countAntesDeSemanas = filtered.length;
+    
+    // FILTRO AUTOMÁTICO: Si hay filtro de semanas, agrupar por servicio y limitar N filas por servicio
     if (filters.semanas && filters.semanas > 0) {
       // Agrupar por servicio
       const groupedByService = new Map<string, typeof filtered>();
@@ -305,8 +322,9 @@ export default function ItinerarioPage() {
           if (!b.etd) return -1;
           return new Date(a.etd).getTime() - new Date(b.etd).getTime();
         });
-        // Limitar a N filas por servicio
-        result.push(...sorted.slice(0, filters.semanas));
+        
+        const limitado = sorted.slice(0, filters.semanas);
+        result.push(...limitado);
       });
       
       return result;
@@ -438,13 +456,28 @@ export default function ItinerarioPage() {
   };
 
   const handleCreateSuccess = async () => {
+    // Cerrar el modal primero
     setIsCreateModalOpen(false);
-    // Recargar itinerarios
+    // Limpiar mensajes previos
+    setError(null);
+    setSuccess(null);
+    
+    // Recargar itinerarios inmediatamente
     try {
+      setIsLoading(true);
       const data = await fetchItinerarios();
       setItinerarios(data);
+      setSuccess('Itinerario creado correctamente');
+      
+      // Limpiar mensaje de éxito después de 5 segundos
+      setTimeout(() => {
+        setSuccess(null);
+      }, 5000);
     } catch (error) {
       console.error('Error reloading itinerarios:', error);
+      setError('Error al recargar itinerarios. Por favor, recarga la página manualmente.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -513,7 +546,7 @@ export default function ItinerarioPage() {
                   Itinerarios
                 </h1>
                 <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Seguimiento semanal de servicios y naves
+                  Tentativo semanal por servicio
                 </p>
               </div>
             </div>
@@ -644,6 +677,18 @@ export default function ItinerarioPage() {
         {/* Main Content */}
         <main className="flex-1 overflow-auto min-w-0 w-full">
           <div className="flex flex-col w-full px-1 sm:px-2 py-2 space-y-2">
+            {/* Mensajes */}
+            {error && (
+              <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 rounded">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-400 rounded">
+                {success}
+              </div>
+            )}
+            
             {/* Filtros */}
             <div className="flex-shrink-0">
               <ItinerarioFilters

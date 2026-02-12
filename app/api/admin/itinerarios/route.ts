@@ -265,6 +265,10 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       itinerarios: itinerariosConEscalasOrdenadas || [],
+      _debug: {
+        totalEnBD: itinerarios?.length || 0,
+        totalEnviados: itinerariosConEscalasOrdenadas?.length || 0,
+      },
     });
   } catch (error: any) {
     console.error('Error en GET /api/admin/itinerarios:', error);
@@ -283,18 +287,9 @@ export async function POST(request: Request) {
     }
 
     const payload = (await request.json()) as ItinerarioInput;
-    
-    console.log('📥 Payload recibido en POST itinerarios:', JSON.stringify(payload, null, 2));
 
     // Validaciones
     if (!payload.nave || !payload.viaje || !payload.pol || !payload.etd) {
-      console.log('❌ Error: Faltan campos requeridos:', {
-        nave: !!payload.nave,
-        viaje: !!payload.viaje,
-        pol: !!payload.pol,
-        etd: !!payload.etd,
-        payload
-      });
       return NextResponse.json({ 
         error: 'Faltan campos requeridos: nave, viaje, pol, etd.',
         details: {
@@ -341,13 +336,12 @@ export async function POST(request: Request) {
         .order('etd', { ascending: true });
 
       if (errorBusqueda && !errorBusqueda.message?.includes('does not exist')) {
-        console.warn('⚠️ Error buscando itinerarios existentes:', errorBusqueda);
+        // Error buscando itinerarios existentes
       }
 
       // Si no hay itinerarios existentes o solo hay uno (el que estamos creando), es el primer viaje
       if (!itinerariosExistentes || itinerariosExistentes.length === 0) {
         esPrimerViaje = true;
-        console.log('✅ Este es el primer viaje del servicio');
       } else {
         // Ordenar todos los viajes por ETD (ascendente - del más antiguo al más reciente)
         const itinerariosOrdenados = [...itinerariosExistentes].sort((a: any, b: any) => 
@@ -377,8 +371,6 @@ export async function POST(request: Request) {
         // Usar solo las partes de fecha (año, mes, día) para evitar problemas de zona horaria
         const diffTime = etdDate.getTime() - etdPrimerViaje.getTime();
         const diferenciaDias = Math.round(diffTime / (1000 * 60 * 60 * 24));
-        console.log(`📅 Usando primer viaje (${primerViaje.viaje}, ETD: ${primerViaje.etd}) como base`);
-        console.log(`📅 Diferencia entre primer ETD (${primerViaje.etd}) y nuevo ETD (${payload.etd}): ${diferenciaDias} días`);
 
           // Obtener las escalas del primer viaje ordenadas por ETA (orden del primer registro)
           const { data: escalasPrimerViaje, error: errorEscalas } = await adminClient
@@ -388,7 +380,6 @@ export async function POST(request: Request) {
             .order('eta', { ascending: true });
 
           if (!errorEscalas && escalasPrimerViaje && escalasPrimerViaje.length > 0) {
-            console.log(`✅ Encontradas ${escalasPrimerViaje.length} escalas del primer viaje`);
             
             // Si el payload ya tiene escalas, usarlas; si no, calcularlas automáticamente
             if (payload.escalas && payload.escalas.length > 0) {
@@ -473,12 +464,10 @@ export async function POST(request: Request) {
                   dias_transito: diasTransito,
                 };
               });
-              
-              console.log(`✅ Calculadas automáticamente ${escalasConDias.length} escalas basadas en el primer viaje`);
             }
           } else {
             // No se encontraron escalas del primer viaje, usar las del payload
-            console.warn('⚠️ No se encontraron escalas del primer viaje, usando escalas del payload');
+            // No se encontraron escalas del primer viaje, usando escalas del payload
             if (payload.escalas && payload.escalas.length > 0) {
               escalasConDias = payload.escalas.map((escala, index) => {
                 const etaDate = new Date(escala.eta);
@@ -498,7 +487,7 @@ export async function POST(request: Request) {
           }
       }
     } catch (error: any) {
-      console.warn('⚠️ Error al buscar itinerarios existentes, usando escalas del payload:', error);
+      // Error al buscar itinerarios existentes, usando escalas del payload
       // En caso de error, usar las escalas del payload normalmente
       escalasConDias = payload.escalas.map((escala, index) => {
         const etaDate = new Date(escala.eta);
@@ -570,8 +559,6 @@ export async function POST(request: Request) {
       insertData.servicio_id = payload.servicio_id;
     }
 
-    console.log('📝 Insertando itinerario con datos:', JSON.stringify(insertData, null, 2));
-    
     const { data: itinerarioData, error: itinerarioError } = await adminClient
       .from('itinerarios')
       .insert(insertData)
@@ -589,7 +576,6 @@ export async function POST(request: Request) {
       
       // Si el error es porque la columna naviera no existe, intentar sin ella
       if (itinerarioError.message?.includes('naviera') || itinerarioError.code === '42703') {
-        console.log('⚠️ Columna naviera no existe, intentando sin ella...');
         const insertDataSinNaviera = { ...insertData };
         delete insertDataSinNaviera.naviera;
         
