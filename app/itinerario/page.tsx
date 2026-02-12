@@ -54,7 +54,7 @@ export default function ItinerarioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersType>({ semanas: 6 });
+  const [filters, setFilters] = useState<FiltersType>({ semanas: 4 });
   const [selectedItinerario, setSelectedItinerario] = useState<ItinerarioWithEscalas | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
