@@ -220,10 +220,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                         alt=""
                         className="h-12 w-auto object-contain flex-shrink-0"
                         style={{ display: 'block', maxWidth: '100px' }}
-                        onLoad={() => console.log('Logo MSC cargado correctamente')}
                         onError={(e) => {
-                          console.error('Error cargando logo MSC para:', consorcio, e);
-                          console.error('Ruta intentada:', getImageSrc('/msc.png'));
                           e.currentTarget.style.display = 'none';
                         }}
                       />
@@ -237,10 +234,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                         alt=""
                         className="h-12 w-auto object-contain flex-shrink-0"
                         style={{ display: 'block', maxWidth: '100px' }}
-                        onLoad={() => console.log('Logo COSCO cargado correctamente')}
                         onError={(e) => {
-                          console.error('Error cargando logo COSCO para:', consorcio, e);
-                          console.error('Ruta intentada:', getImageSrc('/cosco.png'));
                           e.currentTarget.style.display = 'none';
                         }}
                       />
@@ -254,10 +248,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                         alt=""
                         className="h-12 w-auto object-contain flex-shrink-0"
                         style={{ display: 'block', maxWidth: '100px' }}
-                        onLoad={() => console.log('Logo EVERGREEN cargado correctamente')}
                         onError={(e) => {
-                          console.error('Error cargando logo EVERGREEN para:', consorcio, e);
-                          console.error('Ruta intentada:', getImageSrc('/evergreen.png'));
                           e.currentTarget.style.display = 'none';
                         }}
                       />

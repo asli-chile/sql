@@ -156,23 +156,13 @@ export default function ItinerarioPublicPage() {
     [itinerarios]
   );
 
-  // Calcular semana actual para filtro de semanas
-  const calcularSemanaActual = () => {
-    const hoy = new Date();
-    const d = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  };
-
   // Filtrar itinerarios
   const filteredItinerarios = useMemo(() => {
-    const semanaActual = calcularSemanaActual();
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0); // Inicio del día para comparar solo fechas
     
-    return itinerarios.filter((it) => {
+    // Primero aplicar todos los filtros excepto el de semanas
+    let filtered = itinerarios.filter((it) => {
       // Filtrar solo itinerarios con ETD >= fecha actual (aún no cumplido)
       if (it.etd) {
         const etdDate = new Date(it.etd);
@@ -214,13 +204,47 @@ export default function ItinerarioPublicPage() {
         const hasRegion = it.escalas?.some((escala) => escala.area === filters.region);
         if (!hasRegion) return false;
       }
-      if (filters.semanas && it.semana) {
-        const semanaInicio = semanaActual;
-        const semanaFin = semanaActual + filters.semanas - 1;
-        if (it.semana < semanaInicio || it.semana > semanaFin) return false;
-      }
       return true;
     });
+    
+    // Si hay filtro de semanas, agrupar por servicio y limitar N filas por servicio
+    if (filters.semanas && filters.semanas > 0) {
+      // Agrupar por servicio
+      const groupedByService = new Map<string, typeof filtered>();
+      filtered.forEach((it) => {
+        const servicioKey = it.servicio || 'sin-servicio';
+        if (!groupedByService.has(servicioKey)) {
+          groupedByService.set(servicioKey, []);
+        }
+        groupedByService.get(servicioKey)!.push(it);
+      });
+      
+      // Para cada servicio, ordenar por ETD y limitar a N filas
+      const result: typeof filtered = [];
+      groupedByService.forEach((items) => {
+        // Ordenar por ETD ascendente (primero los más próximos)
+        const sorted = items.sort((a, b) => {
+          if (!a.etd && !b.etd) return 0;
+          if (!a.etd) return 1;
+          if (!b.etd) return -1;
+          return new Date(a.etd).getTime() - new Date(b.etd).getTime();
+        });
+        // Limitar a N filas por servicio
+        result.push(...sorted.slice(0, filters.semanas));
+      });
+      
+      return result;
+    }
+    
+    // Si no hay filtro de semanas, solo ordenar por ETD
+    filtered = filtered.sort((a, b) => {
+      if (!a.etd && !b.etd) return 0;
+      if (!a.etd) return 1;
+      if (!b.etd) return -1;
+      return new Date(a.etd).getTime() - new Date(b.etd).getTime();
+    });
+    
+    return filtered;
   }, [itinerarios, filters, serviciosParaFiltro, consorcioDelServicioSeleccionado]);
 
   return (

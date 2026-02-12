@@ -50,26 +50,14 @@ export function ItinerarioFilters({
     onReset();
   };
 
-  // Calcular semana actual y opciones de semanas
-  const calcularSemanaActual = () => {
-    const hoy = new Date();
-    const d = new Date(Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-  };
-
-  const semanaActual = calcularSemanaActual();
-  const opcionesSemanas = Array.from({ length: 6 }, (_, i) => {
+  // Opciones de semanas (solo cantidad, sin rangos)
+  const opcionesSemanas = Array.from({ length: 12 }, (_, i) => {
     const numSemanas = i + 1;
-    const semanaInicio = semanaActual;
-    const semanaFin = semanaActual + numSemanas - 1;
     return {
       value: numSemanas,
       label: numSemanas === 1 
-        ? `1 semana (Semana ${semanaInicio})`
-        : `${numSemanas} semanas (Semana ${semanaInicio} - ${semanaFin})`
+        ? '1 semana'
+        : `${numSemanas} semanas`
     };
   });
 
