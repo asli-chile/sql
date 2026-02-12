@@ -248,7 +248,7 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
       const nuevoDestino = {
         puerto: puertoNombre,
         puerto_nombre: escalaForm.puerto_nombre.trim() || puertoNombre,
-        area: escalaForm.area,
+        area: escalaForm.area || 'ASIA', // Asegurar que siempre tenga un área
         orden: formData.destinos.length,
       };
       setFormData({
@@ -370,7 +370,22 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
       const url = `${apiUrl}/api/admin/servicios-unicos`;
       const method = editingServicio ? 'PUT' : 'POST';
 
-      const payload = editingServicio ? { id: editingServicio.id, ...formData } : formData;
+      // Asegurar que todos los destinos tengan el campo area
+      const destinosConArea = formData.destinos.map(d => ({
+        ...d,
+        area: d.area || 'ASIA',
+      }));
+
+      const payload = editingServicio 
+        ? { 
+            id: editingServicio.id, 
+            ...formData,
+            destinos: destinosConArea,
+          } 
+        : {
+            ...formData,
+            destinos: destinosConArea,
+          };
 
       const response = await fetch(url, {
         method,
