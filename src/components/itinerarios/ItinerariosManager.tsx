@@ -163,12 +163,14 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         }
 
         // Cargar POLs en segundo plano (puede ser lento, no bloquear la UI)
-        supabase
-          .from('registros')
-          .select('pol')
-          .not('pol', 'is', null)
-          .is('deleted_at', null)
-          .then(({ data: registrosData, error: registrosError }) => {
+        (async () => {
+          try {
+            const { data: registrosData, error: registrosError } = await supabase
+              .from('registros')
+              .select('pol')
+              .not('pol', 'is', null)
+              .is('deleted_at', null);
+            
             if (!registrosError && registrosData) {
               const polsUnicos = Array.from(new Set(registrosData.map((r: any) => r.pol).filter(Boolean))).sort() as string[];
               setPols(polsUnicos);
@@ -176,10 +178,10 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
                 setPol(polsUnicos[0]);
               }
             }
-          })
-          .catch(() => {
+          } catch {
             // Si falla, no es crítico, el usuario puede ingresar el POL manualmente
-          });
+          }
+        })();
 
         // Procesar servicios únicos y consorcios
         const serviciosList: Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }> = [];
