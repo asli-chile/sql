@@ -6,6 +6,13 @@ import type { ItinerarioWithEscalas, ItinerarioEscala } from '@/types/itinerario
 import { createClient } from '@/lib/supabase-browser';
 import { useToast } from '@/hooks/useToast';
 
+const AREAS = [
+  'ASIA',
+  'EUROPA',
+  'AMERICA',
+  'INDIA-MEDIOORIENTE',
+] as const;
+
 interface VoyageDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -69,7 +76,10 @@ export function VoyageDrawer({
   useEffect(() => {
     if (itinerario) {
       setEscalas(
-        [...(itinerario.escalas || [])].sort((a, b) => a.orden - b.orden)
+        [...(itinerario.escalas || [])].map(e => ({
+          ...e,
+          area: e.area || 'ASIA' // Asegurar que siempre tenga un área por defecto
+        })).sort((a, b) => a.orden - b.orden)
       );
       setPol(itinerario.pol || '');
       setEtd(itinerario.etd ? itinerario.etd.split('T')[0] : '');
@@ -143,6 +153,7 @@ export function VoyageDrawer({
       eta: null,
       dias_transito: null,
       orden: escalas.length + 1,
+      area: 'ASIA',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -214,6 +225,7 @@ export function VoyageDrawer({
             eta: etaFormateada,
             dias_transito: e.dias_transito,
             orden: index + 1,
+            area: e.area || 'ASIA',
           };
         });
 
@@ -397,7 +409,7 @@ export function VoyageDrawer({
                     className="rounded-lg border border-slate-200 dark:border-slate-700 p-4"
                   >
                     <div className="grid grid-cols-12 gap-4 items-end">
-                      <div className="col-span-5">
+                      <div className="col-span-4">
                         <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
                           Puerto
                         </label>
@@ -417,7 +429,31 @@ export function VoyageDrawer({
                           className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
                         />
                       </div>
-                      <div className="col-span-5">
+                      <div className="col-span-3">
+                        <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
+                          Región
+                        </label>
+                        <select
+                          value={escala.area || 'ASIA'}
+                          onChange={(e) => {
+                            setEscalas((prev) =>
+                              prev.map((esc) =>
+                                esc.id === escala.id
+                                  ? { ...esc, area: e.target.value }
+                                  : esc
+                              )
+                            );
+                          }}
+                          className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+                        >
+                          {AREAS.map((area) => (
+                            <option key={area} value={area}>
+                              {area}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-span-3">
                         <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
                           ETA
                         </label>
