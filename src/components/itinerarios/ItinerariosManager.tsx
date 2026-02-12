@@ -1310,10 +1310,10 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
 
       const result = await response.json();
       if (!response.ok) {
-        console.error('❌ Error al crear itinerario:', result);
         const errorMessage = result?.error || 'No se pudo guardar el itinerario.';
         const errorDetails = result?.details ? `\nDetalles: ${result.details}` : '';
         const errorCode = result?.code ? `\nCódigo: ${result.code}` : '';
+        console.error('Error al crear itinerario:', { error: errorMessage, details: errorDetails, code: errorCode, payload });
         throw new Error(`${errorMessage}${errorDetails}${errorCode}`);
       }
 
