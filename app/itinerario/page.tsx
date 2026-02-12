@@ -53,7 +53,7 @@ export default function ItinerarioPage() {
   const [itinerarios, setItinerarios] = useState<ItinerarioWithEscalas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersType>({});
+  const [filters, setFilters] = useState<FiltersType>({ semanas: 6 });
   const [selectedItinerario, setSelectedItinerario] = useState<ItinerarioWithEscalas | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
@@ -221,6 +221,34 @@ export default function ItinerarioPage() {
     [itinerarios]
   );
 
+  // Obtener regiones únicas disponibles en los itinerarios
+  const regionesDisponibles = useMemo(() => {
+    if (!itinerarios || itinerarios.length === 0) {
+      return [];
+    }
+    
+    const regionesSet = new Set<string>();
+    
+    // Extraer regiones de todas las escalas
+    itinerarios.forEach((it) => {
+      if (it.escalas && Array.isArray(it.escalas)) {
+        it.escalas.forEach((escala: any) => {
+          // Verificar si el campo area existe y tiene valor
+          if (escala?.area) {
+            const areaValue = typeof escala.area === 'string' 
+              ? escala.area.trim() 
+              : String(escala.area).trim();
+            if (areaValue) {
+              regionesSet.add(areaValue.toUpperCase());
+            }
+          }
+        });
+      }
+    });
+    
+    return Array.from(regionesSet).sort();
+  }, [itinerarios]);
+
   // Calcular semana actual para filtro de semanas
   const calcularSemanaActual = () => {
     const hoy = new Date();
@@ -234,8 +262,17 @@ export default function ItinerarioPage() {
   // Filtrar itinerarios
   const filteredItinerarios = useMemo(() => {
     const semanaActual = calcularSemanaActual();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Inicio del día para comparar solo fechas
     
     return itinerarios.filter((it) => {
+      // Filtrar solo itinerarios con ETD >= fecha actual (aún no cumplido)
+      if (it.etd) {
+        const etdDate = new Date(it.etd);
+        etdDate.setHours(0, 0, 0, 0);
+        if (etdDate < hoy) return false; // Excluir ETD pasados
+      }
+      
       if (filters.servicio && it.servicio !== filters.servicio) return false;
       if (filters.consorcio && it.consorcio !== filters.consorcio) return false;
       if (filters.pol && it.pol !== filters.pol) return false;
@@ -257,8 +294,17 @@ export default function ItinerarioPage() {
   // Filtrar itinerarios para el modal de vista
   const filteredItinerariosForModal = useMemo(() => {
     const semanaActual = calcularSemanaActual();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Inicio del día para comparar solo fechas
     
     return itinerarios.filter((it) => {
+      // Filtrar solo itinerarios con ETD >= fecha actual (aún no cumplido)
+      if (it.etd) {
+        const etdDate = new Date(it.etd);
+        etdDate.setHours(0, 0, 0, 0);
+        if (etdDate < hoy) return false; // Excluir ETD pasados
+      }
+      
       if (viewModalFilters.servicio && it.servicio !== viewModalFilters.servicio) return false;
       if (viewModalFilters.consorcio && it.consorcio !== viewModalFilters.consorcio) return false;
       if (viewModalFilters.pol && it.pol !== viewModalFilters.pol) return false;
@@ -540,6 +586,7 @@ export default function ItinerarioPage() {
                 consorcios={consorcios}
                 serviciosPorNaviera={serviciosPorNaviera}
                 pols={pols}
+                regiones={regionesDisponibles}
                 filters={filters}
                 onFiltersChange={setFilters}
                 onReset={() => setFilters({})}
@@ -845,6 +892,7 @@ export default function ItinerarioPage() {
                       consorcios={consorcios}
                       serviciosPorNaviera={serviciosPorNaviera}
                       pols={pols}
+                      regiones={regionesDisponibles}
                       filters={viewModalFilters}
                       onFiltersChange={setViewModalFilters}
                       onReset={() => setViewModalFilters({})}

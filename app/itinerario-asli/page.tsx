@@ -15,58 +15,140 @@ export default function ItinerarioPublicPage() {
   const [itinerarios, setItinerarios] = useState<ItinerarioWithEscalas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersType>({});
+  const [filters, setFilters] = useState<FiltersType>({ semanas: 6 });
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
+  const [serviciosUnicos, setServiciosUnicos] = useState<any[]>([]);
+  const [consorcios, setConsorcios] = useState<any[]>([]);
 
   useEffect(() => {
-    const loadItinerarios = async () => {
+    const loadData = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        const data = await fetchPublicItinerarios();
-        setItinerarios(data);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        
+        // Cargar itinerarios, servicios únicos y consorcios en paralelo
+        const [itinerariosData, serviciosResponse, consorciosResponse] = await Promise.all([
+          fetchPublicItinerarios(),
+          fetch(`${apiUrl}/api/admin/servicios-unicos`).then(r => r.json()),
+          fetch(`${apiUrl}/api/admin/consorcios`).then(r => r.json())
+        ]);
+        
+        setItinerarios(itinerariosData);
+        
+        if (serviciosResponse.success && serviciosResponse.servicios) {
+          setServiciosUnicos(serviciosResponse.servicios.filter((s: any) => s.activo));
+        }
+        
+        if (consorciosResponse.success && consorciosResponse.consorcios) {
+          setConsorcios(consorciosResponse.consorcios);
+        }
       } catch (error: any) {
-        console.error('Error loading itinerarios:', error);
-        setError(error?.message || 'Error al cargar itinerarios');
+        console.error('Error loading data:', error);
+        setError(error?.message || 'Error al cargar datos');
       } finally {
         setIsLoading(false);
       }
     };
 
-    void loadItinerarios();
+    void loadData();
   }, []);
 
-  // Obtener valores únicos para los filtros
-  const servicios = useMemo(
-    () => Array.from(new Set(itinerarios.map((it) => it.servicio))).sort(),
-    [itinerarios]
-  );
+  // Crear lista de servicios para el filtro (servicios únicos + consorcios)
+  const serviciosParaFiltro = useMemo(() => {
+    const lista: Array<{ id: string; nombre: string; tipo: 'servicio_unico' | 'consorcio'; consorcio?: string }> = [];
+    
+    // Agregar servicios únicos
+    serviciosUnicos.forEach((servicio) => {
+      lista.push({
+        id: servicio.id,
+        nombre: servicio.nombre,
+        tipo: 'servicio_unico',
+        consorcio: servicio.naviera_nombre || undefined
+      });
+    });
+    
+    // Agregar consorcios
+    consorcios.forEach((consorcio) => {
+      lista.push({
+        id: consorcio.id,
+        nombre: consorcio.nombre,
+        tipo: 'consorcio'
+      });
+    });
+    
+    return lista.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [serviciosUnicos, consorcios]);
 
-  const consorcios = useMemo(
-    () =>
-      Array.from(
-        new Set(itinerarios.map((it) => it.consorcio).filter((c): c is string => !!c))
-      ).sort(),
-    [itinerarios]
-  );
-
-  // Mapa de servicios por naviera
-  const serviciosPorNaviera = useMemo(() => {
-    const mapa: Record<string, string[]> = {};
-    itinerarios.forEach((it) => {
-      if (it.consorcio && it.servicio) {
-        if (!mapa[it.consorcio]) {
-          mapa[it.consorcio] = [];
-        }
-        if (!mapa[it.consorcio].includes(it.servicio)) {
-          mapa[it.consorcio].push(it.servicio);
-        }
+  // Mapa de servicio_id a consorcio (para saber qué consorcio contiene un servicio)
+  const servicioAConsorcioMap = useMemo(() => {
+    const mapa: Record<string, string> = {};
+    consorcios.forEach((consorcio) => {
+      if (consorcio.servicios) {
+        consorcio.servicios.forEach((servicioRel: any) => {
+          if (servicioRel.servicio_unico?.id) {
+            mapa[servicioRel.servicio_unico.id] = consorcio.nombre;
+          }
+        });
       }
     });
-    Object.keys(mapa).forEach((naviera) => {
-      mapa[naviera].sort();
-    });
     return mapa;
+  }, [consorcios]);
+
+  // Obtener consorcio del servicio seleccionado
+  const consorcioDelServicioSeleccionado = useMemo(() => {
+    if (!filters.servicio) return null;
+    // Buscar el servicio en la lista
+    const servicio = serviciosParaFiltro.find(s => s.nombre === filters.servicio);
+    if (servicio && servicio.tipo === 'servicio_unico' && servicio.id) {
+      return servicioAConsorcioMap[servicio.id] || null;
+    }
+    return null;
+  }, [filters.servicio, serviciosParaFiltro, servicioAConsorcioMap]);
+
+  // Obtener navieras únicas de los itinerarios
+  const navierasUnicas = useMemo(() => {
+    const navierasSet = new Set<string>();
+    itinerarios.forEach((it) => {
+      // Priorizar navierasDelServicio si está disponible
+      if (it.navierasDelServicio && it.navierasDelServicio.length > 0) {
+        it.navierasDelServicio.forEach((nav: string) => navierasSet.add(nav));
+      } else if (it.naviera) {
+        navierasSet.add(it.naviera);
+      } else if (it.consorcio) {
+        // Si no hay naviera específica, usar consorcio como fallback
+        navierasSet.add(it.consorcio);
+      }
+    });
+    return Array.from(navierasSet).sort();
+  }, [itinerarios]);
+
+  // Obtener regiones únicas disponibles en los itinerarios
+  const regionesDisponibles = useMemo(() => {
+    if (!itinerarios || itinerarios.length === 0) {
+      return [];
+    }
+    
+    const regionesSet = new Set<string>();
+    
+    // Extraer regiones de todas las escalas
+    itinerarios.forEach((it) => {
+      if (it.escalas && Array.isArray(it.escalas)) {
+        it.escalas.forEach((escala: any) => {
+          // Verificar si el campo area existe y tiene valor
+          if (escala?.area) {
+            const areaValue = typeof escala.area === 'string' 
+              ? escala.area.trim() 
+              : String(escala.area).trim();
+            if (areaValue) {
+              regionesSet.add(areaValue.toUpperCase());
+            }
+          }
+        });
+      }
+    });
+    
+    return Array.from(regionesSet).sort();
   }, [itinerarios]);
 
   const pols = useMemo(
@@ -87,9 +169,45 @@ export default function ItinerarioPublicPage() {
   // Filtrar itinerarios
   const filteredItinerarios = useMemo(() => {
     const semanaActual = calcularSemanaActual();
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0); // Inicio del día para comparar solo fechas
     
     return itinerarios.filter((it) => {
-      if (filters.servicio && it.servicio !== filters.servicio) return false;
+      // Filtrar solo itinerarios con ETD >= fecha actual (aún no cumplido)
+      if (it.etd) {
+        const etdDate = new Date(it.etd);
+        etdDate.setHours(0, 0, 0, 0);
+        if (etdDate < hoy) return false; // Excluir ETD pasados
+      }
+      
+      // Si hay filtro de servicio
+      if (filters.servicio) {
+        // Verificar si el servicio seleccionado es parte de un consorcio
+        const servicioSeleccionado = serviciosParaFiltro.find(s => s.nombre === filters.servicio);
+        if (servicioSeleccionado) {
+          // Si el servicio es parte de un consorcio, mostrar todos los itinerarios del consorcio
+          if (servicioSeleccionado.tipo === 'servicio_unico' && consorcioDelServicioSeleccionado) {
+            // Mostrar itinerarios del consorcio o del servicio específico
+            if (it.consorcio !== consorcioDelServicioSeleccionado && it.servicio !== filters.servicio) {
+              return false;
+            }
+          } else if (servicioSeleccionado.tipo === 'consorcio') {
+            // Si se seleccionó un consorcio, mostrar todos los itinerarios de ese consorcio
+            if (it.servicio !== filters.servicio) {
+              return false;
+            }
+          } else {
+            // Servicio único sin consorcio
+            if (it.servicio !== filters.servicio) {
+              return false;
+            }
+          }
+        } else {
+          // Si no se encuentra el servicio, usar comparación directa
+          if (it.servicio !== filters.servicio) return false;
+        }
+      }
+      
       if (filters.consorcio && it.consorcio !== filters.consorcio) return false;
       if (filters.pol && it.pol !== filters.pol) return false;
       if (filters.region) {
@@ -103,7 +221,7 @@ export default function ItinerarioPublicPage() {
       }
       return true;
     });
-  }, [itinerarios, filters]);
+  }, [itinerarios, filters, serviciosParaFiltro, consorcioDelServicioSeleccionado]);
 
   return (
     <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#202020]' : 'bg-[#F5F5F5]'}`}>
@@ -159,10 +277,12 @@ export default function ItinerarioPublicPage() {
           {/* Filtros */}
           <div className="flex-shrink-0 w-full">
             <ItinerarioFilters
-              servicios={servicios}
-              consorcios={consorcios}
-              serviciosPorNaviera={serviciosPorNaviera}
+              servicios={serviciosParaFiltro.map(s => s.nombre)}
+              serviciosCompletos={serviciosParaFiltro}
+              consorcios={navierasUnicas}
+              consorcioDelServicio={consorcioDelServicioSeleccionado}
               pols={pols}
+              regiones={regionesDisponibles}
               filters={filters}
               onFiltersChange={setFilters}
               onReset={() => setFilters({})}

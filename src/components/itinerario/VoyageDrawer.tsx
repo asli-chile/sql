@@ -30,6 +30,15 @@ export function VoyageDrawer({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Función para calcular el número de semana del año basado en el ETD
+  const calcularSemana = (fecha: Date): number => {
+    const d = new Date(Date.UTC(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
   // Cargar POLs disponibles
   useEffect(() => {
     const cargarPols = async () => {
@@ -153,18 +162,22 @@ export function VoyageDrawer({
 
       // Formatear ETD en zona horaria local para evitar pérdida de días
       let etdFormateada = null;
+      let semanaCalculada = null;
       if (etd) {
         const [año, mes, dia] = etd.split('-');
         const fechaLocal = new Date(parseInt(año), parseInt(mes) - 1, parseInt(dia), 12, 0, 0);
         etdFormateada = fechaLocal.toISOString();
+        // Calcular la semana basada en el ETD
+        semanaCalculada = calcularSemana(fechaLocal);
       }
 
-      // Actualizar el POL, ETD y viaje del itinerario
+      // Actualizar el POL, ETD, semana y viaje del itinerario
       const { error: updateError } = await supabase
         .from('itinerarios')
         .update({ 
           pol: pol || null,
           etd: etdFormateada,
+          semana: semanaCalculada,
           viaje: viaje || null
         })
         .eq('id', itinerario.id);

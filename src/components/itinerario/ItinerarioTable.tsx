@@ -266,34 +266,75 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                   
                   return <React.Fragment key={consorcio}>{logos}</React.Fragment>;
                 })}
-                <div className="flex-1 min-w-0 text-center">
+                <div className="flex-1 min-w-0 flex items-center justify-between">
+                  <div className="flex-1 min-w-0 text-center">
+                    {(() => {
+                      // Obtener navieras únicas de todos los itinerarios del grupo
+                      const navierasUnicas = new Set<string>();
+                      group.items.forEach((it: any) => {
+                        if (it.navierasDelServicio && it.navierasDelServicio.length > 0) {
+                          it.navierasDelServicio.forEach((nav: string) => navierasUnicas.add(nav));
+                        } else if (it.consorcio) {
+                          navierasUnicas.add(it.consorcio);
+                        } else if (it.naviera) {
+                          navierasUnicas.add(it.naviera);
+                        }
+                      });
+                      
+                      const navierasTexto = navierasUnicas.size > 0 
+                        ? Array.from(navierasUnicas).join(' - ')
+                        : (group.consorcios.length > 0 ? group.consorcios.join(' / ') : group.servicio);
+                      
+                      // Obtener regiones únicas de las escalas
+                      const regionesUnicas = new Set<string>();
+                      group.items.forEach((it: any) => {
+                        if (it.escalas) {
+                          it.escalas.forEach((escala: any) => {
+                            if (escala.area) {
+                              regionesUnicas.add(escala.area);
+                            }
+                          });
+                        }
+                      });
+                      const regionesTexto = regionesUnicas.size > 0 
+                        ? Array.from(regionesUnicas).join(' / ')
+                        : null;
+                      
+                      return (
+                        <>
+                          <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
+                            {navierasTexto}
+                          </h2>
+                          <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
+                            Servicio: <span className="font-semibold">{group.servicio}</span>
+                          </p>
+                        </>
+                      );
+                    })()}
+                  </div>
                   {(() => {
-                    // Obtener navieras únicas de todos los itinerarios del grupo
-                    const navierasUnicas = new Set<string>();
+                    // Obtener regiones únicas de las escalas
+                    const regionesUnicas = new Set<string>();
                     group.items.forEach((it: any) => {
-                      if (it.navierasDelServicio && it.navierasDelServicio.length > 0) {
-                        it.navierasDelServicio.forEach((nav: string) => navierasUnicas.add(nav));
-                      } else if (it.consorcio) {
-                        navierasUnicas.add(it.consorcio);
-                      } else if (it.naviera) {
-                        navierasUnicas.add(it.naviera);
+                      if (it.escalas) {
+                        it.escalas.forEach((escala: any) => {
+                          if (escala.area) {
+                            regionesUnicas.add(escala.area);
+                          }
+                        });
                       }
                     });
+                    const regionesTexto = regionesUnicas.size > 0 
+                      ? Array.from(regionesUnicas).join(' / ')
+                      : null;
                     
-                    const navierasTexto = navierasUnicas.size > 0 
-                      ? Array.from(navierasUnicas).join(' - ')
-                      : (group.consorcios.length > 0 ? group.consorcios.join(' / ') : group.servicio);
-                    
-                    return (
-                      <>
-                        <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
-                          {navierasTexto}
-                        </h2>
-                        <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
-                        Servicio: <span className="font-semibold">{group.servicio}</span>
-                      </p>
-                    </>
-                    );
+                    return regionesTexto ? (
+                      <div className="flex-shrink-0 ml-4">
+                        <h3 className="text-lg font-bold text-white dark:text-white leading-tight">
+                          {regionesTexto}
+                        </h3>
+                      </div>
+                    ) : null;
                   })()}
                 </div>
               </div>

@@ -23,7 +23,7 @@ export async function fetchPublicItinerarios(): Promise<ItinerarioWithEscalas[]>
     const result = await response.json();
     return result.itinerarios || [];
   } catch (error: any) {
-    console.error('Error fetching public itinerarios:', error);
+    console.error('❌ Error fetching public itinerarios:', error);
     throw error;
   }
 }

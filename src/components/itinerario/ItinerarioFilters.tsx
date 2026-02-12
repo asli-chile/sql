@@ -2,10 +2,19 @@
 
 import type { ItinerarioFilters } from '@/types/itinerarios';
 
+interface ServicioCompleto {
+  id: string;
+  nombre: string;
+  tipo: 'servicio_unico' | 'consorcio';
+  consorcio?: string;
+}
+
 interface ItinerarioFiltersProps {
   servicios: string[];
+  serviciosCompletos?: ServicioCompleto[]; // Lista completa de servicios con información adicional
   consorcios: string[];
-  serviciosPorNaviera?: Record<string, string[]>; // Servicios filtrados por naviera
+  consorcioDelServicio?: string | null; // Consorcio del servicio seleccionado
+  serviciosPorNaviera?: Record<string, string[]>; // Servicios filtrados por naviera (deprecated)
   pols: string[];
   regiones?: string[];
   filters: ItinerarioFilters;
@@ -15,11 +24,13 @@ interface ItinerarioFiltersProps {
   onEtaViewModeChange?: (mode: 'dias' | 'fecha' | 'ambos') => void;
 }
 
-const REGIONES = ['ASIA', 'EUROPA', 'AMERICA', 'INDIA-MEDIOORIENTE'] as const;
+// REGIONES ahora se obtienen dinámicamente desde los itinerarios
 
 export function ItinerarioFilters({
   servicios,
+  serviciosCompletos = [],
   consorcios,
+  consorcioDelServicio,
   serviciosPorNaviera = {},
   pols,
   regiones = [],
@@ -31,17 +42,8 @@ export function ItinerarioFilters({
 }: ItinerarioFiltersProps) {
   const handleChange = (key: keyof ItinerarioFilters, value: string | number | undefined) => {
     const newFilters: ItinerarioFilters = { ...filters, [key]: value || undefined };
-    // Si cambia la naviera, limpiar el servicio
-    if (key === 'consorcio' && value !== filters.consorcio) {
-      newFilters.servicio = undefined;
-    }
     onFiltersChange(newFilters);
   };
-
-  // Obtener servicios filtrados por naviera seleccionada
-  const serviciosFiltrados = filters.consorcio && serviciosPorNaviera[filters.consorcio]
-    ? serviciosPorNaviera[filters.consorcio]
-    : servicios;
 
   const handleReset = () => {
     const emptyFilters: ItinerarioFilters = {};
@@ -86,11 +88,13 @@ export function ItinerarioFilters({
             style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">Todas las regiones</option>
-            {REGIONES.map((region) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
-            ))}
+            {Array.isArray(regiones) && regiones.length > 0 ? (
+              regiones.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))
+            ) : null}
           </select>
         </div>
 
@@ -114,7 +118,7 @@ export function ItinerarioFilters({
           </select>
         </div>
 
-        {/* Servicio (filtrado por naviera) */}
+        {/* Servicio (lista desplegable independiente) */}
         <div className="flex-1 min-w-[200px]">
           <label className="block text-xs font-semibold text-[#323130] dark:text-[#C0C0C0] mb-1 uppercase tracking-wide">
             Servicio
@@ -122,19 +126,21 @@ export function ItinerarioFilters({
           <select
             value={filters.servicio || ''}
             onChange={(e) => handleChange('servicio', e.target.value)}
-            disabled={!filters.consorcio}
-            className={`w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all ${!filters.consorcio ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className="w-full border bg-white dark:bg-[#1F1F1F] px-2 py-1.5 text-xs text-[#1F1F1F] dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-[#0078D4] focus:border-[#0078D4] transition-all"
             style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
-            <option value="">
-              {filters.consorcio ? 'Todos los servicios' : 'Selecciona naviera primero'}
-            </option>
-            {serviciosFiltrados.map((servicio) => (
+            <option value="">Todos los servicios</option>
+            {servicios.map((servicio) => (
               <option key={servicio} value={servicio}>
                 {servicio}
               </option>
             ))}
           </select>
+          {filters.servicio && consorcioDelServicio && (
+            <p className="text-xs text-[#0078D4] dark:text-[#4FC3F7] mt-1">
+              Consorcio: {consorcioDelServicio}
+            </p>
+          )}
         </div>
 
         {/* Semanas */}

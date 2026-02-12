@@ -21,10 +21,22 @@ export async function GET() {
       .from('itinerarios')
       .select(`
         *,
-        escalas:itinerario_escalas(*)
+        escalas:itinerario_escalas(
+          id,
+          itinerario_id,
+          puerto,
+          puerto_nombre,
+          eta,
+          dias_transito,
+          orden,
+          area,
+          created_at,
+          updated_at
+        )
       `)
       .order('servicio', { ascending: true })
       .order('etd', { ascending: true });
+
 
     if (itinerariosError) {
       if (itinerariosError.message?.includes('does not exist') || 
@@ -53,8 +65,77 @@ export async function GET() {
       serviciosMap.get(servicioKey)!.push(it);
     });
 
+    // Función para obtener navieras del servicio/consorcio (similar a la API admin)
+    const obtenerNavierasDelServicio = async (servicioNombre: string, servicioId: string | null) => {
+      try {
+        if (servicioId) {
+          const { data: servicioUnico } = await adminClient
+            .from('servicios_unicos')
+            .select('id, naviera_id')
+            .eq('id', servicioId)
+            .single();
+          
+          if (servicioUnico?.naviera_id) {
+            const { data: navieraData } = await adminClient
+              .from('catalogos_navieras')
+              .select('id, nombre')
+              .eq('id', servicioUnico.naviera_id)
+              .single();
+            
+            if (navieraData?.nombre) {
+              return [navieraData.nombre];
+            }
+          }
+        }
+        
+        const { data: consorcio } = await adminClient
+          .from('consorcios')
+          .select('id')
+          .eq('nombre', servicioNombre)
+          .single();
+        
+        if (consorcio?.id) {
+          const { data: consorcioServicios } = await adminClient
+            .from('consorcios_servicios')
+            .select(`
+              servicio_unico_id,
+              servicio_unico:servicios_unicos(
+                naviera_id
+              )
+            `)
+            .eq('consorcio_id', consorcio.id)
+            .eq('activo', true);
+          
+          if (consorcioServicios && consorcioServicios.length > 0) {
+            const navieraIds = new Set<string>();
+            consorcioServicios.forEach((cs: any) => {
+              if (cs.servicio_unico?.naviera_id) {
+                navieraIds.add(cs.servicio_unico.naviera_id);
+              }
+            });
+            
+            if (navieraIds.size > 0) {
+              const { data: navieras } = await adminClient
+                .from('catalogos_navieras')
+                .select('id, nombre')
+                .in('id', Array.from(navieraIds));
+              
+              if (navieras && navieras.length > 0) {
+                return navieras.map((n: any) => n.nombre).sort();
+              }
+            }
+          }
+        }
+        
+        return [];
+      } catch (error) {
+        console.error('Error al obtener navieras del servicio:', error);
+        return [];
+      }
+    };
+
     // Para cada servicio, encontrar el primer viaje y ordenar todas las escalas según su ETA
-    const itinerariosConEscalasOrdenadas = (itinerarios || []).map((it: any) => {
+    const itinerariosConEscalasOrdenadas = await Promise.all((itinerarios || []).map(async (it: any) => {
       const servicioKey = it.servicio_id || it.servicio || 'sin-servicio';
       const viajesDelServicio = serviciosMap.get(servicioKey) || [];
       
@@ -98,11 +179,15 @@ export async function GET() {
         return ordenA - ordenB;
       });
 
+      // Obtener navieras del servicio/consorcio
+      const navierasDelServicio = await obtenerNavierasDelServicio(it.servicio, it.servicio_id);
+      
       return {
         ...it,
         escalas: escalasOrdenadas,
+        navierasDelServicio,
       };
-    });
+    }));
 
     return NextResponse.json({
       success: true,
