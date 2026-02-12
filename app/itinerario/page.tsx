@@ -643,7 +643,7 @@ export default function ItinerarioPage() {
 
         {/* Main Content */}
         <main className="flex-1 overflow-auto min-w-0 w-full">
-          <div className="flex flex-col mx-auto w-full max-w-[1600px] px-2 sm:px-3 py-2 space-y-2">
+          <div className="flex flex-col w-full px-1 sm:px-2 py-2 space-y-2">
             {/* Filtros */}
             <div className="flex-shrink-0">
               <ItinerarioFilters
@@ -949,7 +949,7 @@ export default function ItinerarioPage() {
 
               {/* Contenido del modal */}
               <div className="flex-1 overflow-auto min-h-0">
-                <div className="flex flex-col mx-auto w-full max-w-[1600px] px-2 sm:px-3 py-2 space-y-2">
+                <div className="flex flex-col w-full px-1 sm:px-2 py-2 space-y-2">
                   {/* Filtros */}
                   <div className="flex-shrink-0">
                     <ItinerarioFilters
