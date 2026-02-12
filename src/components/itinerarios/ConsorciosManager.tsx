@@ -359,7 +359,7 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
         }
 
         if (!formData.nombre.trim()) {
-          setError('El nombre del consorcio es requerido');
+          setError('El nombre del consorcio es requerido. Debes ingresar un nombre personalizado para el consorcio.');
           return;
         }
 
@@ -411,7 +411,8 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
           })),
         ];
 
-        const nombreConsorcio = formData.nombre.trim() || servicioBaseData.nombre;
+        // Usar el nombre personalizado ingresado por el usuario
+        const nombreConsorcio = formData.nombre.trim();
         const payload = {
           nombre: nombreConsorcio,
           descripcion: formData.descripcion || `Consorcio creado desde ${servicioBaseData.nombre}`,
@@ -920,7 +921,8 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                       onChange={(e) => {
                         setServicioBase(e.target.value);
                         const servicio = serviciosUnicos.find(s => s.id === e.target.value);
-                        if (servicio) {
+                        // Solo sugerir el nombre si el campo está vacío, pero permitir personalización
+                        if (servicio && !formData.nombre.trim()) {
                           setFormData({
                             ...formData,
                             nombre: servicio.nombre,
@@ -1013,10 +1015,14 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                   className={`mt-1 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
-                  placeholder="Ej: ANDES EXPRESS, ASIA EXPRESS"
+                  placeholder={modoConversion && servicioBase ? `Ej: ${serviciosUnicos.find(s => s.id === servicioBase)?.nombre || 'Nombre del consorcio'}` : "Ej: ANDES EXPRESS, ASIA EXPRESS"}
                   required
-                  disabled={modoConversion && servicioBase !== ''}
                 />
+                {modoConversion && servicioBase && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puedes personalizar el nombre del consorcio. El nombre del servicio base es solo una sugerencia.
+                  </p>
+                )}
               </label>
 
               {/* Descripción */}
@@ -1135,34 +1141,46 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
 
               {/* Agregar servicio único (solo si no está en modo conversión ni modo agregar navieras) */}
               {!modoConversion && !modoAgregarNavieras && (
-              <div className="space-y-2">
+              <div className="space-y-2 p-4 border rounded bg-purple-50 dark:bg-purple-900/20">
                 <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wide">Agregar Servicio Único</span>
+                  <div className="mb-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide">Mezclar Servicios Únicos</span>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                      Puedes agregar cualquier servicio único disponible para crear un consorcio personalizado. Mezcla servicios con diferentes nombres y navieras según necesites.
+                    </p>
+                  </div>
                   <div className="mt-1 flex gap-2">
                     <select
                       value={servicioSeleccionado}
                       onChange={(e) => setServicioSeleccionado(e.target.value)}
                       className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                     >
-                      <option value="">Seleccionar servicio único existente</option>
-                      {serviciosDisponibles.map((servicio) => (
-                        <option key={servicio.id} value={servicio.id}>
-                          {servicio.nombre} ({servicio.naviera_nombre})
-                        </option>
-                      ))}
+                      <option value="">Seleccionar servicio único para agregar</option>
+                      {serviciosDisponibles.length === 0 ? (
+                        <option value="" disabled>No hay servicios únicos disponibles</option>
+                      ) : (
+                        serviciosDisponibles.map((servicio) => (
+                          <option key={servicio.id} value={servicio.id}>
+                            {servicio.nombre} - {servicio.naviera_nombre}
+                          </option>
+                        ))
+                      )}
                     </select>
                     <button
                       type="button"
                       onClick={agregarServicioUnico}
                       disabled={!servicioSeleccionado}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded"
+                      className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded flex items-center gap-2"
                     >
                       <Plus className="h-4 w-4" />
+                      Agregar
                     </button>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Solo puedes seleccionar servicios únicos que ya existen en el sistema
-                  </p>
+                  {serviciosDisponibles.length > 0 && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      <strong>{serviciosDisponibles.length}</strong> servicio(s) único(s) disponible(s) para agregar al consorcio
+                    </p>
+                  )}
                 </label>
               </div>
               )}
@@ -1170,7 +1188,12 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
               {/* Servicios únicos incluidos */}
               {formData.servicios_unicos.length > 0 && (
                 <div className="space-y-4">
-                  <h4 className="text-sm font-semibold">Servicios Únicos Incluidos</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Servicios Únicos Incluidos en el Consorcio</h4>
+                    <span className="text-xs text-gray-500 bg-gray-100 dark:bg-slate-800 px-2 py-1 rounded">
+                      {formData.servicios_unicos.length} servicio(s)
+                    </span>
+                  </div>
                   {formData.servicios_unicos.map((servicioForm) => {
                     const servicioUnico = serviciosUnicos.find(s => s.id === servicioForm.servicio_unico_id);
                     if (!servicioUnico) return null;
