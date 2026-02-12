@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Plus, Trash2, Save, Edit2, X, Check } from 'lucide-react';
+import { createClient } from '@/lib/supabase-browser';
 import type { Consorcio, ServicioUnico, ConsorcioFormData } from '@/types/servicios';
 
 interface ConsorciosManagerProps {
@@ -26,6 +27,18 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
     servicios_unicos: [],
   });
   const [servicioSeleccionado, setServicioSeleccionado] = useState<string>('');
+  
+  // Estado para modo "Convertir servicio en consorcio"
+  const [modoConversion, setModoConversion] = useState(false);
+  const [servicioBase, setServicioBase] = useState<string>('');
+  const [navierasAdicionales, setNavierasAdicionales] = useState<string[]>([]);
+  const [navieraSeleccionada, setNavieraSeleccionada] = useState<string>('');
+  const [navierasDisponibles, setNavierasDisponibles] = useState<Array<{ id: string; nombre: string }>>([]);
+  
+  // Estado para modo "Agregar navieras a servicio existente"
+  const [modoAgregarNavieras, setModoAgregarNavieras] = useState(false);
+  const [serviciosAgrupados, setServiciosAgrupados] = useState<Record<string, ServicioUnico[]>>({});
+  const [serviciosSeleccionadosAgrupados, setServiciosSeleccionadosAgrupados] = useState<string[]>([]);
 
   // Cargar consorcios y servicios únicos
   const cargarDatos = async () => {
@@ -49,6 +62,18 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
         throw new Error(serviciosResult?.error || 'Error al cargar servicios únicos');
       }
       setServiciosUnicos(serviciosResult.servicios || []);
+      
+      // Cargar navieras disponibles
+      const supabase = createClient();
+      const { data: navierasData } = await supabase
+        .from('catalogos_navieras')
+        .select('id, nombre')
+        .eq('activo', true)
+        .order('nombre');
+      
+      if (navierasData) {
+        setNavierasDisponibles(navierasData);
+      }
     } catch (err: any) {
       setError(err?.message || 'Error al cargar datos');
     } finally {
@@ -60,6 +85,33 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
     void cargarDatos();
   }, []);
 
+  // Agrupar servicios únicos por nombre cuando cambian los servicios
+  useEffect(() => {
+    if (serviciosUnicos.length > 0) {
+      const agrupados: Record<string, ServicioUnico[]> = {};
+      
+      serviciosUnicos.forEach(servicio => {
+        if (servicio.activo) {
+          const nombreNormalizado = servicio.nombre.trim().toUpperCase();
+          if (!agrupados[nombreNormalizado]) {
+            agrupados[nombreNormalizado] = [];
+          }
+          agrupados[nombreNormalizado].push(servicio);
+        }
+      });
+      
+      // Filtrar solo los grupos que tienen más de un servicio (mismo nombre, diferentes navieras)
+      const gruposConMultiples: Record<string, ServicioUnico[]> = {};
+      Object.keys(agrupados).forEach(nombre => {
+        if (agrupados[nombre].length > 1) {
+          gruposConMultiples[nombre] = agrupados[nombre];
+        }
+      });
+      
+      setServiciosAgrupados(gruposConMultiples);
+    }
+  }, [serviciosUnicos]);
+
   // Abrir modal para crear
   const abrirModalCrear = () => {
     setEditingConsorcio(null);
@@ -69,6 +121,12 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
       servicios_unicos: [],
     });
     setServicioSeleccionado('');
+    setModoConversion(false);
+    setModoAgregarNavieras(false);
+    setServicioBase('');
+    setNavierasAdicionales([]);
+    setNavieraSeleccionada('');
+    setServiciosSeleccionadosAgrupados([]);
     setIsModalOpen(true);
   };
 
@@ -174,13 +232,185 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
     });
   };
 
+  // Agregar naviera adicional
+  const agregarNavieraAdicional = () => {
+    if (navieraSeleccionada && !navierasAdicionales.includes(navieraSeleccionada)) {
+      setNavierasAdicionales([...navierasAdicionales, navieraSeleccionada]);
+      setNavieraSeleccionada('');
+    }
+  };
+
+  // Eliminar naviera adicional
+  const eliminarNavieraAdicional = (navieraId: string) => {
+    setNavierasAdicionales(navierasAdicionales.filter(id => id !== navieraId));
+  };
+
+  // Toggle servicio agrupado (mismo nombre, diferentes navieras)
+  const toggleServicioAgrupado = (servicioId: string) => {
+    if (serviciosSeleccionadosAgrupados.includes(servicioId)) {
+      setServiciosSeleccionadosAgrupados(
+        serviciosSeleccionadosAgrupados.filter(id => id !== servicioId)
+      );
+    } else {
+      setServiciosSeleccionadosAgrupados([...serviciosSeleccionadosAgrupados, servicioId]);
+    }
+  };
+
+  // Aplicar servicios agrupados seleccionados al formulario
+  const aplicarServiciosAgrupados = () => {
+    if (serviciosSeleccionadosAgrupados.length === 0) {
+      setError('Debes seleccionar al menos un servicio');
+      return;
+    }
+
+    // Obtener los servicios seleccionados
+    const serviciosParaConsorcio = serviciosSeleccionadosAgrupados
+      .map(servicioId => serviciosUnicos.find(s => s.id === servicioId))
+      .filter((s): s is ServicioUnico => s !== undefined);
+
+    if (serviciosParaConsorcio.length === 0) {
+      setError('No se encontraron los servicios seleccionados');
+      return;
+    }
+
+    // Verificar que todos tengan el mismo nombre
+    const nombreComun = serviciosParaConsorcio[0].nombre;
+    const todosMismoNombre = serviciosParaConsorcio.every(s => s.nombre.trim().toUpperCase() === nombreComun.trim().toUpperCase());
+
+    if (!todosMismoNombre) {
+      setError('Todos los servicios seleccionados deben tener el mismo nombre');
+      return;
+    }
+
+    // Convertir a formato del formulario
+    const serviciosForm = serviciosParaConsorcio.map((servicio, index) => {
+      const destinosActivos = servicio.destinos?.map((d, idx) => ({
+        destino_id: d.id,
+        orden: d.orden || idx,
+      })) || [];
+
+      return {
+        servicio_unico_id: servicio.id,
+        orden: index,
+        destinos_activos: destinosActivos,
+      };
+    });
+
+    // Actualizar formulario
+    setFormData({
+      nombre: nombreComun,
+      descripcion: formData.descripcion || `Consorcio de ${nombreComun}`,
+      servicios_unicos: serviciosForm,
+    });
+
+    // Desactivar modo agregar navieras y limpiar selección
+    setModoAgregarNavieras(false);
+    setServiciosSeleccionadosAgrupados([]);
+    setSuccess(`${serviciosParaConsorcio.length} servicio(s) agregado(s) al consorcio`);
+  };
+
   // Guardar consorcio
   const guardarConsorcio = async () => {
     try {
       setError(null);
       setSuccess(null);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
-      // Validaciones
+      // Si está en modo conversión, crear servicios únicos nuevos para navieras adicionales
+      if (modoConversion && servicioBase && navierasAdicionales.length > 0) {
+        const servicioBaseData = serviciosUnicos.find(s => s.id === servicioBase);
+        if (!servicioBaseData) {
+          setError('Servicio base no encontrado');
+          return;
+        }
+
+        if (!formData.nombre.trim()) {
+          setError('El nombre del consorcio es requerido');
+          return;
+        }
+
+        // Crear servicios únicos nuevos para cada naviera adicional
+        const serviciosNuevosIds: string[] = [];
+        
+        for (const navieraId of navierasAdicionales) {
+          const naviera = navierasDisponibles.find(n => n.id === navieraId);
+          if (!naviera) continue;
+
+          // Crear servicio único nuevo basado en el servicio base
+          const nuevoServicioPayload = {
+            nombre: servicioBaseData.nombre,
+            naviera_id: navieraId,
+            descripcion: servicioBaseData.descripcion || '',
+            puerto_origen: servicioBaseData.puerto_origen || '',
+            naves: servicioBaseData.naves?.map((n: any) => n.nave_nombre || n.nombre).filter(Boolean) || [],
+            destinos: servicioBaseData.destinos?.map((d: any) => ({
+              puerto: d.puerto || d.puerto_nombre,
+              puerto_nombre: d.puerto_nombre || d.puerto,
+              area: d.area || 'ASIA',
+              orden: d.orden || 0,
+            })) || [],
+          };
+
+          const servicioResponse = await fetch(`${apiUrl}/api/admin/servicios-unicos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nuevoServicioPayload),
+          });
+
+          if (servicioResponse.ok) {
+            const servicioResult = await servicioResponse.json();
+            if (servicioResult.servicio?.id) {
+              serviciosNuevosIds.push(servicioResult.servicio.id);
+            }
+          } else {
+            const errorResult = await servicioResponse.json();
+            throw new Error(`Error al crear servicio para ${naviera.nombre}: ${errorResult?.error || 'Error desconocido'}`);
+          }
+        }
+
+        // Crear consorcio con servicio base + servicios nuevos
+        const serviciosParaConsorcio = [
+          { servicio_unico_id: servicioBase, orden: 0 },
+          ...serviciosNuevosIds.map((id, index) => ({
+            servicio_unico_id: id,
+            orden: index + 1,
+          })),
+        ];
+
+        const nombreConsorcio = formData.nombre.trim() || servicioBaseData.nombre;
+        const payload = {
+          nombre: nombreConsorcio,
+          descripcion: formData.descripcion || `Consorcio creado desde ${servicioBaseData.nombre}`,
+          servicios_unicos: serviciosParaConsorcio.map(s => ({
+            servicio_unico_id: s.servicio_unico_id,
+            orden: s.orden,
+            destinos_activos: [], // La API consolidará los destinos
+          })),
+        };
+
+        const response = await fetch(`${apiUrl}/api/admin/consorcios`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result?.error || 'Error al crear el consorcio');
+        }
+
+        setSuccess(`Consorcio creado exitosamente con ${navierasAdicionales.length} naviera(s) adicional(es)`);
+        setIsModalOpen(false);
+        setModoConversion(false);
+        setServicioBase('');
+        setNavierasAdicionales([]);
+        void cargarDatos();
+        if (onConsorcioCreated) onConsorcioCreated();
+        return;
+      }
+
+      // Validaciones para modo normal
       if (!formData.nombre.trim()) {
         setError('El nombre del consorcio es requerido');
         return;
@@ -191,13 +421,11 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
         return;
       }
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       const url = `${apiUrl}/api/admin/consorcios`;
       const method = editingConsorcio ? 'PUT' : 'POST';
 
       // La API consolidará automáticamente los destinos únicos
       const payload = editingConsorcio ? { id: editingConsorcio.id, ...formData } : formData;
-      console.log('📤 Enviando payload al crear consorcio (la API consolidará destinos únicos):', JSON.stringify(payload, null, 2));
 
       const response = await fetch(url, {
         method,
@@ -428,6 +656,259 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
             </div>
 
             <div className="p-6 space-y-4">
+              {/* Toggle modos de creación */}
+              {!editingConsorcio && (
+                <div className="space-y-2">
+                  {/* Modo: Agregar navieras a servicio existente */}
+                  <div className="flex items-center gap-2 p-3 border rounded bg-green-50 dark:bg-green-900/20">
+                    <input
+                      type="checkbox"
+                      id="modoAgregarNavieras"
+                      checked={modoAgregarNavieras}
+                      onChange={(e) => {
+                        setModoAgregarNavieras(e.target.checked);
+                        if (e.target.checked) {
+                          // Limpiar otros modos
+                          setModoConversion(false);
+                          setFormData({ ...formData, servicios_unicos: [] });
+                          setServicioSeleccionado('');
+                          setServicioBase('');
+                          setNavierasAdicionales([]);
+                        } else {
+                          // Limpiar selección cuando se desactiva
+                          setServiciosSeleccionadosAgrupados([]);
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="modoAgregarNavieras" className="text-sm font-medium cursor-pointer flex-1">
+                      Agregar navieras a servicio existente (servicios con mismo nombre)
+                    </label>
+                  </div>
+
+                  {/* Modo: Convertir servicio en consorcio */}
+                  <div className="flex items-center gap-2 p-3 border rounded bg-blue-50 dark:bg-blue-900/20">
+                    <input
+                      type="checkbox"
+                      id="modoConversion"
+                      checked={modoConversion}
+                      onChange={(e) => {
+                        setModoConversion(e.target.checked);
+                        if (e.target.checked) {
+                          // Limpiar otros modos
+                          setModoAgregarNavieras(false);
+                          setFormData({ ...formData, servicios_unicos: [] });
+                          setServicioSeleccionado('');
+                          setServiciosSeleccionadosAgrupados([]);
+                        } else {
+                          // Limpiar modo conversión cuando se desactiva
+                          setServicioBase('');
+                          setNavierasAdicionales([]);
+                        }
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="modoConversion" className="text-sm font-medium cursor-pointer flex-1">
+                      Convertir servicio único en consorcio (crear nuevos servicios para navieras adicionales)
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Modo agregar navieras: Seleccionar servicios con mismo nombre */}
+              {modoAgregarNavieras && !editingConsorcio && (
+                <div className="space-y-4 p-4 border rounded bg-green-50 dark:bg-green-900/20">
+                  <h4 className="text-sm font-semibold">Servicios con Mismo Nombre (Diferentes Navieras)</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Selecciona los servicios únicos que comparten el mismo nombre pero pertenecen a diferentes navieras para crear un consorcio.
+                  </p>
+                  
+                  {Object.keys(serviciosAgrupados).length === 0 ? (
+                    <div className="p-4 text-center text-gray-500 bg-white dark:bg-slate-800 rounded border">
+                      <p className="text-sm">No hay servicios únicos con el mismo nombre disponibles.</p>
+                      <p className="text-xs mt-1">Crea servicios únicos con el mismo nombre pero diferentes navieras primero.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(serviciosAgrupados).map(([nombreServicio, servicios]) => (
+                        <div
+                          key={nombreServicio}
+                          className="p-4 bg-white dark:bg-slate-800 border rounded"
+                        >
+                          <h5 className="font-semibold text-sm mb-3">
+                            Servicio: <span className="text-blue-600 dark:text-blue-400">{nombreServicio}</span>
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({servicios.length} naviera{servicios.length > 1 ? 's' : ''})
+                            </span>
+                          </h5>
+                          <div className="space-y-2">
+                            {servicios.map((servicio) => {
+                              const estaSeleccionado = serviciosSeleccionadosAgrupados.includes(servicio.id);
+                              const yaEnConsorcio = formData.servicios_unicos.some(
+                                su => su.servicio_unico_id === servicio.id
+                              );
+                              
+                              return (
+                                <label
+                                  key={servicio.id}
+                                  className={`flex items-center gap-3 p-3 border rounded cursor-pointer transition ${
+                                    estaSeleccionado
+                                      ? 'bg-green-100 dark:bg-green-900/30 border-green-400'
+                                      : yaEnConsorcio
+                                      ? 'bg-gray-100 dark:bg-slate-700 border-gray-300 opacity-50 cursor-not-allowed'
+                                      : 'bg-gray-50 dark:bg-slate-900 border-gray-300 hover:border-green-400'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={estaSeleccionado}
+                                    onChange={() => toggleServicioAgrupado(servicio.id)}
+                                    disabled={yaEnConsorcio}
+                                    className="rounded"
+                                  />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-sm">{servicio.naviera_nombre || 'Naviera desconocida'}</span>
+                                      {yaEnConsorcio && (
+                                        <span className="text-xs text-gray-500">(Ya agregado)</span>
+                                      )}
+                                    </div>
+                                    {servicio.descripcion && (
+                                      <p className="text-xs text-gray-500 mt-1">{servicio.descripcion}</p>
+                                    )}
+                                    <div className="flex gap-4 mt-1 text-xs text-gray-500">
+                                      <span>Naves: {servicio.naves?.length || 0}</span>
+                                      <span>Destinos: {servicio.destinos?.length || 0}</span>
+                                    </div>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {serviciosSeleccionadosAgrupados.length > 0 && (
+                        <div className="flex justify-end gap-2 pt-2 border-t">
+                          <button
+                            type="button"
+                            onClick={() => setServiciosSeleccionadosAgrupados([])}
+                            className="px-4 py-2 text-sm border rounded hover:bg-gray-50 dark:hover:bg-slate-700"
+                          >
+                            Limpiar Selección
+                          </button>
+                          <button
+                            type="button"
+                            onClick={aplicarServiciosAgrupados}
+                            className="px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded"
+                          >
+                            Agregar {serviciosSeleccionadosAgrupados.length} Servicio(s) al Consorcio
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Modo conversión: Seleccionar servicio base y navieras adicionales */}
+              {modoConversion && !editingConsorcio && (
+                <div className="space-y-4 p-4 border rounded bg-gray-50 dark:bg-slate-900">
+                  <h4 className="text-sm font-semibold">Convertir Servicio en Consorcio</h4>
+                  
+                  {/* Seleccionar servicio base */}
+                  <label className="block">
+                    <span className="text-xs font-semibold uppercase tracking-wide">Servicio Base *</span>
+                    <select
+                      value={servicioBase}
+                      onChange={(e) => {
+                        setServicioBase(e.target.value);
+                        const servicio = serviciosUnicos.find(s => s.id === e.target.value);
+                        if (servicio) {
+                          setFormData({
+                            ...formData,
+                            nombre: servicio.nombre,
+                          });
+                        }
+                      }}
+                      className={`mt-1 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                    >
+                      <option value="">Seleccionar servicio único base</option>
+                      {serviciosUnicos
+                        .filter(s => s.activo)
+                        .map((servicio) => (
+                          <option key={servicio.id} value={servicio.id}>
+                            {servicio.nombre} ({servicio.naviera_nombre})
+                          </option>
+                        ))}
+                    </select>
+                    {servicioBase && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Naviera actual: {serviciosUnicos.find(s => s.id === servicioBase)?.naviera_nombre}
+                      </p>
+                    )}
+                  </label>
+
+                  {/* Agregar navieras adicionales */}
+                  <label className="block">
+                    <span className="text-xs font-semibold uppercase tracking-wide">Agregar Navieras Adicionales</span>
+                    <div className="mt-1 flex gap-2">
+                      <select
+                        value={navieraSeleccionada}
+                        onChange={(e) => setNavieraSeleccionada(e.target.value)}
+                        className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                        disabled={!servicioBase}
+                      >
+                        <option value="">Seleccionar naviera adicional</option>
+                        {navierasDisponibles
+                          .filter(n => {
+                            const servicioBaseData = serviciosUnicos.find(s => s.id === servicioBase);
+                            if (!servicioBaseData) return true;
+                            // Excluir la naviera del servicio base
+                            return n.id !== servicioBaseData.naviera_id;
+                          })
+                          .filter(n => !navierasAdicionales.includes(n.id))
+                          .map((naviera) => (
+                            <option key={naviera.id} value={naviera.id}>
+                              {naviera.nombre}
+                            </option>
+                          ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={agregarNavieraAdicional}
+                        disabled={!navieraSeleccionada || !servicioBase}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </label>
+
+                  {/* Lista de navieras adicionales */}
+                  {navierasAdicionales.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold">Navieras adicionales:</p>
+                      {navierasAdicionales.map((navieraId) => {
+                        const naviera = navierasDisponibles.find(n => n.id === navieraId);
+                        return (
+                          <div key={navieraId} className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 border rounded">
+                            <span className="text-sm">{naviera?.nombre}</span>
+                            <button
+                              type="button"
+                              onClick={() => eliminarNavieraAdicional(navieraId)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Nombre */}
               <label className="block">
                 <span className="text-xs font-semibold uppercase tracking-wide">Nombre del Consorcio *</span>
@@ -438,6 +919,7 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                   className={`mt-1 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
                   placeholder="Ej: ANDES EXPRESS, ASIA EXPRESS"
                   required
+                  disabled={modoConversion && servicioBase !== ''}
                 />
               </label>
 
@@ -453,7 +935,8 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                 />
               </label>
 
-              {/* Agregar servicio único */}
+              {/* Agregar servicio único (solo si no está en modo conversión ni modo agregar navieras) */}
+              {!modoConversion && !modoAgregarNavieras && (
               <div className="space-y-2">
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-wide">Agregar Servicio Único</span>
@@ -484,6 +967,7 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                   </p>
                 </label>
               </div>
+              )}
 
               {/* Servicios únicos incluidos */}
               {formData.servicios_unicos.length > 0 && (
@@ -562,10 +1046,21 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
               </button>
               <button
                 onClick={guardarConsorcio}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                disabled={
+                  (modoConversion && (!servicioBase || navierasAdicionales.length === 0)) ||
+                  (!modoConversion && !modoAgregarNavieras && formData.servicios_unicos.length === 0) ||
+                  (modoAgregarNavieras && formData.servicios_unicos.length === 0)
+                }
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded"
               >
                 <Save className="h-4 w-4" />
-                {editingConsorcio ? 'Guardar Cambios' : 'Crear Consorcio'}
+                {editingConsorcio
+                  ? 'Guardar Cambios'
+                  : modoConversion
+                  ? 'Crear Consorcio con Navieras Adicionales'
+                  : modoAgregarNavieras
+                  ? 'Crear Consorcio con Servicios Seleccionados'
+                  : 'Crear Consorcio'}
               </button>
             </div>
           </div>
