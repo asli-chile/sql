@@ -1182,14 +1182,16 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
         .filter(e => e.esPuertoNuevo && e.puerto && e.puerto.trim())
         .map(e => e.puerto.trim());
 
-      for (const podNuevo of podsNuevos) {
-        try {
-          // Verificar si el POD ya existe
-          const { data: existingPod, error: checkError } = await supabase
-            .from('catalogos_destinos')
-            .select('id')
-            .eq('nombre', podNuevo)
-            .maybeSingle();
+      if (podsNuevos.length > 0) {
+        const supabase = createClient();
+        for (const podNuevo of podsNuevos) {
+          try {
+            // Verificar si el POD ya existe
+            const { data: existingPod, error: checkError } = await supabase
+              .from('catalogos_destinos')
+              .select('id')
+              .eq('nombre', podNuevo)
+              .maybeSingle();
 
           if (checkError) {
             console.error('Error verificando POD existente:', checkError);
