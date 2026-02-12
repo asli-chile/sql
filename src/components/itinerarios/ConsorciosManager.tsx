@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Plus, Trash2, Save, Edit2, X, Check } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
@@ -291,22 +291,56 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
 
       return {
         servicio_unico_id: servicio.id,
-        orden: index,
+        orden: formData.servicios_unicos.length + index, // Continuar el orden desde los servicios existentes
         destinos_activos: destinosActivos,
       };
     });
 
-    // Actualizar formulario
+    // Actualizar formulario agregando los nuevos servicios a los existentes
     setFormData({
-      nombre: nombreComun,
-      descripcion: formData.descripcion || `Consorcio de ${nombreComun}`,
-      servicios_unicos: serviciosForm,
+      ...formData,
+      servicios_unicos: [
+        ...formData.servicios_unicos,
+        ...serviciosForm,
+      ],
     });
 
-    // Desactivar modo agregar navieras y limpiar selección
-    setModoAgregarNavieras(false);
+    // Limpiar selección
     setServiciosSeleccionadosAgrupados([]);
     setSuccess(`${serviciosParaConsorcio.length} servicio(s) agregado(s) al consorcio`);
+  };
+
+  // Agregar servicio adicional al consorcio en edición
+  const agregarServicioAdicional = (servicioId: string) => {
+    const servicio = serviciosUnicos.find(s => s.id === servicioId);
+    if (!servicio) return;
+
+    // Verificar que no esté ya agregado
+    if (formData.servicios_unicos.some(su => su.servicio_unico_id === servicioId)) {
+      setError('Este servicio ya está en el consorcio');
+      return;
+    }
+
+    // Por defecto, usar todos los destinos del servicio único
+    const destinosActivos = servicio.destinos?.map((d, index) => ({
+      destino_id: d.id,
+      orden: d.orden || index,
+    })) || [];
+
+    // Agregar al formulario
+    setFormData({
+      ...formData,
+      servicios_unicos: [
+        ...formData.servicios_unicos,
+        {
+          servicio_unico_id: servicioId,
+          orden: formData.servicios_unicos.length,
+          destinos_activos: destinosActivos,
+        },
+      ],
+    });
+
+    setSuccess(`Servicio ${servicio.nombre} (${servicio.naviera_nombre}) agregado al consorcio`);
   };
 
   // Guardar consorcio
@@ -488,6 +522,68 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
   const serviciosDisponibles = serviciosUnicos.filter(
     s => s.activo && !formData.servicios_unicos.some(su => su.servicio_unico_id === s.id)
   );
+
+  // Calcular servicios adicionales disponibles para agregar al consorcio en edición
+  // Prioridad 1: Servicios con mismo nombre que los del consorcio pero diferentes navieras
+  // Prioridad 2: Todos los demás servicios únicos disponibles
+  const serviciosAdicionalesDisponibles = useMemo(() => {
+    if (!editingConsorcio) {
+      return { mismosNombres: {}, otros: [] };
+    }
+
+    // Obtener los IDs y nombres de servicios únicos que ya están en el consorcio
+    const serviciosIdsEnConsorcio = new Set<string>();
+    const nombresServiciosEnConsorcio = new Set<string>();
+    const navierasEnConsorcio = new Set<string>();
+    
+    formData.servicios_unicos.forEach(su => {
+      serviciosIdsEnConsorcio.add(su.servicio_unico_id);
+      const servicio = serviciosUnicos.find(s => s.id === su.servicio_unico_id);
+      if (servicio) {
+        nombresServiciosEnConsorcio.add(servicio.nombre.trim().toUpperCase());
+        if (servicio.naviera_id) {
+          navierasEnConsorcio.add(servicio.naviera_id);
+        }
+      }
+    });
+
+    // Buscar servicios únicos que:
+    // 1. Tengan el mismo nombre que algún servicio del consorcio
+    // 2. Tengan una naviera diferente
+    // 3. No estén ya en el consorcio
+    const serviciosMismoNombre: ServicioUnico[] = [];
+    const otrosServicios: ServicioUnico[] = [];
+    
+    serviciosUnicos.forEach(servicio => {
+      if (!servicio.activo) return;
+      if (serviciosIdsEnConsorcio.has(servicio.id)) return; // Ya está en el consorcio
+      
+      const nombreNormalizado = servicio.nombre.trim().toUpperCase();
+      const tieneMismoNombre = nombresServiciosEnConsorcio.has(nombreNormalizado);
+      const tieneNavieraDiferente = servicio.naviera_id && !navierasEnConsorcio.has(servicio.naviera_id);
+      
+      if (tieneMismoNombre && tieneNavieraDiferente) {
+        serviciosMismoNombre.push(servicio);
+      } else {
+        otrosServicios.push(servicio);
+      }
+    });
+
+    // Agrupar servicios con mismo nombre por nombre de servicio
+    const agrupadosMismoNombre: Record<string, ServicioUnico[]> = {};
+    serviciosMismoNombre.forEach(servicio => {
+      const nombreNormalizado = servicio.nombre.trim().toUpperCase();
+      if (!agrupadosMismoNombre[nombreNormalizado]) {
+        agrupadosMismoNombre[nombreNormalizado] = [];
+      }
+      agrupadosMismoNombre[nombreNormalizado].push(servicio);
+    });
+
+    return { 
+      mismosNombres: agrupadosMismoNombre, 
+      otros: otrosServicios 
+    };
+  }, [editingConsorcio, formData.servicios_unicos, serviciosUnicos]);
 
   if (loading) {
     return <div className="p-4 text-center">Cargando consorcios...</div>;
@@ -934,6 +1030,108 @@ export function ConsorciosManager({ onConsorcioCreated }: ConsorciosManagerProps
                   placeholder="Descripción del consorcio"
                 />
               </label>
+
+              {/* Sección para agregar navieras adicionales al consorcio en edición */}
+              {editingConsorcio && (
+                <div className="space-y-4">
+                  {/* Servicios con mismo nombre pero diferentes navieras */}
+                  {Object.keys(serviciosAdicionalesDisponibles.mismosNombres).length > 0 && (
+                    <div className="p-4 border rounded bg-blue-50 dark:bg-blue-900/20">
+                      <h4 className="text-sm font-semibold mb-2">Navieras Adicionales (Mismo Servicio)</h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                        Servicios únicos con el mismo nombre que los del consorcio pero con diferentes navieras.
+                      </p>
+                      
+                      <div className="space-y-3">
+                        {Object.entries(serviciosAdicionalesDisponibles.mismosNombres).map(([nombreServicio, servicios]) => (
+                          <div
+                            key={nombreServicio}
+                            className="p-3 bg-white dark:bg-slate-800 border rounded"
+                          >
+                            <h5 className="font-semibold text-sm mb-2">
+                              Servicio: <span className="text-blue-600 dark:text-blue-400">{nombreServicio}</span>
+                            </h5>
+                            <div className="space-y-2">
+                              {servicios.map((servicio) => (
+                                <div
+                                  key={servicio.id}
+                                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-slate-900 border rounded"
+                                >
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium text-sm">{servicio.naviera_nombre || 'Naviera desconocida'}</span>
+                                    </div>
+                                    <div className="flex gap-4 mt-1 text-xs text-gray-500">
+                                      <span>Naves: {servicio.naves?.length || 0}</span>
+                                      <span>Destinos: {servicio.destinos?.length || 0}</span>
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => agregarServicioAdicional(servicio.id)}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded flex items-center gap-1"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                    Agregar
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Otros servicios únicos disponibles */}
+                  {serviciosAdicionalesDisponibles.otros.length > 0 && (
+                    <div className="p-4 border rounded bg-green-50 dark:bg-green-900/20">
+                      <h4 className="text-sm font-semibold mb-2">Otros Servicios Únicos Disponibles</h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                        Puedes agregar cualquier otro servicio único disponible al consorcio.
+                      </p>
+                      
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {serviciosAdicionalesDisponibles.otros.map((servicio) => (
+                          <div
+                            key={servicio.id}
+                            className="flex items-center justify-between p-2 bg-white dark:bg-slate-800 border rounded"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm">{servicio.nombre}</span>
+                                <span className="text-xs text-gray-500">({servicio.naviera_nombre || 'Naviera desconocida'})</span>
+                              </div>
+                              <div className="flex gap-4 mt-1 text-xs text-gray-500">
+                                <span>Naves: {servicio.naves?.length || 0}</span>
+                                <span>Destinos: {servicio.destinos?.length || 0}</span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => agregarServicioAdicional(servicio.id)}
+                              className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded flex items-center gap-1"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Agregar
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mensaje cuando no hay servicios disponibles */}
+                  {Object.keys(serviciosAdicionalesDisponibles.mismosNombres).length === 0 && 
+                   serviciosAdicionalesDisponibles.otros.length === 0 && (
+                    <div className="p-4 border rounded bg-gray-50 dark:bg-slate-900">
+                      <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                        No hay servicios únicos adicionales disponibles para agregar al consorcio.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Agregar servicio único (solo si no está en modo conversión ni modo agregar navieras) */}
               {!modoConversion && !modoAgregarNavieras && (
