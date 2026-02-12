@@ -63,7 +63,6 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
                     className="h-10 w-auto object-contain flex-shrink-0"
                     style={{ display: 'block' }}
                     onError={(e) => {
-                      console.error('Error cargando logo MSC');
                       e.currentTarget.style.display = 'none';
                     }}
                   />
@@ -78,7 +77,6 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
                     className="h-10 w-auto object-contain flex-shrink-0"
                     style={{ display: 'block' }}
                     onError={(e) => {
-                      console.error('Error cargando logo COSCO');
                       e.currentTarget.style.display = 'none';
                     }}
                   />
@@ -93,7 +91,6 @@ export function ItinerarioCard({ itinerario, onViewDetail, etaViewMode = 'dias' 
                     className="h-10 w-auto object-contain flex-shrink-0"
                     style={{ display: 'block' }}
                     onError={(e) => {
-                      console.error('Error cargando logo EVERGREEN');
                       e.currentTarget.style.display = 'none';
                     }}
                   />
