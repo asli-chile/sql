@@ -1281,9 +1281,10 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
       
       const payload = {
         servicio: servicioFinal,
-        // Solo incluir servicio_id si es un servicio único (no consorcio)
-        // La foreign key apunta a la tabla servicios (antigua), no a consorcios
-        servicio_id: (!esConsorcio && servicioId) ? servicioId : null,
+        // NO incluir servicio_id porque la foreign key apunta a la tabla servicios (antigua),
+        // pero los IDs vienen de servicios_unicos o consorcios (tablas nuevas).
+        // Solo usar el campo servicio (texto) para compatibilidad.
+        servicio_id: null,
         // Si es consorcio, usar el nombre del consorcio; si no, usar el consorcio del servicio único
         consorcio: esConsorcio ? servicioFinal : (servicioSeleccionado?.consorcio || null),
         naviera: naviera || null, // Naviera seleccionada
