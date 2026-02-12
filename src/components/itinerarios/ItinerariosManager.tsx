@@ -1275,6 +1275,7 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
           });
         }
       }
+      }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
       // Determinar si es un consorcio o servicio único
