@@ -94,6 +94,7 @@ export default function TablasPersonalizadasPage() {
   const [showTrashModal, setShowTrashModal] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [copiedRegistro, setCopiedRegistro] = useState<Registro | null>(null);
   const [searchText, setSearchText] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
@@ -1728,6 +1729,15 @@ export default function TablasPersonalizadasPage() {
     setContextMenu({ ...contextMenu, visible: false });
   };
 
+  const handleCopyReserva = () => {
+    if (selectedRegistros.length > 0) {
+      // Copiar el primer registro seleccionado
+      setCopiedRegistro(selectedRegistros[0]);
+      setShowAddModal(true);
+    }
+    setContextMenu({ ...contextMenu, visible: false });
+  };
+
   const handleDeleteSelectedRows = async () => {
     if (selectedRegistros.length === 0) return;
 
@@ -2434,6 +2444,21 @@ export default function TablasPersonalizadasPage() {
           }`}
         >
           <button
+            onClick={handleCopyReserva}
+            disabled={selectedRegistros.length === 0 || !canAdd}
+            className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
+              !canAdd || selectedRegistros.length === 0
+                ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                : theme === 'dark'
+                ? 'text-sky-300 border-gray-700 hover:bg-gray-700'
+                : 'text-sky-600 border-gray-200 hover:bg-gray-100'
+            }`}
+            title={canAdd && selectedRegistros.length > 0 ? "Copiar reserva y crear nueva" : "No tienes permisos para crear registros"}
+          >
+            <Plus className="w-4 h-4" />
+            <span>Copiar reserva</span>
+          </button>
+          <button
             onClick={handleBulkEditNaveViaje}
             disabled={!canEdit}
             className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
@@ -2497,9 +2522,13 @@ export default function TablasPersonalizadasPage() {
       {showAddModal && (
         <AddModal
           isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => {
+            setShowAddModal(false);
+            setCopiedRegistro(null); // Limpiar datos copiados al cerrar
+          }}
           onSuccess={async (createdRecords) => {
             setShowAddModal(false);
+            setCopiedRegistro(null); // Limpiar datos copiados después de crear
             await handleRefreshData();
           }}
           createdByName={userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
@@ -2521,6 +2550,7 @@ export default function TablasPersonalizadasPage() {
           co2sUnicos={[]}
           o2sUnicos={[]}
           tratamientosDeFrioOpciones={[]}
+          initialData={copiedRegistro || undefined}
         />
       )}
 

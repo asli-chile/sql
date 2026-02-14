@@ -45,6 +45,7 @@ interface AddModalProps {
   o2sUnicos: string[];
   tratamientosDeFrioOpciones: string[];
   clienteFijadoPorCoincidencia?: string; // Cliente que debe estar preseleccionado y bloqueado
+  initialData?: Partial<Registro>; // Datos iniciales para pre-llenar el formulario (copiar reserva)
 }
 
 export function AddModal({
@@ -70,7 +71,8 @@ export function AddModal({
   co2sUnicos,
   o2sUnicos,
   tratamientosDeFrioOpciones,
-  clienteFijadoPorCoincidencia
+  clienteFijadoPorCoincidencia,
+  initialData
 }: AddModalProps) {
 
   const { theme } = useTheme();
@@ -266,17 +268,84 @@ export function AddModal({
       setIsSaved(false); // Resetear estado de guardado
       isSavingRef.current = false; // Resetear flag de guardado
       
-      // No generar REF ASLI aquí, el trigger SQL lo hará automáticamente
-      setFormData(prev => ({
-        ...prev,
-        refAsli: 'Se asignará automáticamente',
-        // Pre-seleccionar cliente si hay coincidencia con nombre de usuario
-        shipper: clienteFijadoPorCoincidencia || prev.shipper
-      }));
+      // Si hay initialData (copiar reserva), pre-llenar el formulario
+      if (initialData) {
+        // Extraer nave y viaje si viene en formato "NAVE [VIAJE]"
+        let naveInicial = initialData.naveInicial || '';
+        let viaje = initialData.viaje || '';
+        
+        if (naveInicial && !viaje) {
+          const match = naveInicial.match(/^(.+?)\s*\[(.+?)\]$/);
+          if (match) {
+            naveInicial = match[1].trim();
+            viaje = match[2].trim();
+          }
+        }
+
+        // Formatear fechas de DD-MM-YYYY si vienen en formato ISO
+        const formatDate = (dateStr: string | null | undefined): string => {
+          if (!dateStr) return '';
+          try {
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return '';
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+          } catch {
+            return dateStr;
+          }
+        };
+
+        // Verificar si tiene atmósfera controlada (CO2 u O2)
+        const hasAtmosfera = !!(initialData.co2 || initialData.o2);
+        
+        setFormData({
+          refAsli: 'Se asignará automáticamente',
+          refCliente: 'Se asignará automáticamente',
+          ejecutivo: initialData.ejecutivo || '',
+          shipper: clienteFijadoPorCoincidencia || initialData.shipper || '',
+          ingresado: formatDate(initialData.ingresado) || '',
+          naviera: initialData.naviera || '',
+          naveInicial: naveInicial,
+          viaje: viaje,
+          especie: initialData.especie || '',
+          temperatura: initialData.temperatura?.toString() || '',
+          cbm: hasAtmosfera ? '0' : (initialData.cbm?.toString() || ''),
+          pol: initialData.pol || '',
+          pod: initialData.pod || '',
+          deposito: initialData.deposito || '',
+          estado: 'PENDIENTE', // Las copias siempre se guardan como PENDIENTE
+          tipoIngreso: initialData.tipoIngreso || '',
+          flete: initialData.flete || '',
+          comentario: initialData.comentario || '',
+          etd: formatDate(initialData.etd) || '',
+          eta: formatDate(initialData.eta) || '',
+          consignatario: initialData.consignatario || '',
+          contrato: initialData.contrato || '',
+          co2: initialData.co2?.toString() || '',
+          o2: initialData.o2?.toString() || '',
+          tratamientoFrio: initialData['tratamiento de frio'] || initialData.tratamientoFrio || '',
+          temporada: initialData.temporada || '2025-2026',
+        });
+
+        // Si tiene atmósfera controlada, marcar el checkbox
+        if (hasAtmosfera) {
+          setAtmosferaControlada(true);
+        }
+      } else {
+        // No generar REF ASLI aquí, el trigger SQL lo hará automáticamente
+        setFormData(prev => ({
+          ...prev,
+          refAsli: 'Se asignará automáticamente',
+          // Pre-seleccionar cliente si hay coincidencia con nombre de usuario
+          shipper: clienteFijadoPorCoincidencia || prev.shipper
+        }));
+      }
     };
 
     initializeModal();
-  }, [isOpen, clienteFijadoPorCoincidencia]);
+  }, [isOpen, clienteFijadoPorCoincidencia, initialData]);
 
   // Efecto para generar referencia externa automáticamente cuando cambian cliente o especie
   useEffect(() => {
