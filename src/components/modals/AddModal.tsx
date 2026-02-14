@@ -327,7 +327,7 @@ export function AddModal({
           contrato: initialData.contrato || '',
           co2: initialData.co2?.toString() || '',
           o2: initialData.o2?.toString() || '',
-          tratamientoFrio: initialData['tratamiento de frio'] || initialData.tratamientoFrio || '',
+          tratamientoFrio: ('tratamiento de frio' in initialData ? (initialData as any)['tratamiento de frio'] : '') || initialData.tratamientoFrio || '',
           temporada: initialData.temporada || '2025-2026',
         });
 
