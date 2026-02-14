@@ -599,23 +599,25 @@ export default function TablasPersonalizadasPage() {
         .select('*')
         .is('deleted_at', null);
 
-      // Filtrar según rol
-      const isAdmin = currentUser?.rol === 'admin';
-      const isEjecutivo = currentUser?.rol === 'ejecutivo' 
-        || (currentUser?.email?.endsWith('@asli.cl') && currentUser?.rol !== 'cliente');
-      const clienteNombre = currentUser?.cliente_nombre?.trim();
-      const clientesAsignados = currentUser?.clientes_asignados || [];
+      // Si currentUser está disponible, aplicar filtros por rol
+      if (currentUser) {
+        const isAdmin = currentUser.rol === 'admin';
+        const isEjecutivo = currentUser.rol === 'ejecutivo' 
+          || (currentUser.email?.endsWith('@asli.cl') && currentUser.rol !== 'cliente');
+        const clienteNombre = currentUser.cliente_nombre?.trim();
+        const clientesAsignados = currentUser.clientes_asignados || [];
 
-      if (!isAdmin) {
-        if (currentUser?.rol === 'cliente' && clienteNombre) {
-          // Cliente: solo ve sus propios registros
-          query = query.ilike('shipper', clienteNombre);
-        } else if (isEjecutivo && clientesAsignados.length > 0) {
-          // Ejecutivo: solo ve registros de sus clientes asignados
-          query = query.in('shipper', clientesAsignados);
-        } else if (!isAdmin && !isEjecutivo) {
-          // Usuario sin permisos específicos: no ve nada
-          query = query.eq('id', 'NONE');
+        if (!isAdmin) {
+          if (currentUser.rol === 'cliente' && clienteNombre) {
+            // Cliente: solo ve sus propios registros
+            query = query.ilike('shipper', clienteNombre);
+          } else if (isEjecutivo && clientesAsignados.length > 0) {
+            // Ejecutivo: solo ve registros de sus clientes asignados
+            query = query.in('shipper', clientesAsignados);
+          } else if (!isAdmin && !isEjecutivo) {
+            // Usuario sin permisos específicos: no ve nada
+            query = query.eq('id', 'NONE');
+          }
         }
       }
 
@@ -623,7 +625,7 @@ export default function TablasPersonalizadasPage() {
 
       if (error) {
         console.error('Error loading registros:', error);
-        showError('Error al cargar registros: ' + error.message);
+        showError('Error al cargar registros: ' + (error.message || 'Error desconocido'));
         return;
       }
 
