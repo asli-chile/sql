@@ -12,6 +12,7 @@ interface ComboboxProps {
   disabled?: boolean;
   required?: boolean;
   theme?: 'dark' | 'light';
+  allowCustomValue?: boolean; // Nueva prop para permitir valores personalizados
 }
 
 export function Combobox({
@@ -23,6 +24,7 @@ export function Combobox({
   disabled = false,
   required = false,
   theme = 'dark',
+  allowCustomValue = false, // Por defecto false para mantener comportamiento existente
 }: ComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
@@ -52,9 +54,13 @@ export function Combobox({
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
-        // Si el inputValue no coincide con ninguna opción válida, restaurar el value
-        if (inputValue && !options.includes(inputValue)) {
+        // Si allowCustomValue es false y el inputValue no coincide con ninguna opción válida, restaurar el value
+        // Si allowCustomValue es true, aceptar el valor personalizado
+        if (!allowCustomValue && inputValue && !options.includes(inputValue)) {
           setInputValue(value);
+        } else if (allowCustomValue && inputValue) {
+          // Aceptar el valor personalizado
+          onChange(inputValue);
         }
       }
     };
@@ -63,7 +69,7 @@ export function Combobox({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [inputValue, value, options]);
+  }, [inputValue, value, options, allowCustomValue, onChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value.toUpperCase();
@@ -90,13 +96,33 @@ export function Combobox({
     setIsOpen(true);
   };
 
+  const handleBlur = () => {
+    // Esperar un tick para permitir clic en opciones antes de cerrar
+    setTimeout(() => {
+      if (!containerRef.current?.contains(document.activeElement)) {
+        setIsOpen(false);
+      }
+    }, 0);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && filteredOptions.length > 0 && isOpen) {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      handleSelectOption(filteredOptions[0]);
+      if (filteredOptions.length > 0 && isOpen) {
+        // Si hay opciones filtradas, seleccionar la primera
+        handleSelectOption(filteredOptions[0]);
+      } else if (allowCustomValue && inputValue.trim()) {
+        // Si se permiten valores personalizados y hay un valor, aceptarlo
+        onChange(inputValue.trim());
+        setIsOpen(false);
+        inputRef.current?.blur();
+      }
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       inputRef.current?.blur();
+    } else if (e.key === 'Tab' && allowCustomValue && inputValue.trim()) {
+      // Al presionar Tab, si se permiten valores personalizados, aceptar el valor actual
+      onChange(inputValue.trim());
     }
   };
 
@@ -124,6 +150,7 @@ export function Combobox({
           value={inputValue}
           onChange={handleInputChange}
           onFocus={handleFocus}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
@@ -153,7 +180,12 @@ export function Combobox({
           {filteredOptions.map((option, index) => (
             <div
               key={index}
-              onClick={() => handleSelectOption(option)}
+              onMouseDown={(e) => {
+                // onBlur del input se dispara antes que onClick; usar onMouseDown
+                // garantiza seleccionar la opción antes de que el dropdown se cierre.
+                e.preventDefault();
+                handleSelectOption(option);
+              }}
               className={optionStyles}
               role="option"
               aria-selected={option === value}
@@ -167,7 +199,13 @@ export function Combobox({
       {isOpen && !disabled && filteredOptions.length === 0 && inputValue.trim() !== '' && (
         <div className={dropdownStyles}>
           <div className={`px-4 py-2 text-base ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-            No se encontraron resultados
+            {allowCustomValue ? (
+              <>
+                <span className={theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}>✓</span> Presiona Enter o Tab para usar "<span className="font-semibold">{inputValue}</span>"
+              </>
+            ) : (
+              'No se encontraron resultados'
+            )}
           </div>
         </div>
       )}

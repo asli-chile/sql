@@ -5,10 +5,11 @@
  */
 
 /**
- * Genera las 3 letras del cliente según las reglas:
+ * Genera las 3 o 4 letras del cliente según las reglas:
+ * - CASO ESPECIAL: "copefrut" = "COPE" (4 letras)
  * - Múltiples palabras: primeras iniciales (ej: "fruit andes sur" = "FAS")
  * - 2 palabras: primera letra de primera palabra + 2 primeras letras de segunda (ej: "san andres" = "SAN")
- * - 1 palabra: 3 primeras letras (ej: "copefrut" = "COP")
+ * - 1 palabra: 3 primeras letras (ej: "exportadora" = "EXP")
  */
 export function generateClientPrefix(cliente: string): string {
   if (!cliente || cliente.trim() === '') {
@@ -16,6 +17,12 @@ export function generateClientPrefix(cliente: string): string {
   }
 
   const trimmed = cliente.trim().toUpperCase();
+  
+  // CASO ESPECIAL: COPEFRUT usa 4 letras
+  if (trimmed.includes('COPEFRUT')) {
+    return 'COPE';
+  }
+
   const words = trimmed.split(/\s+/).filter(word => word.length > 0);
 
   if (words.length === 0) {

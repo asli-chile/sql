@@ -1,2740 +1,1779 @@
 'use client';
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable @next/next/no-img-element */
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
-import { User as SupabaseUser } from '@supabase/supabase-js';
-import { LogOut, User as UserIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Filter, Settings, X, Menu, Users, LayoutDashboard, Ship, Truck, Globe, Trash2, FileText, FileCheck, BarChart3, DollarSign, Package, CheckCircle, Container, Receipt, AlertTriangle, Loader2, Download } from 'lucide-react';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { PageWrapper } from '@/components/PageWrapper';
-
-// Importar todos los componentes existentes
-import { DataTable } from '@/components/ui/table/DataTable';
-import { FiltersPanel } from '@/components/ui/table/FiltersPanel';
-import { createRegistrosColumns } from '@/components/columns/registros-columns';
-import { EditModal } from '@/components/modals/EditModal';
-import { AddModal } from '@/components/modals/AddModal';
-import { TrashModal } from '@/components/modals/TrashModal';
-import { HistorialModal } from '@/components/modals/HistorialModal';
-import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
-import { BookingModal } from '@/components/modals/BookingModal';
-import { syncTransportesFromRegistro, syncMultipleTransportesFromRegistros } from '@/lib/sync-transportes';
-import { useTheme } from '@/contexts/ThemeContext';
-import { useUser } from '@/hooks/useUser';
-import { useToast } from '@/hooks/useToast';
+import { User } from '@supabase/supabase-js';
+import { AgGridReact } from 'ag-grid-react';
+import { ColDef, GridOptions, GridReadyEvent, ICellRendererParams, IHeaderParams } from 'ag-grid-community';
+import 'ag-grid-community/styles/ag-grid.css';
+import 'ag-grid-community/styles/ag-theme-quartz.css';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
-import { ToastContainer } from '@/components/layout/Toast';
+import { obtenerAnchoColumna } from '@/config/registros-columnas';
+import {
+  User as UserIcon,
+  ArrowLeft,
+  Download,
+  Settings,
+  Grid3x3,
+  Filter,
+  RefreshCw,
+  Send,
+  X,
+  ChevronDown,
+  ArrowUp,
+  ArrowDown,
+  LayoutDashboard,
+  Ship,
+  Truck,
+  FileText,
+  FileCheck,
+  Globe,
+  Activity,
+  DollarSign,
+  BarChart3,
+  Trash2,
+  Users,
+  Menu,
+  Plus,
+  Search
+} from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
-import { EditingCellProvider } from '@/contexts/EditingCellContext';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/hooks/useToast';
 import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
-import { logHistoryEntry } from '@/lib/history';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Factura } from '@/types/factura';
-import { FacturaViewer } from '@/components/facturas/FacturaViewer';
-import { FacturaCreator } from '@/components/facturas/FacturaCreator';
-import LoadingScreen from '@/components/ui/LoadingScreen';
-import { useRealtimeRegistros } from '@/hooks/useRealtimeRegistros';
-import { parseStoredDocumentName, formatFileDisplayName, sanitizeFileName } from '@/utils/documentUtils';
-import { generarFacturaPDF } from '@/lib/factura-pdf';
-import { generarFacturaExcel } from '@/lib/factura-excel';
-import { generarProformaCompleta, subirProforma } from '@/lib/proforma-generator';
+import { AddModal } from '@/components/modals/AddModal';
+import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
+import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
+import { calculateTransitTime } from '@/lib/transit-time-utils';
+import { generarReporte, descargarExcel, TipoReporte } from '@/lib/reportes';
+import { useUser } from '@/hooks/useUser';
 
-
-interface User {
-  id: string;
-  email: string;
-  user_metadata: {
-    full_name?: string;
-  };
-}
-
-export default function RegistrosPage() {
-  const { theme } = useTheme();
-  const { currentUser, setCurrentUser, transportesCount, registrosCount } = useUser();
-  const { toasts, removeToast, success, error, warning } = useToast();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function TablasPersonalizadasPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const { theme } = useTheme();
+  const { success, error: showError } = useToast();
+  
+  // Obtener permisos del usuario desde el hook
+  const { 
+    currentUser, 
+    canEdit, 
+    canAdd, 
+    canDelete, 
+    canExport,
+    canViewHistory 
+  } = useUser();
+  
+  const [user, setUser] = useState<User | null>(null);
+  const [userInfo, setUserInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [rowData, setRowData] = useState<Registro[]>([]);
+  const [loadingData, setLoadingData] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<'quartz' | 'quartz-dark'>('quartz');
 
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
-
-  // Estados para filtros y columnas del DataTable
-  const [tableInstance, setTableInstance] = useState<any>(null);
-  const [tableStates, setTableStates] = useState<{
-    executiveFilter: string;
-    setExecutiveFilter: (value: string) => void;
-    columnToggleOptions: Array<{ id: string; header: string; visible: boolean }>;
-    handleToggleColumn: (columnId: string) => void;
-    handleToggleAllColumns: (visible: boolean) => void;
-    alwaysVisibleColumns: string[];
-    navesFiltrables: Array<[string, string]>;
-  } | null>(null);
-
-  // Callback para recibir la instancia de la tabla y sus estados
-  const handleTableInstanceReady = useCallback((table: any, states: {
-    executiveFilter: string;
-    setExecutiveFilter: (value: string) => void;
-    navesFiltrables: Array<[string, string]>;
-  }) => {
-    setTableInstance(table);
-    // Actualizar tableStates siempre para asegurar que tenga los valores más recientes
-    setTableStates((prevStates) => {
-      // Si la tabla cambió, usar los nuevos estados
-      if (prevStates === null || prevStates.executiveFilter !== states.executiveFilter) {
-        return {
-          ...states,
-          // Mantener valores anteriores para las propiedades que ya no se proporcionan
-          columnToggleOptions: prevStates?.columnToggleOptions || [],
-          handleToggleColumn: prevStates?.handleToggleColumn || (() => {}),
-          handleToggleAllColumns: prevStates?.handleToggleAllColumns || (() => {}),
-          alwaysVisibleColumns: prevStates?.alwaysVisibleColumns || [],
-        };
-      }
-      // Si la tabla no cambió pero los estados sí, actualizar solo los estados necesarios
-      return {
-        ...prevStates,
-        executiveFilter: states.executiveFilter,
-        setExecutiveFilter: states.setExecutiveFilter,
-        navesFiltrables: states.navesFiltrables,
-      };
-    });
-  }, []);
-
-  // Estados existentes del sistema de registros
-  const [registros, setRegistros] = useState<Registro[]>([]);
+  // Valores únicos para filtros
   const [navierasUnicas, setNavierasUnicas] = useState<string[]>([]);
   const [ejecutivosUnicos, setEjecutivosUnicos] = useState<string[]>([]);
   const [especiesUnicas, setEspeciesUnicas] = useState<string[]>([]);
   const [clientesUnicos, setClientesUnicos] = useState<string[]>([]);
-  const [clientesAbrMap, setClientesAbrMap] = useState<Record<string, string>>({});
-  const [refExternasUnicas, setRefExternasUnicas] = useState<string[]>([]);
   const [polsUnicos, setPolsUnicos] = useState<string[]>([]);
   const [destinosUnicos, setDestinosUnicos] = useState<string[]>([]);
   const [depositosUnicos, setDepositosUnicos] = useState<string[]>([]);
-  const [navesUnicas, setNavesUnicas] = useState<string[]>([]);
   const [fletesUnicos, setFletesUnicos] = useState<string[]>([]);
   const [cbmUnicos, setCbmUnicos] = useState<string[]>([]);
-  const [contratosUnicos, setContratosUnicos] = useState<string[]>([]);
-  const [tipoIngresoUnicos, setTipoIngresoUnicos] = useState<string[]>([]);
   const [estadosUnicos, setEstadosUnicos] = useState<string[]>([]);
-  const [temperaturasUnicas, setTemperaturasUnicas] = useState<string[]>([]);
-  const [co2sUnicos, setCo2sUnicos] = useState<string[]>([]);
-  const [o2sUnicos, setO2sUnicos] = useState<string[]>([]);
-  const [tratamientosFrioUnicos, setTratamientosFrioUnicos] = useState<string[]>([]);
-  const [tiposAtmosferaUnicos, setTiposAtmosferaUnicos] = useState<string[]>([]);
-  const [facturacionesUnicas, setFacturacionesUnicas] = useState<string[]>([]);
+  const [tipoIngresoUnicos, setTipoIngresoUnicos] = useState<string[]>([]);
   const [temporadasUnicas, setTemporadasUnicas] = useState<string[]>([]);
-  const [temporadaSeleccionada, setTemporadaSeleccionada] = useState<string>('TODAS');
-
-  const [navierasFiltro, setNavierasFiltro] = useState<string[]>([]);
-  const [ejecutivosFiltro, setEjecutivosFiltro] = useState<string[]>([]);
-  const [especiesFiltro, setEspeciesFiltro] = useState<string[]>([]);
-  const [clientesFiltro, setClientesFiltro] = useState<string[]>([]);
-  const [polsFiltro, setPolsFiltro] = useState<string[]>([]);
-  const [destinosFiltro, setDestinosFiltro] = useState<string[]>([]);
-  const [depositosFiltro, setDepositosFiltro] = useState<string[]>([]);
-  const [navesFiltro, setNavesFiltro] = useState<string[]>([]);
-
-  const [selectedRecord, setSelectedRecord] = useState<Registro | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const recentlyAddedIdsRef = useRef<Set<string>>(new Set());
-  const [isTrashModalOpen, setIsTrashModalOpen] = useState(false);
-  const [trashCount, setTrashCount] = useState(0);
-  const [isHistorialModalOpen, setIsHistorialModalOpen] = useState(false);
-  const [selectedRegistroForHistorial, setSelectedRegistroForHistorial] = useState<Registro | null>(null);
-  const [isEditNaveViajeModalOpen, setIsEditNaveViajeModalOpen] = useState(false);
-  const [selectedRegistroForNaveViaje, setSelectedRegistroForNaveViaje] = useState<Registro | null>(null);
-  const [selectedRecordsForNaveViaje, setSelectedRecordsForNaveViaje] = useState<Registro[]>([]);
-
-  // Estados para modal de booking
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [selectedRegistroForBooking, setSelectedRegistroForBooking] = useState<Registro | null>(null);
-
-  // Estados para facturas
-  const [facturas, setFacturas] = useState<Factura[]>([]);
-  const [facturaSeleccionada, setFacturaSeleccionada] = useState<Factura | null>(null);
-  const [isFacturaViewerOpen, setIsFacturaViewerOpen] = useState(false);
-  const [registroSeleccionadoProforma, setRegistroSeleccionadoProforma] = useState<Registro | null>(null);
-  const [isProformaCreatorOpen, setIsProformaCreatorOpen] = useState(false);
-
-  // Estado para selección múltiple
-  const [selectionMode, setSelectionMode] = useState(false);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const lastSelectedRowIndex = useRef<number | null>(null);
-
-  // Estado para clientes asignados al ejecutivo
-  const [clientesAsignados, setClientesAsignados] = useState<string[]>([]);
-  const [isEjecutivo, setIsEjecutivo] = useState(false);
-  const isCliente = currentUser?.rol === 'cliente';
-  const [showProfileModal, setShowProfileModal] = useState(false);
-
-  type DeleteConfirmState = {
-    registros: Registro[];
-    mode: 'single' | 'bulk';
-  };
-  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirmState | null>(null);
-  const [deleteProcessing, setDeleteProcessing] = useState(false);
-
-  const estadoParam = searchParams.get('estado');
-  const idParam = searchParams.get('id');
-
-  // Aplicar filtro de estado o ID desde query params cuando el DataTable esté listo
-  useEffect(() => {
-    if (tableInstance && tableStates) {
-      if (idParam) {
-        // Prioridad: Filtrar por ID si existe
-        tableInstance.setColumnFilters((prev: any[]) => {
-          const filtered = prev.filter((f: any) => f.id !== 'id' && f.id !== 'estado');
-          return [...filtered, { id: 'id', value: idParam }];
-        });
-      } else if (estadoParam) {
-        const estadoValue = estadoParam.toUpperCase();
-        if (['PENDIENTE', 'CONFIRMADO', 'CANCELADO'].includes(estadoValue)) {
-          // Aplicar el filtro de estado
-          tableInstance.setColumnFilters((prev: any[]) => {
-            const filtered = prev.filter((f: any) => f.id !== 'estado' && f.id !== 'id');
-            return [...filtered, { id: 'estado', value: estadoValue }];
-          });
-        }
-      } else {
-        // Si no hay parámetros, limpiar filtros de estado e ID
-        tableInstance.setColumnFilters((prev: any[]) =>
-          prev.filter((f: any) => f.id !== 'estado' && f.id !== 'id')
-        );
-      }
-    }
-  }, [estadoParam, idParam, tableInstance, tableStates]);
-
-  // Extraer temporadas únicas de los registros
-  useEffect(() => {
-    const temporadas = new Set<string>();
-    registros.forEach((registro) => {
-      if (registro.temporada && registro.temporada.trim()) {
-        temporadas.add(registro.temporada.trim());
-      }
-    });
-    const temporadasArray = Array.from(temporadas).sort();
-    setTemporadasUnicas(temporadasArray);
-  }, [registros]);
-
-  const registrosVisibles = useMemo(() => {
-    let registrosFiltrados = registros;
-    
-    // Aplicar filtro de temporada si hay una seleccionada
-    if (temporadaSeleccionada && temporadaSeleccionada !== 'TODAS') {
-      registrosFiltrados = registrosFiltrados.filter(
-        (registro) => registro.temporada === temporadaSeleccionada
-      );
-    }
-    
-    return registrosFiltrados;
-  }, [registros, temporadaSeleccionada]);
-
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-
-  useEffect(() => {
-    if (!deleteConfirm) {
-      return;
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !deleteProcessing) {
-        event.preventDefault();
-        setDeleteConfirm(null);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [deleteConfirm, deleteProcessing]);
-
-
-  const checkUser = async () => {
-    try {
-      const supabase = createClient();
-      const { data: { user }, error } = await supabase.auth.getUser();
-
-      // Si hay error de refresh token, limpiar sesión y redirigir
-      if (error) {
-        // Si es un error de refresh token inválido, es esperado y no necesita log
-        if (
-          error.message?.includes('Refresh Token') ||
-          error.message?.includes('JWT') ||
-          error.message?.includes('User from sub claim in JWT does not exist')
-        ) {
-          await supabase.auth.signOut();
-          router.push('/auth');
-          return;
-        }
-        throw error;
-      }
-
-      if (!user) {
-        router.push('/auth');
-        return;
-      }
-
-      setUser(user);
-
-      // SIEMPRE cargar datos frescos desde Supabase (fuente de verdad)
-      // Limpiar localStorage para evitar datos obsoletos
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('currentUserTimestamp');
-
-      // Cargar datos del usuario desde la tabla usuarios
-      const { data: userData, error: userError } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('auth_user_id', user.id)
-        .single();
-
-      if (userError) {
-        console.error('Error loading user data:', userError);
-        // Si no existe en la tabla usuarios, crear un usuario básico
-        const basicUser = {
-          id: user.id,
-          nombre: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Usuario',
-          email: user.email || '',
-          rol: 'usuario',
-          activo: true
-        };
-        setCurrentUser(basicUser);
-        setIsEjecutivo(false);
-        setClientesAsignados([]);
-      } else {
-        // Establecer el usuario en el contexto con datos FRESCOS desde Supabase
-        const usuarioActualizado = {
-          id: userData.id,
-          nombre: userData.nombre, // Nombre desde BD (fuente de verdad)
-          email: userData.email,
-          rol: userData.rol,
-          activo: userData.activo,
-          cliente_nombre: userData.cliente_nombre ?? null,
-          clientes_asignados: userData.clientes_asignados ?? [],
-        };
-        setCurrentUser(usuarioActualizado);
-
-        // Verificar si es ejecutivo por rol
-        const esEjecutivo = userData.rol === 'ejecutivo';
-        setIsEjecutivo(esEjecutivo);
-
-        if (userData.rol === 'cliente') {
-          const clienteNombre = userData.cliente_nombre?.trim();
-          const clientesCliente = clienteNombre ? [clienteNombre] : [];
-          setClientesAsignados(clientesCliente);
-          // Actualizar currentUser con los clientes para clientes
-          setCurrentUser({
-            ...usuarioActualizado,
-            clientes_asignados: clientesCliente,
-          });
-        } else {
-          // Cargar clientes asignados (tanto para ejecutivos como para verificar coincidencias)
-          // La función loadClientesAsignados ya actualiza currentUser automáticamente
-          await loadClientesAsignados(userData.id, userData.nombre);
-        }
-
-      }
-
-      // Cargar catálogos (después de establecer isEjecutivo y clientesAsignados)
-      await loadCatalogos();
-
-      // Cargar registros (depende de clientes asignados si es ejecutivo)
-      await loadRegistros();
-      await loadFacturas();
-    } catch (error: any) {
-      // Solo loguear errores que no sean de refresh token
-      if (!error?.message?.includes('Refresh Token') && !error?.message?.includes('JWT')) {
-        console.error('Error checking user:', error);
-      }
-      router.push('/auth');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      setCurrentUser(null); // Limpiar el contexto de usuario
-      router.push('/auth');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
-  // Función para cargar clientes asignados a un ejecutivo
-  // También verifica si el nombre de usuario coincide con un cliente
-  const loadClientesAsignados = async (ejecutivoId: string, nombreUsuario?: string) => {
-    try {
-      const supabase = createClient();
-      const clientesAsignadosSet = new Set<string>();
-
-      // 1. Cargar clientes asignados desde ejecutivo_clientes (si es ejecutivo)
-      const { data, error } = await supabase
-        .from('ejecutivo_clientes')
-        .select('cliente_nombre')
-        .eq('ejecutivo_id', ejecutivoId)
-        .eq('activo', true);
-
-      if (!error && data) {
-        data.forEach(item => clientesAsignadosSet.add(item.cliente_nombre));
-      }
-
-      // 2. Si el nombre de usuario coincide con un cliente, agregarlo también
-      if (nombreUsuario) {
-        // Buscar en catalogos si existe un cliente con ese nombre
-        const { data: catalogoClientes, error: catalogoError } = await supabase
-          .from('catalogos')
-          .select('valores')
-          .eq('categoria', 'clientes')
-          .single();
-
-        if (!catalogoError && catalogoClientes?.valores) {
-          const valores = Array.isArray(catalogoClientes.valores)
-            ? catalogoClientes.valores
-            : typeof catalogoClientes.valores === 'string'
-              ? JSON.parse(catalogoClientes.valores)
-              : [];
-
-          // Verificar si el nombre de usuario coincide con algún cliente (comparación case-insensitive)
-          const nombreUsuarioUpper = nombreUsuario.toUpperCase().trim();
-          const clienteCoincidente = valores.find((cliente: string) =>
-            cliente.toUpperCase().trim() === nombreUsuarioUpper
-          );
-
-          if (clienteCoincidente) {
-            clientesAsignadosSet.add(clienteCoincidente); // Usar el nombre exacto del catálogo
-          }
-        }
-      }
-
-      const clientesFinales = Array.from(clientesAsignadosSet);
-      setClientesAsignados(clientesFinales);
-      // Actualizar currentUser con los clientes asignados
-      if (currentUser) {
-        setCurrentUser({
-          ...currentUser,
-          clientes_asignados: clientesFinales,
-        });
-      }
-    } catch (error) {
-      console.error('Error loading clientes asignados:', error);
-      setClientesAsignados([]);
-      // Actualizar currentUser con array vacío en caso de error
-      if (currentUser) {
-        setCurrentUser({
-          ...currentUser,
-          clientes_asignados: [],
-        });
-      }
-    }
-  };
-
-  // Funciones existentes del sistema de registros
-  const loadRegistros = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      let query = supabase
-        .from('registros')
-        .select('*')
-        .is('deleted_at', null);
-
-      // Filtrar por clientes asignados si hay alguno
-      // Esto aplica tanto para ejecutivos como para usuarios cuyo nombre coincide con un cliente
-      // NOTA: Los usuarios normales sin coincidencia seguirán viendo solo sus registros por RLS
-      const esAdmin = currentUser?.rol === 'admin';
-      const clienteNombre = currentUser?.rol === 'cliente' ? currentUser?.cliente_nombre?.trim() : '';
-      if (!esAdmin && clienteNombre) {
-        // Cliente: filtrar directo por su cliente_nombre (case-insensitive)
-        query = query.ilike('shipper', clienteNombre);
-      } else if (!esAdmin && clientesAsignados.length > 0) {
-        // Ejecutivo u otros: filtrar por lista de clientes asignados
-        query = query.in('shipper', clientesAsignados);
-      }
-
-      const { data, error } = await query.order('ref_asli', { ascending: false });
-
-      if (error) {
-        console.error('Error en consulta de registros:', error);
-        throw error;
-      }
-
-      const registrosConvertidos = data.map(convertSupabaseToApp);
-      setRegistros(registrosConvertidos);
-
-      const refClienteSet = new Set<string>();
-      registrosConvertidos.forEach((registro) => {
-        if (registro.refCliente && registro.refCliente.trim().length > 0) {
-          refClienteSet.add(registro.refCliente.trim());
-        }
-      });
-      if (refClienteSet.size > 0) {
-        setRefExternasUnicas((prev) => {
-          const merged = new Set([...prev, ...Array.from(refClienteSet)]);
-          return Array.from(merged).sort();
-        });
-      }
-    } catch (error) {
-      console.error('Error loading registros:', error);
-    }
-  }, [isEjecutivo, clientesAsignados]);
-
-  const loadTrashCount = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { count, error } = await supabase
-        .from('registros')
-        .select('id', { count: 'exact', head: true })
-        .not('deleted_at', 'is', null);
-
-      if (error) {
-        throw error;
-      }
-
-      setTrashCount(count ?? 0);
-    } catch (err) {
-      console.warn('[Registros] Error cargando contador de papelera:', err);
-      setTrashCount(0);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!currentUser?.id) {
-      return;
-    }
-    void loadTrashCount();
-  }, [currentUser?.id, loadTrashCount]);
-
-  const loadFacturas = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('facturas')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Mapear datos de Supabase a tipo Factura
-      const facturasData = (data || []).map((f: any) => ({
-        id: f.id,
-        registroId: f.registro_id,
-        refAsli: f.ref_asli,
-        exportador: f.exportador || {},
-        consignatario: f.consignatario || {},
-        embarque: f.embarque || {},
-        productos: f.productos || [],
-        totales: f.totales || { cantidadTotal: 0, valorTotal: 0, valorTotalTexto: '' },
-        clientePlantilla: f.cliente_plantilla || 'ALMAFRUIT',
-        created_at: f.created_at,
-        updated_at: f.updated_at,
-        created_by: f.created_by,
-      })) as Factura[];
-
-      setFacturas(facturasData);
-    } catch (error) {
-      console.error('Error loading facturas:', error);
-    }
-  }, []);
-
-  const loadCatalogos = async () => {
-    try {
-      const supabase = createClient();
-
-      // Cargar catálogo de estados primero
-      await loadEstadosFromCatalog();
-
-      // ============================================================
-      // CARGAR DESDE NUEVAS TABLAS SEPARADAS - EN PARALELO
-      // ============================================================
-      // Ejecutar todas las consultas en paralelo para mejorar rendimiento
-
-      const [
-        { data: navierasData, error: navierasError },
-        { data: ejecutivosData, error: ejecutivosError },
-        { data: clientesData, error: clientesError },
-        { data: destinosData, error: destinosError },
-        { data: navesData, error: navesError },
-        { data: condicionesData, error: condicionesError }
-      ] = await Promise.all([
-        supabase
-          .from('catalogos_navieras')
-          .select('nombre')
-          .eq('activo', true)
-          .order('nombre'),
-        supabase
-          .from('catalogos_ejecutivos')
-          .select('nombre')
-          .eq('activo', true)
-          .order('nombre'),
-        supabase
-          .from('catalogos_clientes')
-          .select('*')
-          .eq('activo', true)
-          .order('nombre'),
-        supabase
-          .from('catalogos_destinos')
-          .select('nombre')
-          .eq('activo', true)
-          .order('nombre'),
-        supabase
-          .from('catalogos_naves')
-          .select('nombre, naviera_nombre')
-          .eq('activo', true)
-          .order('nombre'),
-        supabase
-          .from('catalogos_condiciones')
-          .select('tipo, valor')
-          .eq('activo', true)
-          .order('valor')
-      ]);
-
-      // Procesar resultados de navieras
-      if (!navierasError && navierasData) {
-        const navieras = navierasData.map((n: any) => n.nombre).filter(Boolean);
-        setNavierasUnicas(navieras);
-        setNavierasFiltro(navieras);
-      }
-
-      // Procesar resultados de ejecutivos
-      if (!ejecutivosError && ejecutivosData) {
-        const ejecutivos = ejecutivosData.map((e: any) => e.nombre).filter(Boolean);
-        setEjecutivosUnicos(ejecutivos);
-        setEjecutivosFiltro(ejecutivos);
-      }
-
-      // Procesar resultados de clientes
-      if (clientesError) {
-        console.error('Error cargando clientes:', clientesError);
-      }
-
-      if (!clientesError && clientesData) {
-        const todosLosClientes = clientesData.map((c: any) => c.nombre).filter(Boolean);
-        // Crear mapeo de nombre -> abreviatura
-        // Usar tanto el nombre exacto como el nombre normalizado (trim, uppercase) para mayor compatibilidad
-        const clientesAbrMap: Record<string, string> = {};
-        clientesData.forEach((c: any) => {
-          // Buscar abreviatura en diferentes campos posibles (probando todas las variaciones)
-          const abr = (c.cliente_abr || c.clienteAbr || c.abr || c.abreviatura || c.abreviacion || '').trim();
-          const nombre = (c.nombre || '').trim();
-          
-          if (nombre && abr) {
-            const nombreExacto = nombre;
-            const nombreNormalizado = nombreExacto.toUpperCase();
-            // Guardar con ambos formatos para asegurar coincidencia
-            clientesAbrMap[nombreExacto] = abr;
-            clientesAbrMap[nombreNormalizado] = abr;
-            // También guardar sin espacios extra al inicio/fin
-            const nombreSinEspacios = nombreExacto.replace(/^\s+|\s+$/g, '');
-            if (nombreSinEspacios !== nombreExacto) {
-              clientesAbrMap[nombreSinEspacios] = abr;
-              clientesAbrMap[nombreSinEspacios.toUpperCase()] = abr;
-            }
-          }
-        });
-        // Guardar el mapeo en el estado
-        setClientesAbrMap(clientesAbrMap);
-        
-        // Si es ejecutivo, filtrar solo sus clientes asignados
-        const currentClientesAsignados = clientesAsignados;
-        const currentIsEjecutivo = isEjecutivo;
-        if (currentIsEjecutivo && currentClientesAsignados.length > 0) {
-          const clientesFiltrados = todosLosClientes.filter((cliente: string) =>
-            currentClientesAsignados.includes(cliente)
-          );
-          setClientesUnicos(clientesFiltrados);
-          setClientesFiltro(clientesFiltrados);
-        } else {
-          setClientesUnicos(todosLosClientes);
-          setClientesFiltro(todosLosClientes);
-        }
-      }
-
-      // Procesar resultados de destinos
-      if (!destinosError && destinosData) {
-        const destinos = destinosData.map((d: any) => d.nombre).filter(Boolean);
-        setDestinosUnicos(destinos);
-        setDestinosFiltro(destinos);
-      }
-
-      // Procesar resultados de naves
-      if (!navesError && navesData) {
-        // Filtrar solo las naves que tienen naviera_nombre (excluir las que no tienen naviera asignada)
-        const navesConNaviera = navesData.filter((n: any) => n.naviera_nombre && n.naviera_nombre.trim() !== '' && n.nombre && n.nombre.trim() !== '');
-        const todasLasNaves = navesConNaviera.map((n: any) => n.nombre.trim()).filter(Boolean);
-        setNavesUnicas(todasLasNaves);
-
-        // Crear mapping de naviera -> naves desde catalogos_naves
-        const navesMapping: Record<string, string[]> = {};
-        navesConNaviera.forEach((nave: any) => {
-          const navieraNombre = nave.naviera_nombre.trim();
-          const nombreNave = nave.nombre.trim();
-
-          if (!navesMapping[navieraNombre]) {
-            navesMapping[navieraNombre] = [];
-          }
-          if (!navesMapping[navieraNombre].includes(nombreNave)) {
-            navesMapping[navieraNombre].push(nombreNave);
-          }
-        });
-
-        // Ordenar naves dentro de cada naviera
-        Object.keys(navesMapping).forEach(naviera => {
-          navesMapping[naviera].sort();
-        });
-
-        setNavierasNavesMappingCatalog(navesMapping);
-      }
-
-      // Procesar resultados de condiciones
-
-      if (!condicionesError && condicionesData) {
-        const condicionesPorTipo: Record<string, string[]> = {};
-        condicionesData.forEach((cond: any) => {
-          if (!condicionesPorTipo[cond.tipo]) {
-            condicionesPorTipo[cond.tipo] = [];
-          }
-          condicionesPorTipo[cond.tipo].push(cond.valor);
-        });
-
-        if (condicionesPorTipo['temperatura']) {
-          setTemperaturasUnicas(condicionesPorTipo['temperatura']);
-        }
-        if (condicionesPorTipo['co2']) {
-          setCo2sUnicos(condicionesPorTipo['co2']);
-        }
-        if (condicionesPorTipo['o2']) {
-          setO2sUnicos(condicionesPorTipo['o2']);
-        }
-        if (condicionesPorTipo['cbm']) {
-          setCbmUnicos(condicionesPorTipo['cbm']);
-        }
-        if (condicionesPorTipo['tratamiento_frio']) {
-          setTratamientosFrioUnicos(condicionesPorTipo['tratamiento_frio']);
-        }
-        if (condicionesPorTipo['tipo_atmosfera']) {
-          setTiposAtmosferaUnicos(condicionesPorTipo['tipo_atmosfera']);
-        }
-      }
-
-      // ============================================================
-      // CARGAR DESDE TABLA CATALOGOS ORIGINAL (para el resto)
-      // ============================================================
-      const { data: catalogos, error } = await supabase
-        .from('catalogos')
-        .select('*');
-
-      if (error) {
-        console.error('Error loading catalogos:', error);
-        return;
-      }
-
-      // Procesar catálogos restantes desde tabla original
-      catalogos.forEach(catalogo => {
-        const categoria = (catalogo.categoria || '').toLowerCase().trim();
-        const rawValores = catalogo.valores ?? [];
-        let valores: string[] = [];
-        if (Array.isArray(rawValores)) {
-          valores = rawValores as string[];
-        } else if (typeof rawValores === 'string') {
-          try {
-            valores = JSON.parse(rawValores);
-          } catch {
-            valores = [];
-          }
-        }
-        const mapping = catalogo.mapping;
-
-        switch (categoria) {
-          case 'especies':
-            setEspeciesUnicas(valores);
-            setEspeciesFiltro(valores);
-            break;
-          case 'refcliente':
-            setRefExternasUnicas(valores);
-            break;
-          case 'pols':
-            setPolsUnicos(valores);
-            setPolsFiltro(valores);
-            break;
-          case 'depositos':
-            setDepositosUnicos(valores);
-            setDepositosFiltro(valores);
-            break;
-          // case 'naves': - Ahora se cargan desde catalogos_naves
-          case 'fletes':
-            setFletesUnicos(valores);
-            break;
-          case 'contratos':
-            setContratosUnicos(valores);
-            break;
-          case 'tipoingreso':
-            setTipoIngresoUnicos(valores);
-            break;
-          case 'facturacion':
-            setFacturacionesUnicas(valores);
-            break;
-
-          // CARGAR MAPPINGS DESDE EL CATÁLOGO (SOLO para AddModal - sin números de viaje)
-          case 'navierasnavesmapping':
-            if (mapping && typeof mapping === 'object') {
-              // Limpiar números de viaje si los hubiera en el catálogo
-              const cleanMapping: Record<string, string[]> = {};
-              Object.keys(mapping).forEach(key => {
-                const naves = (mapping[key] || []) as string[];
-                // Remover números de viaje del formato "NAVE123 [001E]" -> "NAVE123"
-                cleanMapping[key] = naves.map((nave: string) => {
-                  // Si tiene formato "NAVE [VIAJE]", extraer solo la nave
-                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
-                  return match ? match[1].trim() : nave.trim();
-                });
-              });
-              setNavierasNavesMappingCatalog(cleanMapping);
-            }
-            break;
-
-          case 'consorciosnavesmapping':
-            if (mapping && typeof mapping === 'object') {
-              // Limpiar números de viaje si los hubiera en el catálogo
-              const cleanMapping: Record<string, string[]> = {};
-              Object.keys(mapping).forEach(key => {
-                const naves = (mapping[key] || []) as string[];
-                // Remover números de viaje del formato "NAVE123 [001E]" -> "NAVE123"
-                cleanMapping[key] = naves.map((nave: string) => {
-                  // Si tiene formato "NAVE [VIAJE]", extraer solo la nave
-                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
-                  return match ? match[1].trim() : nave.trim();
-                });
-              });
-              setConsorciosNavesMappingCatalog(cleanMapping);
-            }
-            break;
-        }
-      });
-
-    } catch (error) {
-      console.error('Error loading catalogos:', error);
-    }
-  };
-
-  const loadEstadosFromCatalog = async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('catalogos')
-        .select('valores')
-        .eq('categoria', 'estados')
-        .single();
-
-      if (error) {
-        // No se pudo cargar catálogo de estados, usando valores por defecto
-        setEstadosUnicos(['PENDIENTE', 'CONFIRMADO', 'CANCELADO']);
-        return;
-      }
-
-      const estados = data?.valores || ['PENDIENTE', 'CONFIRMADO', 'CANCELADO'];
-      setEstadosUnicos(estados);
-    } catch (error) {
-      console.error('Error cargando estados desde catálogo:', error);
-      setEstadosUnicos(['PENDIENTE', 'CONFIRMADO', 'CANCELADO']);
-    }
-  };
-
-  const loadStats = async () => {
-    // Esta función se puede usar para recargar estadísticas si es necesario
-    // Por ahora no hace nada específico ya que las estadísticas se calculan en tiempo real
-  };
-
-  const performSoftDelete = useCallback(
-    async (targets: Registro[], mode: 'single' | 'bulk') => {
-      if (targets.length === 0) {
-        setDeleteConfirm(null);
-        return;
-      }
-
-      setDeleteProcessing(true);
-
-      try {
-        const supabase = createClient();
-        const ids = targets.map((registro) => registro.id).filter((id): id is string => Boolean(id));
-
-        if (ids.length === 0) {
-          error('No se encontraron registros válidos para eliminar.');
-          return;
-        }
-
-        const { error: updateError } = await supabase
-          .from('registros')
-          .update({
-            deleted_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .in('id', ids);
-
-        if (updateError) {
-          console.error('Error al eliminar registros:', updateError);
-          error('Error al enviar los registros a la papelera.');
-          return;
-        }
-
-        setRegistros((prevRegistros) =>
-          prevRegistros.filter((registro) => !ids.includes(registro.id ?? '')),
-        );
-
-        if (mode === 'bulk') {
-          setSelectedRows(new Set());
-          setSelectionMode(false);
-        }
-
-        await loadStats();
-        await loadTrashCount();
-
-        if (mode === 'single') {
-          const ref = targets[0]?.refAsli ?? 'registro';
-          success(`Registro ${ref} enviado a la papelera`);
-        } else {
-          success(`${ids.length} registro(s) enviados a la papelera`);
-        }
-
-        setDeleteConfirm(null);
-      } catch (err: any) {
-        console.error('Error inesperado al eliminar registros:', err);
-        error(err?.message ?? 'Error inesperado al eliminar los registros.');
-      } finally {
-        setDeleteProcessing(false);
-      }
-    },
-    [error, success, loadStats, loadTrashCount, setSelectedRows, setSelectionMode],
-  );
-
-  const handleConfirmDelete = useCallback(() => {
-    if (!deleteConfirm) return;
-    void performSoftDelete(deleteConfirm.registros, deleteConfirm.mode);
-  }, [deleteConfirm, performSoftDelete]);
-
-  const handleCancelDelete = useCallback(() => {
-    if (deleteProcessing) return;
-    setDeleteConfirm(null);
-  }, [deleteProcessing]);
-
-  const handleRealtimeEvent = useCallback(
-    ({ event, registro }: { event: 'INSERT' | 'UPDATE' | 'DELETE'; registro: Registro }) => {
-      setRegistros((prevRegistros) => {
-        const isSoftDeleted = registro.deletedAt !== undefined && registro.deletedAt !== null;
-
-        if (event === 'DELETE') {
-          return prevRegistros.filter((item) => item.id !== registro.id);
-        }
-
-        if (event === 'UPDATE' && isSoftDeleted) {
-          return prevRegistros.filter((item) => item.id !== registro.id);
-        }
-
-        if (event === 'INSERT') {
-          const existe = prevRegistros.some((item) => item.id === registro.id);
-          if (existe) {
-            return prevRegistros;
-          }
-          return [registro, ...prevRegistros];
-        }
-
-        if (event === 'UPDATE') {
-          const existe = prevRegistros.some((item) => item.id === registro.id);
-          if (!existe) {
-            return [registro, ...prevRegistros];
-          }
-          return prevRegistros.map((item) => (item.id === registro.id ? registro : item));
-        }
-
-        return prevRegistros;
-      });
-
-      const ref = registro.refAsli ?? 'registro';
-      if (event === 'INSERT') {
-        success(`Nuevo registro ${ref} disponible`);
-      } else if (event === 'UPDATE') {
-        success(`Registro ${ref} actualizado`);
-      } else if (event === 'DELETE') {
-        warning(`Registro ${ref} fue eliminado`);
-      }
-
-      setTimeout(() => {
-        loadCatalogos();
-        loadStats();
-      }, 200);
-    },
-    [loadCatalogos, loadStats, success, warning],
-  );
-
-  useRealtimeRegistros({
-    onChange: handleRealtimeEvent,
-    enabled: !loading,
+  const [selectedRegistros, setSelectedRegistros] = useState<Registro[]>([]);
+  const [showEditNaveViajeModal, setShowEditNaveViajeModal] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [searchText, setSearchText] = useState<string>('');
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false,
   });
-
-  // Funciones de manejo de eventos
-  const handleAdd = () => {
-    if (isCliente) {
-      error('No tienes permisos para agregar registros.');
-      return;
-    }
-    setIsAddModalOpen(true);
-  };
-
-  const handleImportFromSheets = async () => {
-    if (isCliente) {
-      error('No tienes permisos para importar desde Google Sheets.');
-      return;
-    }
-
-    if (!confirm('¿Deseas importar datos desde Google Sheets?\n\nHoja: CONTROL\nFilas: 2-646\n\nEsto puede tardar varios minutos.')) {
-      return;
-    }
-
-    try {
-      success('Iniciando importación desde Google Sheets...');
-
-      const endpoint = '/api/google-sheets/import-json';
-
-      const body = {
-        webAppUrl: 'https://script.google.com/macros/s/AKfycbwOkX2_StMpQrWwF2EbOH5tYpP0HQglP1GgU5UX5oRb0Y3D3d6TVWkzr2B4VSNXDEic/exec',
-        sheetName: 'CONTROL',
-        startRow: 1,
-        endRow: 646,
-        verificarDuplicados: true,
-        sobrescribirDuplicados: false
+  const [navesUnicas, setNavesUnicas] = useState<string[]>([]);
+  const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
+  const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
+  const [gridApi, setGridApi] = useState<any>(null);
+  const preferencesLoadedRef = useRef(false);
+  
+  // Estados para el Sidebar
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  // Componente de header personalizado que integra el filtro
+  const CustomHeaderWithFilter = (props: IHeaderParams) => {
+    const [filterValue, setFilterValue] = useState('');
+    const [currentSort, setCurrentSort] = useState<string | null | undefined>(props.column.getSort());
+    
+    // Actualizar el estado cuando cambie el sort
+    useEffect(() => {
+      const updateSort = () => {
+        setCurrentSort(props.column.getSort());
       };
-
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        error(result.error || 'Error al importar desde Google Sheets');
-        return;
-      }
-
-      if (result.ok) {
-        const resumen = result.resumen;
-        success(
-          `✅ Importación completada: ${resumen.exitosos} insertados, ${resumen.fallidos} fallidos, ${resumen.duplicados} duplicados, ${resumen.transportes || 0} transportes`
-        );
-
-        // Recargar registros
-        loadRegistros();
-
-        // Mostrar detalles si hay errores
-        if (resumen.invalidos > 0 || result.detalles?.errores?.length > 0) {
-          console.warn('Detalles de errores:', result.detalles);
-        }
-      } else {
-        error('Error al importar desde Google Sheets');
-      }
-    } catch (error: any) {
-      console.error('Error en importación:', error);
-      error(`Error al importar: ${error?.message || 'Error desconocido'}`);
-    }
-  };
-
-  const handleEdit = (registro: Registro) => {
-    if (isCliente) {
-      error('No tienes permisos para editar registros.');
-      return;
-    }
-    // Validar que el ejecutivo solo pueda editar registros de sus clientes
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      if (!clientesAsignados.includes(registro.shipper || '')) {
-        error('No tienes permiso para editar este registro');
-        return;
-      }
-    }
-    setSelectedRecord(registro);
-    setIsEditModalOpen(true);
-  };
-
-  const handleDelete = async (registro: Registro) => {
-    const esAdmin = currentUser?.rol === 'admin';
-
-    if (isCliente) {
-      error('No tienes permisos para eliminar registros.');
-      return;
-    }
-
-    if (!esAdmin) {
-      if (isEjecutivo && clientesAsignados.length > 0) {
-        if (!clientesAsignados.includes(registro.shipper || '')) {
-          error('No tienes permiso para eliminar este registro');
+      
+      // Suscribirse a cambios de sort
+      props.api.addEventListener('sortChanged', updateSort);
+      
+      return () => {
+        props.api.removeEventListener('sortChanged', updateSort);
+      };
+    }, [props.api, props.column]);
+    
+    const applyFilter = useCallback(async (value: string) => {
+      try {
+        const filterType = props.column.getColDef().filter || 'agTextColumnFilter';
+        const field = props.column.getColDef().field;
+        
+        if (!field || !props.api) {
           return;
         }
-      }
-    }
-
-    setDeleteConfirm({ registros: [registro], mode: 'single' });
-  };
-
-
-  const handleShowHistorial = (registro: Registro) => {
-    setSelectedRegistroForHistorial(registro);
-    setIsHistorialModalOpen(true);
-  };
-
-  const handleCloseHistorial = () => {
-    setIsHistorialModalOpen(false);
-    setSelectedRegistroForHistorial(null);
-  };
-
-  const handleSendToTransportes = async (registroOrRegistros: Registro | Registro[]) => {
-    if (isCliente) {
-      error('No tienes permisos para enviar registros a Transportes.');
-      return;
-    }
-    const registros = Array.isArray(registroOrRegistros) ? registroOrRegistros : [registroOrRegistros];
-    const supabase = createClient();
-
-    let exitosos = 0;
-    let fallidos = 0;
-    const errores: string[] = [];
-
-    for (const registro of registros) {
-      try {
-        // Verificar campos requeridos
-        if (!registro.booking || registro.booking.trim() === '') {
-          errores.push(`${registro.refAsli || 'Registro sin ref'}: Sin booking`);
-          fallidos++;
-          continue;
+        
+        // Obtener la instancia del filtro de forma asíncrona
+        const filterInstance = await props.api.getColumnFilterInstance(field);
+        
+        if (!filterInstance) {
+          return;
         }
-
-        // Verificar que tenga PDF de booking cargado
-        if (!registro.bookingPdf || registro.bookingPdf.trim() === '') {
-          errores.push(`${registro.refAsli || registro.booking}: No tiene PDF de booking cargado`);
-          fallidos++;
-          continue;
-        }
-
-        // Verificar si ya existe un transporte para esta ref externa
-        // Solo verificar si el registro tiene refCliente
-        if (registro.refCliente && registro.refCliente.trim() !== '') {
-          const { data: existingTransporteByRef, error: checkErrorByRef } = await supabase
-            .from('transportes')
-            .select('*')
-            .eq('ref_cliente', registro.refCliente.trim())
-            .maybeSingle();
-
-          if (checkErrorByRef) {
-            console.error('Error al verificar transporte existente por ref externa:', checkErrorByRef);
-            errores.push(`${registro.refAsli || registro.booking}: Error al verificar ref externa`);
-            fallidos++;
-            continue;
+        
+        // Aplicar el filtro directamente a la instancia
+        if (value !== '') {
+          if (filterType === 'agTextColumnFilter') {
+            // Para agTextColumnFilter, necesitamos especificar explícitamente el tipo
+            // El tipo 'contains' permite búsqueda parcial (más flexible)
+            (filterInstance as any).setModel({
+              filter: value.trim(),
+              type: 'contains'
+            });
+          } else if (filterType === 'agNumberColumnFilter') {
+            (filterInstance as any).setModel({
+              filter: parseFloat(value) || null,
+              type: 'equals'
+            });
+          } else if (filterType === 'agDateColumnFilter') {
+            (filterInstance as any).setModel({
+              dateFrom: value,
+              type: 'equals'
+            });
           }
-
-          if (existingTransporteByRef) {
-            errores.push(`${registro.refAsli || registro.booking}: Ya existe un transporte con la ref externa ${registro.refCliente}`);
-            fallidos++;
-            continue;
-          }
+        } else {
+          // Si el valor está vacío, limpiar el filtro
+          (filterInstance as any).setModel(null);
         }
-
-        // Extraer contenedor (puede ser array o string)
-        const contenedorValue = Array.isArray(registro.contenedor)
-          ? registro.contenedor[0] || ''
-          : registro.contenedor || '';
-
-        // Crear nuevo registro de transporte con los datos del registro de embarque
-        const transporteData = {
-          ref_cliente: registro.refCliente && registro.refCliente.trim() !== '' ? registro.refCliente.trim() : null,
-          booking: registro.booking.trim(),
-          contenedor: contenedorValue.trim() || null,
-          nave: registro.naveInicial || null,
-          naviera: registro.naviera || null,
-          especie: registro.especie || null,
-          temperatura: registro.temperatura ?? null,
-          pol: registro.pol || null,
-          pod: registro.pod || null,
-          vent: registro.cbm ? String(registro.cbm) : null,
-          deposito: registro.deposito || null,
-          stacking: registro.ingresoStacking ? new Date(registro.ingresoStacking).toISOString().split('T')[0] : null,
-          cut_off: registro.etd ? new Date(registro.etd).toISOString().split('T')[0] : null,
-          semana: registro.semanaIngreso ?? registro.semanaZarpe ?? null,
-          exportacion: registro.shipper || null,
-          created_by: currentUser?.id || null,
-          // Marcar que viene de registros para bloquear edición de campos con datos
-          from_registros: true,
-        };
-
-        const { data, error: insertError } = await supabase
-          .from('transportes')
-          .insert([transporteData])
-          .select();
-
-        if (insertError) {
-          console.error('Error de inserción:', insertError);
-          const errorMessage = insertError.message || insertError.details || JSON.stringify(insertError);
-          errores.push(`${registro.refAsli || registro.booking}: ${errorMessage}`);
-          fallidos++;
-          continue;
-        }
-
-        if (!data || data.length === 0) {
-          errores.push(`${registro.refAsli || registro.booking}: No se recibió confirmación`);
-          fallidos++;
-          continue;
-        }
-
-        exitosos++;
-
-      } catch (err) {
-        console.error('Error al enviar a transportes:', err);
-        errores.push(`${registro.refAsli || registro.booking}: ${err instanceof Error ? err.message : 'Error desconocido'}`);
-        fallidos++;
+        
+        // Forzar actualización de filtros
+        props.api.onFilterChanged();
+      } catch (error) {
+        // Error silencioso al aplicar filtro
       }
-    }
+    }, [props.api, props.column]);
 
-    // Mostrar resultado
-    if (exitosos > 0 && fallidos === 0) {
-      success(`${exitosos} registro${exitosos > 1 ? 's' : ''} enviado${exitosos > 1 ? 's' : ''} a Transportes exitosamente`);
-    } else if (exitosos > 0 && fallidos > 0) {
-      warning(`${exitosos} enviados, ${fallidos} fallidos. Errores: ${errores.join('; ')}`);
-    } else {
-      error(`No se pudo enviar ningún registro. Errores: ${errores.join('; ')}`);
-      return; // No abrir correo si no se envió ninguno
-    }
+    const onFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setFilterValue(value);
+      applyFilter(value);
+    }, [applyFilter]);
 
-    // Se eliminó el envío automático de correo al enviar a Transportes
-  };
+    const onSelectChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+      const value = e.target.value;
+      setFilterValue(value);
+      applyFilter(value);
+    }, [applyFilter]);
 
-  const handleEditNaveViaje = (registro: Registro) => {
-    if (isCliente) {
-      error('No tienes permisos para editar registros.');
-      return;
-    }
-    // Validar que el ejecutivo solo pueda editar registros de sus clientes
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      if (!clientesAsignados.includes(registro.shipper || '')) {
-        error('No tienes permiso para editar este registro');
-        return;
-      }
-    }
-
-    // Extraer nave y viaje si viene en formato "NAVE [VIAJE]"
-    let naveActual = registro.naveInicial || '';
-    let viajeActual = registro.viaje || '';
-
-    // Si la nave contiene [ ], extraer el viaje
-    const match = naveActual.match(/^(.+?)\s*\[(.+?)\]$/);
-    if (match) {
-      naveActual = match[1].trim();
-      viajeActual = match[2].trim();
-    }
-
-    // Crear un registro temporal con nave y viaje separados para el modal
-    const registroParaModal = {
-      ...registro,
-      naveInicial: naveActual,
-      viaje: viajeActual
+    const getFilterType = () => {
+      const colDef = props.column.getColDef();
+      return colDef.filter || 'agTextColumnFilter';
     };
 
-    setSelectedRegistroForNaveViaje(registroParaModal);
-    setIsEditNaveViajeModalOpen(true);
-  };
-
-  const handleCloseNaveViajeModal = () => {
-    setIsEditNaveViajeModalOpen(false);
-    setSelectedRegistroForNaveViaje(null);
-    setSelectedRecordsForNaveViaje([]);
-  };
-
-  const handleSaveNaveViaje = async (nave: string, viaje: string) => {
-    if (!selectedRegistroForNaveViaje?.id) return;
-
-    if (isCliente) {
-      error('No tienes permisos para editar registros.');
-      return;
-    }
-
-    // Validar que el ejecutivo solo pueda editar registros de sus clientes
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      if (!clientesAsignados.includes(selectedRegistroForNaveViaje.shipper || '')) {
-        error('No tienes permiso para editar este registro');
-        return;
-      }
-    }
-
-    try {
-      const supabase = createClient();
-
-      // Construir el nombre completo de la nave con viaje (igual que en AddModal)
-      const naveCompleta = nave && viaje.trim()
-        ? `${nave} [${viaje.trim()}]`
-        : nave || '';
-
-      const { error } = await supabase
-        .from('registros')
-        .update({
-          nave_inicial: naveCompleta,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', selectedRegistroForNaveViaje.id);
-
-      if (error) throw error;
-
-      success('Nave y viaje actualizados correctamente');
+    // Verificar si tiene valores únicos para mostrar un select
+    const hasFilterValues = props.column.getColDef().filterParams?.values && 
+                            Array.isArray(props.column.getColDef().filterParams.values) &&
+                            props.column.getColDef().filterParams.values.length > 0;
+    const isDateFilter = getFilterType() === 'agDateColumnFilter';
+    const isNumberFilter = getFilterType() === 'agNumberColumnFilter';
+    
+    // Función para manejar el click en la flecha de ordenamiento
+    const handleSortClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      const sort = props.column.getSort();
+      let newSort: 'asc' | 'desc' | null;
       
-      // Actualizar el registro en el estado local sin recargar
-      setRegistros((prevRegistros) =>
-        prevRegistros.map((record) =>
-          record.id === selectedRegistroForNaveViaje.id
-            ? { ...record, naveInicial: naveCompleta }
-            : record
-        )
-      );
-      
-      handleCloseNaveViajeModal();
-    } catch (err: any) {
-      error('Error al actualizar nave y viaje: ' + (err.message || 'Error desconocido'));
-    }
-  };
-
-  const handleBulkEditNaveViaje = (records: Registro[]) => {
-    if (isCliente) {
-      error('No tienes permisos para editar registros.');
-      return;
-    }
-    // Validar que todos los registros sean de clientes asignados al ejecutivo
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      const registrosValidos = records.filter(r =>
-        clientesAsignados.includes(r.shipper || '')
-      );
-
-      if (registrosValidos.length !== records.length) {
-        error('No tienes permiso para editar algunos de los registros seleccionados');
-        return;
-      }
-
-      setSelectedRegistroForNaveViaje(null);
-      setSelectedRecordsForNaveViaje(registrosValidos);
-    } else {
-      setSelectedRegistroForNaveViaje(null);
-      setSelectedRecordsForNaveViaje(records);
-    }
-    setIsEditNaveViajeModalOpen(true);
-  };
-
-  const handleBulkSaveNaveViaje = async (nave: string, viaje: string, records: Registro[]) => {
-    if (isCliente) {
-      error('No tienes permisos para editar registros.');
-      return;
-    }
-    // Validar que todos los registros sean de clientes asignados al ejecutivo
-    let registrosParaActualizar = records;
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      registrosParaActualizar = records.filter(r =>
-        clientesAsignados.includes(r.shipper || '')
-      );
-
-      if (registrosParaActualizar.length !== records.length) {
-        error('No tienes permiso para actualizar algunos de los registros seleccionados');
-        return;
-      }
-    }
-
-    try {
-      const supabase = createClient();
-
-      // Construir el nombre completo de la nave con viaje
-      const naveCompleta = nave && viaje.trim()
-        ? `${nave} [${viaje.trim()}]`
-        : nave || '';
-
-      const recordIds = registrosParaActualizar.map(r => r.id).filter((id): id is string => Boolean(id));
-
-      if (recordIds.length === 0) return;
-
-      const { error } = await supabase
-        .from('registros')
-        .update({
-          nave_inicial: naveCompleta,
-          updated_at: new Date().toISOString()
-        })
-        .in('id', recordIds);
-
-      if (error) throw error;
-
-      success(`${registrosParaActualizar.length} registro(s) actualizado(s) correctamente`);
-      
-      // Actualizar los registros en el estado local sin recargar
-      const recordIdsSet = new Set(recordIds);
-      setRegistros((prevRegistros) =>
-        prevRegistros.map((record) =>
-          record.id && recordIdsSet.has(record.id)
-            ? { ...record, naveInicial: naveCompleta }
-            : record
-        )
-      );
-      
-      handleCloseNaveViajeModal();
-    } catch (err: any) {
-      error('Error al actualizar nave y viaje: ' + (err.message || 'Error desconocido'));
-    }
-  };
-
-  // Funciones para selección múltiple
-  const handleToggleSelectionMode = () => {
-    setSelectionMode(!selectionMode);
-    if (selectionMode) {
-      setSelectedRows(new Set());
-    }
-  };
-
-  const handleToggleRowSelection = useCallback((recordId: string, rowIndex?: number, event?: React.MouseEvent<HTMLInputElement>) => {
-    const visibleRegistros = registrosVisibles;
-    const isShiftPressed = event?.shiftKey || false;
-    const currentIndex = rowIndex ?? visibleRegistros.findIndex(r => r.id === recordId);
-
-    // Early return si no se encuentra la fila
-    if (currentIndex === -1) return;
-
-    const newSelectedRows = new Set(selectedRows);
-
-    // Si se presiona Shift y hay una última fila seleccionada, seleccionar rango
-    if (isShiftPressed && lastSelectedRowIndex.current !== null) {
-      const startIndex = Math.min(lastSelectedRowIndex.current, currentIndex);
-      const endIndex = Math.max(lastSelectedRowIndex.current, currentIndex);
-
-      // Determinar si debemos seleccionar o deseleccionar el rango
-      // Si la última fila seleccionada está seleccionada, seleccionamos todo el rango
-      // Si no, deseleccionamos todo el rango
-      const lastSelectedId = visibleRegistros[lastSelectedRowIndex.current]?.id;
-      const shouldSelect = lastSelectedId ? selectedRows.has(lastSelectedId) : true;
-
-      // Optimizar: evitar verificaciones innecesarias en el bucle
-      if (shouldSelect) {
-        // Agregar todas las filas del rango
-        for (let i = startIndex; i <= endIndex; i++) {
-          const rowId = visibleRegistros[i]?.id;
-          if (rowId) newSelectedRows.add(rowId);
-        }
+      if (sort === 'asc') {
+        // Si está ascendente (mayor a menor), cambiar a descendente (menor a mayor)
+        newSort = 'desc';
       } else {
-        // Eliminar todas las filas del rango
-        for (let i = startIndex; i <= endIndex; i++) {
-          const rowId = visibleRegistros[i]?.id;
-          if (rowId) newSelectedRows.delete(rowId);
-        }
+        // Si está descendente o no hay orden, poner ascendente (mayor a menor)
+        newSort = 'asc';
       }
+      
+      // Actualizar el estado local primero para que el componente se re-renderice
+      setCurrentSort(newSort);
+      
+      // Luego aplicar el sort al grid
+      props.setSort(newSort, false);
+    };
 
-      // Actualizar la referencia
-      lastSelectedRowIndex.current = currentIndex;
-    } else {
-      // Comportamiento normal: toggle de la fila individual
-      if (newSelectedRows.has(recordId)) {
-        newSelectedRows.delete(recordId);
-        lastSelectedRowIndex.current = null;
-      } else {
-        newSelectedRows.add(recordId);
-        lastSelectedRowIndex.current = currentIndex;
-      }
-    }
+    // Determinar qué flecha mostrar: arriba por defecto, abajo si está ordenado descendente
+    const showDownArrow = currentSort === 'desc';
 
-    setSelectedRows(newSelectedRows);
-  }, [selectedRows, registrosVisibles]);
-
-  const handleSelectAll = (filteredRecords: Registro[]) => {
-    // Obtener IDs de los registros filtrados/visibles
-    const filteredIds = new Set(filteredRecords.map(r => r.id).filter((id): id is string => Boolean(id)));
-
-    // Verificar si todos los registros visibles ya están seleccionados
-    const allVisibleSelected = filteredIds.size > 0 && Array.from(filteredIds).every(id => selectedRows.has(id));
-
-    if (allVisibleSelected) {
-      // Deseleccionar solo los registros visibles
-      const newSelectedRows = new Set(selectedRows);
-      filteredIds.forEach(id => newSelectedRows.delete(id));
-      setSelectedRows(newSelectedRows);
-      lastSelectedRowIndex.current = null;
-    } else {
-      // Seleccionar todos los registros visibles (manteniendo los que ya estaban seleccionados)
-      const newSelectedRows = new Set(selectedRows);
-      filteredIds.forEach(id => newSelectedRows.add(id));
-      setSelectedRows(newSelectedRows);
-      // Guardar el índice de la última fila visible cuando se selecciona todo
-      lastSelectedRowIndex.current = filteredRecords.length - 1;
-    }
-  };
-
-  const handleClearSelection = () => {
-    setSelectedRows(new Set());
-    lastSelectedRowIndex.current = null;
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedRows.size === 0) return;
-
-    const esAdmin = currentUser?.rol === 'admin';
-
-    if (isCliente) {
-      error('No tienes permisos para eliminar registros.');
-      return;
-    }
-
-    const registrosSeleccionados = registros.filter((r) => r.id && selectedRows.has(r.id));
-
-    let registrosParaEliminar = registrosSeleccionados;
-    if (!esAdmin) {
-      if (isEjecutivo && clientesAsignados.length > 0) {
-        registrosParaEliminar = registrosSeleccionados.filter((r) =>
-          clientesAsignados.includes(r.shipper || ''),
-        );
-
-        if (registrosParaEliminar.length !== registrosSeleccionados.length) {
-          error('No tienes permiso para eliminar algunos de los registros seleccionados');
-          return;
-        }
-      }
-    }
-
-    if (registrosParaEliminar.length === 0) {
-      warning('No hay registros válidos para eliminar.');
-      return;
-    }
-
-    setDeleteConfirm({ registros: registrosParaEliminar, mode: 'bulk' });
-  };
-
-  const handleUpdateRecord = useCallback(async (updatedRecord: Registro, oldRecord?: Registro) => {
-    // Actualizar el registro en el estado local primero
-    setRegistros(prevRegistros =>
-      prevRegistros.map(record =>
-        record.id === updatedRecord.id ? updatedRecord : record
-      )
+    return (
+      <div className="flex flex-col h-full w-full">
+        <div className="flex items-center justify-center h-6 px-2">
+          <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 truncate">
+            {props.displayName}
+          </span>
+          {props.enableSorting && (
+            <button
+              onClick={handleSortClick}
+              className="ml-2 p-0.5 rounded transition-colors text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+              title={
+                showDownArrow 
+                  ? 'Ordenar ascendente (mayor a menor)' 
+                  : 'Ordenar descendente (menor a mayor)'
+              }
+            >
+              {showDownArrow ? (
+                <ArrowDown className="w-4 h-4" />
+              ) : (
+                <ArrowUp className="w-4 h-4" />
+              )}
+            </button>
+          )}
+        </div>
+        <div className="flex-1 px-1 pb-1">
+          {hasFilterValues ? (
+            <select
+              className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              onChange={onSelectChange}
+              value={filterValue}
+            >
+              <option value="">Todos</option>
+              {props.column.getColDef().filterParams?.values?.map((val: string) => (
+                <option key={val} value={val}>{val}</option>
+              ))}
+            </select>
+          ) : isDateFilter ? (
+            <input
+              type="date"
+              className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              onChange={onFilterChange}
+              value={filterValue}
+            />
+          ) : isNumberFilter ? (
+            <input
+              type="number"
+              className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              onChange={onFilterChange}
+              value={filterValue}
+              placeholder="Filtrar..."
+            />
+          ) : (
+            <input
+              type="text"
+              className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+              onChange={onFilterChange}
+              value={filterValue}
+              placeholder="Filtrar..."
+            />
+          )}
+        </div>
+      </div>
     );
+  };
 
-    // Sincronizar con transportes relacionados
-    try {
-      const oldBooking = oldRecord?.booking;
-      const syncResult = await syncTransportesFromRegistro(updatedRecord, oldBooking);
+  // Manejar cambios de celda para edición inline
+  const onCellValueChanged = useCallback(async (params: any) => {
+    if (!params.data || !params.data.id) return;
 
-      if (syncResult.success && (syncResult.updated || 0) > 0) {
-        // Transportes sincronizados correctamente
-      } else if (!syncResult.success) {
-        console.error('Error en sincronización de transportes:', syncResult.error);
-        // Opcional: Mostrar advertencia al usuario
-        // warning('No se pudieron sincronizar los transportes relacionados');
-      }
-    } catch (error) {
-      console.error('❌ Error crítico en sincronización:', error);
-    }
-  }, []);
+    const field = params.colDef.field as keyof Registro;
+    const newValue = params.newValue;
+    const oldValue = params.oldValue;
+    const record = params.data as Registro;
 
-  const handleBulkUpdate = useCallback(async (field: keyof Registro, value: any, selectedRecords: Registro[]) => {
-    if (selectedRecords.length === 0) return;
-
-    if (isCliente) {
-      error('No tienes permisos para editar registros.');
-      return;
-    }
-
-    // Si es ejecutivo, validar que todos los registros sean de sus clientes
-    let registrosParaActualizar = selectedRecords;
-    if (isEjecutivo && clientesAsignados.length > 0) {
-      registrosParaActualizar = selectedRecords.filter(r =>
-        clientesAsignados.includes(r.shipper || '')
-      );
-
-      if (registrosParaActualizar.length !== selectedRecords.length) {
-        error('No tienes permiso para actualizar algunos de los registros seleccionados');
-        return;
-      }
-    }
+    // Si el valor no cambió, no hacer nada
+    if (newValue === oldValue) return;
 
     try {
       const supabase = createClient();
-
-      // Mapear nombres de campos del tipo TypeScript a nombres de la base de datos
-      const getDatabaseFieldName = (fieldName: keyof Registro): string => {
-        const fieldMapping: Record<string, string> = {
-          'naveInicial': 'nave_inicial',
-          'tipoIngreso': 'tipo_ingreso',
-          'roleadaDesde': 'roleada_desde',
-          'ingresoStacking': 'ingreso_stacking',
-          'refAsli': 'ref_asli',
-          'numeroBl': 'numero_bl',
-          'estadoBl': 'estado_bl',
-          'tratamientoFrio': 'tratamiento de frio'
-        };
-
-        return fieldMapping[fieldName] || fieldName;
-      };
-
-      const normalizeBulkValue = (fieldName: keyof Registro, rawValue: any) => {
-        if (rawValue === '' || rawValue === undefined) return null;
-
-        const numericFields = new Set<keyof Registro>(['temperatura', 'cbm', 'co2', 'o2']);
-        if (numericFields.has(fieldName)) {
-          if (rawValue === null) return null;
-          const numericValue = Number(rawValue);
-          if (Number.isNaN(numericValue)) {
-            throw new Error(`Valor inválido para el campo ${String(fieldName)}`);
-          }
-          return numericValue;
+      
+      // Procesar el valor según el tipo de campo
+      let processedValue: any = newValue;
+      
+      // Campos numéricos
+      if (['temperatura', 'cbm', 'co2', 'o2', 'tt', 'cantCont'].includes(field)) {
+        processedValue = newValue === '' || newValue === null ? null : Number(newValue);
+        if (isNaN(processedValue)) {
+          processedValue = null;
         }
+      }
+      
+      // Campos de fecha
+      if (['etd', 'eta', 'ingresado', 'ingresoStacking'].includes(field)) {
+        if (newValue) {
+          // Si es string, intentar parsearlo
+          if (typeof newValue === 'string') {
+            processedValue = new Date(newValue).toISOString();
+          } else if (newValue instanceof Date) {
+            processedValue = newValue.toISOString();
+          }
+        } else {
+          processedValue = null;
+        }
+      }
 
-        return rawValue;
-      };
-
+      // Mapear el campo de app a BD
+      const dbFieldName = mapRegistroFieldToDb(field);
+      
       // Preparar datos para actualizar
-      const dbFieldName = getDatabaseFieldName(field);
-      const normalizedValue = normalizeBulkValue(field, value);
       const updateData: any = {
-        [dbFieldName]: normalizedValue,
+        [dbFieldName]: processedValue,
         updated_at: new Date().toISOString()
       };
 
-      // Obtener IDs de los registros seleccionados (solo los permitidos)
-      const recordIds = registrosParaActualizar.map(record => record.id).filter((id): id is string => Boolean(id));
+      // Si estamos editando ETD o ETA, recalcular TT
+      if (field === 'etd' || field === 'eta') {
+        const etd = field === 'etd' ? processedValue : record.etd;
+        const eta = field === 'eta' ? processedValue : record.eta;
+        const newTT = calculateTransitTime(etd, eta);
+        if (newTT !== null) {
+          updateData.tt = newTT;
+        }
+      }
 
-      if (recordIds.length === 0) {
-        return;
+      // Función para calcular semana del año
+      const getWeekOfYear = (date: Date): number => {
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+      };
+
+      // Si estamos editando fecha de ingreso, recalcular semana y mes de ingreso
+      if (field === 'ingresado' && processedValue) {
+        const date = new Date(processedValue);
+        if (!isNaN(date.getTime())) {
+          updateData.semana_ingreso = getWeekOfYear(date);
+          updateData.mes_ingreso = date.getMonth() + 1;
+        }
+      }
+
+      // Si estamos editando ETD, recalcular semana y mes de zarpe
+      if (field === 'etd' && processedValue) {
+        const date = new Date(processedValue);
+        if (!isNaN(date.getTime())) {
+          updateData.semana_zarpe = getWeekOfYear(date);
+          updateData.mes_zarpe = date.getMonth() + 1;
+        }
+      }
+
+      // Si estamos editando ETA, recalcular semana y mes de arribo
+      if (field === 'eta' && processedValue) {
+        const date = new Date(processedValue);
+        if (!isNaN(date.getTime())) {
+          updateData.semana_arribo = getWeekOfYear(date);
+          updateData.mes_arribo = date.getMonth() + 1;
+        }
       }
 
       // Actualizar en Supabase
       const { data, error: updateError } = await supabase
         .from('registros')
         .update(updateData)
-        .in('id', recordIds);
+        .eq('id', record.id)
+        .select()
+        .single();
 
       if (updateError) {
-        throw new Error(updateError.message || 'Error al actualizar registros en Supabase');
+        console.error('Error al actualizar registro:', updateError);
+        showError('Error al guardar el cambio. Por favor, intenta de nuevo.');
+        // Revertir el cambio en la tabla
+        params.node.setDataValue(field, oldValue);
+        return;
       }
 
-      for (const record of registrosParaActualizar) {
+      if (data) {
+        // Registrar en historial
         try {
           await logHistoryEntry(supabase, {
             registroId: record.id,
             field,
-            previousValue: record[field],
-            newValue: normalizedValue,
+            previousValue: oldValue,
+            newValue: processedValue,
           });
         } catch (historialError) {
-          // Error no crítico al crear historial, se ignora silenciosamente
+          // Error silencioso al registrar historial
         }
+
+        // Actualizar el registro en el estado local
+        const updatedRegistro = convertSupabaseToApp(data);
+        setRowData(prev => prev.map(r => r.id === updatedRegistro.id ? updatedRegistro : r));
+        
+        success('Cambio guardado correctamente');
+      }
+    } catch (error) {
+      console.error('Error al procesar cambio de celda:', error);
+      showError('Error al guardar el cambio. Por favor, intenta de nuevo.');
+      // Revertir el cambio en la tabla
+      params.node.setDataValue(field, oldValue);
+    }
+  }, [success, showError]);
+
+  const [gridOptions, setGridOptions] = useState<GridOptions>({
+    pagination: false,
+    rowSelection: {
+      mode: 'multiRow',
+      checkboxes: false, // Deshabilitado porque usamos checkboxSelection en la columna
+      headerCheckbox: false,
+      enableClickSelection: false,
+    },
+    defaultColDef: {
+      sortable: true,
+      filter: true,
+      resizable: true,
+      floatingFilter: false, // Deshabilitar filtros flotantes
+      headerComponent: CustomHeaderWithFilter as any,
+      editable: canEdit, // Habilitar edición inline solo si el usuario tiene permisos
+      cellStyle: { textAlign: 'center' },
+      cellClass: 'ag-center-cell',
+      headerClass: 'ag-header-cell-center', // Centrar headers
+    },
+    sideBar: false,
+    suppressMenuHide: true,
+    // Manejar cambios de celda para edición inline
+    onCellValueChanged: onCellValueChanged,
+    // Nota: isRowSelectable está deprecado pero se mantiene por compatibilidad
+    // La lógica de filtrado se maneja en onSelectionChanged
+  } as GridOptions);
+
+  const loadCatalogos = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      
+      // Cargar navieras desde catalogos_navieras
+      const { data: navierasData, error: navierasError } = await supabase
+        .from('catalogos_navieras')
+        .select('*');
+
+      if (navierasError) {
+        console.error('Error loading catalogos_navieras:', navierasError);
+      } else if (navierasData && navierasData.length > 0) {
+        const navieras = navierasData
+          .map(item => item.nombre)
+          .filter(Boolean)
+          .sort();
+        setNavierasUnicas([...new Set(navieras)]);
       }
 
-      // Actualizar el estado local
-      const updatedRecords = registrosParaActualizar.map(record => ({
-        ...record,
-        [field]: normalizedValue,
-        updated_at: new Date().toISOString()
-      }));
+      // Cargar naves desde catalogos_naves
+      const { data: navesData, error: navesError } = await supabase
+        .from('catalogos_naves')
+        .select('*');
 
-      setRegistros(prevRegistros =>
-        prevRegistros.map(record => {
-          const updated = updatedRecords.find(updated => updated.id === record.id);
-          return updated || record;
-        })
-      );
+      if (navesError) {
+        console.error('Error loading catalogos_naves:', navesError);
+      } else if (navesData && navesData.length > 0) {
+        const naves = navesData
+          .map(item => item.nombre)
+          .filter(Boolean)
+          .sort();
+        setNavesUnicas([...new Set(naves)]);
 
-      // Sincronizar con transportes relacionados (solo para campos relevantes)
-      const syncFields = ['booking', 'naveInicial', 'naviera', 'refCliente', 'contenedor', 'shipper', 'especie', 'pol', 'pod', 'deposito', 'temperatura'];
-      if (syncFields.includes(field)) {
-        try {
-          const syncResult = await syncMultipleTransportesFromRegistros(updatedRecords);
-
-          if (syncResult.success && syncResult.totalUpdated > 0) {
-            // Transportes sincronizados correctamente
-          } else if (!syncResult.success) {
-            console.error('Error en sincronización masiva de transportes:', syncResult.results);
+        // Crear mapping de navieras -> naves
+        const mapping: Record<string, string[]> = {};
+        navesData.forEach(item => {
+          const navieraNombre = item.naviera_nombre;
+          const naveNombre = item.nombre;
+          
+          if (navieraNombre && naveNombre) {
+            if (!mapping[navieraNombre]) {
+              mapping[navieraNombre] = [];
+            }
+            if (!mapping[navieraNombre].includes(naveNombre)) {
+              mapping[navieraNombre].push(naveNombre);
+            }
           }
-        } catch (error) {
-          console.error('❌ Error crítico en sincronización masiva:', error);
-        }
+        });
+        
+        // Ordenar las naves de cada naviera
+        Object.keys(mapping).forEach(key => {
+          mapping[key].sort();
+        });
+        
+        setNavierasNavesMapping(mapping);
       }
 
-      // Mostrar confirmación visual mejorada
-      const fieldNames: Record<string, string> = {
-        'especie': 'Especie',
-        'estado': 'Estado',
-        'tipoIngreso': 'Tipo de Ingreso',
-        'ejecutivo': 'Ejecutivo',
-        'naviera': 'Naviera',
-        'naveInicial': 'Nave',
-        'pol': 'POL',
-        'pod': 'POD',
-        'deposito': 'Depósito',
-        'flete': 'Flete',
-        'temperatura': 'Temperatura',
-        'cbm': 'CBM',
-        'co2': 'CO2',
-        'o2': 'O2',
-        'comentario': 'Comentario'
-      };
+      // Cargar destinos desde catalogos_destinos
+      const { data: destinosData, error: destinosError } = await supabase
+        .from('catalogos_destinos')
+        .select('nombre')
+        .eq('activo', true)
+        .order('nombre');
 
-      const fieldDisplayName = fieldNames[field] || field;
-      success(`✅ Se actualizaron ${registrosParaActualizar.length} registros en el campo "${fieldDisplayName}"`);
+      if (destinosError) {
+        console.error('Error loading catalogos_destinos:', destinosError);
+      } else if (destinosData && destinosData.length > 0) {
+        const destinos = destinosData
+          .map(item => item.nombre)
+          .filter(Boolean);
+        setDestinosUnicos([...new Set(destinos)]);
+      }
 
-    } catch (err: any) {
-      const errorMessage =
-        err?.message ||
-        err?.error?.message ||
-        (typeof err === 'string' ? err : JSON.stringify(err));
-      console.error('Error en edición masiva:', err);
-      error(`Error al actualizar los registros: ${errorMessage || 'Error desconocido'}`);
+      // Cargar catálogo general para pols, depositos, etc.
+      const { data: catalogos, error: catalogosError } = await supabase
+        .from('catalogos')
+        .select('*');
+
+      if (catalogosError) {
+        console.error('Error loading catalogos:', catalogosError);
+      } else if (catalogos) {
+        catalogos.forEach(catalogo => {
+          const valores = catalogo.valores || [];
+          const mapping = catalogo.mapping;
+
+          switch (catalogo.categoria) {
+            case 'pols':
+              setPolsUnicos(valores);
+              break;
+            case 'naves':
+              // Solo usar si no hay datos de catalogos_naves
+              if (navesError || !navesData || navesData.length === 0) {
+                setNavesUnicas(valores);
+              }
+              break;
+            case 'navierasNavesMapping':
+              // Solo usar si no hay datos de catalogos_naves
+              if ((navesError || !navesData || navesData.length === 0) && mapping && typeof mapping === 'object') {
+                const cleanMapping: Record<string, string[]> = {};
+                Object.keys(mapping).forEach(key => {
+                  const naves = (mapping[key] || []) as string[];
+                  cleanMapping[key] = naves.map((nave: string) => {
+                    const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                    return match ? match[1].trim() : nave.trim();
+                  });
+                });
+                setNavierasNavesMapping(cleanMapping);
+                
+                if (navierasError || !navierasData || navierasData.length === 0) {
+                  const navierasFromMapping = Object.keys(cleanMapping).sort();
+                  setNavierasUnicas(navierasFromMapping);
+                }
+              }
+              break;
+            case 'consorciosNavesMapping':
+              if (mapping && typeof mapping === 'object') {
+                const cleanMapping: Record<string, string[]> = {};
+                Object.keys(mapping).forEach(key => {
+                  const naves = (mapping[key] || []) as string[];
+                  cleanMapping[key] = naves.map((nave: string) => {
+                    const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                    return match ? match[1].trim() : nave.trim();
+                  });
+                });
+                setConsorciosNavesMapping(cleanMapping);
+              }
+              break;
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error en loadCatalogos:', error);
     }
-  }, [success, error, isEjecutivo, clientesAsignados]);
-
-  // Estado para los mapeos de naves desde el CATÁLOGO (SOLO para AddModal - sin números de viaje)
-  const [navierasNavesMappingCatalog, setNavierasNavesMappingCatalog] = useState<Record<string, string[]>>({});
-  const [consorciosNavesMappingCatalog, setConsorciosNavesMappingCatalog] = useState<Record<string, string[]>>({});
-
-  // Estado para los mapeos de naves desde REGISTROS (para filtros - puede incluir números de viaje)
-  const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
-  const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
-
-  // Crear mapeos de navieras a naves (considerando naves compartidas) - memoizado
-  const createNavierasNavesMapping = useCallback((registrosData: Registro[]) => {
-    const mapping: Record<string, string[]> = {};
-
-    // Primero, crear un mapeo de nave → navieras que la usan
-    const naveToNavieras: Record<string, string[]> = {};
-
-    registrosData.forEach(registro => {
-      if (registro.naviera && registro.naveInicial) {
-        if (!naveToNavieras[registro.naveInicial]) {
-          naveToNavieras[registro.naveInicial] = [];
-        }
-        if (!naveToNavieras[registro.naveInicial].includes(registro.naviera)) {
-          naveToNavieras[registro.naveInicial].push(registro.naviera);
-        }
-      }
-    });
-
-    // Ahora crear el mapeo naviera → naves (incluyendo naves compartidas)
-    Object.keys(naveToNavieras).forEach(nave => {
-      const navierasDeLaNave = naveToNavieras[nave];
-      navierasDeLaNave.forEach(naviera => {
-        if (!mapping[naviera]) {
-          mapping[naviera] = [];
-        }
-        if (!mapping[naviera].includes(nave)) {
-          mapping[naviera].push(nave);
-        }
-      });
-    });
-
-    return mapping;
   }, []);
 
-  // Crear mapeos de consorcios a naves - memoizado
-  const createConsorciosNavesMapping = useCallback((registrosData: Registro[]) => {
-    const mapping: Record<string, string[]> = {};
+  const loadRegistros = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const supabase = createClient();
+      
+      // Aplicar filtros según el rol del usuario
+      let query = supabase
+        .from('registros')
+        .select('*')
+        .is('deleted_at', null);
 
+      // Filtrar según rol
+      const isAdmin = currentUser?.rol === 'admin';
+      const isEjecutivo = currentUser?.rol === 'ejecutivo' 
+        || (currentUser?.email?.endsWith('@asli.cl') && currentUser?.rol !== 'cliente');
+      const clienteNombre = currentUser?.cliente_nombre?.trim();
+      const clientesAsignados = currentUser?.clientes_asignados || [];
 
-    // Obtener todas las navieras únicas de los datos
-    const navierasUnicas = [...new Set(registrosData.map(r => r.naviera).filter(Boolean))];
-
-    // Crear mapeos de consorcios basados en patrones encontrados en los datos
-    const consorciosEncontrados: Record<string, string[]> = {};
-
-    // Buscar patrones de consorcios en los nombres de navieras
-    navierasUnicas.forEach(naviera => {
-      // Patrón 1: HAPAG-LLOYD / ONE / MSC
-      if (naviera.includes('HAPAG') || naviera.includes('ONE') || naviera.includes('MSC')) {
-        if (!consorciosEncontrados['HAPAG-LLOYD / ONE / MSC']) {
-          consorciosEncontrados['HAPAG-LLOYD / ONE / MSC'] = [];
+      if (!isAdmin) {
+        if (currentUser?.rol === 'cliente' && clienteNombre) {
+          // Cliente: solo ve sus propios registros
+          query = query.ilike('shipper', clienteNombre);
+        } else if (isEjecutivo && clientesAsignados.length > 0) {
+          // Ejecutivo: solo ve registros de sus clientes asignados
+          query = query.in('shipper', clientesAsignados);
+        } else if (!isAdmin && !isEjecutivo) {
+          // Usuario sin permisos específicos: no ve nada
+          query = query.eq('id', 'NONE');
         }
-        // Agregar todas las naves de esta naviera al consorcio
-        registrosData
-          .filter(r => r.naviera === naviera && r.naveInicial)
-          .forEach(registro => {
-            if (!consorciosEncontrados['HAPAG-LLOYD / ONE / MSC'].includes(registro.naveInicial)) {
-              consorciosEncontrados['HAPAG-LLOYD / ONE / MSC'].push(registro.naveInicial);
-            }
-          });
       }
 
-      // Patrón 2: PIL / YANG MING / WAN HAI
-      if (naviera.includes('PIL') || naviera.includes('YANG MING') || naviera.includes('WAN HAI')) {
-        if (!consorciosEncontrados['PIL / YANG MING / WAN HAI']) {
-          consorciosEncontrados['PIL / YANG MING / WAN HAI'] = [];
-        }
-        registrosData
-          .filter(r => r.naviera === naviera && r.naveInicial)
-          .forEach(registro => {
-            if (!consorciosEncontrados['PIL / YANG MING / WAN HAI'].includes(registro.naveInicial)) {
-              consorciosEncontrados['PIL / YANG MING / WAN HAI'].push(registro.naveInicial);
-            }
-          });
-      }
+      const { data, error } = await query.order('ref_asli', { ascending: false });
 
-      // Patrón 3: CMA CGM / COSCO / OOCL
-      if (naviera.includes('CMA CGM') || naviera.includes('COSCO') || naviera.includes('OOCL')) {
-        if (!consorciosEncontrados['CMA CGM / COSCO / OOCL']) {
-          consorciosEncontrados['CMA CGM / COSCO / OOCL'] = [];
-        }
-        registrosData
-          .filter(r => r.naviera === naviera && r.naveInicial)
-          .forEach(registro => {
-            if (!consorciosEncontrados['CMA CGM / COSCO / OOCL'].includes(registro.naveInicial)) {
-              consorciosEncontrados['CMA CGM / COSCO / OOCL'].push(registro.naveInicial);
-            }
-          });
-      }
-    });
-
-    // Agregar también los consorcios que aparecen directamente en los datos
-    navierasUnicas.forEach(naviera => {
-      if (naviera.includes('/') && naviera.length > 10) {
-        // Es probable que sea un consorcio directo
-        if (!consorciosEncontrados[naviera]) {
-          consorciosEncontrados[naviera] = [];
-        }
-        registrosData
-          .filter(r => r.naviera === naviera && r.naveInicial)
-          .forEach(registro => {
-            if (!consorciosEncontrados[naviera].includes(registro.naveInicial)) {
-              consorciosEncontrados[naviera].push(registro.naveInicial);
-            }
-          });
-      }
-    });
-
-    return consorciosEncontrados;
-  }, [navierasUnicas]);
-
-  // Función para generar arrays de filtro basados en datos reales - memoizada
-  const generateFilterArrays = useCallback((registrosData: Registro[]) => {
-    const navierasFiltro = [...new Set(registrosData.map(r => r.naviera).filter(Boolean))].sort();
-    const especiesFiltro = [...new Set(registrosData.map(r => r.especie).filter(Boolean))].sort();
-    const clientesFiltro = [...new Set(registrosData.map(r => r.shipper).filter(Boolean))].sort();
-    const polsFiltro = [...new Set(registrosData.map(r => r.pol).filter(Boolean))].sort();
-    const destinosFiltro = [...new Set(registrosData.map(r => r.pod).filter(Boolean))].sort();
-    const ejecutivosFiltro = [...new Set(registrosData.map(r => r.ejecutivo).filter(Boolean))].sort();
-    const navesFiltro = [...new Set(registrosData.map(r => r.naveInicial).filter(Boolean))].sort();
-    const depositosFiltro = [...new Set(registrosData.map(r => r.deposito).filter(Boolean))].sort();
-
-    return {
-      navierasFiltro,
-      especiesFiltro,
-      clientesFiltro,
-      polsFiltro,
-      destinosFiltro,
-      ejecutivosFiltro,
-      navesFiltro,
-      depositosFiltro
-    };
-  }, []);
-
-  // Función para validar formato de contenedor (debe tener al menos una letra y un número)
-  const isValidContainer = (contenedor: string | number | null): boolean => {
-    if (!contenedor || contenedor === '-' || contenedor === null || contenedor === '') {
-      return false;
-    }
-
-    const contenedorStr = contenedor.toString().trim();
-
-    // Excluir explícitamente los guiones
-    if (contenedorStr === '-') {
-      return false;
-    }
-
-    // Debe tener al menos una letra o número (puede tener símbolos)
-    const hasLetterOrNumber = /[a-zA-Z0-9]/.test(contenedorStr);
-
-    return hasLetterOrNumber;
-  };
-
-  // Memoizar mapeos y filtros para evitar recalcular en cada render
-  // Filtrar registros por ejecutivo si hay uno seleccionado
-  const registrosParaFiltros = useMemo(() => {
-    if (!tableStates || !tableStates.executiveFilter || tableStates.executiveFilter === '') {
-      return registrosVisibles;
-    }
-    return registrosVisibles.filter(r => r.ejecutivo === tableStates.executiveFilter);
-  }, [registrosVisibles, tableStates?.executiveFilter]);
-
-  // Limpiar filtros inválidos solo cuando cambia el ejecutivo, no cuando se actualizan registros
-  // Usar un ref para rastrear el ejecutivo anterior y solo limpiar si realmente cambió
-  const previousExecutiveFilterRef = useRef(tableStates?.executiveFilter || '');
-
-  useEffect(() => {
-    if (!tableInstance || !tableStates) return;
-
-    const currentExecutiveFilter = tableStates.executiveFilter || '';
-    
-    // Solo limpiar filtros si cambió el ejecutivo, no si solo se actualizaron registros
-    const executiveFilterChanged = previousExecutiveFilterRef.current !== currentExecutiveFilter;
-    
-    // Actualizar ref
-    previousExecutiveFilterRef.current = currentExecutiveFilter;
-    
-    // Solo ejecutar la lógica de limpieza si cambió el ejecutivo
-    if (!executiveFilterChanged) {
-      return;
-    }
-
-    // Generar arrays de opciones válidas basadas en el ejecutivo actual
-    const registrosFiltrados = currentExecutiveFilter
-      ? registrosVisibles.filter(r => r.ejecutivo === currentExecutiveFilter)
-      : registrosVisibles;
-
-    const validNavieras = new Set(registrosFiltrados.map(r => r.naviera).filter(Boolean));
-    const validClientes = new Set(registrosFiltrados.map(r => r.shipper).filter(Boolean));
-    const validEspecies = new Set(registrosFiltrados.map(r => r.especie).filter(Boolean));
-    const validPols = new Set(registrosFiltrados.map(r => r.pol).filter(Boolean));
-    const validDestinos = new Set(registrosFiltrados.map(r => r.pod).filter(Boolean));
-    const validDepositos = new Set(registrosFiltrados.map(r => r.deposito).filter(Boolean));
-    const validNaves = new Set(registrosFiltrados.map(r => r.naveInicial).filter(Boolean));
-
-    // Obtener los filtros actuales del estado de la tabla
-    const currentFilters = tableInstance.getState().columnFilters;
-    const filtersToClear: string[] = [];
-
-    // Verificar cada filtro activo y determinar cuáles deben limpiarse
-    currentFilters.forEach((filter: { id: string; value: any }) => {
-      const filterValue = filter.value;
-      if (!filterValue || filterValue === '' || filterValue === null || filterValue === undefined) {
+      if (error) {
+        console.error('Error loading registros:', error);
+        showError('Error al cargar registros: ' + error.message);
         return;
       }
 
-      const stringValue = typeof filterValue === 'string'
-        ? filterValue.trim()
-        : Array.isArray(filterValue) && filterValue.length > 0
-          ? String(filterValue[0]).trim()
-          : String(filterValue).trim();
+      const registrosConvertidos = (data || []).map(convertSupabaseToApp);
+      setRowData(registrosConvertidos);
 
-      if (stringValue === '') return;
+      // Extraer valores únicos para filtros (excepto navieras, naves, pols y destinos que se cargan desde catálogos)
+      const ejecutivos = [...new Set(registrosConvertidos.map(r => r.ejecutivo).filter(Boolean))].sort();
+      const especies = [...new Set(registrosConvertidos.map(r => r.especie).filter(Boolean))].sort();
+      const clientes = [...new Set(registrosConvertidos.map(r => r.shipper).filter(Boolean))].sort();
+      const depositos = [...new Set(registrosConvertidos.map(r => r.deposito).filter(Boolean))].sort();
+      const fletes = [...new Set(registrosConvertidos.map(r => r.flete).filter(Boolean))].sort();
+      const estados = [...new Set(registrosConvertidos.map(r => r.estado).filter(Boolean))].sort();
+      const tipoIngreso = [...new Set(registrosConvertidos.map(r => r.tipoIngreso).filter(Boolean))].sort();
+      const temporadas = [...new Set(registrosConvertidos.map(r => r.temporada).filter((t): t is string => Boolean(t)))].sort();
 
-      let shouldClear = false;
-      switch (filter.id) {
-        case 'naviera':
-          shouldClear = !validNavieras.has(stringValue);
-          break;
-        case 'shipper':
-          shouldClear = !validClientes.has(stringValue);
-          break;
-        case 'especie':
-          shouldClear = !validEspecies.has(stringValue);
-          break;
-        case 'pol':
-          shouldClear = !validPols.has(stringValue);
-          break;
-        case 'pod':
-          shouldClear = !validDestinos.has(stringValue);
-          break;
-        case 'deposito':
-          shouldClear = !validDepositos.has(stringValue);
-          break;
-        case 'naveInicial':
-          shouldClear = !validNaves.has(stringValue);
-          break;
-      }
+      // ❌ NO sobrescribir navierasUnicas, navesUnicas, polsUnicos ni destinosUnicos: se cargan desde catálogos
+      setEjecutivosUnicos(ejecutivos);
+      setEspeciesUnicas(especies);
+      setClientesUnicos(clientes);
+      setDepositosUnicos(depositos);
+      setFletesUnicos(fletes);
+      setEstadosUnicos(estados);
+      setTipoIngresoUnicos(tipoIngreso);
+      setTemporadasUnicas(temporadas);
 
-      if (shouldClear) {
-        filtersToClear.push(filter.id);
-      }
-    });
+      // ❌ NO sobrescribir navesUnicas: se cargan desde catalogos_naves
+      // Extraer naves únicas
+      // const naves = [...new Set(registrosConvertidos.map(r => {
+      //   let nave = r.naveInicial || '';
+      //   const match = nave.match(/^(.+?)\s*\[(.+?)\]$/);
+      //   return match ? match[1].trim() : nave.trim();
+      // }).filter(Boolean))].sort();
+      // setNavesUnicas(naves); // ELIMINADO: se carga desde catalogos_naves
 
-    // Limpiar los filtros inválidos usando setColumnFilters para actualizar el estado correctamente
-    if (filtersToClear.length > 0) {
-      tableInstance.setColumnFilters((prev: any[]) =>
-        prev.filter((f: any) => !filtersToClear.includes(f.id))
-      );
-
-      // También limpiar individualmente cada columna para asegurar sincronización
-      filtersToClear.forEach((columnId) => {
-        const column = tableInstance.getColumn(columnId);
-        if (column) {
-          column.setFilterValue(undefined);
-        }
-      });
+      success(`${registrosConvertidos.length} registros cargados`);
+    } catch (error: any) {
+      console.error('Error loading registros:', error);
+      showError('Error al cargar registros: ' + error.message);
+    } finally {
+      setLoadingData(false);
     }
-  }, [tableInstance, tableStates?.executiveFilter]); // Solo depender del ejecutivo, no de registrosVisibles
+  }, [showError, success, currentUser]);
 
-  const registrosLength = registrosVisibles.length;
   useEffect(() => {
-    if (registrosLength > 0) {
-      const navierasMapping = createNavierasNavesMapping(registrosVisibles);
-      const consorciosMapping = createConsorciosNavesMapping(registrosVisibles);
+    const checkUser = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-      setNavierasNavesMapping(navierasMapping);
-      setConsorciosNavesMapping(consorciosMapping);
+        if (!currentUser) {
+          router.push('/auth');
+          return;
+        }
 
-      // Generar arrays de filtro basados en datos filtrados por ejecutivo (si hay uno seleccionado)
-      const filterArrays = generateFilterArrays(registrosParaFiltros);
-      setNavierasFiltro(filterArrays.navierasFiltro);
-      setEspeciesFiltro(filterArrays.especiesFiltro);
-      setClientesFiltro(filterArrays.clientesFiltro);
-      setPolsFiltro(filterArrays.polsFiltro);
-      setDestinosFiltro(filterArrays.destinosFiltro);
-      setDepositosFiltro(filterArrays.depositosFiltro);
-      // Ejecutivos siempre muestran todos los disponibles
-      const allEjecutivos = [...new Set(registrosVisibles.map(r => r.ejecutivo).filter(Boolean))].sort();
-      setEjecutivosFiltro(allEjecutivos);
-      setNavesFiltro(filterArrays.navesFiltro);
-    } else {
-      setNavierasNavesMapping({});
-      setConsorciosNavesMapping({});
-      setNavierasFiltro([]);
-      setEspeciesFiltro([]);
-      setClientesFiltro([]);
-      setPolsFiltro([]);
-      setDestinosFiltro([]);
-      setDepositosFiltro([]);
-      setEjecutivosFiltro([]);
-      setNavesFiltro([]);
-    }
-  }, [registrosLength, registrosVisibles, registrosParaFiltros, createNavierasNavesMapping, createConsorciosNavesMapping, generateFilterArrays]);
+        setUser(currentUser);
 
-  // Crear mapeo de registroId a factura
-  const facturasPorRegistro = useMemo(() => {
-    const mapa = new Map<string, Factura>();
-    facturas.forEach(factura => {
-      if (factura.registroId) {
-        mapa.set(factura.registroId, factura);
+        // Cargar información adicional del usuario
+        const { data: userData, error } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('auth_user_id', currentUser.id)
+          .single();
+
+        if (!error && userData) {
+          setUserInfo(userData);
+        }
+
+        // Cargar catálogos y registros
+        await loadCatalogos();
+        await loadRegistros();
+      } catch (error) {
+        console.error('Error checking user:', error);
+        router.push('/auth');
+      } finally {
+        setLoading(false);
       }
-    });
-    return mapa;
-  }, [facturas]);
+    };
 
-  // Cargar documentos proforma desde storage y crear Map de bookings con información del documento
-  const [bookingsConProforma, setBookingsConProforma] = useState<Map<string, { nombre: string; fecha: string }>>(new Map());
+    checkUser();
+  }, [router, loadRegistros, loadCatalogos]);
 
-  const loadProformaDocuments = useCallback(async () => {
+  // Inicializar valores estándar de CBM
+  useEffect(() => {
+    const cbmValues = ['0', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55', '60', '65', '70', '75', '80', '85', '90'];
+    setCbmUnicos(cbmValues);
+  }, []);
+
+  useEffect(() => {
+    // Ajustar tema según el tema del sistema
+    if (theme === 'dark') {
+      setSelectedTheme('quartz-dark');
+    } else {
+      setSelectedTheme('quartz');
+    }
+  }, [theme]);
+
+  // Deshabilitar scroll del body y html para que solo la tabla tenga scroll
+  useEffect(() => {
+    // Guardar estilos originales
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    const originalBodyHeight = document.body.style.height;
+    const originalHtmlHeight = document.documentElement.style.height;
+
+    // Deshabilitar scroll
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.height = '100vh';
+    document.documentElement.style.height = '100vh';
+
+    // Cleanup: restaurar estilos originales al desmontar
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+      document.body.style.height = originalBodyHeight;
+      document.documentElement.style.height = originalHtmlHeight;
+    };
+  }, []);
+
+  // Cerrar el desplegable de exportar cuando se hace clic fuera
+  useEffect(() => {
+    if (!showExportDropdown) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const container = document.querySelector('.export-dropdown-container');
+      if (container && !container.contains(target)) {
+        setShowExportDropdown(false);
+      }
+    };
+
+    // Usar un pequeño delay para evitar que se cierre inmediatamente
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('click', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showExportDropdown]);
+
+  // Definición de columnas para registros
+  const columnDefs: ColDef[] = useMemo(() => [
+    {
+      field: 'refCliente',
+      headerName: 'REF Cliente',
+      width: obtenerAnchoColumna('refCliente'),
+      pinned: 'left',
+      checkboxSelection: true, // Checkbox en esta columna
+      headerCheckboxSelection: true, // Checkbox en el header para seleccionar todo
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'refAsli',
+      headerName: 'REF ASLI',
+      width: obtenerAnchoColumna('refAsli'),
+      pinned: 'left',
+      filter: 'agTextColumnFilter',
+      editable: false, // No editable (campo clave)
+      cellRenderer: (params: ICellRendererParams) => {
+        const registro = params.data as Registro;
+        const tipoIngreso = registro.tipoIngreso;
+        let textColor = '#22c55e'; // green-600
+
+        if (tipoIngreso === 'EARLY') {
+          textColor = '#0891b2'; // cyan-600
+        } else if (tipoIngreso === 'LATE') {
+          textColor = '#eab308'; // yellow-600
+        } else if (tipoIngreso === 'EXTRA LATE') {
+          textColor = '#ef4444'; // red-600
+        }
+
+        return (
+          <span style={{ color: textColor, fontWeight: 'bold' }}>
+            {params.value}
+          </span>
+        );
+      },
+    },
+    {
+      field: 'ejecutivo',
+      headerName: 'Ejecutivo',
+      width: obtenerAnchoColumna('ejecutivo'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: ejecutivosUnicos,
+        caseSensitive: false,
+        trimInput: true,
+      },
+    },
+    {
+      field: 'shipper',
+      headerName: 'Cliente',
+      width: obtenerAnchoColumna('shipper'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: clientesUnicos,
+      },
+    },
+    {
+      field: 'booking',
+      headerName: 'Booking',
+      width: obtenerAnchoColumna('booking'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'contenedor',
+      headerName: 'Contenedor',
+      width: obtenerAnchoColumna('contenedor'),
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        if (Array.isArray(params.value)) {
+          return params.value.join(', ');
+        }
+        return params.value || '';
+      },
+    },
+    {
+      field: 'naviera',
+      headerName: 'Naviera',
+      width: obtenerAnchoColumna('naviera'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: navierasUnicas,
+      },
+    },
+    {
+      field: 'naveInicial',
+      headerName: 'Nave',
+      width: obtenerAnchoColumna('naveInicial'),
+      filter: 'agTextColumnFilter',
+      valueFormatter: (params) => {
+        let value = params.value || '';
+        const registro = params.data as Registro;
+        if (registro.viaje) {
+          value = `${value} [${registro.viaje}]`;
+        }
+        return value;
+      },
+    },
+    {
+      field: 'viaje',
+      headerName: 'Viaje',
+      valueGetter: (params) => {
+        // Primero intentar obtener el viaje directamente del registro
+        if (params.data?.viaje) {
+          return params.data.viaje;
+        }
+        // Si no existe, extraerlo de la columna naveInicial que tiene formato "NAVE [VIAJE]"
+        const naveInicial = params.data?.naveInicial || '';
+        const match = naveInicial.match(/\[(.+?)\]/);
+        return match ? match[1] : '';
+      },
+      width: obtenerAnchoColumna('viaje'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'especie',
+      headerName: 'Especie',
+      width: obtenerAnchoColumna('especie'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: especiesUnicas,
+      },
+    },
+    {
+      field: 'pol',
+      headerName: 'POL',
+      width: obtenerAnchoColumna('pol'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: polsUnicos,
+      },
+    },
+    {
+      field: 'pod',
+      headerName: 'POD',
+      width: obtenerAnchoColumna('pod'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: destinosUnicos,
+      },
+    },
+    {
+      field: 'deposito',
+      headerName: 'Depósito',
+      width: obtenerAnchoColumna('deposito'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: depositosUnicos,
+      },
+    },
+    {
+      field: 'etd',
+      headerName: 'ETD',
+      width: obtenerAnchoColumna('etd'),
+      filter: 'agDateColumnFilter',
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'eta',
+      headerName: 'ETA',
+      width: obtenerAnchoColumna('eta'),
+      filter: 'agDateColumnFilter',
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'tt',
+      headerName: 'TT',
+      width: obtenerAnchoColumna('tt'),
+      filter: 'agNumberColumnFilter',
+      valueGetter: (params: any) => {
+        // Si tt tiene un valor, usarlo
+        if (params.data.tt !== null && params.data.tt !== undefined) {
+          return params.data.tt;
+        }
+        // Si no, intentar calcularlo desde etd y eta
+        const etd = params.data.etd;
+        const eta = params.data.eta;
+        if (etd && eta) {
+          return calculateTransitTime(etd, eta);
+        }
+        return null;
+      },
+      valueFormatter: (params: any) => {
+        return params.value !== null && params.value !== undefined ? params.value.toString() : '';
+      },
+    },
+    {
+      field: 'estado',
+      headerName: 'Estado',
+      width: obtenerAnchoColumna('estado'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: estadosUnicos,
+      },
+      cellRenderer: (params: ICellRendererParams) => {
+        const estado = params.value;
+        const colors: Record<string, string> = {
+          'CONFIRMADO': '#22c55e',
+          'PENDIENTE': '#f59e0b',
+          'CANCELADO': '#ef4444',
+        };
+        return (
+          <span style={{ color: colors[estado] || '#666', fontWeight: 'bold' }}>
+            {estado}
+          </span>
+        );
+      },
+    },
+    {
+      field: 'flete',
+      headerName: 'Flete',
+      width: obtenerAnchoColumna('flete'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: fletesUnicos,
+      },
+    },
+    {
+      field: 'tipoIngreso',
+      headerName: 'Tipo Ingreso',
+      width: obtenerAnchoColumna('tipoIngreso'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: tipoIngresoUnicos,
+      },
+      cellRenderer: (params: ICellRendererParams) => {
+        const tipoIngreso = params.value;
+        let textColor = '#22c55e'; // green-600
+
+        if (tipoIngreso === 'EARLY') {
+          textColor = '#0891b2'; // cyan-600
+        } else if (tipoIngreso === 'LATE') {
+          textColor = '#eab308'; // yellow-600
+        } else if (tipoIngreso === 'EXTRA LATE') {
+          textColor = '#ef4444'; // red-600
+        }
+
+        return (
+          <span style={{ color: textColor, fontWeight: 'bold' }}>
+            {tipoIngreso}
+          </span>
+        );
+      },
+    },
+    {
+      field: 'temperatura',
+      headerName: 'Temp (°C)',
+      width: obtenerAnchoColumna('temperatura'),
+      filter: 'agNumberColumnFilter',
+      valueFormatter: (params) => {
+        return params.value ? `${params.value}°C` : '';
+      },
+    },
+    {
+      field: 'cbm',
+      headerName: 'CBM',
+      width: obtenerAnchoColumna('cbm'),
+      filter: 'agNumberColumnFilter',
+    },
+    {
+      field: 'ingresado',
+      headerName: 'Ingresado',
+      width: obtenerAnchoColumna('ingresado'),
+      filter: 'agDateColumnFilter',
+      sort: 'desc', // Ordenar por defecto: más recientes primero
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'usuario',
+      headerName: 'Usuario',
+      width: obtenerAnchoColumna('usuario'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'clienteAbr',
+      headerName: 'Cliente Abr',
+      width: obtenerAnchoColumna('clienteAbr'),
+      filter: 'agTextColumnFilter',
+      hide: true, // Ocultar esta columna
+    },
+    {
+      field: 'ct',
+      headerName: 'CT',
+      width: obtenerAnchoColumna('ct'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'co2',
+      headerName: 'CO2',
+      width: obtenerAnchoColumna('co2'),
+      filter: 'agNumberColumnFilter',
+    },
+    {
+      field: 'o2',
+      headerName: 'O2',
+      width: obtenerAnchoColumna('o2'),
+      filter: 'agNumberColumnFilter',
+    },
+    {
+      field: 'tratamientoFrio',
+      headerName: 'Tratamiento Frío',
+      width: obtenerAnchoColumna('tratamientoFrio'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'tipoAtmosfera',
+      headerName: 'Tipo Atmósfera',
+      width: obtenerAnchoColumna('tipoAtmosfera'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'roleadaDesde',
+      headerName: 'Roleada Desde',
+      width: obtenerAnchoColumna('roleadaDesde'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'ingresoStacking',
+      headerName: 'Ingreso Stacking',
+      width: obtenerAnchoColumna('ingresoStacking'),
+      filter: 'agDateColumnFilter',
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'numeroBl',
+      headerName: 'Número BL',
+      width: obtenerAnchoColumna('numeroBl'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'estadoBl',
+      headerName: 'Estado BL',
+      width: obtenerAnchoColumna('estadoBl'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'contrato',
+      headerName: 'Contrato',
+      width: obtenerAnchoColumna('contrato'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'semanaIngreso',
+      headerName: 'Semana Ingreso',
+      width: obtenerAnchoColumna('semanaIngreso'),
+      filter: 'agNumberColumnFilter',
+      valueGetter: (params: any) => {
+        // Si ya tiene un valor, usarlo
+        if (params.data.semanaIngreso !== null && params.data.semanaIngreso !== undefined) {
+          return params.data.semanaIngreso;
+        }
+        // Si no, calcularlo desde la fecha de ingreso
+        const ingresado = params.data.ingresado;
+        if (!ingresado) return null;
+        
+        const date = new Date(ingresado);
+        if (isNaN(date.getTime())) return null;
+        
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+      },
+    },
+    {
+      field: 'mesIngreso',
+      headerName: 'Mes Ingreso',
+      width: obtenerAnchoColumna('mesIngreso'),
+      filter: 'agNumberColumnFilter',
+      hide: true,
+    },
+    {
+      field: 'semanaZarpe',
+      headerName: 'Semana Zarpe',
+      width: obtenerAnchoColumna('semanaZarpe'),
+      filter: 'agNumberColumnFilter',
+      valueGetter: (params: any) => {
+        // Si ya tiene un valor, usarlo
+        if (params.data.semanaZarpe !== null && params.data.semanaZarpe !== undefined) {
+          return params.data.semanaZarpe;
+        }
+        // Si no, calcularlo desde ETD
+        const etd = params.data.etd;
+        if (!etd) return null;
+        
+        const date = new Date(etd);
+        if (isNaN(date.getTime())) return null;
+        
+        const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+        const dayNum = d.getUTCDay() || 7;
+        d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+        return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+      },
+    },
+    {
+      field: 'mesZarpe',
+      headerName: 'Mes Zarpe',
+      width: obtenerAnchoColumna('mesZarpe'),
+      filter: 'agNumberColumnFilter',
+      hide: true,
+    },
+    {
+      field: 'semanaArribo',
+      headerName: 'Semana Arribo',
+      width: obtenerAnchoColumna('semanaArribo'),
+      filter: 'agNumberColumnFilter',
+      hide: true,
+    },
+    {
+      field: 'mesArribo',
+      headerName: 'Mes Arribo',
+      width: obtenerAnchoColumna('mesArribo'),
+      filter: 'agNumberColumnFilter',
+      hide: true,
+    },
+    {
+      field: 'facturacion',
+      headerName: 'Facturación',
+      width: obtenerAnchoColumna('facturacion'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'bookingPdf',
+      headerName: 'Booking PDF',
+      width: obtenerAnchoColumna('bookingPdf'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'comentario',
+      headerName: 'Comentario',
+      width: obtenerAnchoColumna('comentario'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'observacion',
+      headerName: 'Observación',
+      width: obtenerAnchoColumna('observacion'),
+      filter: 'agTextColumnFilter',
+    },
+    {
+      field: 'temporada',
+      headerName: 'Temporada',
+      width: obtenerAnchoColumna('temporada'),
+      filter: 'agTextColumnFilter',
+      filterParams: {
+        values: temporadasUnicas,
+        caseSensitive: false,
+        trimInput: true,
+      },
+    },
+  ], [navierasUnicas, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos, temporadasUnicas]);
+
+  // Función para cargar el orden de columnas guardado desde Supabase
+  const loadColumnOrderFromSupabase = useCallback(async () => {
+    if (!gridApi || !user) {
+      return;
+    }
+
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.storage
-        .from('documentos')
-        .list('factura-proforma', {
-          limit: 1000,
-          offset: 0,
-          sortBy: { column: 'updated_at', order: 'desc' },
+      const { data, error } = await supabase
+        .from('preferencias_usuario')
+        .select('valor')
+        .eq('usuario_id', user.id)
+        .eq('pagina', 'registros')
+        .eq('clave', 'column-order')
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading column order from Supabase:', error);
+        return;
+      }
+
+      const currentState = gridApi.getColumnState();
+      
+      // Crear mapa de anchos desde el archivo de configuración
+      const configWidths = new Map<string, number>();
+      columnDefs.forEach((col: any) => {
+        if (col.field && col.width) {
+          configWidths.set(col.field, col.width);
+        }
+      });
+
+      // Si NO hay orden guardado, solo aplicar anchos del config
+      if (!data || !data.valor) {
+        const updatedState = currentState.map((col: any) => {
+          const configWidth = configWidths.get(col.colId);
+          if (configWidth) {
+            return { ...col, width: configWidth };
+          }
+          return col;
+        });
+        
+        gridApi.applyColumnState({
+          state: updatedState,
+          defaultState: { sort: null },
+          applyOrder: false
+        });
+        return;
+      }
+
+      // Si HAY orden guardado, aplicar orden pero con anchos del config
+      try {
+        const savedColumnState = data.valor as any[];
+        const savedColIds = new Set(savedColumnState.map((col: any) => col.colId));
+        const mergedState: any[] = [];
+        
+        // Agregar columnas guardadas en el orden guardado, con anchos del config
+        savedColumnState.forEach((savedCol: any) => {
+          const { sort, sortIndex, width, ...rest } = savedCol;
+          const configWidth = configWidths.get(rest.colId) || 120;
+          rest.width = configWidth;
+          mergedState.push(rest);
+        });
+        
+        // Agregar columnas nuevas (que no estaban guardadas)
+        currentState.forEach((currentCol: any) => {
+          if (!savedColIds.has(currentCol.colId)) {
+            const { sort, sortIndex, ...rest } = currentCol;
+            const configWidth = configWidths.get(rest.colId) || 120;
+            rest.width = configWidth;
+            mergedState.push(rest);
+          }
+        });
+        
+        gridApi.applyColumnState({
+          state: mergedState,
+          defaultState: { sort: null },
+          applyOrder: true
+        });
+      } catch (parseError) {
+        console.error('Error parsing column state:', parseError);
+      }
+    } catch (error) {
+      console.error('Error loading column order:', error);
+    }
+  }, [gridApi, user, columnDefs]);
+
+  // Función para cargar el orden guardado desde Supabase
+  const loadSortOrderFromSupabase = useCallback(async () => {
+    if (!gridApi || !user) return;
+
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('preferencias_usuario')
+        .select('valor')
+        .eq('usuario_id', user.id)
+        .eq('pagina', 'registros')
+        .eq('clave', 'sort-order')
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error loading sort order from Supabase:', error);
+        return;
+      }
+
+      if (data && data.valor) {
+        try {
+          const sortModel = data.valor as any[];
+          gridApi.applyColumnState({
+            state: sortModel,
+            defaultState: { sort: null }
+          });
+        } catch (parseError) {
+          console.error('Error parsing sort model:', parseError);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading sort order:', error);
+    }
+  }, [gridApi, user]);
+
+  const onGridReady = async (params: GridReadyEvent) => {
+    setGridApi(params.api);
+  };
+
+  // Cargar preferencias cuando gridApi, user y rowData estén listos
+  useEffect(() => {
+    if (!gridApi || !user || rowData.length === 0 || preferencesLoadedRef.current) {
+      return;
+    }
+
+    // Marcar como cargado para evitar múltiples cargas
+    preferencesLoadedRef.current = true;
+
+    // Esperar un momento para asegurar que el grid esté completamente renderizado
+    const timeoutId = setTimeout(async () => {
+      try {
+        // Primero cargar el orden de columnas
+        await loadColumnOrderFromSupabase();
+        // Luego cargar el ordenamiento (con un pequeño delay para asegurar que el orden de columnas se aplicó primero)
+        setTimeout(() => {
+          loadSortOrderFromSupabase();
+        }, 100);
+      } catch (error) {
+        console.error('Error loading preferences:', error);
+        preferencesLoadedRef.current = false; // Permitir reintentar si falla
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [gridApi, user, rowData.length, loadColumnOrderFromSupabase, loadSortOrderFromSupabase]);
+
+  // Configurar el comportamiento del header checkbox para toggle después de que el grid esté listo
+  useEffect(() => {
+    if (!gridApi) return;
+
+    // Buscar el header checkbox en el DOM después de un pequeño delay para asegurar que esté renderizado
+    const setupHeaderCheckbox = () => {
+      const gridElement = document.querySelector('.ag-theme-quartz, .ag-theme-quartz-dark');
+      if (!gridElement) return;
+
+      const headerCheckbox = gridElement.querySelector('.ag-header-select-all input[type="checkbox"]') as HTMLInputElement;
+      if (!headerCheckbox) return;
+
+      // Remover listeners anteriores si existen
+      const newCheckbox = headerCheckbox.cloneNode(true) as HTMLInputElement;
+      headerCheckbox.parentNode?.replaceChild(newCheckbox, headerCheckbox);
+
+      newCheckbox.addEventListener('click', (e: MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+
+        // Contar filas visibles y seleccionadas
+        let visibleCount = 0;
+        let selectedVisibleCount = 0;
+
+        gridApi.forEachNodeAfterFilter((node: any) => {
+          visibleCount++;
+          if (node.isSelected()) {
+            selectedVisibleCount++;
+          }
+        });
+
+        const allVisibleSelected = visibleCount > 0 && selectedVisibleCount === visibleCount;
+
+        if (allVisibleSelected) {
+          // Si todo está seleccionado, deseleccionar todo
+          gridApi.forEachNodeAfterFilter((node: any) => {
+            if (node.isSelected()) {
+              node.setSelected(false);
+            }
+          });
+        } else {
+          // Si no todo está seleccionado, seleccionar todo
+          gridApi.forEachNodeAfterFilter((node: any) => {
+            if (!node.isSelected()) {
+              node.setSelected(true);
+            }
+          });
+        }
+      }, true);
+    };
+
+    // Intentar configurar inmediatamente y también después de un pequeño delay
+    setupHeaderCheckbox();
+    const timeoutId = setTimeout(setupHeaderCheckbox, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [gridApi, rowData]);
+
+  // Guardar el orden de columnas cuando cambie (SOLO posición, NO anchos)
+  const onColumnMoved = useCallback(async () => {
+    if (!gridApi || !user) return;
+    
+    try {
+      const supabase = createClient();
+      
+      // Obtener el estado de las columnas
+      const columnState = gridApi.getColumnState();
+      
+      // Guardar SOLO el orden (colId), eliminando anchos
+      const columnOrderOnly = columnState.map((col: any) => ({
+        colId: col.colId,
+        hide: col.hide,
+        pinned: col.pinned,
+        // NO guardar width
+      }));
+      
+      const { error } = await supabase
+        .from('preferencias_usuario')
+        .upsert({
+          usuario_id: user.id,
+          pagina: 'registros',
+          clave: 'column-order',
+          valor: columnOrderOnly,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'usuario_id,pagina,clave'
         });
 
       if (error) {
-        // No se pudieron cargar documentos proforma
-        return;
+        console.error('Error saving column order to Supabase:', error);
       }
-
-      // Extraer bookings de los nombres de archivo y guardar información del documento
-      const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-
-      data?.forEach((file) => {
-        const separatorIndex = file.name.indexOf('__');
-        if (separatorIndex !== -1) {
-          const bookingSegment = file.name.slice(0, separatorIndex);
-          try {
-            const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
-            if (booking) {
-              // Parsear nombre del archivo
-              const { originalName } = parseStoredDocumentName(file.name);
-              const nombreFormateado = formatFileDisplayName(originalName);
-
-              // Formatear fecha en formato DD-MM-YYYY
-              const fechaArchivo = file.updated_at || file.created_at;
-              let fechaFormateada = '-';
-              if (fechaArchivo) {
-                const fecha = new Date(fechaArchivo);
-                const dia = String(fecha.getDate()).padStart(2, '0');
-                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                const año = fecha.getFullYear();
-                fechaFormateada = `${dia}-${mes}-${año}`;
-              }
-
-              // Si ya existe un documento para este booking, mantener el más reciente
-              const existente = bookingsMap.get(booking);
-              if (!existente) {
-                bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-              } else if (fechaArchivo && existente.fecha !== '-') {
-                // Comparar fechas en formato DD-MM-YYYY
-                const fechaExistente = existente.fecha.split('-').reverse().join('-'); // DD-MM-YYYY -> YYYY-MM-DD
-                const fechaNueva = fechaArchivo.split('T')[0]; // ISO string -> YYYY-MM-DD
-                if (fechaNueva > fechaExistente) {
-                  bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-                }
-              }
-            }
-          } catch {
-            // Si falla decodeURIComponent, usar el segmento directamente
-            const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
-            if (booking) {
-              const { originalName } = parseStoredDocumentName(file.name);
-              const nombreFormateado = formatFileDisplayName(originalName);
-              const fechaArchivo = file.updated_at || file.created_at;
-              // Formatear fecha en formato DD-MM-YYYY
-              let fechaFormateada = '-';
-              if (fechaArchivo) {
-                const fecha = new Date(fechaArchivo);
-                const dia = String(fecha.getDate()).padStart(2, '0');
-                const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                const año = fecha.getFullYear();
-                fechaFormateada = `${dia}-${mes}-${año}`;
-              }
-              const existente = bookingsMap.get(booking);
-              if (!existente) {
-                bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-              } else if (fechaArchivo && existente.fecha !== '-') {
-                // Comparar fechas en formato DD-MM-YYYY
-                const fechaExistente = existente.fecha.split('-').reverse().join('-'); // DD-MM-YYYY -> YYYY-MM-DD
-                const fechaNueva = fechaArchivo.split('T')[0]; // ISO string -> YYYY-MM-DD
-                if (fechaNueva > fechaExistente) {
-                  bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-                }
-              }
-            }
-          }
-        }
-      });
-
-      setBookingsConProforma(bookingsMap);
-    } catch (err) {
-      console.error('Error cargando documentos proforma:', err);
+    } catch (error) {
+      console.error('Error saving column order:', error);
     }
-  }, []);
+  }, [gridApi, user]);
 
-  useEffect(() => {
-    void loadProformaDocuments();
-  }, [loadProformaDocuments]);
-
-  // Cargar documentos booking desde storage
-  const [bookingDocuments, setBookingDocuments] = useState<Map<string, { nombre: string; fecha: string }>>(new Map());
-
-  useEffect(() => {
-    const loadBookingDocuments = async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase.storage
-          .from('documentos')
-          .list('booking', {
-            limit: 1000,
-            offset: 0,
-            sortBy: { column: 'updated_at', order: 'desc' },
+  // Guardar el orden cuando cambie
+  // Guardar el orden cuando cambie en Supabase
+  const onSortChanged = useCallback(async () => {
+    if (!gridApi || !user) return;
+    
+    const sortModel = gridApi.getColumnState()
+      .filter((col: any) => col.sort !== null && col.sort !== undefined)
+      .map((col: any) => ({
+        colId: col.colId,
+        sort: col.sort,
+        sortIndex: col.sortIndex
+      }));
+    
+    try {
+      const supabase = createClient();
+      
+      if (sortModel.length > 0) {
+        // Guardar o actualizar la preferencia
+        const { error } = await supabase
+          .from('preferencias_usuario')
+          .upsert({
+            usuario_id: user.id,
+            pagina: 'registros',
+            clave: 'sort-order',
+            valor: sortModel,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'usuario_id,pagina,clave'
           });
 
         if (error) {
-          // No se pudieron cargar documentos booking
-          return;
+          console.error('Error saving sort order to Supabase:', error);
         }
+      } else {
+        // Si no hay orden, eliminar la preferencia
+        const { error } = await supabase
+          .from('preferencias_usuario')
+          .delete()
+          .eq('usuario_id', user.id)
+          .eq('pagina', 'registros')
+          .eq('clave', 'sort-order');
 
-        const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
+        if (error) {
+          console.error('Error deleting sort order from Supabase:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving sort order:', error);
+    }
+  }, [gridApi, user]);
 
-        data?.forEach((file) => {
-          const separatorIndex = file.name.indexOf('__');
-          if (separatorIndex !== -1) {
-            const bookingSegment = file.name.slice(0, separatorIndex);
-            try {
-              const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
-              if (booking) {
-                const { originalName } = parseStoredDocumentName(file.name);
-                // Usar el nombre original sin formatear para mostrar el nombre que el usuario le dio
-                const nombreOriginal = originalName;
+  // Ref para rastrear el estado anterior de selección
+  const previousSelectionRef = useRef<{ count: number; allSelected: boolean }>({ count: 0, allSelected: false });
+  const isProcessingHeaderClickRef = useRef(false);
 
-                const fechaArchivo = file.updated_at || file.created_at;
-                let fechaFormateada = '-';
-                if (fechaArchivo) {
-                  const fecha = new Date(fechaArchivo);
-                  const dia = String(fecha.getDate()).padStart(2, '0');
-                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                  const año = fecha.getFullYear();
-                  fechaFormateada = `${dia}-${mes}-${año}`;
-                }
-
-                const existente = bookingsMap.get(booking);
-                if (!existente) {
-                  bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
-                } else if (fechaArchivo && existente.fecha !== '-') {
-                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
-                  const fechaNueva = fechaArchivo.split('T')[0];
-                  if (fechaNueva > fechaExistente) {
-                    bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
-                  }
-                }
-              }
-            } catch {
-              const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
-              if (booking) {
-                const { originalName } = parseStoredDocumentName(file.name);
-                // Usar el nombre original sin formatear para mostrar el nombre que el usuario le dio
-                const nombreOriginal = originalName;
-                const fechaArchivo = file.updated_at || file.created_at;
-                let fechaFormateada = '-';
-                if (fechaArchivo) {
-                  const fecha = new Date(fechaArchivo);
-                  const dia = String(fecha.getDate()).padStart(2, '0');
-                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                  const año = fecha.getFullYear();
-                  fechaFormateada = `${dia}-${mes}-${año}`;
-                }
-                const existente = bookingsMap.get(booking);
-                if (!existente) {
-                  bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
-                } else if (fechaArchivo && existente.fecha !== '-') {
-                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
-                  const fechaNueva = fechaArchivo.split('T')[0];
-                  if (fechaNueva > fechaExistente) {
-                    bookingsMap.set(booking, { nombre: nombreOriginal, fecha: fechaFormateada });
-                  }
-                }
-              }
-            }
+  const onSelectionChanged = () => {
+    if (!gridApi || isProcessingHeaderClickRef.current) return;
+    
+    // Contar filas visibles y seleccionadas
+    let visibleCount = 0;
+    let selectedVisibleCount = 0;
+    const visibleSelectedRows: Registro[] = [];
+    const visibleSelectedIds = new Set<string>();
+    
+    gridApi.forEachNodeAfterFilter((node: any) => {
+      visibleCount++;
+      if (node.isSelected() && node.data) {
+        selectedVisibleCount++;
+        visibleSelectedRows.push(node.data);
+        if (node.data.id && typeof node.data.id === 'string') {
+          visibleSelectedIds.add(node.data.id);
+        }
+      }
+    });
+    
+    const allVisibleSelected = visibleCount > 0 && selectedVisibleCount === visibleCount;
+    const previousState = previousSelectionRef.current;
+    
+    // Detectar si se hizo clic en el header checkbox cuando todo estaba seleccionado
+    // Si antes todo estaba seleccionado y ahora no hay ninguna seleccionada, fue un clic para deseleccionar
+    if (previousState.allSelected && selectedVisibleCount === 0 && visibleCount > 0) {
+      // Ya está deseleccionado, solo actualizar el estado
+      setSelectedRows(new Set());
+      setSelectedRegistros([]);
+      previousSelectionRef.current = { count: 0, allSelected: false };
+      return;
+    }
+    
+    // Si todo está seleccionado y el usuario hace clic en el header checkbox de nuevo,
+    // AG Grid intentará deseleccionar todo. Necesitamos interceptar esto.
+    // Pero como AG Grid ya procesó la selección, necesitamos verificar el estado anterior.
+    
+    // Deseleccionar cualquier fila que no esté visible (filtrada)
+    gridApi.forEachNode((node: any) => {
+      if (node.isSelected()) {
+        const nodeId = node.data?.id;
+        if (nodeId && typeof nodeId === 'string') {
+          if (!visibleSelectedIds.has(nodeId)) {
+            // La fila está seleccionada pero no pasa los filtros, deseleccionarla
+            node.setSelected(false);
           }
-        });
+        }
+      }
+    });
+    
+    // Actualizar el estado
+    const selectedIdsArray = Array.from(visibleSelectedIds);
+    const selectedIds = new Set<string>(selectedIdsArray);
+    setSelectedRows(selectedIds);
+    setSelectedRegistros(visibleSelectedRows);
+    
+    // Actualizar el ref con el estado actual
+    previousSelectionRef.current = {
+      count: selectedVisibleCount,
+      allSelected: allVisibleSelected
+    };
+  };
 
-        setBookingDocuments(bookingsMap);
-      } catch (err) {
-        console.error('Error cargando documentos booking:', err);
+
+  // Función para obtener el estilo de la fila según el estado
+  const getRowStyle = useCallback((params: any) => {
+    const estado = params.data?.estado;
+    if (!estado) return undefined;
+
+    if (theme === 'dark') {
+      if (estado === 'CANCELADO') {
+        return { backgroundColor: 'rgba(220, 38, 38, 0.3)', color: '#fca5a5' };
+      }
+      if (estado === 'PENDIENTE') {
+        return { backgroundColor: 'rgba(234, 179, 8, 0.3)', color: '#fde047' };
+      }
+    } else {
+      if (estado === 'CANCELADO') {
+        return { backgroundColor: 'rgba(254, 226, 226, 0.8)', color: '#991b1b' };
+      }
+      if (estado === 'PENDIENTE') {
+        return { backgroundColor: 'rgba(254, 249, 195, 0.8)', color: '#854d0e' };
+      }
+    }
+    return undefined;
+  }, [theme]);
+
+  const handleExportReport = async (tipo: TipoReporte) => {
+    if (selectedRegistros.length === 0) {
+      showError('Por favor, selecciona al menos un registro para exportar');
+      return;
+    }
+
+    try {
+      setShowExportDropdown(false);
+      const buffer = await generarReporte(tipo, selectedRegistros);
+      const nombreReporte = tipo === 'reserva-confirmada' 
+        ? 'Reserva_Confirmada' 
+        : tipo === 'zarpe' 
+        ? 'Informe_Zarpe' 
+        : tipo === 'arribo'
+        ? 'Informe_Arribo'
+        : tipo === 'booking-fee'
+        ? 'Booking_Fee'
+        : 'Reporte';
+      descargarExcel(buffer, nombreReporte);
+      success(`Reporte ${nombreReporte} exportado exitosamente`);
+    } catch (error) {
+      console.error('Error al generar reporte:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      showError(`Error al generar el reporte: ${errorMessage}`);
+    }
+  };
+
+  const handleRefreshData = () => {
+    loadRegistros();
+  };
+
+  const handleClearSelection = () => {
+    if (gridApi) {
+      gridApi.deselectAll();
+      setSelectedRows(new Set());
+      setSelectedRegistros([]);
+    }
+  };
+
+  // Manejar clic derecho en la fila
+  const handleRowContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault();
+    if (selectedRegistros.length > 0) {
+      setContextMenu({
+        x: event.clientX,
+        y: event.clientY,
+        visible: true,
+      });
+    }
+  };
+
+  // Cerrar menú contextual al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenu.visible) {
+        setContextMenu({ ...contextMenu, visible: false });
       }
     };
 
-    void loadBookingDocuments();
-  }, []);
-
-  // Handler para ver factura
-  const handleViewFactura = useCallback((factura: Factura) => {
-    setFacturaSeleccionada(factura);
-    setIsFacturaViewerOpen(true);
-  }, []);
-
-  const handleOpenProformaCreator = useCallback((registro: Registro) => {
-    if (currentUser?.rol === 'cliente') {
-      error('No tienes permisos para generar proformas.');
-      return;
-    }
-    setRegistroSeleccionadoProforma(registro);
-    setIsProformaCreatorOpen(true);
-  }, [currentUser?.rol, error]);
-
-  const handleCloseProformaCreator = useCallback(() => {
-    setIsProformaCreatorOpen(false);
-    setRegistroSeleccionadoProforma(null);
-  }, []);
-
-  const handleGenerateProforma = useCallback(async (factura: Factura, plantillaId?: string) => {
-    if (!registroSeleccionadoProforma) {
-      throw new Error('No se seleccionó un registro para proforma.');
+    if (contextMenu.visible) {
+      document.addEventListener('click', handleClickOutside);
     }
 
-    const refExterna = registroSeleccionadoProforma.refCliente?.trim();
-    if (!refExterna) {
-      throw new Error('La referencia externa es obligatoria para generar la proforma.');
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [contextMenu.visible]);
+
+  const handleBulkEditNaveViaje = () => {
+    if (selectedRegistros.length > 0) {
+      setShowEditNaveViajeModal(true);
     }
+    setContextMenu({ ...contextMenu, visible: false });
+  };
 
-    const booking = registroSeleccionadoProforma.booking?.trim().toUpperCase().replace(/\s+/g, '');
-    if (!booking) {
-      throw new Error('El booking es obligatorio para generar la proforma.');
-    }
-    if (bookingsConProforma.has(booking)) {
-      throw new Error('Ya existe una proforma para este booking.');
-    }
+  const handleDeleteSelectedRows = async () => {
+    if (selectedRegistros.length === 0) return;
 
-    const contenedor = Array.isArray(registroSeleccionadoProforma.contenedor) 
-      ? registroSeleccionadoProforma.contenedor.join(', ')
-      : registroSeleccionadoProforma.contenedor || '';
-
-    // Usar la nueva función helper que maneja plantillas
-    const result = await generarProformaCompleta({
-      factura,
-      plantillaId,
-      contenedor,
-    });
-
-    // Subir archivos
-    await subirProforma(
-      booking,
-      contenedor,
-      result.pdfBlob,
-      result.pdfFileName,
-      result.excelBlob,
-      result.excelFileName
+    const confirmDelete = window.confirm(
+      `¿Estás seguro de eliminar ${selectedRegistros.length} registro${selectedRegistros.length > 1 ? 's' : ''}?`
     );
 
-    await loadProformaDocuments();
-    
-    const mensaje = result.plantillaUsada
-      ? `✨ Proforma generada con plantilla "${result.plantillaUsada.nombre}"`
-      : '📄 Proforma generada con formato tradicional';
-    
-    success(mensaje);
-    handleCloseProformaCreator();
-  }, [registroSeleccionadoProforma, bookingsConProforma, loadProformaDocuments, success, handleCloseProformaCreator]);
-
-  // Handler para subir proforma desde la tabla
-  const handleUploadProforma = useCallback(async (booking: string, file: File) => {
-    if (!booking || !booking.trim()) {
-      error('El booking es requerido para subir la proforma.');
-      return;
-    }
-    if (currentUser?.rol === 'cliente') {
-      error('No tienes permisos para subir proformas.');
+    if (!confirmDelete) {
+      setContextMenu({ ...contextMenu, visible: false });
       return;
     }
 
     try {
       const supabase = createClient();
-      const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
-      const bookingSegment = encodeURIComponent(normalizedBooking);
+      const recordIds = selectedRegistros.map(r => r.id).filter((id): id is string => Boolean(id));
 
-      // Validar extensión del archivo
-      const extension = file.name.split('.').pop()?.toLowerCase();
-      const allowedExtensions = ['pdf', 'xls', 'xlsx'];
-      if (!extension || !allowedExtensions.includes(extension)) {
-        error('Solo se admiten archivos PDF o Excel (.xls, .xlsx).');
-        return;
-      }
-
-      // Sanitizar nombre del archivo
-      const sanitizeFileName = (name: string) => {
-        const cleanName = name.toLowerCase().replace(/[^a-z0-9.\-]/g, '-');
-        const [base, ext] = cleanName.split(/\.(?=[^.\s]+$)/);
-        const safeBase = base?.replace(/-+/g, '-').replace(/^-|-$/g, '') || `archivo-${Date.now()}`;
-        return `${safeBase}.${ext || 'pdf'}`;
-      };
-
-      const safeName = sanitizeFileName(file.name);
-      const filePath = `factura-proforma/${bookingSegment}__${Date.now()}-0-${safeName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('documentos')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      success('Proforma subida correctamente.');
-
-      // Recargar documentos proforma
-      const { data, error: listError } = await supabase.storage
-        .from('documentos')
-        .list('factura-proforma', {
-          limit: 1000,
-          offset: 0,
-          sortBy: { column: 'updated_at', order: 'desc' },
-        });
-
-      if (!listError && data) {
-        const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-
-        data.forEach((file) => {
-          const separatorIndex = file.name.indexOf('__');
-          if (separatorIndex !== -1) {
-            const bookingSegment = file.name.slice(0, separatorIndex);
-            try {
-              const bookingKey = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
-              if (bookingKey) {
-                const { originalName } = parseStoredDocumentName(file.name);
-                const nombreFormateado = formatFileDisplayName(originalName);
-
-                const fechaArchivo = file.updated_at || file.created_at;
-                let fechaFormateada = '-';
-                if (fechaArchivo) {
-                  const fecha = new Date(fechaArchivo);
-                  const dia = String(fecha.getDate()).padStart(2, '0');
-                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                  const año = fecha.getFullYear();
-                  fechaFormateada = `${dia}-${mes}-${año}`;
-                }
-
-                const existente = bookingsMap.get(bookingKey);
-                if (!existente) {
-                  bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
-                } else if (fechaArchivo && existente.fecha !== '-') {
-                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
-                  const fechaNueva = fechaArchivo.split('T')[0];
-                  if (fechaNueva > fechaExistente) {
-                    bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
-                  }
-                }
-              }
-            } catch {
-              const bookingKey = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
-              if (bookingKey) {
-                const { originalName } = parseStoredDocumentName(file.name);
-                const nombreFormateado = formatFileDisplayName(originalName);
-                const fechaArchivo = file.updated_at || file.created_at;
-                let fechaFormateada = '-';
-                if (fechaArchivo) {
-                  const fecha = new Date(fechaArchivo);
-                  const dia = String(fecha.getDate()).padStart(2, '0');
-                  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                  const año = fecha.getFullYear();
-                  fechaFormateada = `${dia}-${mes}-${año}`;
-                }
-                const existente = bookingsMap.get(bookingKey);
-                if (!existente) {
-                  bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
-                } else if (fechaArchivo && existente.fecha !== '-') {
-                  const fechaExistente = existente.fecha.split('-').reverse().join('-');
-                  const fechaNueva = fechaArchivo.split('T')[0];
-                  if (fechaNueva > fechaExistente) {
-                    bookingsMap.set(bookingKey, { nombre: nombreFormateado, fecha: fechaFormateada });
-                  }
-                }
-              }
-            }
-          }
-        });
-
-        setBookingsConProforma(bookingsMap);
-      }
-    } catch (err: any) {
-      console.error('Error subiendo proforma:', err);
-      error('No se pudo subir la proforma. Intenta nuevamente.');
-    }
-  }, [currentUser?.rol, success, error]);
-
-  // Handler para abrir modal de booking
-  const handleOpenBookingModal = useCallback((registro: Registro) => {
-    if (currentUser?.rol === 'cliente') {
-      error('No tienes permisos para editar bookings.');
-      return;
-    }
-    setSelectedRegistroForBooking(registro);
-    setIsBookingModalOpen(true);
-  }, [currentUser?.rol, error]);
-
-  // Handler para guardar booking y subir PDF
-  const handleSaveBooking = useCallback(async (booking: string, file?: File, customFileName?: string) => {
-    if (!selectedRegistroForBooking) {
-      error('No se seleccionó un registro.');
-      return;
-    }
-    if (currentUser?.rol === 'cliente') {
-      error('No tienes permisos para editar bookings.');
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      const registroId = selectedRegistroForBooking.id;
-
-      if (!registroId) {
-        error('El registro no tiene un ID válido.');
-        return;
-      }
-
-      // Actualizar el booking en el registro
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('registros')
-        .update({ booking: booking.trim().toUpperCase() })
-        .eq('id', registroId);
-
-      if (updateError) {
-        throw new Error(updateError.message || 'No tienes permisos para actualizar el booking.');
-      }
-
-      // Si hay un archivo, subirlo a storage
-      if (file) {
-        const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
-
-        // Validar extensión del archivo
-        const extension = file.name.split('.').pop()?.toLowerCase();
-        if (extension !== 'pdf') {
-          error('Solo se admiten archivos PDF.');
-          return;
-        }
-
-        // Usar el nombre personalizado que el usuario proporcionó
-        const fileNameToUse = customFileName && customFileName.trim()
-          ? `${customFileName.trim()}.pdf`
-          : file.name.replace(/\.pdf$/i, '') + '.pdf';
-
-        // Sanitizar nombre del archivo (mantener caracteres normales)
-        const safeName = sanitizeFileName(fileNameToUse);
-
-        // Formato simple: bookingSegment__nombrePersonalizado.pdf (sin timestamp)
-        const filePath = `booking/${normalizedBooking}__${safeName}`;
-
-        // Intentar eliminar archivos anteriores para este booking
-        try {
-          const { data: existingFiles, error: listError } = await supabase.storage
-            .from('documentos')
-            .list('booking', {
-              limit: 1000,
-            });
-
-          if (listError) {
-            console.warn('Error al listar archivos existentes:', listError);
-          } else if (existingFiles && existingFiles.length > 0) {
-            const filesToDelete = existingFiles
-              .filter(f => {
-                const fileBookingKey = f.name.split('__')[0];
-                try {
-                  const decodedKey = decodeURIComponent(fileBookingKey);
-                  return decodedKey === normalizedBooking || fileBookingKey === normalizedBooking;
-                } catch {
-                  return fileBookingKey === normalizedBooking;
-                }
-              })
-              .map(f => `booking/${f.name}`);
-
-            if (filesToDelete.length > 0) {
-              const { error: deleteError } = await supabase.storage
-                .from('documentos')
-                .remove(filesToDelete);
-
-              if (deleteError) {
-                console.warn('Error al eliminar archivos anteriores:', deleteError);
-              }
-            }
-          }
-        } catch (deleteError) {
-          // Si hay error al eliminar, continuar de todas formas
-          console.warn('Error al procesar archivos anteriores:', deleteError);
-        }
-
-        const { error: uploadError } = await supabase.storage
-          .from('documentos')
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: true,
-          });
-
-        if (uploadError) {
-          throw uploadError;
-        }
-
-        // Actualizar el campo booking_pdf en la tabla registros con la ruta del archivo
-        const { error: updatePdfError } = await supabase
-          .from('registros')
-          .update({ booking_pdf: filePath })
-          .eq('id', registroId);
-
-        if (updatePdfError) {
-          console.warn('Error al actualizar booking_pdf en el registro:', updatePdfError);
-          // No lanzar error, solo advertir, ya que el archivo se subió correctamente
-        }
-      }
-
-      // Actualizar el estado local
-      setRegistros(prevRegistros =>
-        prevRegistros.map(record => {
-          if (record.id === registroId) {
-            const updatedRecord = { ...record, booking: booking.trim().toUpperCase() };
-            if (file) {
-              const normalizedBooking = booking.trim().toUpperCase().replace(/\s+/g, '');
-              const fileNameToUse = customFileName && customFileName.trim()
-                ? `${customFileName.trim()}.pdf`
-                : file.name.replace(/\.pdf$/i, '') + '.pdf';
-              const safeName = sanitizeFileName(fileNameToUse);
-              updatedRecord.bookingPdf = `booking/${normalizedBooking}__${safeName}`;
-            }
-            return updatedRecord;
-          }
-          return record;
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_by: user?.email || 'unknown',
         })
-      );
+        .in('id', recordIds);
 
-      // Si se subió un archivo, recargar documentos booking
-      if (file) {
-        const supabase = createClient();
-        const { data, error } = await supabase.storage
-          .from('documentos')
-          .list('booking', {
-            limit: 1000,
-            offset: 0,
-            sortBy: { column: 'updated_at', order: 'desc' },
-          });
-
-        if (!error && data) {
-          const bookingsMap = new Map<string, { nombre: string; fecha: string }>();
-
-          data.forEach((file) => {
-            const separatorIndex = file.name.indexOf('__');
-            if (separatorIndex !== -1) {
-              const bookingSegment = file.name.slice(0, separatorIndex);
-              try {
-                const booking = decodeURIComponent(bookingSegment).trim().toUpperCase().replace(/\s+/g, '');
-                if (booking) {
-                  const { originalName } = parseStoredDocumentName(file.name);
-                  const nombreFormateado = formatFileDisplayName(originalName);
-
-                  const fechaArchivo = file.updated_at || file.created_at;
-                  let fechaFormateada = '-';
-                  if (fechaArchivo) {
-                    const fecha = new Date(fechaArchivo);
-                    const dia = String(fecha.getDate()).padStart(2, '0');
-                    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                    const año = fecha.getFullYear();
-                    fechaFormateada = `${dia}-${mes}-${año}`;
-                  }
-
-                  const existente = bookingsMap.get(booking);
-                  if (!existente) {
-                    bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-                  } else if (fechaArchivo && existente.fecha !== '-') {
-                    const fechaExistente = existente.fecha.split('-').reverse().join('-');
-                    const fechaNueva = fechaArchivo.split('T')[0];
-                    if (fechaNueva > fechaExistente) {
-                      bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-                    }
-                  }
-                }
-              } catch {
-                const booking = bookingSegment.trim().toUpperCase().replace(/\s+/g, '');
-                if (booking) {
-                  const { originalName } = parseStoredDocumentName(file.name);
-                  const nombreFormateado = formatFileDisplayName(originalName);
-                  const fechaArchivo = file.updated_at || file.created_at;
-                  let fechaFormateada = '-';
-                  if (fechaArchivo) {
-                    const fecha = new Date(fechaArchivo);
-                    const dia = String(fecha.getDate()).padStart(2, '0');
-                    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-                    const año = fecha.getFullYear();
-                    fechaFormateada = `${dia}-${mes}-${año}`;
-                  }
-                  const existente = bookingsMap.get(booking);
-                  if (!existente) {
-                    bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-                  } else if (fechaArchivo && existente.fecha !== '-') {
-                    const fechaExistente = existente.fecha.split('-').reverse().join('-');
-                    const fechaNueva = fechaArchivo.split('T')[0];
-                    if (fechaNueva > fechaExistente) {
-                      bookingsMap.set(booking, { nombre: nombreFormateado, fecha: fechaFormateada });
-                    }
-                  }
-                }
-              }
-            }
-          });
-
-          setBookingDocuments(bookingsMap);
-        }
+      if (error) {
+        console.error('Error deleting records:', error);
+        alert('Error al eliminar los registros');
+        return;
       }
 
-      success(file ? 'Booking y PDF guardados correctamente.' : 'Booking guardado correctamente.');
-      setIsBookingModalOpen(false);
-      setSelectedRegistroForBooking(null);
-    } catch (err: any) {
-      const errorMessage =
-        err?.message ||
-        err?.error?.message ||
-        (typeof err === 'string' ? err : JSON.stringify(err));
-      console.error('Error guardando booking:', err);
-      error(`No se pudo guardar el booking. ${errorMessage || 'Intenta nuevamente.'}`);
+      // Recargar datos
+      await loadRegistros();
+      handleClearSelection();
+      alert(`${selectedRegistros.length} registro${selectedRegistros.length > 1 ? 's' : ''} eliminado${selectedRegistros.length > 1 ? 's' : ''} correctamente`);
+    } catch (error) {
+      console.error('Error deleting records:', error);
+      alert('Error al eliminar los registros');
+    } finally {
+      setContextMenu({ ...contextMenu, visible: false });
     }
-  }, [selectedRegistroForBooking, currentUser?.rol, success, error]);
+  };
 
-  // Memoizar las columnas para evitar recrearlas en cada render
-  const columns = useMemo(() => createRegistrosColumns(
-    registrosVisibles, // data
-    selectedRows, // selectedRows
-    handleToggleRowSelection, // toggleRowSelection
-    handleUpdateRecord,
-    handleBulkUpdate, // onBulkUpdate
-    navierasUnicas,
-    ejecutivosUnicos,
-    especiesUnicas,
-    clientesUnicos,
-    polsUnicos,
-    destinosUnicos,
-    depositosUnicos,
-    navesUnicas,
-    fletesUnicos,
-    contratosUnicos,
-    tipoIngresoUnicos,
-    estadosUnicos,
-    temperaturasUnicas,
-    cbmUnicos,
-    co2sUnicos,
-    o2sUnicos,
-    tratamientosFrioUnicos,
-    tiposAtmosferaUnicos,
-    facturacionesUnicas,
-    handleShowHistorial,
-    facturasPorRegistro,
-    handleViewFactura,
-    bookingsConProforma, // bookings con documentos proforma en storage
-    handleUploadProforma, // handler para subir proforma
-    handleOpenProformaCreator, // handler para generar proforma
-    handleOpenBookingModal, // handler para abrir modal de booking
-    bookingDocuments, // documentos PDF de booking en storage
-    currentUser?.rol !== 'cliente',
-    clientesAbrMap // mapeo de clientes a abreviaturas
-  ), [
-    registrosVisibles,
-    selectedRows,
-    handleToggleRowSelection,
-    handleUpdateRecord,
-    handleBulkUpdate,
-    navierasUnicas,
-    ejecutivosUnicos,
-    especiesUnicas,
-    clientesUnicos,
-    polsUnicos,
-    destinosUnicos,
-    depositosUnicos,
-    navesUnicas,
-    fletesUnicos,
-    contratosUnicos,
-    tipoIngresoUnicos,
-    estadosUnicos,
-    temperaturasUnicas,
-    cbmUnicos,
-    co2sUnicos,
-    o2sUnicos,
-    tratamientosFrioUnicos,
-    tiposAtmosferaUnicos,
-    facturacionesUnicas,
-    handleShowHistorial,
-    facturasPorRegistro,
-    handleViewFactura,
-    bookingsConProforma,
-    handleUploadProforma,
-    handleOpenProformaCreator,
-    handleOpenBookingModal,
-    bookingDocuments,
-    currentUser?.rol,
-    clientesAbrMap
-  ]);
+  const handleBulkSaveNaveViaje = async (nave: string, viaje: string, records: Registro[]) => {
+    try {
+      const supabase = createClient();
+      const recordIds = records.map(r => r.id).filter((id): id is string => Boolean(id));
 
-  // Verificar si es superadmin (Hans o Rodrigo) - DEBE estar antes de los returns condicionales
-  const isSuperAdmin = (() => {
-    const email = (currentUser?.email || '').toLowerCase();
-    if (!email) {
-      return false;
+      if (recordIds.length === 0) return;
+
+      const { error } = await supabase
+        .from('registros')
+        .update({
+          nave_inicial: nave,
+          viaje: viaje,
+          updated_at: new Date().toISOString(),
+        })
+        .in('id', recordIds);
+
+      if (error) throw error;
+
+      success(`${records.length} registros actualizados con nave y viaje`);
+      handleClearSelection();
+      await loadRegistros();
+    } catch (error: any) {
+      console.error('Error actualizando nave/viaje:', error);
+      showError('Error al actualizar nave/viaje: ' + error.message);
     }
-    return email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
-  })();
+  };
 
-  if (loading) {
-    return null; // El PageWrapper manejará el loading
-  }
+  // Verificar si es super admin
+  const isSuperAdmin = userInfo?.rol === 'super_admin';
 
-  if (!user) {
-    return null;
-  }
-
-  const totalRegistros = new Set(registrosVisibles.map(r => r.refAsli).filter(Boolean)).size;
-  
-  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
-
-  const toneBadgeClasses = {
-    sky: 'bg-sky-500/20 text-sky-300',
-    violet: 'bg-violet-500/20 text-violet-300',
-    emerald: 'bg-emerald-500/20 text-emerald-300',
-  } as const;
-
+  // Configuración del sidebar
   const sidebarSections: SidebarSection[] = [
     {
       title: 'Inicio',
@@ -2745,10 +1784,10 @@ export default function RegistrosPage() {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', isActive: true, counter: registrosCount, tone: 'violet', icon: Ship },
-        { label: 'Transportes', id: '/transportes', icon: Truck, counter: transportesCount, tone: 'sky' },
+        { label: 'Embarques', id: '/registros', icon: Ship },
+        { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        ...(currentUser && currentUser.rol !== 'cliente'
+        ...(userInfo && userInfo.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
         ...(isSuperAdmin
@@ -2762,12 +1801,7 @@ export default function RegistrosPage() {
           ]
           : []),
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
-      ],
-    },
-    {
-      title: 'Sistema',
-      items: [
-        { label: 'Papelera', onClick: () => setIsTrashModalOpen(true), counter: trashCount, tone: 'violet', icon: Trash2 },
+        { label: 'Registros', id: '/registros', isActive: true, icon: Grid3x3 },
       ],
     },
     ...(isSuperAdmin
@@ -2782,520 +1816,699 @@ export default function RegistrosPage() {
       : []),
   ];
 
-  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <EditingCellProvider>
-        <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-900 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
-        {/* Overlay para móvil */}
-        {isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
-
-        <Sidebar
-          isSidebarCollapsed={isSidebarCollapsed}
-          setIsSidebarCollapsed={setIsSidebarCollapsed}
-          isMobileMenuOpen={isMobileMenuOpen}
-          setIsMobileMenuOpen={setIsMobileMenuOpen}
-          sections={sidebarSections}
-          currentUser={currentUser}
-          user={user}
-          setShowProfileModal={setShowProfileModal}
-        />
-
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+      {/* Overlay para móvil */}
+      {isMobileMenuOpen && (
         <div
-          className="flex flex-1 flex-col min-w-0 overflow-hidden transition-all"
-          style={{ width: '100%', maxWidth: '100%' }}
-        >
-          <header className={`sticky top-0 z-40 border-b transition-all duration-300 ease-in-out ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/95 backdrop-blur' : 'border-gray-200 bg-white/95 backdrop-blur'}`}>
-            {/* Botón para expandir header - Solo visible cuando está colapsado */}
-            {isHeaderCollapsed && (
-              <div className={`flex justify-center items-center w-full py-2 border-b ${theme === 'dark' ? 'border-slate-700/60 bg-slate-800/95' : 'border-gray-200 bg-white/95'}`}>
-                <button
-                  onClick={() => setIsHeaderCollapsed(false)}
-                  className={`flex items-center justify-center w-full py-2 transition-all rounded-md ${theme === 'dark' ? 'hover:bg-slate-700/80 text-slate-200 hover:text-sky-200 border border-slate-600/60' : 'hover:bg-gray-100 text-gray-700 hover:text-blue-600 border border-gray-300'}`}
-                  aria-label="Expandir menú"
-                  title="Expandir menú"
-                >
-                  <ChevronDown className="h-5 w-5" />
-                </button>
-              </div>
-            )}
-            
-            {/* Contenido del header */}
-            <div className={`flex w-full flex-col gap-2 sm:gap-3 transition-all duration-300 ease-in-out overflow-hidden ${isHeaderCollapsed ? 'max-h-0 py-0 opacity-0 pointer-events-none' : 'max-h-[200px] py-2 sm:py-2.5 md:py-3 opacity-100'}`} style={{ paddingLeft: '8px', paddingRight: '4px' }}>
-              <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between w-full">
-                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 overflow-hidden">
-                  {/* Botón hamburguesa para móvil */}
-                  <button
-                    onClick={() => setIsMobileMenuOpen(true)}
-                    className={`lg:hidden flex h-8 w-8 items-center justify-center transition-colors flex-shrink-0 ${theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-700/60'
-                      : 'text-gray-600 hover:bg-gray-100/80'
-                      }`}
-                    aria-label="Abrir menú"
-                  >
-                    <Menu className="h-4 w-4" />
-                  </button>
-                  {isSidebarCollapsed && !isMobileMenuOpen && (
-                    <button
-                      onClick={toggleSidebar}
-                      className={`hidden lg:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border flex-shrink-0 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300/60 bg-gray-100 text-gray-600 hover:border-blue-500 hover:text-blue-700'} transition`}
-                      aria-label="Expandir menú lateral"
-                    >
-                      <ChevronRight className="h-4 w-4 sm:h-4 sm:w-4" />
-                    </button>
-                  )}
-                  <div className="space-y-0.5 flex-1 min-w-0 overflow-hidden">
-                    <p className={`text-[10px] sm:text-xs uppercase tracking-[0.2em] sm:tracking-[0.25em] truncate ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>Módulo Operativo</p>
-                    <div className="flex items-center gap-2">
-                      <h1 className={`text-sm sm:text-base md:text-lg lg:text-xl font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros de Embarques</h1>
-                      {/* Botón para colapsar header - Visible junto al título */}
-                      <button
-                        onClick={() => setIsHeaderCollapsed(true)}
-                        className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center border transition-all flex-shrink-0 ${theme === 'dark' ? 'border-slate-600 bg-slate-700/80 text-slate-200 hover:border-sky-500 hover:bg-sky-500/20 hover:text-sky-200' : 'border-gray-400 bg-gray-50 text-gray-700 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-700'}`}
-                        aria-label="Colapsar menú"
-                        title="Colapsar menú para aprovechar más espacio"
-                      >
-                        <ChevronUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                      </button>
-                    </div>
-                    <p className={`hidden text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'} md:block truncate`}>Gestión de contenedores y embarques</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 flex-shrink-0">
-                  {/* Selector de Temporada */}
-                  {temporadasUnicas.length > 0 && (
-                    <div className="relative hidden sm:flex flex-shrink-0">
-                      <select
-                        value={temporadaSeleccionada}
-                        onChange={(e) => setTemporadaSeleccionada(e.target.value)}
-                        className={`border text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2 transition flex-shrink-0 min-w-[120px] sm:min-w-[140px] ${theme === 'dark'
-                          ? 'border-slate-700/60 bg-slate-700/60 text-slate-200 hover:border-sky-500/60 focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/60'
-                          : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
-                          }`}
-                        aria-label="Seleccionar temporada"
-                      >
-                        <option value="TODAS">Todas las temporadas</option>
-                        {temporadasUnicas.map((temporada) => (
-                          <option key={temporada} value={temporada}>
-                            {temporada}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
-                    className={`flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border transition flex-shrink-0 ${isRightSidebarOpen
-                      ? `${theme === 'dark' ? 'border-sky-500/60 bg-sky-500/10 text-sky-200' : 'border-blue-500 bg-blue-50 text-blue-600'}`
-                      : `${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'}`
-                      }`}
-                    aria-label={isRightSidebarOpen ? "Cerrar panel de filtros" : "Abrir panel de filtros"}
-                  >
-                    <Filter className="h-4 w-4 sm:h-4 sm:w-4" />
-                  </button>
-                  <div className="relative hidden sm:flex flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setShowProfileModal(true)}
-                      className={`flex items-center gap-1.5 sm:gap-2 border ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-700 hover:border-blue-500 hover:text-blue-700'} transition`}
-                      aria-haspopup="dialog"
-                      title={currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                    >
-                      <UserIcon className="h-4 w-4 sm:h-4 sm:w-4 flex-shrink-0" />
-                      <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm">
-                        {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </header>
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
-          <main className="flex-1 min-w-0 min-h-0 w-full flex flex-col overflow-hidden">
-            <section className={`border-0 w-full h-full flex flex-col min-h-0 min-w-0 overflow-hidden ${theme === 'dark' ? 'bg-slate-800/60' : 'bg-white'}`}>
-              <DataTable
-                data={registrosVisibles}
-                columns={columns}
-                navierasUnicas={navierasFiltro}
-                ejecutivosUnicos={ejecutivosFiltro}
-                especiesUnicas={especiesFiltro}
-                clientesUnicos={clientesFiltro}
-                polsUnicos={polsFiltro}
-                destinosUnicos={destinosFiltro}
-                depositosUnicos={depositosFiltro}
-                onAdd={handleAdd}
-                onEdit={handleEdit}
-                onEditNaveViaje={handleEditNaveViaje}
-                onBulkEditNaveViaje={handleBulkEditNaveViaje}
-                onDelete={handleDelete}
-                selectedRows={selectedRows}
-                onToggleRowSelection={handleToggleRowSelection}
-                onSelectAll={handleSelectAll}
-                onClearSelection={handleClearSelection}
-                onBulkDelete={handleBulkDelete}
-                preserveFilters={true}
-                onTableInstanceReady={handleTableInstanceReady}
-                onShowHistorial={handleShowHistorial}
-                onSendToTransportes={handleSendToTransportes}
-                bookingDocuments={bookingDocuments}
-              />
-            </section>
-          </main>
-        </div>
+      {/* Sidebar */}
+      <Sidebar
+        isSidebarCollapsed={isSidebarCollapsed}
+        setIsSidebarCollapsed={setIsSidebarCollapsed}
+        isMobileMenuOpen={isMobileMenuOpen}
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        sections={sidebarSections}
+        currentUser={userInfo}
+        user={user}
+        setShowProfileModal={setShowProfileModal}
+      />
 
-        {/* Overlay para sidebar de filtros en móvil */}
-        {isRightSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={() => setIsRightSidebarOpen(false)}
-          />
+      {/* Content Wrapper */}
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
+        {/* Botón para expandir sidebar cuando está colapsado */}
+        {isSidebarCollapsed && (
+          <button
+            onClick={() => setIsSidebarCollapsed(false)}
+            className={`fixed top-4 left-4 z-50 p-2 rounded-lg shadow-lg border ${
+              theme === 'dark' 
+                ? 'bg-slate-800 text-slate-200 hover:bg-slate-700 border-slate-700' 
+                : 'bg-white text-gray-700 hover:bg-gray-100 border-gray-300'
+            }`}
+            title="Abrir menú"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         )}
 
-        {/* Sidebar derecho para filtros y configuración de columnas */}
-        <aside
-          className={`fixed lg:relative right-0 top-0 z-50 lg:z-auto flex h-full flex-col transition-all duration-300 ${theme === 'dark' ? 'border-l border-slate-800/60 bg-slate-950/60' : 'border-l border-gray-200 bg-white'} backdrop-blur-xl ${isRightSidebarOpen
-            ? 'translate-x-0 lg:w-80 lg:opacity-100 lg:pointer-events-auto'
-            : 'translate-x-full lg:translate-x-0 lg:w-0 lg:opacity-0 lg:overflow-hidden lg:pointer-events-none'
-            } w-80`}
-        >
-          <div className={`flex items-center justify-between px-4 py-4 border-b ${theme === 'dark' ? 'border-slate-700/60' : 'border-gray-200'}`}>
-            <h2 className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>Filtros y Configuración</h2>
-            <button
-              onClick={() => setIsRightSidebarOpen(false)}
-              className={`flex h-8 w-8 items-center justify-center border transition ${theme === 'dark' ? 'border-slate-700/60 bg-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200' : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:text-blue-700'}`}
-              aria-label="Cerrar panel de filtros"
-            >
-              <X className="h-4 w-4" />
-            </button>
+        <div className={`fixed inset-0 flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'} ${isSidebarCollapsed ? '' : 'lg:ml-64'}`}>
+      {/* Header */}
+      <header className={`flex-shrink-0 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className="w-full px-3">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <h1 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                REGISTROS ASLI
+              </h1>
+              <p className={`text-xs ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                logistica y comercio exterior
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleRefreshData}
+                disabled={loadingData}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition ${loadingData
+                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                    : theme === 'dark'
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
+                  }`}
+                title={loadingData ? 'Cargando...' : 'Recargar'}
+              >
+                <RefreshCw className={`w-4 h-4 ${loadingData ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{loadingData ? 'Cargando...' : 'Recargar'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowProfileModal(true)}
+                className={`flex items-center gap-1.5 sm:gap-2 border px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm transition ${theme === 'dark' 
+                  ? 'border-gray-700/60 bg-gray-800/60 text-gray-200 hover:border-blue-500/60 hover:text-blue-200' 
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 hover:text-blue-700'
+                  }`}
+                aria-haspopup="dialog"
+                title={userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+              >
+                <UserIcon className="h-4 w-4 sm:h-4 sm:w-4 flex-shrink-0" />
+                <span className="max-w-[100px] md:max-w-[160px] truncate font-medium text-xs sm:text-sm hidden sm:inline">
+                  {userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+                </span>
+              </button>
+            </div>
           </div>
-          <div
-            className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
-            onWheel={(e) => {
-              const element = e.currentTarget;
-              const { scrollTop, scrollHeight, clientHeight } = element;
-              const isScrollingUp = e.deltaY < 0;
-              const isScrollingDown = e.deltaY > 0;
+        </div>
+      </header>
 
-              // Si está en el top y hace scroll hacia arriba, prevenir
-              if (isScrollingUp && scrollTop === 0) {
-                e.stopPropagation();
-                e.preventDefault();
-                return;
-              }
-
-              // Si está en el bottom y hace scroll hacia abajo, prevenir
-              if (isScrollingDown && scrollTop + clientHeight >= scrollHeight - 1) {
-                e.stopPropagation();
-                e.preventDefault();
-                return;
-              }
-            }}
-          >
-            {/* Sección de Filtros */}
-            {tableInstance && tableStates && (
-              <div className="space-y-4">
-                <h3 className={`text-xs uppercase tracking-[0.3em] ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Filtros</h3>
-                <FiltersPanel
-                  key={`filters-${tableInstance.getState().columnFilters.length}-${JSON.stringify(tableInstance.getState().columnFilters)}-${tableStates.executiveFilter || ''}-${Date.now()}`}
-                  table={tableInstance}
-                  executiveFilter={tableStates.executiveFilter || ''}
-                  setExecutiveFilter={tableStates.setExecutiveFilter}
-                  navierasUnicas={navierasFiltro}
-                  ejecutivosUnicos={ejecutivosFiltro}
-                  especiesUnicas={especiesFiltro}
-                  clientesUnicos={clientesFiltro}
-                  polsUnicos={polsFiltro}
-                  destinosUnicos={destinosFiltro}
-                  depositosUnicos={depositosFiltro}
-                  navesFiltrables={tableStates.navesFiltrables}
-                  compact={true}
+      {/* Main Content - Flex container para aprovechar espacio vertical */}
+      <main className="flex-1 flex flex-col overflow-hidden w-full" style={{ minHeight: 0, maxHeight: '100%', overflow: 'hidden' }}>
+        {/* Controls - Compacto */}
+        <div className={`flex-shrink-0 p-2 border-b ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`} style={{ flexShrink: 0 }}>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowAddModal(true)}
+                disabled={!canAdd}
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium transition ${
+                  !canAdd
+                    ? 'bg-gray-400 cursor-not-allowed text-gray-200 border border-gray-300'
+                    : theme === 'dark'
+                    ? 'bg-sky-600 hover:bg-sky-700 text-white border border-sky-500'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
+                }`}
+                title={canAdd ? "Nuevo Registro" : "No tienes permisos para crear registros"}
+              >
+                <Plus className="h-4 w-4" />
+                <span>NUEVO</span>
+              </button>
+              <div className="relative export-dropdown-container">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowExportDropdown(!showExportDropdown);
+                  }}
+                  disabled={!canExport}
+                  className={`flex items-center space-x-2 px-3 py-1.5 transition-colors text-sm ${
+                    !canExport
+                      ? 'bg-gray-400 cursor-not-allowed text-gray-200 border border-gray-300'
+                      : 'bg-green-600 hover:bg-green-700 text-white'
+                  }`}
+                  title={canExport ? "Exportar registros" : "No tienes permisos para exportar"}
+                >
+                  <Download className="w-4 h-4" />
+                  <span>EXPORTAR</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showExportDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showExportDropdown && (
+                  <div 
+                    className={`absolute top-full left-0 mt-1 z-[100] min-w-[220px] border shadow-xl rounded-sm ${
+                      theme === 'dark' 
+                        ? 'bg-gray-800 border-gray-600' 
+                        : 'bg-white border-gray-300'
+                    }`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {selectedRegistros.length === 0 ? (
+                      <div className={`px-4 py-3 text-sm text-center ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                      }`}>
+                        Selecciona registros para exportar
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('reserva-confirmada');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b ${
+                            theme === 'dark' 
+                              ? 'text-gray-200 border-gray-700' 
+                              : 'text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          ✅ Reserva Confirmada
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('zarpe');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b ${
+                            theme === 'dark' 
+                              ? 'text-gray-200 border-gray-700' 
+                              : 'text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          🚢 Informe de Zarpe
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('arribo');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b ${
+                            theme === 'dark' 
+                              ? 'text-gray-200 border-gray-700' 
+                              : 'text-gray-700 border-gray-200'
+                          }`}
+                        >
+                          ⚓ Informe de Arribo
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleExportReport('booking-fee');
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
+                            theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
+                          }`}
+                        >
+                          💰 Booking Fee
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Barra de búsqueda */}
+              <div className="relative">
+                <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                }`} />
+                <input
+                  type="text"
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value);
+                    if (gridApi) {
+                      gridApi.setGridOption('quickFilterText', e.target.value);
+                    }
+                  }}
+                  placeholder="Buscar..."
+                  className={`w-[200px] pl-9 pr-3 py-1.5 text-sm border transition ${
+                    theme === 'dark'
+                      ? 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400 focus:border-sky-500 focus:ring-1 focus:ring-sky-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'
+                  }`}
                 />
               </div>
-            )}
-
             </div>
-        </aside>
+            <div className="flex items-center space-x-3">
+              {/* Botón de vista */}
+              <button
+                onClick={() => setViewMode(viewMode === 'table' ? 'card' : 'table')}
+                className={`flex items-center gap-2 px-3 py-1.5 text-sm border transition ${
+                  theme === 'dark'
+                    ? 'bg-gray-700 border-gray-600 text-gray-300 hover:bg-gray-600'
+                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+                title={viewMode === 'table' ? 'Vista de tarjetas' : 'Vista de tabla'}
+              >
+                {viewMode === 'table' ? (
+                  <>
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span className="hidden sm:inline">Tarjetas</span>
+                  </>
+                ) : (
+                  <>
+                    <Grid3x3 className="w-4 h-4" />
+                    <span className="hidden sm:inline">Tabla</span>
+                  </>
+                )}
+              </button>
+              
+              <span className={`text-sm font-medium ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+                Total: {rowData.length} registros
+              </span>
+            </div>
+          </div>
 
-        {/* Modals */}
+          {/* Barra de acciones para filas seleccionadas */}
+          {selectedRows.size > 0 && (
+            <div className={`mt-2 p-2 border-b flex items-center justify-between ${theme === 'dark' ? 'bg-blue-900/30 border-blue-700' : 'bg-blue-50 border-blue-200'
+              }`}>
+              <div className="flex items-center space-x-3">
+                <span className={`text-sm font-medium ${theme === 'dark' ? 'text-blue-300' : 'text-blue-700'
+                  }`}>
+                  {selectedRows.size} registro{selectedRows.size > 1 ? 's' : ''} seleccionado{selectedRows.size > 1 ? 's' : ''}
+                </span>
+                <button
+                  onClick={handleClearSelection}
+                  className={`flex items-center space-x-1 px-2 py-1 rounded text-xs ${theme === 'dark' ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                >
+                  <X className="w-3 h-3" />
+                  <span>Limpiar</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Vista de datos - Tabla o Tarjetas */}
+        <div className="flex-1" style={{ minHeight: 0, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+          {loadingData ? (
+            <div className={`flex items-center justify-center h-full ${theme === 'dark' ? 'bg-gray-800' : 'bg-white'}`}>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>Cargando registros...</p>
+              </div>
+            </div>
+          ) : viewMode === 'table' ? (
+            <div
+              className={`h-full w-full ${selectedTheme} ${theme === 'dark' ? 'ag-theme-quartz-dark' : 'ag-theme-quartz'}`}
+              style={{
+                backgroundColor: theme === 'dark' ? '#1f2937' : '#ffffff',
+                height: '100%',
+                width: '100%'
+              }}
+            >
+              <div onContextMenu={handleRowContextMenu} className="h-full w-full">
+                <AgGridReact
+                  rowData={rowData}
+                  columnDefs={columnDefs}
+                  gridOptions={gridOptions}
+                  onGridReady={onGridReady}
+                  onSelectionChanged={onSelectionChanged}
+                  onSortChanged={onSortChanged}
+                  onColumnMoved={onColumnMoved}
+                  animateRows={true}
+                  getRowStyle={getRowStyle}
+                  rowHeight={35}
+                  headerHeight={70}
+                  domLayout="normal"
+                />
+              </div>
+            </div>
+          ) : (
+            /* Vista de tarjetas */
+            <div className={`h-full w-full overflow-y-auto p-4 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {rowData
+                  .filter(registro => {
+                    if (!searchText) return true;
+                    const searchLower = searchText.toLowerCase();
+                    return (
+                      registro.refAsli?.toLowerCase().includes(searchLower) ||
+                      registro.refCliente?.toLowerCase().includes(searchLower) ||
+                      registro.shipper?.toLowerCase().includes(searchLower) ||
+                      registro.naviera?.toLowerCase().includes(searchLower) ||
+                      registro.especie?.toLowerCase().includes(searchLower) ||
+                      registro.naveInicial?.toLowerCase().includes(searchLower)
+                    );
+                  })
+                  .map((registro) => (
+                    <div
+                      key={registro.id}
+                      className={`border transition-all ${
+                        (canEdit || canDelete) ? 'cursor-pointer hover:shadow-lg' : ''
+                      } ${
+                        selectedRows.has(registro.id || '')
+                          ? theme === 'dark'
+                            ? 'bg-sky-900/30 border-sky-500'
+                            : 'bg-blue-50 border-blue-500'
+                          : theme === 'dark'
+                            ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                            : 'bg-white border-gray-200 hover:border-gray-400'
+                      }`}
+                      onClick={() => {
+                        // Solo permitir selección si tiene permisos
+                        if (!canEdit && !canDelete) return;
+                        if (!gridApi || !registro.id) return;
+                        const node = gridApi.getRowNode(registro.id);
+                        if (node) {
+                          node.setSelected(!node.isSelected());
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        // Solo permitir menú contextual si tiene permisos
+                        if (!canEdit && !canDelete) return;
+                        if (!gridApi || !registro.id) return;
+                        const node = gridApi.getRowNode(registro.id);
+                        if (node && !node.isSelected()) {
+                          gridApi.deselectAll();
+                          node.setSelected(true);
+                        }
+                        setContextMenu({
+                          x: e.clientX,
+                          y: e.clientY,
+                          visible: true,
+                        });
+                      }}
+                    >
+                      {/* Header de la tarjeta */}
+                      <div className={`px-4 py-3 border-b ${
+                        theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <h3 className={`text-lg font-bold ${
+                            theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
+                          }`}>
+                            {registro.refAsli}
+                          </h3>
+                          {/* Solo mostrar checkbox si el usuario puede seleccionar (Admin/Ejecutivo) */}
+                          {(canEdit || canDelete) && (
+                            <input
+                              type="checkbox"
+                              checked={selectedRows.has(registro.id || '')}
+                              onChange={() => {}}
+                              className="w-4 h-4"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          )}
+                        </div>
+                        <p className={`text-sm mt-1 ${
+                          theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                        }`}>
+                          {registro.refCliente || 'Sin ref. cliente'}
+                        </p>
+                      </div>
+
+                      {/* Contenido de la tarjeta */}
+                      <div className="px-4 py-3 space-y-2">
+                        {/* Cliente */}
+                        <div className="flex items-start gap-2">
+                          <UserIcon className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs ${
+                              theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            }`}>
+                              Cliente
+                            </p>
+                            <p className={`text-sm font-medium truncate ${
+                              theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+                            }`}>
+                              {registro.shipper || '-'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Naviera / Nave */}
+                        <div className="flex items-start gap-2">
+                          <Ship className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs ${
+                              theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            }`}>
+                              Naviera / Nave
+                            </p>
+                            <p className={`text-sm font-medium truncate ${
+                              theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+                            }`}>
+                              {registro.naviera || '-'}
+                            </p>
+                            <p className={`text-xs truncate ${
+                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            }`}>
+                              {registro.naveInicial || '-'} {registro.viaje ? `(${registro.viaje})` : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Especie */}
+                        <div className="flex items-start gap-2">
+                          <Globe className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-xs ${
+                              theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            }`}>
+                              Especie
+                            </p>
+                            <p className={`text-sm font-medium truncate ${
+                              theme === 'dark' ? 'text-gray-200' : 'text-gray-900'
+                            }`}>
+                              {registro.especie || '-'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Reserva / Contenedor / Depósito */}
+                        <div className={`pt-2 border-t ${
+                          theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                        }`}>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <p className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                Reserva
+                              </p>
+                              <p className={`font-medium truncate ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-800'
+                              }`}>
+                                {registro.booking || '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                Contenedor
+                              </p>
+                              <p className={`font-medium truncate ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-800'
+                              }`}>
+                                {registro.contenedor || '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                Depósito
+                              </p>
+                              <p className={`font-medium truncate ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-800'
+                              }`}>
+                                {registro.deposito || '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* ETD / ETA / TT */}
+                        <div className={`pt-2 border-t ${
+                          theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+                        }`}>
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <p className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                ETD
+                              </p>
+                              <p className={`font-medium ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-800'
+                              }`}>
+                                {registro.etd ? new Date(registro.etd).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' }) : '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                ETA
+                              </p>
+                              <p className={`font-medium ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-800'
+                              }`}>
+                                {registro.eta ? new Date(registro.eta).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' }) : '-'}
+                              </p>
+                            </div>
+                            <div>
+                              <p className={`${theme === 'dark' ? 'text-gray-500' : 'text-gray-500'}`}>
+                                TT
+                              </p>
+                              <p className={`font-medium ${
+                                theme === 'dark' ? 'text-gray-300' : 'text-gray-800'
+                              }`}>
+                                {registro.tt ? `${registro.tt}d` : '-'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ruta y Estado */}
+                        <div className={`pt-2 border-t flex items-center justify-between text-xs ${
+                          theme === 'dark' ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'
+                        }`}>
+                          <span className="font-medium">{registro.pol || '-'} → {registro.pod || '-'}</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            registro.estado === 'CONFIRMADO'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : registro.estado === 'PENDIENTE'
+                                ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {registro.estado}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Menú contextual */}
+      {contextMenu.visible && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            zIndex: 1000,
+          }}
+          className={`min-w-[180px] border shadow-xl ${
+            theme === 'dark'
+              ? 'bg-gray-800 border-gray-600'
+              : 'bg-white border-gray-300'
+          }`}
+        >
+          <button
+            onClick={handleSendToTransporte}
+            disabled={!canEdit}
+            className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
+              !canEdit
+                ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                : theme === 'dark'
+                ? 'text-gray-200 border-gray-700 hover:bg-gray-700'
+                : 'text-gray-700 border-gray-200 hover:bg-gray-100'
+            }`}
+            title={canEdit ? "Enviar a transporte" : "No tienes permisos para editar registros"}
+          >
+            <Truck className="w-4 h-4" />
+            <span>Enviar a transporte</span>
+          </button>
+          <button
+            onClick={handleDeleteSelectedRows}
+            disabled={!canDelete}
+            className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center gap-2 ${
+              !canDelete
+                ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
+                : theme === 'dark'
+                ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
+                : 'text-red-600 hover:text-red-700 hover:bg-red-50'
+            }`}
+            title={canDelete ? `Borrar (${selectedRegistros.length})` : "No tienes permisos para borrar registros"}
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Borrar ({selectedRegistros.length})</span>
+          </button>
+        </div>
+      )}
+
+      {/* Profile Modal */}
+      {showProfileModal && userInfo && (
+        <UserProfileModal
+          userInfo={userInfo}
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          onUserUpdate={(updatedUser) => {
+            setUserInfo(updatedUser);
+          }}
+        />
+      )}
+
+      {/* Edit Nave/Viaje Modal */}
+      {showEditNaveViajeModal && selectedRegistros.length > 0 && (
+        <EditNaveViajeModal
+          isOpen={showEditNaveViajeModal}
+          onClose={() => setShowEditNaveViajeModal(false)}
+          record={selectedRegistros[0]}
+          records={selectedRegistros}
+          navesUnicas={navesUnicas}
+          navierasNavesMapping={navierasNavesMapping}
+          consorciosNavesMapping={consorciosNavesMapping}
+          onSave={async () => { }}
+          onBulkSave={handleBulkSaveNaveViaje}
+        />
+      )}
+
+      {/* Add Modal */}
+      {showAddModal && (
         <AddModal
-          isOpen={isAddModalOpen}
-          onClose={() => {
-            setIsAddModalOpen(false);
-            // Limpiar el set de IDs agregados al cerrar el modal
-            recentlyAddedIdsRef.current.clear();
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={async (createdRecords) => {
+            setShowAddModal(false);
+            await handleRefreshData();
           }}
-          onSuccess={(createdRecords) => {
-            // Filtrar registros que ya fueron agregados para evitar duplicados
-            const newRecords = createdRecords.filter(record => {
-              const recordId = record.id || record.refAsli;
-              if (!recordId) return true; // Si no tiene ID, agregarlo (no debería pasar)
-              
-              // Si ya fue agregado recientemente, no agregarlo de nuevo
-              if (recentlyAddedIdsRef.current.has(recordId)) {
-                // Registro ya fue agregado, ignorando duplicado
-                return false;
-              }
-              
-              // Marcar como agregado
-              recentlyAddedIdsRef.current.add(recordId);
-              return true;
-            });
-
-            // Solo agregar si hay registros nuevos
-            if (newRecords.length > 0) {
-              // Agregar los nuevos registros al estado local sin recargar
-              setRegistros((prevRegistros) => {
-                // Filtrar duplicados por ID antes de agregar
-                const existingIds = new Set(prevRegistros.map(r => r.id || r.refAsli));
-                const uniqueNewRecords = newRecords.filter(r => {
-                  const id = r.id || r.refAsli;
-                  return id && !existingIds.has(id);
-                });
-                
-                if (uniqueNewRecords.length === 0) {
-                  // Todos los registros ya existen, no se agregarán duplicados
-                  return prevRegistros;
-                }
-                
-                // Agregar al inicio para mantener el orden (más recientes primero)
-                return [...uniqueNewRecords, ...prevRegistros];
-              });
-              
-              // Actualizar catálogos en segundo plano (no bloquear la UI)
-              // Esto permite que el usuario vea los registros inmediatamente
-              loadCatalogos().catch(() => {
-                // Error no crítico al actualizar catálogos en segundo plano, se ignora
-              });
-            }
-            
-            // Limpiar el set de IDs agregados después de 5 segundos para permitir agregar los mismos registros si se recarga
-            setTimeout(() => {
-              newRecords.forEach(record => {
-                const recordId = record.id || record.refAsli;
-                if (recordId) {
-                  recentlyAddedIdsRef.current.delete(recordId);
-                }
-              });
-            }, 5000);
-            
-            // No cerrar el modal automáticamente para permitir enviar el correo
-          }}
-          createdByName={
-            currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'
-          }
-          userEmail={currentUser?.email || user?.email || null}
-          navierasUnicas={navierasUnicas}
+          createdByName={userInfo?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
+          userEmail={user?.email || null}
           ejecutivosUnicos={ejecutivosUnicos}
-          especiesUnicas={especiesUnicas}
           clientesUnicos={clientesUnicos}
-          refExternasUnicas={refExternasUnicas}
+          refExternasUnicas={[]}
+          navierasUnicas={navierasUnicas}
+          especiesUnicas={especiesUnicas}
           polsUnicos={polsUnicos}
           destinosUnicos={destinosUnicos}
           depositosUnicos={depositosUnicos}
           navesUnicas={navesUnicas}
-          navierasNavesMapping={navierasNavesMappingCatalog}
-          consorciosNavesMapping={consorciosNavesMappingCatalog}
+          navierasNavesMapping={navierasNavesMapping}
+          consorciosNavesMapping={consorciosNavesMapping}
           cbmUnicos={cbmUnicos}
           fletesUnicos={fletesUnicos}
-          contratosUnicos={contratosUnicos}
-          co2sUnicos={co2sUnicos}
-          o2sUnicos={o2sUnicos}
-          tratamientosDeFrioOpciones={tratamientosFrioUnicos}
-          clienteFijadoPorCoincidencia={
-            !isEjecutivo && clientesAsignados.length === 1
-              ? clientesAsignados[0]
-              : undefined
-          }
+          contratosUnicos={[]}
+          co2sUnicos={[]}
+          o2sUnicos={[]}
+          tratamientosDeFrioOpciones={[]}
         />
-
-        <EditModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onSuccess={(updatedRecord) => {
-            // Actualizar el registro en el estado local sin recargar
-            setRegistros((prevRegistros) =>
-              prevRegistros.map((record) =>
-                record.id === updatedRecord.id ? updatedRecord : record
-              )
-            );
-            // Actualizar catálogos sin recargar todo
-            loadCatalogos();
-            setIsEditModalOpen(false);
-          }}
-          record={selectedRecord}
-          navierasUnicas={navierasUnicas}
-          navesUnicas={navesUnicas}
-          navierasNavesMapping={navierasNavesMappingCatalog}
-          consorciosNavesMapping={consorciosNavesMappingCatalog}
-          refExternasUnicas={refExternasUnicas}
-          tratamientosDeFrioOpciones={tratamientosFrioUnicos}
-        />
-
-        <TrashModal
-          isOpen={isTrashModalOpen}
-          onClose={() => setIsTrashModalOpen(false)}
-          onRestore={() => {
-            loadRegistros();
-            loadTrashCount();
-            setIsTrashModalOpen(false);
-          }}
-          onSuccess={success}
-          onError={error}
-        />
-
-        {selectedRegistroForHistorial && (
-          <HistorialModal
-            isOpen={isHistorialModalOpen}
-            onClose={handleCloseHistorial}
-            registroId={selectedRegistroForHistorial.id || ''}
-            registroRefAsli={selectedRegistroForHistorial.refAsli}
-          />
-        )}
-
-        <BookingModal
-          isOpen={isBookingModalOpen}
-          onClose={() => {
-            setIsBookingModalOpen(false);
-            setSelectedRegistroForBooking(null);
-          }}
-          onSave={handleSaveBooking}
-          currentBooking={selectedRegistroForBooking?.booking || ''}
-          registroId={selectedRegistroForBooking?.id || ''}
-          existingDocument={
-            (() => {
-              if (!selectedRegistroForBooking?.booking) return null;
-              const bookingKey = selectedRegistroForBooking.booking.trim().toUpperCase().replace(/\s+/g, '');
-              const doc = bookingDocuments.get(bookingKey);
-              return doc || null;
-            })()
-          }
-        />
-
-        {isProformaCreatorOpen && registroSeleccionadoProforma && (
-          <FacturaCreator
-            registro={registroSeleccionadoProforma}
-            isOpen={isProformaCreatorOpen}
-            onClose={handleCloseProformaCreator}
-            onSave={handleCloseProformaCreator}
-            mode="proforma"
-            onGenerateProforma={handleGenerateProforma}
-          />
-        )}
-
-
-        <UserProfileModal
-          isOpen={showProfileModal}
-          onClose={() => setShowProfileModal(false)}
-          userInfo={currentUser}
-          onUserUpdate={(updatedUser) => {
-            setCurrentUser({ ...currentUser, ...updatedUser });
-          }}
-        />
-
-        {facturaSeleccionada && (
-          <FacturaViewer
-            factura={facturaSeleccionada}
-            isOpen={isFacturaViewerOpen}
-            onClose={() => {
-              setIsFacturaViewerOpen(false);
-              setFacturaSeleccionada(null);
-            }}
-            onUpdate={loadFacturas}
-          />
-        )}
-
-        {deleteConfirm && (
-          <div
-            className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
-            onClick={handleCancelDelete}
-            role="presentation"
-          >
-            <div
-              className="w-full max-w-md border border-white/10 bg-slate-950/90 p-6"
-              onClick={(event) => event.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="delete-confirm-title"
-            >
-              <div className="flex items-start gap-4">
-                <span className="inline-flex h-10 w-10 items-center justify-center border border-amber-400/40 bg-amber-500/10 text-amber-200">
-                  <AlertTriangle className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3 id="delete-confirm-title" className="text-lg font-medium text-white">
-                    {deleteConfirm.mode === 'bulk' ? 'Eliminar registros' : 'Eliminar registro'}
-                  </h3>
-                  <p className="mt-2 text-sm text-slate-300">
-                    {deleteConfirm.mode === 'bulk'
-                      ? `¿Quieres enviar ${deleteConfirm.registros.length} registro(s) a la papelera?`
-                      : `¿Quieres enviar el registro ${deleteConfirm.registros[0]?.refAsli ?? ''} a la papelera?`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-6 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleCancelDelete}
-                  disabled={deleteProcessing}
-                  className="inline-flex items-center justify-center gap-2 border border-slate-700/70 px-4 py-2 text-sm font-medium text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmDelete}
-                  disabled={deleteProcessing}
-                  className="inline-flex items-center justify-center gap-2 bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {deleteProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                      Procesando…
-                    </>
-                  ) : (
-                    'Enviar a papelera'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {(selectedRegistroForNaveViaje || selectedRecordsForNaveViaje.length > 0) && (
-          <EditNaveViajeModal
-            isOpen={isEditNaveViajeModalOpen}
-            onClose={handleCloseNaveViajeModal}
-            record={selectedRegistroForNaveViaje}
-            records={selectedRecordsForNaveViaje.length > 0 ? selectedRecordsForNaveViaje : undefined}
-            navesUnicas={navesUnicas}
-            navierasNavesMapping={navierasNavesMappingCatalog}
-            consorciosNavesMapping={consorciosNavesMappingCatalog}
-            onSave={handleSaveNaveViaje}
-            onBulkSave={handleBulkSaveNaveViaje}
-          />
-        )}
-
-        <ToastContainer toasts={toasts} onRemove={removeToast} />
+      )}
+        </div>
       </div>
-    </EditingCellProvider>
+
+      {/* Estilos para centrar los headers */}
+      <style jsx global>{`
+        .ag-header-cell-center .ag-header-cell-label {
+          justify-content: center !important;
+        }
+        .ag-header-cell-center .ag-header-cell-text {
+          text-align: center !important;
+        }
+        .ag-header-cell-label {
+          justify-content: center !important;
+        }
+        .ag-cell-label-container {
+          justify-content: center !important;
+        }
+        .ag-header-cell-comp-wrapper {
+          justify-content: center !important;
+        }
+      `}</style>
+    </div>
   );
 }
 
-const Activity = (props: any) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24" height="24" viewBox="0 0 24 24"
-    fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round"
-  >
-    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-  </svg>
-);
