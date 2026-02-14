@@ -2398,7 +2398,7 @@ export default function TablasPersonalizadasPage() {
           }`}
         >
           <button
-            onClick={handleSendToTransporte}
+            onClick={handleBulkEditNaveViaje}
             disabled={!canEdit}
             className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
               !canEdit
