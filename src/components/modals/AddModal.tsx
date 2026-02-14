@@ -323,7 +323,7 @@ export function AddModal({
           comentario: initialData.comentario || '',
           etd: formatDate(initialData.etd) || '',
           eta: formatDate(initialData.eta) || '',
-          consignatario: initialData.consignatario || '',
+          consignatario: ('consignatario' in initialData ? (initialData as any).consignatario : '') || '',
           contrato: initialData.contrato || '',
           co2: initialData.co2?.toString() || '',
           o2: initialData.o2?.toString() || '',
