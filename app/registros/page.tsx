@@ -95,6 +95,22 @@ export default function TablasPersonalizadasPage() {
   const [trashCount, setTrashCount] = useState(0);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [copiedRegistro, setCopiedRegistro] = useState<Registro | null>(null);
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  
+  // Estados para filtros del panel
+  const [filterPanelValues, setFilterPanelValues] = useState({
+    ejecutivo: '',
+    shipper: '',
+    naviera: '',
+    especie: '',
+    pol: '',
+    pod: '',
+    deposito: '',
+    estado: '',
+    tipoIngreso: '',
+    flete: '',
+    temporada: '',
+  });
   const [searchText, setSearchText] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
@@ -1685,6 +1701,222 @@ export default function TablasPersonalizadasPage() {
     loadRegistros();
   };
 
+  const handleToggleFiltersPanel = () => {
+    setShowFiltersPanel(!showFiltersPanel);
+  };
+
+  // Calcular opciones filtradas basadas en los filtros ya seleccionados
+  const getFilteredOptions = useMemo(() => {
+    let filteredData = [...rowData];
+
+    // Aplicar filtros en cascada según los valores seleccionados
+    if (filterPanelValues.ejecutivo) {
+      filteredData = filteredData.filter(r => r.ejecutivo === filterPanelValues.ejecutivo);
+    }
+    if (filterPanelValues.shipper) {
+      filteredData = filteredData.filter(r => r.shipper === filterPanelValues.shipper);
+    }
+    if (filterPanelValues.naviera) {
+      filteredData = filteredData.filter(r => r.naviera === filterPanelValues.naviera);
+    }
+    if (filterPanelValues.especie) {
+      filteredData = filteredData.filter(r => r.especie === filterPanelValues.especie);
+    }
+    if (filterPanelValues.pol) {
+      filteredData = filteredData.filter(r => r.pol === filterPanelValues.pol);
+    }
+    if (filterPanelValues.pod) {
+      filteredData = filteredData.filter(r => r.pod === filterPanelValues.pod);
+    }
+    if (filterPanelValues.deposito) {
+      filteredData = filteredData.filter(r => r.deposito === filterPanelValues.deposito);
+    }
+    if (filterPanelValues.estado) {
+      filteredData = filteredData.filter(r => r.estado === filterPanelValues.estado);
+    }
+    if (filterPanelValues.tipoIngreso) {
+      filteredData = filteredData.filter(r => r.tipoIngreso === filterPanelValues.tipoIngreso);
+    }
+    if (filterPanelValues.flete) {
+      filteredData = filteredData.filter(r => r.flete === filterPanelValues.flete);
+    }
+    if (filterPanelValues.temporada) {
+      filteredData = filteredData.filter(r => r.temporada === filterPanelValues.temporada);
+    }
+
+    // Extraer valores únicos de los datos filtrados
+    return {
+      ejecutivos: [...new Set(filteredData.map(r => r.ejecutivo).filter(Boolean))].sort(),
+      clientes: [...new Set(filteredData.map(r => r.shipper).filter(Boolean))].sort(),
+      navieras: [...new Set(filteredData.map(r => r.naviera).filter(Boolean))].sort(),
+      especies: [...new Set(filteredData.map(r => r.especie).filter(Boolean))].sort(),
+      pols: [...new Set(filteredData.map(r => r.pol).filter(Boolean))].sort(),
+      pods: [...new Set(filteredData.map(r => r.pod).filter(Boolean))].sort(),
+      depositos: [...new Set(filteredData.map(r => r.deposito).filter(Boolean))].sort(),
+      estados: [...new Set(filteredData.map(r => r.estado).filter(Boolean))].sort(),
+      tiposIngreso: [...new Set(filteredData.map(r => r.tipoIngreso).filter(Boolean))].sort(),
+      fletes: [...new Set(filteredData.map(r => r.flete).filter(Boolean))].sort(),
+      temporadas: [...new Set(filteredData.map(r => r.temporada).filter((t): t is string => Boolean(t)))].sort(),
+    };
+  }, [rowData, filterPanelValues]);
+
+  const handleApplyFilters = () => {
+    if (!gridApi) return;
+
+    const filterModel: any = {};
+
+    // Aplicar filtros solo si tienen valor
+    if (filterPanelValues.ejecutivo) {
+      filterModel.ejecutivo = {
+        type: 'contains',
+        filter: filterPanelValues.ejecutivo,
+      };
+    }
+    if (filterPanelValues.shipper) {
+      filterModel.shipper = {
+        type: 'contains',
+        filter: filterPanelValues.shipper,
+      };
+    }
+    if (filterPanelValues.naviera) {
+      filterModel.naviera = {
+        type: 'contains',
+        filter: filterPanelValues.naviera,
+      };
+    }
+    if (filterPanelValues.especie) {
+      filterModel.especie = {
+        type: 'contains',
+        filter: filterPanelValues.especie,
+      };
+    }
+    if (filterPanelValues.pol) {
+      filterModel.pol = {
+        type: 'contains',
+        filter: filterPanelValues.pol,
+      };
+    }
+    if (filterPanelValues.pod) {
+      filterModel.pod = {
+        type: 'contains',
+        filter: filterPanelValues.pod,
+      };
+    }
+    if (filterPanelValues.deposito) {
+      filterModel.deposito = {
+        type: 'contains',
+        filter: filterPanelValues.deposito,
+      };
+    }
+    if (filterPanelValues.estado) {
+      filterModel.estado = {
+        type: 'equals',
+        filter: filterPanelValues.estado,
+      };
+    }
+    if (filterPanelValues.tipoIngreso) {
+      filterModel.tipoIngreso = {
+        type: 'equals',
+        filter: filterPanelValues.tipoIngreso,
+      };
+    }
+    if (filterPanelValues.flete) {
+      filterModel.flete = {
+        type: 'equals',
+        filter: filterPanelValues.flete,
+      };
+    }
+    if (filterPanelValues.temporada) {
+      filterModel.temporada = {
+        type: 'equals',
+        filter: filterPanelValues.temporada,
+      };
+    }
+
+    gridApi.setFilterModel(Object.keys(filterModel).length > 0 ? filterModel : null);
+    success('Filtros aplicados');
+  };
+
+  const handleFilterChange = (field: keyof typeof filterPanelValues, value: string) => {
+    setFilterPanelValues(prev => {
+      const newValues = { ...prev, [field]: value };
+      
+      // Calcular opciones filtradas con los nuevos valores para validar dependencias
+      let filteredData = [...rowData];
+      
+      // Aplicar todos los filtros excepto el que se está cambiando
+      if (field !== 'ejecutivo' && newValues.ejecutivo) {
+        filteredData = filteredData.filter(r => r.ejecutivo === newValues.ejecutivo);
+      }
+      if (field !== 'shipper' && newValues.shipper) {
+        filteredData = filteredData.filter(r => r.shipper === newValues.shipper);
+      }
+      if (field !== 'naviera' && newValues.naviera) {
+        filteredData = filteredData.filter(r => r.naviera === newValues.naviera);
+      }
+      if (field !== 'especie' && newValues.especie) {
+        filteredData = filteredData.filter(r => r.especie === newValues.especie);
+      }
+      if (field !== 'pol' && newValues.pol) {
+        filteredData = filteredData.filter(r => r.pol === newValues.pol);
+      }
+      if (field !== 'pod' && newValues.pod) {
+        filteredData = filteredData.filter(r => r.pod === newValues.pod);
+      }
+      if (field !== 'deposito' && newValues.deposito) {
+        filteredData = filteredData.filter(r => r.deposito === newValues.deposito);
+      }
+      if (field !== 'estado' && newValues.estado) {
+        filteredData = filteredData.filter(r => r.estado === newValues.estado);
+      }
+      if (field !== 'tipoIngreso' && newValues.tipoIngreso) {
+        filteredData = filteredData.filter(r => r.tipoIngreso === newValues.tipoIngreso);
+      }
+      if (field !== 'flete' && newValues.flete) {
+        filteredData = filteredData.filter(r => r.flete === newValues.flete);
+      }
+      if (field !== 'temporada' && newValues.temporada) {
+        filteredData = filteredData.filter(r => r.temporada === newValues.temporada);
+      }
+      
+      // Aplicar el nuevo filtro
+      if (value) {
+        filteredData = filteredData.filter(r => (r as any)[field] === value);
+      }
+      
+      // Validar y limpiar filtros dependientes si ya no son válidos
+      if (field === 'ejecutivo') {
+        // Si cambió el ejecutivo, verificar si el cliente actual sigue siendo válido
+        if (newValues.shipper && !filteredData.some(r => r.shipper === newValues.shipper)) {
+          newValues.shipper = '';
+        }
+      }
+      
+      return newValues;
+    });
+  };
+
+  const handleClearAllFilters = () => {
+    if (gridApi) {
+      gridApi.setFilterModel(null);
+      setFilterPanelValues({
+        ejecutivo: '',
+        shipper: '',
+        naviera: '',
+        especie: '',
+        pol: '',
+        pod: '',
+        deposito: '',
+        estado: '',
+        tipoIngreso: '',
+        flete: '',
+        temporada: '',
+      });
+      setSearchText('');
+      success('Filtros limpiados');
+    }
+  };
+
   const handleClearSelection = () => {
     if (gridApi) {
       gridApi.deselectAll();
@@ -1924,18 +2156,22 @@ export default function TablasPersonalizadasPage() {
             </div>
             <div className="flex items-center space-x-2">
               <button
-                onClick={handleRefreshData}
-                disabled={loadingData}
-                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition ${loadingData
+                onClick={handleToggleFiltersPanel}
+                disabled={!gridApi}
+                className={`flex items-center gap-2 px-3 py-2 text-sm font-medium transition ${!gridApi
                     ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                    : theme === 'dark'
-                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
+                    : showFiltersPanel
+                      ? theme === 'dark'
+                        ? 'bg-sky-600 hover:bg-sky-700 text-white border border-sky-500'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600'
+                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300'
                   }`}
-                title={loadingData ? 'Cargando...' : 'Recargar'}
+                title="Abrir panel de filtros"
               >
-                <RefreshCw className={`w-4 h-4 ${loadingData ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{loadingData ? 'Cargando...' : 'Recargar'}</span>
+                <Filter className="w-4 h-4" />
+                <span className="hidden sm:inline">Filtros</span>
               </button>
               <button
                 type="button"
@@ -2427,6 +2663,300 @@ export default function TablasPersonalizadasPage() {
           )}
         </div>
       </main>
+
+      {/* Panel lateral de filtros */}
+      {showFiltersPanel && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40"
+            onClick={() => setShowFiltersPanel(false)}
+          />
+          {/* Panel slide desde la derecha */}
+          <div
+            className={`fixed top-0 right-0 h-full w-full max-w-md z-50 transform transition-transform duration-300 ease-in-out ${
+              showFiltersPanel ? 'translate-x-0' : 'translate-x-full'
+            } ${theme === 'dark' ? 'bg-slate-900 border-l border-slate-700' : 'bg-white border-l border-gray-200'} shadow-2xl`}
+          >
+            <div className="flex flex-col h-full">
+              {/* Header del panel */}
+              <div className={`flex items-center justify-between px-4 sm:px-6 py-4 border-b ${
+                theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <Filter className={`w-5 h-5 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                  <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>
+                    Filtros Avanzados
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowFiltersPanel(false)}
+                  className={`p-2 transition ${theme === 'dark'
+                    ? 'text-slate-300 hover:bg-slate-700 hover:text-white'
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                  title="Cerrar panel"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Contenido del panel - Scrollable */}
+              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+                {/* Ejecutivo */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Ejecutivo
+                  </label>
+                  <select
+                    value={filterPanelValues.ejecutivo}
+                    onChange={(e) => handleFilterChange('ejecutivo', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.ejecutivos.map((ejecutivo) => (
+                      <option key={ejecutivo} value={ejecutivo}>{ejecutivo}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Cliente */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Cliente
+                  </label>
+                  <select
+                    value={filterPanelValues.shipper}
+                    onChange={(e) => handleFilterChange('shipper', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                    disabled={!filterPanelValues.ejecutivo}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.clientes.map((cliente) => (
+                      <option key={cliente} value={cliente}>{cliente}</option>
+                    ))}
+                  </select>
+                  {!filterPanelValues.ejecutivo && (
+                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                      Selecciona un ejecutivo primero
+                    </p>
+                  )}
+                </div>
+
+                {/* Naviera */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Naviera
+                  </label>
+                  <select
+                    value={filterPanelValues.naviera}
+                    onChange={(e) => handleFilterChange('naviera', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todas</option>
+                    {getFilteredOptions.navieras.map((naviera) => (
+                      <option key={naviera} value={naviera}>{naviera}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Especie */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Especie
+                  </label>
+                  <select
+                    value={filterPanelValues.especie}
+                    onChange={(e) => handleFilterChange('especie', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todas</option>
+                    {getFilteredOptions.especies.map((especie) => (
+                      <option key={especie} value={especie}>{especie}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* POL */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    POL
+                  </label>
+                  <select
+                    value={filterPanelValues.pol}
+                    onChange={(e) => handleFilterChange('pol', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.pols.map((pol) => (
+                      <option key={pol} value={pol}>{pol}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* POD */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    POD
+                  </label>
+                  <select
+                    value={filterPanelValues.pod}
+                    onChange={(e) => handleFilterChange('pod', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.pods.map((pod) => (
+                      <option key={pod} value={pod}>{pod}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Depósito */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Depósito
+                  </label>
+                  <select
+                    value={filterPanelValues.deposito}
+                    onChange={(e) => handleFilterChange('deposito', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.depositos.map((deposito) => (
+                      <option key={deposito} value={deposito}>{deposito}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Estado */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Estado
+                  </label>
+                  <select
+                    value={filterPanelValues.estado}
+                    onChange={(e) => handleFilterChange('estado', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.estados.map((estado) => (
+                      <option key={estado} value={estado}>{estado}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tipo de Ingreso */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Tipo de Ingreso
+                  </label>
+                  <select
+                    value={filterPanelValues.tipoIngreso}
+                    onChange={(e) => handleFilterChange('tipoIngreso', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.tiposIngreso.map((tipo) => (
+                      <option key={tipo} value={tipo}>{tipo}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Flete */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Flete
+                  </label>
+                  <select
+                    value={filterPanelValues.flete}
+                    onChange={(e) => handleFilterChange('flete', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todos</option>
+                    {getFilteredOptions.fletes.map((flete) => (
+                      <option key={flete} value={flete}>{flete}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Temporada */}
+                <div className="space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-slate-200' : 'text-gray-900'}`}>
+                    Temporada
+                  </label>
+                  <select
+                    value={filterPanelValues.temporada}
+                    onChange={(e) => handleFilterChange('temporada', e.target.value)}
+                    className={`w-full border px-3 py-2 text-sm ${theme === 'dark'
+                      ? 'border-slate-700 bg-slate-800 text-slate-100'
+                      : 'border-gray-300 bg-white text-gray-900'
+                    }`}
+                  >
+                    <option value="">Todas</option>
+                    {getFilteredOptions.temporadas.map((temporada) => (
+                      <option key={temporada} value={temporada}>{temporada}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Footer con botones */}
+              <div className={`px-4 sm:px-6 py-4 border-t flex gap-3 ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
+                <button
+                  onClick={handleClearAllFilters}
+                  className={`flex-1 px-4 py-2 text-sm font-medium border transition ${
+                    theme === 'dark'
+                      ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  Limpiar
+                </button>
+                <button
+                  onClick={handleApplyFilters}
+                  className={`flex-1 px-4 py-2 text-sm font-semibold text-white transition ${
+                    theme === 'dark'
+                      ? 'bg-sky-600 hover:bg-sky-700'
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  Aplicar Filtros
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Menú contextual */}
       {contextMenu.visible && (
