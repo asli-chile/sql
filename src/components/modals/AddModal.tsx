@@ -147,7 +147,7 @@ export function AddModal({
     pod: '',
     deposito: '',
     estado: 'PENDIENTE',
-    tipoIngreso: '',
+    tipoIngreso: 'NORMAL', // Valor por defecto
     flete: '',
     comentario: '',
     etd: '',
@@ -176,6 +176,12 @@ export function AddModal({
   const [showDepositoConfirmation, setShowDepositoConfirmation] = useState(false);
   const [pendingDeposito, setPendingDeposito] = useState<string>('');
   const [depositoPendingResolve, setDepositoPendingResolve] = useState<((confirm: boolean) => void) | null>(null);
+
+  // Estado para confirmación de nave nueva
+  const [showNaveConfirmation, setShowNaveConfirmation] = useState(false);
+  const [pendingNave, setPendingNave] = useState<string>('');
+  const [pendingNaviera, setPendingNaviera] = useState<string>('');
+  const [navePendingResolve, setNavePendingResolve] = useState<((confirm: boolean) => void) | null>(null);
 
   // Estado para confirmación de envío de correo
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
@@ -318,7 +324,7 @@ export function AddModal({
           pod: initialData.pod || '',
           deposito: initialData.deposito || '',
           estado: 'PENDIENTE', // Las copias siempre se guardan como PENDIENTE
-          tipoIngreso: initialData.tipoIngreso || '',
+          tipoIngreso: initialData.tipoIngreso || 'NORMAL', // Valor por defecto si no se especifica
           flete: initialData.flete || '',
           comentario: initialData.comentario || '',
           etd: formatDate(initialData.etd) || '',
@@ -381,7 +387,7 @@ export function AddModal({
       case 1:
         return !!(formData.ejecutivo && formData.shipper && formData.especie);
       case 2:
-        return !!(formData.naviera && formData.naveInicial && formData.pol && formData.pod && formData.flete && formData.tipoIngreso);
+        return !!(formData.naviera && formData.naveInicial && formData.pol && formData.pod && formData.flete);
       case 3:
         return !!(formData.cbm && formData.temperatura);
       case 4:
@@ -657,7 +663,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         pod: formData.pod,
         deposito: formData.deposito,
         estado: formData.estado,
-        tipo_ingreso: formData.tipoIngreso,
+        tipo_ingreso: formData.tipoIngreso || 'NORMAL', // Valor por defecto si no se especifica
         flete: formData.flete,
         comentario: formData.comentario || 'SIN COMENTARIO',
         contenedor: 'POR ASIGNAR',
@@ -1021,6 +1027,16 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     });
   };
 
+  // Función para confirmar y guardar una nave nueva
+  const confirmAndSaveNave = async (naveNombre: string, navieraNombre: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setPendingNave(naveNombre);
+      setPendingNaviera(navieraNombre);
+      setShowNaveConfirmation(true);
+      setNavePendingResolve(() => resolve);
+    });
+  };
+
   const handleDepositoConfirmation = async (confirmed: boolean) => {
     setShowDepositoConfirmation(false);
     
@@ -1062,6 +1078,26 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     setPendingDeposito('');
   };
 
+  const handleNaveConfirmation = async (confirmed: boolean) => {
+    setShowNaveConfirmation(false);
+    
+    if (confirmed && pendingNave && pendingNaviera) {
+      try {
+        // Guardar la nave en catalogos_naves
+        await saveNewNaveToDatabase(pendingNave.trim(), pendingNaviera.trim());
+      } catch (error) {
+        console.error('❌ Error en confirmación de nave:', error);
+      }
+    }
+    
+    if (navePendingResolve) {
+      navePendingResolve(confirmed);
+      setNavePendingResolve(null);
+    }
+    setPendingNave('');
+    setPendingNaviera('');
+  };
+
   const handleComboboxChange = async (name: string, value: string) => {
     if (name === 'naviera') {
       setFormData((prev) => ({
@@ -1074,17 +1110,31 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
     }
 
     if (name === 'naveInicial') {
-      // Si es una nave nueva (no existe en el catálogo), guardarla en catalogos_naves
+      // Si es una nave nueva (no existe en el catálogo), pedir confirmación antes de guardar
       if (value && formData.naviera) {
         const availableNaves = getAvailableNaves();
         const naveExists = availableNaves.some(
           (nave) => nave.trim().toLowerCase() === value.trim().toLowerCase()
         );
 
-        if (!naveExists) {
+        if (!naveExists && value.trim()) {
           console.log(`🆕 Detectada nave nueva: "${value}" para naviera "${formData.naviera}"`);
-          // Guardar la nueva nave en catalogos_naves de forma asíncrona
-          saveNewNaveToDatabase(value.trim(), formData.naviera);
+          // Pedir confirmación antes de agregar
+          const confirmed = await confirmAndSaveNave(value.trim(), formData.naviera);
+          
+          if (confirmed) {
+            // Si se confirmó, actualizar el formData
+            const naveChanged = value.trim() !== formData.naveInicial.trim();
+            setFormData((prev) => ({
+              ...prev,
+              [name]: value,
+              viaje: naveChanged ? '' : prev.viaje,
+            }));
+          } else {
+            // Si se canceló, mantener el valor anterior
+            return;
+          }
+          return;
         }
       }
 
@@ -1471,21 +1521,22 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               {/* Tipo de Ingreso */}
               <div className="space-y-1.5 sm:space-y-2">
                 <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
-                  Tipo de Ingreso *
+                  Tipo de Ingreso
                 </label>
                 <select
                   name="tipoIngreso"
                   value={formData.tipoIngreso}
                   onChange={handleChange}
                   className={getSelectStyles()}
-                  required
                 >
-                  <option value="">Seleccionar tipo de ingreso</option>
-                  <option value="NORMAL">NORMAL</option>
+                  <option value="NORMAL">NORMAL (por defecto)</option>
                   <option value="EARLY">EARLY</option>
                   <option value="LATE">LATE</option>
                   <option value="EXTRA LATE">EXTRA LATE</option>
                 </select>
+                <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Si no se especifica, se usará NORMAL por defecto
+                </p>
               </div>
 
               {/* ETD */}
@@ -2159,6 +2210,65 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </button>
               <button
                 onClick={() => handleDepositoConfirmation(true)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border transition ${
+                  theme === 'dark'
+                    ? 'border-sky-500 bg-sky-600 text-white hover:bg-sky-700'
+                    : 'border-blue-500 bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Sí, agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de confirmación para nave nueva */}
+      {showNaveConfirmation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+          <div className={`relative w-full max-w-md mx-4 border shadow-2xl ${
+            theme === 'dark'
+              ? 'bg-slate-900 border-slate-700'
+              : 'bg-white border-gray-300'
+          }`}>
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b ${
+              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+            }`}>
+              <h3 className={`text-sm sm:text-lg font-semibold ${
+                theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+              }`}>
+                ¿Agregar nueva nave?
+              </h3>
+            </div>
+            
+            <div className="px-4 sm:px-6 py-3 sm:py-4">
+              <p className={`text-xs sm:text-sm ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                La nave <span className="font-semibold text-sky-500">"{pendingNave}"</span> no existe en el catálogo para la naviera <span className="font-semibold text-sky-500">"{pendingNaviera}"</span>.
+              </p>
+              <p className={`text-xs sm:text-sm mt-2 ${
+                theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+              }`}>
+                ¿Deseas agregarla como nueva nave disponible?
+              </p>
+            </div>
+
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t flex gap-2 sm:gap-3 justify-end ${
+              theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
+            }`}>
+              <button
+                onClick={() => handleNaveConfirmation(false)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border transition ${
+                  theme === 'dark'
+                    ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => handleNaveConfirmation(true)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border transition ${
                   theme === 'dark'
                     ? 'border-sky-500 bg-sky-600 text-white hover:bg-sky-700'
