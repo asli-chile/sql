@@ -282,18 +282,20 @@ export function AddModal({
           }
         }
 
-        // Formatear fechas de DD-MM-YYYY si vienen en formato ISO
-        const formatDate = (dateStr: string | null | undefined): string => {
-          if (!dateStr) return '';
+        // Formatear fechas de DD-MM-YYYY si vienen en formato ISO o Date
+        const formatDate = (dateValue: string | Date | null | undefined): string => {
+          if (!dateValue) return '';
           try {
-            const date = new Date(dateStr);
+            // Si ya es un objeto Date, usarlo directamente
+            const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
             if (isNaN(date.getTime())) return '';
             const day = String(date.getDate()).padStart(2, '0');
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const year = date.getFullYear();
             return `${day}-${month}-${year}`;
           } catch {
-            return dateStr;
+            // Si falla, intentar convertir a string
+            return typeof dateValue === 'string' ? dateValue : '';
           }
         };
 

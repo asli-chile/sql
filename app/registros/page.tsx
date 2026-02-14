@@ -2443,21 +2443,24 @@ export default function TablasPersonalizadasPage() {
               : 'bg-white border-gray-300'
           }`}
         >
-          <button
-            onClick={handleCopyReserva}
-            disabled={selectedRegistros.length === 0 || !canAdd}
-            className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
-              !canAdd || selectedRegistros.length === 0
-                ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed border-gray-200 dark:border-gray-700'
-                : theme === 'dark'
-                ? 'text-sky-300 border-gray-700 hover:bg-gray-700'
-                : 'text-sky-600 border-gray-200 hover:bg-gray-100'
-            }`}
-            title={canAdd && selectedRegistros.length > 0 ? "Copiar reserva y crear nueva" : "No tienes permisos para crear registros"}
-          >
-            <Plus className="w-4 h-4" />
-            <span>Copiar reserva</span>
-          </button>
+          {/* Solo mostrar "Copiar reserva" si hay exactamente 1 fila seleccionada */}
+          {selectedRegistros.length === 1 && (
+            <button
+              onClick={handleCopyReserva}
+              disabled={!canAdd}
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
+                !canAdd
+                  ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                  : theme === 'dark'
+                  ? 'text-sky-300 border-gray-700 hover:bg-gray-700'
+                  : 'text-sky-600 border-gray-200 hover:bg-gray-100'
+              }`}
+              title={canAdd ? "Copiar reserva y crear nueva" : "No tienes permisos para crear registros"}
+            >
+              <Plus className="w-4 h-4" />
+              <span>Copiar reserva</span>
+            </button>
+          )}
           <button
             onClick={handleBulkEditNaveViaje}
             disabled={!canEdit}
