@@ -46,6 +46,7 @@ import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { AddModal } from '@/components/modals/AddModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
+import { TrashModal } from '@/components/modals/TrashModal';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { generarReporte, descargarExcel, TipoReporte } from '@/lib/reportes';
@@ -90,6 +91,8 @@ export default function TablasPersonalizadasPage() {
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [selectedRegistros, setSelectedRegistros] = useState<Registro[]>([]);
   const [showEditNaveViajeModal, setShowEditNaveViajeModal] = useState(false);
+  const [showTrashModal, setShowTrashModal] = useState(false);
+  const [trashCount, setTrashCount] = useState(0);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [searchText, setSearchText] = useState<string>('');
   const [viewMode, setViewMode] = useState<'table' | 'card'>('table');
@@ -670,6 +673,27 @@ export default function TablasPersonalizadasPage() {
     }
   }, [showError, success, currentUser]);
 
+  // Cargar contador de papelera
+  const loadTrashCount = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from('registros')
+        .select('*', { count: 'exact', head: true })
+        .not('deleted_at', 'is', null);
+
+      if (error) {
+        console.error('Error loading trash count:', error);
+        return;
+      }
+
+      setTrashCount(count ?? 0);
+    } catch (err) {
+      console.warn('[Registros] Error cargando contador de papelera:', err);
+      setTrashCount(0);
+    }
+  }, []);
+
   useEffect(() => {
     const checkUser = async () => {
       try {
@@ -697,6 +721,7 @@ export default function TablasPersonalizadasPage() {
         // Cargar catálogos y registros
         await loadCatalogos();
         await loadRegistros();
+        await loadTrashCount();
       } catch (error) {
         console.error('Error checking user:', error);
         router.push('/auth');
@@ -1735,6 +1760,7 @@ export default function TablasPersonalizadasPage() {
 
       // Recargar datos
       await loadRegistros();
+      await loadTrashCount();
       handleClearSelection();
       alert(`${selectedRegistros.length} registro${selectedRegistros.length > 1 ? 's' : ''} eliminado${selectedRegistros.length > 1 ? 's' : ''} correctamente`);
     } catch (error) {
@@ -1772,8 +1798,10 @@ export default function TablasPersonalizadasPage() {
     }
   };
 
-  // Verificar si es super admin
-  const isSuperAdmin = userInfo?.rol === 'super_admin';
+  // Verificar si es super admin o admin
+  const isSuperAdmin = currentUser?.rol === 'super_admin';
+  const isAdmin = currentUser?.rol === 'admin';
+  const canAccessAdvancedModules = isSuperAdmin || isAdmin;
 
   // Configuración del sidebar
   const sidebarSections: SidebarSection[] = [
@@ -1789,23 +1817,30 @@ export default function TablasPersonalizadasPage() {
         { label: 'Embarques', id: '/registros', isActive: true, icon: Ship },
         { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
-        ...(userInfo && userInfo.rol !== 'cliente'
+        ...(currentUser && currentUser.rol !== 'cliente'
           ? [{ label: 'Generar Documentos', id: '/generar-documentos', icon: FileCheck }]
           : []),
-        ...(isSuperAdmin
+        ...(canAccessAdvancedModules
           ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', icon: Globe }]
           : []),
         { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isSuperAdmin
+        ...(canAccessAdvancedModules
           ? [
             { label: 'Finanzas', id: '/finanzas', icon: DollarSign },
             { label: 'Reportes', id: '/reportes', icon: BarChart3 },
           ]
           : []),
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
+        { 
+          label: 'Papelera', 
+          icon: Trash2, 
+          counter: trashCount, 
+          tone: 'rose' as const,
+          onClick: () => setShowTrashModal(true)
+        },
       ],
     },
-    ...(isSuperAdmin
+    ...(canAccessAdvancedModules
       ? [
         {
           title: 'Mantenimiento',
@@ -2486,6 +2521,20 @@ export default function TablasPersonalizadasPage() {
           co2sUnicos={[]}
           o2sUnicos={[]}
           tratamientosDeFrioOpciones={[]}
+        />
+      )}
+
+      {/* Trash Modal */}
+      {showTrashModal && (
+        <TrashModal
+          isOpen={showTrashModal}
+          onClose={() => setShowTrashModal(false)}
+          onRestore={async () => {
+            await loadRegistros();
+            await loadTrashCount();
+          }}
+          onSuccess={(message) => success(message)}
+          onError={(message) => showError(message)}
         />
       )}
         </div>

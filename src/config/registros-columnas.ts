@@ -17,7 +17,7 @@ export interface ColumnaConfig {
 
 export const ANCHOS_COLUMNAS: ColumnaConfig[] = [
   // Columnas principales (pinned)
-  { field: 'refCliente', headerName: 'REF Cliente', width: 137, pinned: 'left' },
+  { field: 'refCliente', headerName: 'REF Cliente', width: 139, pinned: 'left' },
   { field: 'refAsli', headerName: 'REF ASLI', width: 122, pinned: 'left' },
   
   // Información básica

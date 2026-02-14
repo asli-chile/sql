@@ -167,10 +167,20 @@ export function AddModal({
   const isSavingRef = React.useRef(false);
   const [navesAgregadasLocalmente, setNavesAgregadasLocalmente] = useState<Record<string, string[]>>({});
   
+  // Estado para guardar los registros creados temporalmente
+  const [savedRecords, setSavedRecords] = useState<Registro[]>([]);
+  
   // Estado para confirmación de depósito nuevo
   const [showDepositoConfirmation, setShowDepositoConfirmation] = useState(false);
   const [pendingDeposito, setPendingDeposito] = useState<string>('');
   const [depositoPendingResolve, setDepositoPendingResolve] = useState<((confirm: boolean) => void) | null>(null);
+
+  // Estado para confirmación de envío de correo
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+
+  // Estado para cargar especies desde el catálogo
+  const [especiesCatalogo, setEspeciesCatalogo] = useState<string[]>([]);
+  const [loadingEspecies, setLoadingEspecies] = useState(false);
 
   const copiesPreview =
     numberOfCopies.trim() === ''
@@ -206,6 +216,42 @@ export function AddModal({
       };
     }
   }, [isOpen]);
+
+  // Cargar especies desde el catálogo
+  useEffect(() => {
+    const cargarEspecies = async () => {
+      if (!isOpen) return;
+      
+      setLoadingEspecies(true);
+      try {
+        const { data, error } = await supabase
+          .from('catalogos')
+          .select('valores')
+          .eq('categoria', 'especies')
+          .single();
+
+        if (error) {
+          console.error('Error cargando especies desde catálogo:', error);
+          // Fallback: usar las especies de la prop si hay error
+          setEspeciesCatalogo(especiesUnicas);
+        } else if (data?.valores) {
+          // Asegurar que sea un array de strings
+          const especies = Array.isArray(data.valores) ? data.valores : [];
+          setEspeciesCatalogo(especies.sort());
+        } else {
+          // Si no hay datos, usar las especies de la prop
+          setEspeciesCatalogo(especiesUnicas);
+        }
+      } catch (err) {
+        console.error('Error en cargarEspecies:', err);
+        setEspeciesCatalogo(especiesUnicas);
+      } finally {
+        setLoadingEspecies(false);
+      }
+    };
+
+    cargarEspecies();
+  }, [isOpen, supabase, especiesUnicas]);
 
   // Inicializar modal sin generar REF ASLI (se genera automáticamente por trigger SQL)
   useEffect(() => {
@@ -264,7 +310,7 @@ export function AddModal({
       case 1:
         return !!(formData.ejecutivo && formData.shipper && formData.especie);
       case 2:
-        return !!(formData.naviera && formData.naveInicial && formData.deposito && formData.pol && formData.pod && formData.flete && formData.tipoIngreso);
+        return !!(formData.naviera && formData.naveInicial && formData.pol && formData.pod && formData.flete && formData.tipoIngreso);
       case 3:
         return !!(formData.cbm && formData.temperatura);
       case 4:
@@ -404,17 +450,15 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
             <li><strong>ETA:</strong> ${formData.eta || 'N/A'}</li>
             <li><strong>Comentario:</strong> ${formData.comentario || 'SIN COMENTARIO'}</li>
           </ul>
-          
-          <p>Saludos cordiales.</p>
         </div>
       `;
 
-      console.log('📧 Enviando correo de solicitud de reserva...');
+      console.log('📧 Creando borrador con firma incluida...');
       console.log('📧 userEmail:', userEmail);
       console.log('📧 to:', ['rocio.villarroel@asli.cl', 'poliana.cisternas@asli.cl']);
       console.log('📧 subject:', emailSubject);
 
-      // Enviar usando nuestra API de Gmail
+      // Enviar usando nuestra API de Gmail (crea borrador con firma)
       const response = await fetch('/api/email/send', {
         method: 'POST',
         headers: {
@@ -424,7 +468,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           to: ['rocio.villarroel@asli.cl', 'poliana.cisternas@asli.cl'],
           subject: emailSubject,
           body: emailBody,
-          action: 'draft', // Crear borrador para revisión
+          action: 'draft', // Crear borrador para que incluya la firma automáticamente
           fromEmail: userEmail, // Email del usuario que crea el registro
         }),
       });
@@ -435,19 +479,31 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
       if (response.ok && result.draftId) {
         console.log('📧 Abriendo Gmail con draftId:', result.draftId);
-        // Abrir el borrador en Gmail
-        const gmailWindow = window.open(`https://mail.google.com/mail/#drafts?message=${result.draftId}`, '_blank');
+        // Cerrar el diálogo de confirmación
+        setShowEmailConfirmation(false);
+        // Llamar a onSuccess para actualizar la UI principal
+        onSuccess(savedRecords);
+        // Abrir el borrador en Gmail (incluirá la firma configurada)
+        const gmailWindow = window.open(`https://mail.google.com/mail/#drafts?compose=${result.draftId}`, '_blank');
         console.log('📧 Ventana abierta:', gmailWindow);
 
         if (!gmailWindow) {
           alert('El navegador bloqueó la ventana emergente. Por favor, permite las ventanas emergentes para este sitio.');
+        } else {
+          // Cerrar el modal después de abrir el correo
+          setTimeout(() => {
+            onClose();
+          }, 500);
         }
       } else {
         console.error('❌ No se pudo crear el borrador del correo:', result);
         alert(`Error al crear el correo: ${result.error || 'Error desconocido'}`);
+        setShowEmailConfirmation(false);
       }
     } catch (error) {
       console.error('Error enviando correo de solicitud de reserva:', error);
+      alert('Error al enviar el correo. Por favor, intenta de nuevo.');
+      setShowEmailConfirmation(false);
     }
   };
 
@@ -612,13 +668,16 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       // Convertir los registros creados inmediatamente para mostrar feedback rápido
       const appRecords = createResult.records.map((record: any) => convertSupabaseToApp(record));
       
+      // Guardar los registros temporalmente (NO llamar a onSuccess todavía)
+      setSavedRecords(appRecords);
+      
       // Marcar como guardado y mostrar feedback inmediatamente
       setIsSaved(true);
       setLoading(false);
       isSavingRef.current = false;
       
-      // Llamar a onSuccess inmediatamente para actualizar la UI
-      onSuccess(appRecords);
+      // Mostrar diálogo de confirmación para enviar correo
+      setShowEmailConfirmation(true);
 
       // Ejecutar actualizaciones de catálogos y sincronización en segundo plano (no bloquear)
       // Usar setTimeout para asegurar que no bloquee el hilo principal
@@ -1003,22 +1062,22 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
   };
 
   return isOpen ? (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl px-4 sm:px-6 py-4 sm:py-6 overflow-y-auto ${theme === 'dark' ? 'bg-slate-950/80' : 'bg-black/50'}`}>
-      <div className={`relative flex max-h-[95vh] my-auto w-full max-w-[98vw] 2xl:max-w-[1400px] flex-col border ${theme === 'dark'
-        ? 'border-slate-800/60 bg-slate-950/90'
+    <div className={`fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xl px-2 sm:px-4 py-2 sm:py-4 overflow-y-auto ${theme === 'dark' ? 'bg-slate-950/80' : 'bg-black/50'}`}>
+      <div className={`relative flex max-h-[96vh] my-auto w-full max-w-[95vw] lg:max-w-[1200px] xl:max-w-[1300px] flex-col border shadow-2xl ${theme === 'dark'
+        ? 'border-slate-800/60 bg-slate-950/95'
         : 'border-gray-200 bg-white'
         }`}>
-        <div className={`flex items-center justify-between border-b px-6 py-4 sticky top-0 z-10 ${theme === 'dark'
-          ? 'border-slate-800/60 bg-slate-950/80'
-          : 'border-gray-200 bg-gray-50'
+        <div className={`flex items-center justify-between border-b px-4 sm:px-6 py-3 sm:py-4 sticky top-0 z-10 ${theme === 'dark'
+          ? 'border-slate-800/60 bg-slate-950/95 backdrop-blur-sm'
+          : 'border-gray-200 bg-gray-50/95 backdrop-blur-sm'
           }`}>
           <div>
-            <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>Agregar nuevo registro</h2>
-            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Completa la información del embarque</p>
+            <h2 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-gray-900'}`}>Agregar nuevo registro</h2>
+            <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Completa la información del embarque</p>
           </div>
           <button
             onClick={onClose}
-            className={`inline-flex h-9 w-9 items-center justify-center border transition ${theme === 'dark'
+            className={`inline-flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center border transition ${theme === 'dark'
               ? 'border-slate-800/70 text-slate-300 hover:border-sky-500/60 hover:text-sky-200'
               : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900'
               }`}
@@ -1029,13 +1088,13 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         </div>
 
         {/* Indicadores de pasos */}
-        <div className={`px-6 py-4 border-b ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'}`}>
-          <div className="flex items-center justify-center space-x-4">
+        <div className={`px-4 sm:px-6 py-3 border-b ${theme === 'dark' ? 'border-slate-800/60' : 'border-gray-200'}`}>
+          <div className="flex items-center justify-center space-x-2 sm:space-x-4">
             {[1, 2, 3, 4, 5].map((step) => (
               <React.Fragment key={step}>
                 <div className="flex items-center">
                   <div
-                    className={`flex items-center justify-center w-10 h-10 border-2 transition-all ${currentStep === step
+                    className={`flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 border-2 transition-all ${currentStep === step
                       ? 'bg-sky-500 border-sky-500 text-white'
                       : currentStep > step
                         ? 'bg-green-500 border-green-500 text-white'
@@ -1045,15 +1104,15 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       }`}
                   >
                     {currentStep > step ? (
-                      <Check className="h-5 w-5" />
+                      <Check className="h-4 w-4 sm:h-5 sm:w-5" />
                     ) : (
-                      <span className="text-sm font-semibold">{step}</span>
+                      <span className="text-xs sm:text-sm font-semibold">{step}</span>
                     )}
                   </div>
                 </div>
                 {step < 5 && (
                   <div
-                    className={`h-0.5 w-12 ${currentStep > step
+                    className={`h-0.5 w-6 sm:w-12 ${currentStep > step
                       ? 'bg-green-500'
                       : theme === 'dark'
                         ? 'bg-slate-700'
@@ -1066,13 +1125,13 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           </div>
         </div>
 
-        <div className="flex-1 px-6 py-5 space-y-6 overflow-y-auto max-h-[calc(95vh-200px)]">
+        <div className="flex-1 px-4 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-6 overflow-y-auto max-h-[calc(96vh-220px)]">
           {/* Paso 1: Información básica */}
           {currentStep === 1 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {/* REF ASLI */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   REF ASLI * (Generado automáticamente)
                 </label>
                 <div className="relative">
@@ -1082,7 +1141,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     value={formData.refAsli}
                     readOnly
                     disabled={generatingRef}
-                    className={`w-full cursor-not-allowed border px-3 py-2 text-sm ${theme === 'dark'
+                    className={`w-full cursor-not-allowed border px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ${theme === 'dark'
                       ? 'border-slate-800/60 bg-slate-900/50 text-slate-400'
                       : 'border-gray-300 bg-gray-100 text-gray-500'
                       }`}
@@ -1094,13 +1153,13 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     </div>
                   )}
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-[10px] sm:text-xs text-slate-400">
                   El REF ASLI se asignará automáticamente al guardar el registro según la especie y temporada
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Ref. Externa (Generada automáticamente)
                 </label>
                 <input
@@ -1108,19 +1167,19 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   name="refCliente"
                   value={formData.refCliente}
                   onChange={handleChange}
-                  className={`${getInputStyles()} cursor-not-allowed opacity-70`}
+                  className={`${getInputStyles()} cursor-not-allowed opacity-70 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2`}
                   placeholder="Se genera automáticamente al seleccionar cliente y especie"
                   readOnly
                   title="La referencia externa se genera automáticamente basada en el cliente y la especie"
                 />
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   Formato: [3 letras cliente][2526][3 letras especie][001] (Copefrut usa 4 letras: COPE)
                 </p>
               </div>
 
               {/* Ejecutivo */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Ejecutivo *
                 </label>
                 <Combobox
@@ -1134,8 +1193,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* Cliente */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Cliente *
                 </label>
                 <Combobox
@@ -1150,8 +1209,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* Contrato */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Contrato
                 </label>
                 <Combobox
@@ -1164,28 +1223,34 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* Especie */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Especie *
                 </label>
                 <Combobox
-                  options={especiesUnicas}
+                  options={especiesCatalogo}
                   value={formData.especie || ''}
                   onChange={(value) => handleComboboxChange('especie', value)}
-                  placeholder="Seleccionar especie"
+                  placeholder={loadingEspecies ? "Cargando especies..." : "Seleccionar especie"}
                   theme={theme}
                   required
+                  disabled={loadingEspecies}
                 />
+                {loadingEspecies && (
+                  <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    Cargando especies desde el catálogo...
+                  </p>
+                )}
               </div>
             </div>
           )}
 
           {/* Paso 2: Ruta y transporte */}
           {currentStep === 2 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
               {/* Naviera */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Naviera *
                 </label>
                 <Combobox
@@ -1197,7 +1262,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   required
                 />
                 {formData.naviera && formData.naviera.includes('/') && (
-                  <div className={`text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+                  <div className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                     <span className="font-medium">
                       Consorcio: {formData.naviera}
                     </span>
@@ -1206,11 +1271,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* Nave */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Nave *
                   {formData.naviera && (
-                    <span className={`text-xs ml-2 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+                    <span className={`text-[10px] sm:text-xs ml-2 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                       ({naveOptions.length} disponibles)
                     </span>
                   )}
@@ -1226,15 +1291,15 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   allowCustomValue={true}
                 />
                 {formData.naviera && naveOptions.length === 0 && (
-                  <p className={`text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+                  <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                     💡 No hay naves registradas. Escribe el nombre de la nave y se agregará automáticamente.
                   </p>
                 )}
               </div>
 
               {/* Viaje */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${formData.naveInicial && !formData.viaje && error.includes('Viaje')
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${formData.naveInicial && !formData.viaje && error.includes('Viaje')
                   ? 'text-red-600'
                   : getLabelStyles()
                   }`}>
@@ -1248,43 +1313,42 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   onChange={handleChange}
                   required={!!formData.naveInicial}
                   disabled={!formData.naveInicial}
-                  className={`w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
+                  className={`w-full border border-gray-300 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400/30`}
                   placeholder={formData.naveInicial ? "Ej: 001E" : "Primero selecciona una nave"}
                 />
                 {formData.naveInicial && !formData.viaje && error.includes('Viaje') && (
                   <div className="flex items-center space-x-1 text-red-600">
-                    <AlertCircle className="h-4 w-4" />
-                    <p className="text-xs font-medium">
+                    <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <p className="text-[10px] sm:text-xs font-medium">
                       El número de viaje es obligatorio cuando hay una nave seleccionada
                     </p>
                   </div>
                 )}
                 {formData.naveInicial && formData.viaje && (
-                  <p className="text-xs text-gray-700">
+                  <p className="text-[10px] sm:text-xs text-gray-700">
                     El número de viaje se mostrará entre corchetes en la nave completa
                   </p>
                 )}
               </div>
 
               {/* Depósito */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
-                  Depósito *
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
+                  Depósito
                 </label>
                 <Combobox
                   options={depositosUnicos}
                   value={formData.deposito || ''}
                   onChange={(value) => handleComboboxChange('deposito', value)}
-                  placeholder="Seleccionar o escribir depósito nuevo"
+                  placeholder="Seleccionar o escribir depósito nuevo (opcional)"
                   theme={theme}
-                  required
                   allowCustomValue={true}
                 />
               </div>
 
               {/* POL */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   POL *
                 </label>
                 <Combobox
@@ -1298,8 +1362,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* POD */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   POD *
                 </label>
                 <Combobox
@@ -1313,8 +1377,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* Flete */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Flete *
                 </label>
                 <select
@@ -1334,8 +1398,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* Tipo de Ingreso */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Tipo de Ingreso *
                 </label>
                 <select
@@ -1354,8 +1418,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </div>
 
               {/* ETD */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   ETD
                 </label>
                 <div className="relative flex items-center">
@@ -1364,7 +1428,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     name="etd"
                     value={formData.etd}
                     onChange={handleChange}
-                    className={`${getInputStyles()} pr-10`}
+                    className={`${getInputStyles()} pr-10 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2`}
                     placeholder="DD-MM-AAAA"
                     pattern="\d{2}-\d{2}-\d{4}"
                     maxLength={10}
@@ -1375,7 +1439,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     className={`absolute right-2 p-1 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
                     title="Abrir calendario"
                   >
-                    <Calendar size={18} />
+                    <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" />
                   </button>
                   <input
                     ref={etdDateInputRef}
@@ -1401,14 +1465,14 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     }}
                   />
                 </div>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
+                <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
                   Formato: DD-MM-AAAA (día-mes-año)
                 </p>
               </div>
 
               {/* ETA */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   ETA
                 </label>
                 <div className="relative flex items-center">
@@ -1417,7 +1481,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     name="eta"
                     value={formData.eta}
                     onChange={handleChange}
-                    className={`${getInputStyles()} pr-10`}
+                    className={`${getInputStyles()} pr-10 text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2`}
                     placeholder="DD-MM-AAAA"
                     pattern="\d{2}-\d{2}-\d{4}"
                     maxLength={10}
@@ -1428,7 +1492,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     className={`absolute right-2 p-1 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
                     title="Abrir calendario"
                   >
-                    <Calendar size={18} />
+                    <Calendar size={16} className="sm:w-[18px] sm:h-[18px]" />
                   </button>
                   <input
                     ref={etaDateInputRef}
@@ -1454,7 +1518,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     }}
                   />
                 </div>
-                <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
+                <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
                   Formato: DD-MM-AAAA (día-mes-año)
                 </p>
               </div>
@@ -1463,9 +1527,9 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
           {/* Paso 3: Información de carga */}
           {currentStep === 3 && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Checkbox Atmósfera Controlada */}
-              <div className={`flex items-center space-x-3 p-4 border ${theme === 'dark'
+              <div className={`flex items-center space-x-3 p-3 sm:p-4 border ${theme === 'dark'
                 ? 'border-slate-800/60 bg-slate-900/50'
                 : 'border-gray-300 bg-gray-50'
                 }`}>
@@ -1489,23 +1553,23 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       }));
                     }
                   }}
-                  className={`w-5 h-5 rounded text-sky-500 focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${theme === 'dark'
+                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded text-sky-500 focus:ring-2 focus:ring-sky-500/50 cursor-pointer ${theme === 'dark'
                     ? 'border-slate-700 bg-slate-800'
                     : 'border-gray-300 bg-white'
                     }`}
                 />
                 <label
                   htmlFor="atmosferaControlada"
-                  className={`text-sm font-medium cursor-pointer ${getLabelStyles()}`}
+                  className={`text-xs sm:text-sm font-medium cursor-pointer ${getLabelStyles()}`}
                 >
                   Atmósfera controlada
                 </label>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                 {/* Temperatura */}
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                     Temperatura (°C) *
                   </label>
                   <input
@@ -1515,21 +1579,21 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     onChange={handleChange}
                     step="0.1"
                     placeholder="Ej: -0.5"
-                    className={`w-full px-3 py-2 border focus:outline-none focus:ring-2 ${
+                    className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border focus:outline-none focus:ring-2 ${
                       theme === 'dark'
                         ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500 focus:ring-sky-500'
                         : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500'
                     }`}
                     required
                   />
-                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Temperatura de transporte (usar . para decimales)
                   </p>
                 </div>
 
                 {/* CBM */}
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                     CBM *
                   </label>
                   <input
@@ -1541,7 +1605,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     min="0"
                     max="100"
                     placeholder="Ej: 45"
-                    className={`w-full px-3 py-2 border focus:outline-none focus:ring-2 ${
+                    className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm border focus:outline-none focus:ring-2 ${
                       theme === 'dark'
                         ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500 focus:ring-sky-500'
                         : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-500'
@@ -1550,20 +1614,20 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     disabled={atmosferaControlada}
                   />
                   {atmosferaControlada && (
-                    <p className={`text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+                    <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                       CBM 0 cuando hay atmósfera controlada
                     </p>
                   )}
                   {!atmosferaControlada && (
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       Ventilación en CBM (metros cúbicos por hora)
                     </p>
                   )}
                 </div>
 
                 {/* Tratamiento de frío */}
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                     Tratamiento de frío
                   </label>
                   <select
@@ -1580,8 +1644,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
                 {/* CO2 - Solo si atmósfera controlada está activada */}
                 {atmosferaControlada && (
-                  <div className="space-y-2">
-                    <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                       CO₂ (%)
                     </label>
                     <Combobox
@@ -1596,8 +1660,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
                 {/* O2 - Solo si atmósfera controlada está activada */}
                 {atmosferaControlada && (
-                  <div className="space-y-2">
-                    <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                       O₂ (%)
                     </label>
                     <Combobox
@@ -1616,11 +1680,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
           {/* Paso 4: Consignatario, comentario, número de copias */}
           {currentStep === 4 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                 {/* Consignatario */}
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                     Consignatario
                   </label>
                   <input
@@ -1628,14 +1692,14 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     name="consignatario"
                     value={formData.consignatario}
                     onChange={handleChange}
-                    className={getInputStyles()}
+                    className={`${getInputStyles()} text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2`}
                     placeholder="Nombre del consignatario"
                   />
                 </div>
 
                 {/* Número de copias */}
-                <div className="space-y-2">
-                  <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+                <div className="space-y-1.5 sm:space-y-2">
+                  <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                     Número de copias
                   </label>
                   <input
@@ -1664,17 +1728,17 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                       }
                       setNumberOfCopies(String(numericValue));
                     }}
-                    className={getInputStyles()}
+                    className={`${getInputStyles()} text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2`}
                   />
-                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
+                  <p className={`text-[10px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-700'}`}>
                     Se generarán {copiesPreview} REF ASLI únicos automáticamente (máximo {MAX_COPIES})
                   </p>
                 </div>
               </div>
 
               {/* Comentario */}
-              <div className="space-y-2">
-                <label className={`block text-sm font-medium ${getLabelStyles()}`}>
+              <div className="space-y-1.5 sm:space-y-2">
+                <label className={`block text-xs sm:text-sm font-medium ${getLabelStyles()}`}>
                   Comentario
                 </label>
                 <textarea
@@ -1682,7 +1746,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   value={formData.comentario}
                   onChange={handleChange}
                   rows={3}
-                  className={getInputStyles()}
+                  className={`${getInputStyles()} text-xs sm:text-sm px-2 sm:px-3 py-1.5 sm:py-2`}
                   placeholder="Comentarios adicionales"
                 />
               </div>
@@ -1691,52 +1755,52 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
           {/* Paso 5: Vista previa/revisión */}
           {currentStep === 5 && (
-            <div className="space-y-6">
-              <div className={`border ${theme === 'dark' ? 'border-slate-700/50 bg-gradient-to-br from-slate-900/90 to-slate-800/50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'} p-6`}>
-                <div className="mb-6 pb-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}">
-                  <h3 className={`text-2xl font-bold ${getLabelStyles()}`}>Vista Previa del Registro</h3>
-                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            <div className="space-y-4 sm:space-y-6">
+              <div className={`border ${theme === 'dark' ? 'border-slate-700/50 bg-gradient-to-br from-slate-900/90 to-slate-800/50' : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white'} p-4 sm:p-6`}>
+                <div className={`mb-4 sm:mb-6 pb-3 sm:pb-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+                  <h3 className={`text-lg sm:text-2xl font-bold ${getLabelStyles()}`}>Vista Previa del Registro</h3>
+                  <p className={`text-xs sm:text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Revisa toda la información antes de guardar
                   </p>
                 </div>
 
                 {/* Sección: Información Básica */}
-                <div className="mb-6">
-                  <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-sky-400' : 'text-sky-600'}`}>
+                <div className="mb-4 sm:mb-6">
+                  <h4 className={`text-sm sm:text-lg font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-sky-400' : 'text-sky-600'}`}>
                     Información Básica
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>REF ASLI</span>
-                      <p className={`mt-1 text-base font-bold ${getLabelStyles()}`}>{formData.refAsli}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    <div className={`p-3 sm:p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                      <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>REF ASLI</span>
+                      <p className={`mt-1 text-sm sm:text-base font-bold ${getLabelStyles()}`}>{formData.refAsli}</p>
                     </div>
-                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>REF Externa</span>
-                      <p className={`mt-1 text-base ${formData.refCliente ? getLabelStyles() : 'text-red-500 font-medium'}`}>{formData.refCliente || 'No especificado'}</p>
+                    <div className={`p-3 sm:p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                      <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>REF Externa</span>
+                      <p className={`mt-1 text-sm sm:text-base ${formData.refCliente ? getLabelStyles() : 'text-red-500 font-medium'}`}>{formData.refCliente || 'No especificado'}</p>
                     </div>
-                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Ejecutivo</span>
-                      <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.ejecutivo}</p>
+                    <div className={`p-3 sm:p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                      <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Ejecutivo</span>
+                      <p className={`mt-1 text-sm sm:text-base ${getLabelStyles()}`}>{formData.ejecutivo}</p>
                     </div>
-                    <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Cliente</span>
-                      <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.shipper}</p>
+                    <div className={`p-3 sm:p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                      <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Cliente</span>
+                      <p className={`mt-1 text-sm sm:text-base ${getLabelStyles()}`}>{formData.shipper}</p>
                     </div>
                     {formData.contrato && (
-                      <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
-                        <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Contrato</span>
-                        <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.contrato}</p>
+                      <div className={`p-3 sm:p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
+                        <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Contrato</span>
+                        <p className={`mt-1 text-sm sm:text-base ${getLabelStyles()}`}>{formData.contrato}</p>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Sección: Ruta y Transporte */}
-                <div className="mb-6">
-                  <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                <div className="mb-4 sm:mb-6">
+                  <h4 className={`text-sm sm:text-lg font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`}>
                     Ruta y Transporte
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Naviera</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.naviera}</p>
@@ -1791,11 +1855,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 </div>
 
                 {/* Sección: Carga */}
-                <div className="mb-6">
-                  <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>
+                <div className="mb-4 sm:mb-6">
+                  <h4 className={`text-sm sm:text-lg font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>
                     Información de Carga
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Especie</span>
                       <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.especie}</p>
@@ -1838,11 +1902,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                 </div>
 
                 {/* Sección: Información Adicional */}
-                <div className="mb-6">
-                  <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
+                <div className="mb-4 sm:mb-6">
+                  <h4 className={`text-sm sm:text-lg font-semibold mb-3 sm:mb-4 ${theme === 'dark' ? 'text-purple-400' : 'text-purple-600'}`}>
                     Información Adicional
                   </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Consignatario</span>
                       <p className={`mt-1 text-base font-medium ${formData.consignatario ? getLabelStyles() : 'text-red-500'}`}>{formData.consignatario || 'No especificado'}</p>
@@ -1864,31 +1928,31 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
           )}
 
           {error && (
-            <div className={`border px-4 py-3 text-xs ${theme === 'dark'
+            <div className={`border px-3 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs ${theme === 'dark'
               ? 'border-red-500/40 bg-red-500/10 text-red-200'
               : 'border-red-300 bg-red-50 text-red-700'
               }`}>
               <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             </div>
           )}
-          <div className={`flex flex-col gap-4 border px-4 py-3 text-xs ${theme === 'dark'
+          <div className={`flex flex-col gap-3 sm:gap-4 border px-3 sm:px-4 py-2 sm:py-3 text-[10px] sm:text-xs ${theme === 'dark'
             ? 'border-slate-800/60 bg-slate-900/40 text-slate-400'
             : 'border-gray-200 bg-gray-50 text-gray-600'
             }`}>
 
             {/* Indicador de estado de autenticación */}
             {currentStep === 5 && (
-              <div className={`mb-4 p-3 border ${authStatus.includes('Autenticado')
+              <div className={`mb-3 sm:mb-4 p-2 sm:p-3 border ${authStatus.includes('Autenticado')
                 ? theme === 'dark' ? 'bg-green-900/30 border border-green-500/50' : 'bg-green-50 border border-green-200'
                 : theme === 'dark' ? 'bg-red-900/30 border border-red-500/50' : 'bg-red-50 border border-red-200'
                 }`}>
                 <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 ${authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
+                  <div className={`w-2 h-2 flex-shrink-0 ${authStatus.includes('Autenticado') ? 'bg-green-500' : 'bg-red-500'
                     }`} />
-                  <span className={`text-sm ${authStatus.includes('Autenticado')
+                  <span className={`text-xs sm:text-sm ${authStatus.includes('Autenticado')
                     ? theme === 'dark' ? 'text-green-300' : 'text-green-700'
                     : theme === 'dark' ? 'text-red-300' : 'text-red-700'
                     }`}>
@@ -1896,7 +1960,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   </span>
                 </div>
                 {!authStatus.includes('Autenticado') && (
-                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
+                  <p className={`text-[10px] sm:text-xs mt-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
                     Por favor cierra sesión y vuelve a iniciarla para poder guardar registros.
                   </p>
                 )}
@@ -1904,8 +1968,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
             )}
 
             <div className="flex justify-between items-center gap-2">
-              <AlertCircle className={`h-4 w-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
-              <span>Todos los campos marcados con (*) son obligatorios.</span>
+              <AlertCircle className={`h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
+              <span className="text-[10px] sm:text-xs">Todos los campos marcados con (*) son obligatorios.</span>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
               <div className="flex gap-2">
@@ -1913,19 +1977,19 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className={`inline-flex items-center justify-center gap-2 border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
+                    className={`inline-flex items-center justify-center gap-1 sm:gap-2 border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
                       ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white'
                       : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
                       }`}
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
                     Anterior
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={onClose}
-                  className={`inline-flex items-center justify-center gap-2 border px-4 py-2 text-sm font-medium transition-colors ${theme === 'dark'
+                  className={`inline-flex items-center justify-center gap-1 sm:gap-2 border px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
                     ? 'border-slate-800/70 text-slate-300 hover:border-slate-500/70 hover:text-white'
                     : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:text-gray-900'
                     }`}
@@ -1938,34 +2002,23 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                   <button
                     type="button"
                     onClick={handleNextStep}
-                    className="inline-flex items-center justify-center gap-2 bg-sky-600 px-4 py-2 text-sm font-semibold text-white transition-colors"
+                    className="inline-flex items-center justify-center gap-1 sm:gap-2 bg-sky-600 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white transition-colors hover:bg-sky-700"
                   >
                     Siguiente
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                   </button>
                 ) : (
-                  <div className="space-y-3">
-                    {isSaved && (
-                      <div className={`p-4 border ${theme === 'dark' ? 'bg-green-900/50 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
-                        <p className={`text-center font-semibold ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
-                          ✅ Registro guardado exitosamente
-                        </p>
-                        <p className={`text-center text-sm mt-2 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`}>
-                          Puedes enviar la solicitud de reserva por correo ahora o cerrar el modal
-                        </p>
-                      </div>
-                    )}
-
+                  <div className="space-y-2 sm:space-y-3 w-full">
                     {!isSaved ? (
                       <button
                         type="button"
                         onClick={handleSave}
                         disabled={loading || isSavingRef.current}
-                        className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 px-6 py-3 text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full inline-flex items-center justify-center gap-2 bg-sky-600 hover:bg-sky-700 px-4 sm:px-6 py-2 sm:py-3 text-sm sm:text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {loading ? (
                           <>
-                            <RefreshCw className="h-5 w-5 animate-spin" />
+                            <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" />
                             Guardando…
                           </>
                         ) : (
@@ -1975,23 +2028,11 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                         )}
                       </button>
                     ) : (
-                      <>
-                        <button
-                          type="button"
-                          onClick={sendReservationEmail}
-                          className="w-full inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 px-6 py-3 text-lg font-semibold text-white transition-colors shadow-lg"
-                        >
-                          <Mail className="h-5 w-5" />
-                          📧 Enviar Solicitud de Reserva por Correo
-                        </button>
-                        <button
-                          type="button"
-                          onClick={onClose}
-                          className="w-full inline-flex items-center justify-center gap-2 bg-gray-500 hover:bg-gray-600 px-6 py-3 text-lg font-semibold text-white transition-colors"
-                        >
-                          Cerrar
-                        </button>
-                      </>
+                      <div className={`p-3 sm:p-4 border ${theme === 'dark' ? 'bg-green-900/50 border border-green-700' : 'bg-green-50 border border-green-200'}`}>
+                        <p className={`text-center font-semibold text-sm sm:text-base ${theme === 'dark' ? 'text-green-300' : 'text-green-700'}`}>
+                          ✅ Registro guardado exitosamente
+                        </p>
+                      </div>
                     )}
                   </div>
                 )}
@@ -2003,41 +2044,41 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
 
       {/* Diálogo de confirmación para depósito nuevo */}
       {showDepositoConfirmation && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
           <div className={`relative w-full max-w-md mx-4 border shadow-2xl ${
             theme === 'dark'
               ? 'bg-slate-900 border-slate-700'
               : 'bg-white border-gray-300'
           }`}>
-            <div className={`px-6 py-4 border-b ${
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b ${
               theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
             }`}>
-              <h3 className={`text-lg font-semibold ${
+              <h3 className={`text-sm sm:text-lg font-semibold ${
                 theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
               }`}>
                 ¿Agregar nuevo depósito?
               </h3>
             </div>
             
-            <div className="px-6 py-4">
-              <p className={`text-sm ${
+            <div className="px-4 sm:px-6 py-3 sm:py-4">
+              <p className={`text-xs sm:text-sm ${
                 theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
               }`}>
                 El depósito <span className="font-semibold text-sky-500">"{pendingDeposito}"</span> no existe en el catálogo.
               </p>
-              <p className={`text-sm mt-2 ${
+              <p className={`text-xs sm:text-sm mt-2 ${
                 theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
               }`}>
                 ¿Deseas agregarlo como nuevo depósito disponible?
               </p>
             </div>
 
-            <div className={`px-6 py-4 border-t flex gap-3 justify-end ${
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t flex gap-2 sm:gap-3 justify-end ${
               theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
             }`}>
               <button
                 onClick={() => handleDepositoConfirmation(false)}
-                className={`px-4 py-2 border transition ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border transition ${
                   theme === 'dark'
                     ? 'border-slate-600 text-slate-300 hover:bg-slate-800'
                     : 'border-gray-300 text-gray-700 hover:bg-gray-100'
@@ -2047,13 +2088,98 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
               </button>
               <button
                 onClick={() => handleDepositoConfirmation(true)}
-                className={`px-4 py-2 border transition ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm border transition ${
                   theme === 'dark'
                     ? 'border-sky-500 bg-sky-600 text-white hover:bg-sky-700'
                     : 'border-blue-500 bg-blue-600 text-white hover:bg-blue-700'
                 }`}
               >
                 Sí, agregar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diálogo de confirmación para enviar correo */}
+      {showEmailConfirmation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className={`relative w-full max-w-lg mx-4 border shadow-2xl ${
+            theme === 'dark'
+              ? 'bg-slate-900 border-slate-700'
+              : 'bg-white border-gray-300'
+          }`}>
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 border-b ${
+              theme === 'dark' ? 'border-slate-700 bg-gradient-to-r from-green-900/30 to-emerald-900/30' : 'border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${theme === 'dark' ? 'bg-green-500/20' : 'bg-green-100'}`}>
+                  <Check className={`h-5 w-5 sm:h-6 sm:w-6 ${theme === 'dark' ? 'text-green-400' : 'text-green-600'}`} />
+                </div>
+                <h3 className={`text-base sm:text-lg font-semibold ${
+                  theme === 'dark' ? 'text-slate-100' : 'text-gray-900'
+                }`}>
+                  ¡Registro guardado exitosamente!
+                </h3>
+              </div>
+            </div>
+            
+            <div className="px-4 sm:px-6 py-4 sm:py-5">
+              <p className={`text-sm sm:text-base mb-3 ${
+                theme === 'dark' ? 'text-slate-300' : 'text-gray-700'
+              }`}>
+                El registro se ha guardado correctamente en la base de datos.
+              </p>
+              <div className={`p-3 rounded-lg border ${
+                theme === 'dark' ? 'bg-sky-900/20 border-sky-700/50' : 'bg-sky-50 border-sky-200'
+              }`}>
+                <div className="flex items-start gap-2">
+                  <Mail className={`h-5 w-5 flex-shrink-0 mt-0.5 ${theme === 'dark' ? 'text-sky-400' : 'text-sky-600'}`} />
+                  <div>
+                    <p className={`text-sm sm:text-base font-medium ${
+                      theme === 'dark' ? 'text-sky-300' : 'text-sky-700'
+                    }`}>
+                      ¿Deseas enviar la solicitud de reserva por correo?
+                    </p>
+                    <p className={`text-xs sm:text-sm mt-1 ${
+                      theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                    }`}>
+                      Se creará un borrador en Gmail con toda la información del registro para que puedas revisarlo antes de enviarlo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row gap-2 sm:gap-3 ${
+              theme === 'dark' ? 'border-slate-700 bg-slate-800/50' : 'border-gray-200 bg-gray-50'
+            }`}>
+              <button
+                onClick={() => {
+                  setShowEmailConfirmation(false);
+                  // Llamar a onSuccess para actualizar la UI principal
+                  onSuccess(savedRecords);
+                  // Cerrar el modal
+                  onClose();
+                }}
+                className={`flex-1 px-4 py-2.5 text-sm sm:text-base font-medium border transition ${
+                  theme === 'dark'
+                    ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                No, solo cerrar
+              </button>
+              <button
+                onClick={sendReservationEmail}
+                className={`flex-1 px-4 py-2.5 text-sm sm:text-base font-semibold flex items-center justify-center gap-2 transition shadow-lg ${
+                  theme === 'dark'
+                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-500'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 border border-emerald-500'
+                }`}
+              >
+                <Mail className="h-4 w-4 sm:h-5 sm:w-5" />
+                Sí, enviar correo
               </button>
             </div>
           </div>
