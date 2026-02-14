@@ -129,7 +129,8 @@ export const createRegistrosColumns = (
   onOpenBookingModal?: (registro: Registro) => void,
   bookingDocuments?: Map<string, { nombre: string; fecha: string }>,
   canUploadProforma?: boolean,
-  clientesAbrMap?: Record<string, string>
+  clientesAbrMap?: Record<string, string>,
+  canViewHistory?: boolean
 ): ColumnDef<Registro>[] => {
   // Crear mapeo de naves a navieras
   const naveToNavierasMap = createNaveToNavieraMap(data);
@@ -194,17 +195,9 @@ export const createRegistrosColumns = (
               className="h-4 w-4 cursor-pointer rounded border-slate-500 text-blue-500 focus:ring-blue-500"
             />
             <div className="flex min-w-0 flex-1 items-center justify-center gap-2">
-              <InlineEditCell
-                value={row.original.refCliente || ''}
-                field="refCliente"
-                record={row.original}
-                onSave={onUpdateRecord || (() => { })}
-                onBulkSave={onBulkUpdate}
-                type="text"
-                selectedRecords={selectedRecordsArray}
-                isSelectionMode={true}
-                className={`justify-center text-center font-semibold ${cellClasses}`}
-              />
+              <span className={`text-center font-semibold ${cellClasses}`}>
+                {row.original.refCliente || '-'}
+              </span>
               {shouldShowIndicator && (
                 <span className="flex-shrink-0 text-[10px] font-semibold text-white bg-blue-500 rounded-full px-1 py-0.5">
                   {selectedRecordsArray.length}
@@ -253,17 +246,9 @@ export const createRegistrosColumns = (
       cell: ({ row }) => {
         const value = row.getValue('ejecutivo') as string;
         return (
-          <InlineEditCell
-            value={value}
-            field="ejecutivo"
-            record={row.original}
-            onSave={onUpdateRecord || (() => { })}
-            onBulkSave={onBulkUpdate}
-            type="select"
-            options={ejecutivosUnicos || []}
-            selectedRecords={getSelectedRecords()}
-            isSelectionMode={true}
-          />
+          <span className="text-center font-medium">
+            {value || '-'}
+          </span>
         );
       },
     },
@@ -276,7 +261,7 @@ export const createRegistrosColumns = (
       cell: ({ row }) => {
         const value = row.getValue('usuario') as string || row.original.createdBy || '';
         return (
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-center font-medium text-gray-700 dark:text-gray-300">
             {value || '-'}
           </span>
         );
@@ -1092,7 +1077,11 @@ export const createRegistrosColumns = (
       },
       enableSorting: false,
     },
-    {
+  ];
+
+  // Agregar columna de historial al final solo si el usuario tiene permisos
+  if (canViewHistory) {
+    baseColumns.push({
       id: 'historial',
       minSize: COLUMN_WIDTHS.historial.min,
       maxSize: COLUMN_WIDTHS.historial.max,
@@ -1102,7 +1091,7 @@ export const createRegistrosColumns = (
           <div className="flex items-center justify-center">
             <button
               onClick={() => onShowHistorial?.(row.original)}
-              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors dark:hover:bg-blue-900 dark:text-gray-300"
               title="Ver historial de cambios"
             >
               <History size={16} />
@@ -1111,8 +1100,8 @@ export const createRegistrosColumns = (
         );
       },
       enableSorting: false,
-    },
-  ];
+    });
+  }
 
   return baseColumns;
 };

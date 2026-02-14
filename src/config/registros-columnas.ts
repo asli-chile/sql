@@ -84,6 +84,7 @@ export const ANCHOS_COLUMNAS: ColumnaConfig[] = [
   { field: 'comentario', headerName: 'Comentario', width: 200 },
   { field: 'observacion', headerName: 'Observación', width: 200 },
   { field: 'temporada', headerName: 'Temporada', width: 150 },
+  { field: 'historial', headerName: 'Historial', width: 120 },
 ];
 
 /**

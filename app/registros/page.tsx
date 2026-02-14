@@ -36,7 +36,8 @@ import {
   Users,
   Menu,
   Plus,
-  Search
+  Search,
+  History
 } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
@@ -47,6 +48,7 @@ import { convertSupabaseToApp } from '@/lib/migration-utils';
 import { AddModal } from '@/components/modals/AddModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 import { TrashModal } from '@/components/modals/TrashModal';
+import { HistorialModal } from '@/components/modals/HistorialModal';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { generarReporte, descargarExcel, TipoReporte } from '@/lib/reportes';
@@ -88,11 +90,16 @@ export default function TablasPersonalizadasPage() {
   const [estadosUnicos, setEstadosUnicos] = useState<string[]>([]);
   const [tipoIngresoUnicos, setTipoIngresoUnicos] = useState<string[]>([]);
   const [temporadasUnicas, setTemporadasUnicas] = useState<string[]>([]);
+  const [tratamientosFrioOpciones, setTratamientosFrioOpciones] = useState<string[]>([]);
+  const [tiposAtmosferaOpciones, setTiposAtmosferaOpciones] = useState<string[]>([]);
+  const [contratosUnicos, setContratosUnicos] = useState<string[]>([]);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [selectedRegistros, setSelectedRegistros] = useState<Registro[]>([]);
   const [showEditNaveViajeModal, setShowEditNaveViajeModal] = useState(false);
   const [showTrashModal, setShowTrashModal] = useState(false);
   const [trashCount, setTrashCount] = useState(0);
+  const [showHistorialModal, setShowHistorialModal] = useState(false);
+  const [selectedRegistroForHistorial, setSelectedRegistroForHistorial] = useState<Registro | null>(null);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [copiedRegistro, setCopiedRegistro] = useState<Registro | null>(null);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
@@ -122,7 +129,11 @@ export default function TablasPersonalizadasPage() {
   const [navierasNavesMapping, setNavierasNavesMapping] = useState<Record<string, string[]>>({});
   const [consorciosNavesMapping, setConsorciosNavesMapping] = useState<Record<string, string[]>>({});
   const [gridApi, setGridApi] = useState<any>(null);
+  // Guardar la selección antes de editar para preservarla durante la edición masiva
+  const selectionBeforeEditRef = useRef<Set<string>>(new Set());
   const preferencesLoadedRef = useRef(false);
+  // Bandera para evitar que onSelectionChanged interfiera cuando estamos restaurando la selección
+  const isRestoringSelectionRef = useRef(false);
   
   // Estados para el Sidebar
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -320,6 +331,72 @@ export default function TablasPersonalizadasPage() {
     // Si el valor no cambió, no hacer nada
     if (newValue === oldValue) return;
 
+    // Campos que NO permiten edición múltiple (son únicos)
+    const UNIQUE_FIELDS = ['refCliente', 'refAsli', 'ejecutivo', 'usuario', 'booking', 'contenedor', 'semanaIngreso', 'semanaZarpe'];
+    
+    // IMPORTANTE: Usar params.api directamente en lugar de gridApi del estado
+    // params.api debería estar disponible, pero si no, usar gridApi del estado
+    const api = params.api || gridApi;
+    
+    // Intentar obtener API desde params.node si está disponible
+    const nodeApi = params.node?.gridApi || params.api || gridApi;
+    const finalApi = nodeApi || api;
+    
+    // Usar la selección guardada antes de editar, o obtenerla de AgGrid
+    let selectedIds = selectionBeforeEditRef.current.size > 0 
+      ? Array.from(selectionBeforeEditRef.current)
+      : [];
+    
+    // Si no hay selección guardada, intentar obtenerla de AgGrid usando params.api
+    if (selectedIds.length === 0 && api) {
+      const selectedNodes: any[] = [];
+      api.forEachNode((node: any) => {
+        if (node.isSelected() && node.data && node.data.id) {
+          selectedNodes.push(node);
+          selectedIds.push(node.data.id);
+        }
+      });
+      // Si encontramos selección en AgGrid, guardarla en el ref
+      if (selectedIds.length > 0) {
+        selectionBeforeEditRef.current = new Set(selectedIds);
+      }
+    }
+    
+    // Verificar si hay selección activa y si el campo permite edición masiva
+    // IMPORTANTE: Para edición masiva necesitamos:
+    // 1. Múltiples filas seleccionadas (más de 1)
+    // 2. La fila actual debe estar en la selección
+    // 3. El campo NO debe estar en la lista de campos únicos
+    const hasMultipleSelection = selectedIds.length > 1;
+    const isCurrentRowSelected = selectedIds.length > 0 && selectedIds.includes(record.id || '');
+    const shouldBulkEdit = hasMultipleSelection && isCurrentRowSelected && !UNIQUE_FIELDS.includes(field as string);
+    
+    // Si hay selección múltiple, obtener todos los registros seleccionados
+    // IMPORTANTE: Si api no está disponible, usar rowData del estado como fallback
+    let recordsToUpdate: Registro[] = [record];
+    
+    if (shouldBulkEdit) {
+      if (finalApi) {
+        // Intentar obtener desde AgGrid API
+        const selectedRecords: Registro[] = [];
+        finalApi.forEachNode((node: any) => {
+          if (node.data && node.data.id && selectedIds.includes(node.data.id)) {
+            selectedRecords.push(node.data as Registro);
+          }
+        });
+        recordsToUpdate = selectedRecords.length > 0 ? selectedRecords : [record];
+        
+      } else {
+        // Fallback: usar rowData del estado
+        recordsToUpdate = rowData.filter(r => r.id && selectedIds.includes(r.id));
+        if (recordsToUpdate.length === 0) {
+          recordsToUpdate = [record];
+        }
+        
+      }
+    } else {
+    }
+
     try {
       const supabase = createClient();
       
@@ -403,40 +480,152 @@ export default function TablasPersonalizadasPage() {
         }
       }
 
-      // Actualizar en Supabase
-      const { data, error: updateError } = await supabase
-        .from('registros')
-        .update(updateData)
-        .eq('id', record.id)
-        .select()
-        .single();
+      // Actualizar en Supabase (individual o masivo)
+      if (shouldBulkEdit && recordsToUpdate.length > 1) {
+        // Edición masiva: actualizar todos los registros seleccionados
+        const recordIds = recordsToUpdate.map(r => r.id).filter(Boolean) as string[];
+        
+        const { data: bulkData, error: bulkError } = await supabase
+          .from('registros')
+          .update(updateData)
+          .in('id', recordIds)
+          .select();
 
-      if (updateError) {
-        console.error('Error al actualizar registro:', updateError);
-        showError('Error al guardar el cambio. Por favor, intenta de nuevo.');
-        // Revertir el cambio en la tabla
-        params.node.setDataValue(field, oldValue);
-        return;
-      }
-
-      if (data) {
-        // Registrar en historial
-        try {
-          await logHistoryEntry(supabase, {
-            registroId: record.id,
-            field,
-            previousValue: oldValue,
-            newValue: processedValue,
-          });
-        } catch (historialError) {
-          // Error silencioso al registrar historial
+        if (bulkError) {
+          console.error('Error al actualizar registros:', bulkError);
+          showError(`Error al guardar cambios en ${recordIds.length} registros. Por favor, intenta de nuevo.`);
+          // Revertir el cambio en la tabla
+          params.node.setDataValue(field, oldValue);
+          return;
         }
 
-        // Actualizar el registro en el estado local
-        const updatedRegistro = convertSupabaseToApp(data);
-        setRowData(prev => prev.map(r => r.id === updatedRegistro.id ? updatedRegistro : r));
-        
-        success('Cambio guardado correctamente');
+        if (bulkData && bulkData.length > 0) {
+          // Registrar en historial para cada registro
+          for (const recordToUpdate of recordsToUpdate) {
+            try {
+              await logHistoryEntry(supabase, {
+                registroId: recordToUpdate.id || '',
+                field,
+                previousValue: recordToUpdate[field],
+                newValue: processedValue,
+              });
+            } catch (historialError) {
+              // Error silencioso al registrar historial
+            }
+          }
+
+          // Actualizar todos los registros en el estado local
+          const updatedRegistros = bulkData.map(convertSupabaseToApp);
+          
+          // Actualizar el estado primero
+          setRowData(prev => prev.map(r => {
+            const updated = updatedRegistros.find(ur => ur.id === r.id);
+            return updated || r;
+          }));
+          
+          // Actualizar visualmente todas las celdas editadas en AgGrid y restaurar selección
+          // Usar finalApi (params.node.gridApi, params.api o gridApi) que ya está definido arriba
+          if (finalApi) {
+            const nodesToUpdate: any[] = [];
+            finalApi.forEachNode((node: any) => {
+              if (node.data && recordIds.includes(node.data.id)) {
+                // Actualizar el valor directamente en el nodo
+                const updatedRegistro = updatedRegistros.find(ur => ur.id === node.data.id);
+                if (updatedRegistro) {
+                  // Actualizar todos los datos del nodo con el registro actualizado
+                  node.setData(updatedRegistro);
+                  nodesToUpdate.push(node);
+                }
+              }
+            });
+            // Guardar los IDs de los nodos que deben mantenerse seleccionados
+            const idsToKeepSelected = nodesToUpdate.map(node => node.data?.id).filter(Boolean) as string[];
+            
+            // Refrescar las celdas para que se muestren los cambios
+            if (nodesToUpdate.length > 0) {
+              // Activar bandera ANTES de refrescar para evitar que onSelectionChanged interfiera
+              isRestoringSelectionRef.current = true;
+              
+              finalApi.refreshCells({
+                rowNodes: nodesToUpdate,
+                columns: [field],
+                force: true
+              });
+              
+              // Restaurar la selección inmediatamente después de refrescar
+              // Usar múltiples intentos para asegurar que se restaure
+              const restoreSelection = () => {
+                const restoredIds: string[] = [];
+                finalApi.forEachNode((node: any) => {
+                  if (node.data && node.data.id && idsToKeepSelected.includes(node.data.id)) {
+                    if (node.setSelected) {
+                      node.setSelected(true);
+                      restoredIds.push(node.data.id);
+                    }
+                  }
+                });
+                
+                // También actualizar el estado de React para mantener la selección
+                if (restoredIds.length > 0) {
+                  setSelectedRows(new Set(restoredIds));
+                }
+              };
+              
+              // Intentar restaurar inmediatamente
+              restoreSelection();
+              
+              // Intentar restaurar después de un pequeño delay (por si acaso)
+              setTimeout(() => {
+                restoreSelection();
+                // Desactivar bandera después de restaurar
+                setTimeout(() => {
+                  isRestoringSelectionRef.current = false;
+                }, 50);
+              }, 100);
+            }
+          }
+          
+          // NO limpiar la selección guardada todavía, mantenerla para futuras ediciones
+          // selectionBeforeEditRef.current.clear();
+          
+          success(`Cambio aplicado a ${bulkData.length} registro${bulkData.length > 1 ? 's' : ''}`);
+        }
+      } else {
+        // Edición individual: actualizar solo el registro actual
+        const { data, error: updateError } = await supabase
+          .from('registros')
+          .update(updateData)
+          .eq('id', record.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('Error al actualizar registro:', updateError);
+          showError('Error al guardar el cambio. Por favor, intenta de nuevo.');
+          // Revertir el cambio en la tabla
+          params.node.setDataValue(field, oldValue);
+          return;
+        }
+
+        if (data) {
+          // Registrar en historial
+          try {
+            await logHistoryEntry(supabase, {
+              registroId: record.id,
+              field,
+              previousValue: oldValue,
+              newValue: processedValue,
+            });
+          } catch (historialError) {
+            // Error silencioso al registrar historial
+          }
+
+          // Actualizar el registro en el estado local
+          const updatedRegistro = convertSupabaseToApp(data);
+          setRowData(prev => prev.map(r => r.id === updatedRegistro.id ? updatedRegistro : r));
+          
+          success('Cambio guardado correctamente');
+        }
       }
     } catch (error) {
       console.error('Error al procesar cambio de celda:', error);
@@ -444,7 +633,7 @@ export default function TablasPersonalizadasPage() {
       // Revertir el cambio en la tabla
       params.node.setDataValue(field, oldValue);
     }
-  }, [success, showError]);
+  }, [success, showError, selectedRows, rowData, gridApi]);
 
   const [gridOptions, setGridOptions] = useState<GridOptions>({
     pagination: false,
@@ -469,6 +658,39 @@ export default function TablasPersonalizadasPage() {
     suppressMenuHide: true,
     // Manejar cambios de celda para edición inline
     onCellValueChanged: onCellValueChanged,
+    // Guardar la selección cuando se hace clic en una celda (antes de que se pierda)
+    onCellClicked: (params: any) => {
+      const api = params.api;
+      if (api) {
+        const selectedIds = new Set<string>();
+        api.forEachNode((node: any) => {
+          if (node.isSelected() && node.data && node.data.id) {
+            selectedIds.add(node.data.id);
+          }
+        });
+        // Guardar la selección si hay alguna seleccionada
+        if (selectedIds.size > 0) {
+          selectionBeforeEditRef.current = selectedIds;
+        }
+      }
+    },
+    // Guardar la selección antes de que se pierda al editar (backup)
+    onCellEditingStarted: (params: any) => {
+      // Usar el API del grid desde el evento
+      const api = params.api;
+      if (api) {
+        const selectedIds = new Set<string>();
+        api.forEachNode((node: any) => {
+          if (node.isSelected() && node.data && node.data.id) {
+            selectedIds.add(node.data.id);
+          }
+        });
+        // Solo actualizar si no hay selección guardada o si hay más seleccionadas ahora
+        if (selectionBeforeEditRef.current.size === 0 || selectedIds.size > selectionBeforeEditRef.current.size) {
+          selectionBeforeEditRef.current = selectedIds;
+        }
+      }
+    },
     // Nota: isRowSelectable está deprecado pero se mantiene por compatibilidad
     // La lógica de filtrado se maneja en onSelectionChanged
   } as GridOptions);
@@ -661,6 +883,9 @@ export default function TablasPersonalizadasPage() {
       const estados = [...new Set(registrosConvertidos.map(r => r.estado).filter(Boolean))].sort();
       const tipoIngreso = [...new Set(registrosConvertidos.map(r => r.tipoIngreso).filter(Boolean))].sort();
       const temporadas = [...new Set(registrosConvertidos.map(r => r.temporada).filter((t): t is string => Boolean(t)))].sort();
+      const tratamientosFrio = [...new Set(registrosConvertidos.map(r => r.tratamientoFrio).filter((t): t is string => Boolean(t)))].sort();
+      const tiposAtmosfera = [...new Set(registrosConvertidos.map(r => r.tipoAtmosfera).filter((t): t is string => Boolean(t)))].sort();
+      const contratos = [...new Set(registrosConvertidos.map(r => r.contrato).filter((t): t is string => Boolean(t)))].sort();
 
       // ❌ NO sobrescribir navierasUnicas, navesUnicas, polsUnicos ni destinosUnicos: se cargan desde catálogos
       setEjecutivosUnicos(ejecutivos);
@@ -671,6 +896,9 @@ export default function TablasPersonalizadasPage() {
       setEstadosUnicos(estados);
       setTipoIngresoUnicos(tipoIngreso);
       setTemporadasUnicas(temporadas);
+      setTratamientosFrioOpciones(tratamientosFrio);
+      setTiposAtmosferaOpciones(tiposAtmosfera);
+      setContratosUnicos(contratos);
 
       // ❌ NO sobrescribir navesUnicas: se cargan desde catalogos_naves
       // Extraer naves únicas
@@ -854,6 +1082,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Ejecutivo',
       width: obtenerAnchoColumna('ejecutivo'),
       filter: 'agTextColumnFilter',
+      editable: false, // No editable - campo de solo lectura
       filterParams: {
         values: ejecutivosUnicos,
         caseSensitive: false,
@@ -865,6 +1094,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Cliente',
       width: obtenerAnchoColumna('shipper'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: clientesUnicos,
+      },
       filterParams: {
         values: clientesUnicos,
       },
@@ -892,6 +1126,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Naviera',
       width: obtenerAnchoColumna('naviera'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: navierasUnicas,
+      },
       filterParams: {
         values: navierasUnicas,
       },
@@ -901,6 +1140,22 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Nave',
       width: obtenerAnchoColumna('naveInicial'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: (params: any) => {
+        // Obtener la naviera del registro actual
+        const naviera = params.data?.naviera;
+        // Si hay naviera y existe en el mapeo, usar sus naves
+        if (naviera && navierasNavesMapping[naviera]) {
+          return {
+            values: navierasNavesMapping[naviera],
+          };
+        }
+        // Si no hay naviera o no está en el mapeo, mostrar todas las naves
+        return {
+          values: navesUnicas,
+        };
+      },
       valueFormatter: (params) => {
         let value = params.value || '';
         const registro = params.data as Registro;
@@ -931,6 +1186,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Especie',
       width: obtenerAnchoColumna('especie'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: especiesUnicas,
+      },
       filterParams: {
         values: especiesUnicas,
       },
@@ -940,6 +1200,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'POL',
       width: obtenerAnchoColumna('pol'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: polsUnicos,
+      },
       filterParams: {
         values: polsUnicos,
       },
@@ -949,6 +1214,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'POD',
       width: obtenerAnchoColumna('pod'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: destinosUnicos,
+      },
       filterParams: {
         values: destinosUnicos,
       },
@@ -958,6 +1228,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Depósito',
       width: obtenerAnchoColumna('deposito'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: depositosUnicos,
+      },
       filterParams: {
         values: depositosUnicos,
       },
@@ -1009,6 +1284,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Estado',
       width: obtenerAnchoColumna('estado'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: estadosUnicos,
+      },
       filterParams: {
         values: estadosUnicos,
       },
@@ -1031,6 +1311,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Flete',
       width: obtenerAnchoColumna('flete'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: fletesUnicos,
+      },
       filterParams: {
         values: fletesUnicos,
       },
@@ -1040,6 +1325,11 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Tipo Ingreso',
       width: obtenerAnchoColumna('tipoIngreso'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: tipoIngresoUnicos,
+      },
       filterParams: {
         values: tipoIngresoUnicos,
       },
@@ -1093,6 +1383,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Usuario',
       width: obtenerAnchoColumna('usuario'),
       filter: 'agTextColumnFilter',
+      editable: false, // No editable - campo de solo lectura
     },
     {
       field: 'clienteAbr',
@@ -1124,12 +1415,28 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Tratamiento Frío',
       width: obtenerAnchoColumna('tratamientoFrio'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: tratamientosFrioOpciones,
+      },
+      filterParams: {
+        values: tratamientosFrioOpciones,
+      },
     },
     {
       field: 'tipoAtmosfera',
       headerName: 'Tipo Atmósfera',
       width: obtenerAnchoColumna('tipoAtmosfera'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: tiposAtmosferaOpciones,
+      },
+      filterParams: {
+        values: tiposAtmosferaOpciones,
+      },
     },
     {
       field: 'roleadaDesde',
@@ -1164,12 +1471,21 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Contrato',
       width: obtenerAnchoColumna('contrato'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: contratosUnicos,
+      },
+      filterParams: {
+        values: contratosUnicos,
+      },
     },
     {
       field: 'semanaIngreso',
       headerName: 'Semana Ingreso',
       width: obtenerAnchoColumna('semanaIngreso'),
       filter: 'agNumberColumnFilter',
+      editable: false, // No editable - campo calculado
       valueGetter: (params: any) => {
         // Si ya tiene un valor, usarlo
         if (params.data.semanaIngreso !== null && params.data.semanaIngreso !== undefined) {
@@ -1201,6 +1517,7 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Semana Zarpe',
       width: obtenerAnchoColumna('semanaZarpe'),
       filter: 'agNumberColumnFilter',
+      editable: false, // No editable - campo calculado
       valueGetter: (params: any) => {
         // Si ya tiene un valor, usarlo
         if (params.data.semanaZarpe !== null && params.data.semanaZarpe !== undefined) {
@@ -1270,13 +1587,44 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Temporada',
       width: obtenerAnchoColumna('temporada'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      cellEditor: 'agSelectCellEditor',
+      cellEditorParams: {
+        values: temporadasUnicas,
+      },
       filterParams: {
         values: temporadasUnicas,
         caseSensitive: false,
         trimInput: true,
       },
     },
-  ], [navierasUnicas, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos, temporadasUnicas]);
+    // Columna de historial solo visible para ejecutivos y admins
+    ...(canViewHistory ? [{
+      field: 'historial',
+      headerName: 'Historial',
+      width: obtenerAnchoColumna('historial'),
+      filter: false,
+      sortable: false,
+      cellRenderer: (params: ICellRendererParams) => {
+        const registro = params.data as Registro;
+        return (
+          <div className="flex items-center justify-center h-full">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedRegistroForHistorial(registro);
+                setShowHistorialModal(true);
+              }}
+              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors dark:hover:bg-blue-900 dark:text-gray-300"
+              title="Ver historial de cambios"
+            >
+              <History size={16} />
+            </button>
+          </div>
+        );
+      },
+    }] : []),
+  ], [navierasUnicas, navesUnicas, navierasNavesMapping, ejecutivosUnicos, especiesUnicas, clientesUnicos, polsUnicos, destinosUnicos, depositosUnicos, fletesUnicos, estadosUnicos, tipoIngresoUnicos, temporadasUnicas, tratamientosFrioOpciones, tiposAtmosferaOpciones, contratosUnicos, canViewHistory, canEdit]);
 
   // Función para cargar el orden de columnas guardado desde Supabase
   const loadColumnOrderFromSupabase = useCallback(async () => {
@@ -1584,7 +1932,9 @@ export default function TablasPersonalizadasPage() {
   const isProcessingHeaderClickRef = useRef(false);
 
   const onSelectionChanged = () => {
-    if (!gridApi || isProcessingHeaderClickRef.current) return;
+    if (!gridApi || isProcessingHeaderClickRef.current || isRestoringSelectionRef.current) {
+      return;
+    }
     
     // Contar filas visibles y seleccionadas
     let visibleCount = 0;
@@ -3098,6 +3448,19 @@ export default function TablasPersonalizadasPage() {
           }}
           onSuccess={(message) => success(message)}
           onError={(message) => showError(message)}
+        />
+      )}
+
+      {/* Historial Modal */}
+      {showHistorialModal && selectedRegistroForHistorial && (
+        <HistorialModal
+          isOpen={showHistorialModal}
+          onClose={() => {
+            setShowHistorialModal(false);
+            setSelectedRegistroForHistorial(null);
+          }}
+          registroId={selectedRegistroForHistorial.id || ''}
+          registroRefAsli={selectedRegistroForHistorial.refAsli || ''}
         />
       )}
         </div>
