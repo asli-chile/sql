@@ -37,7 +37,9 @@ import {
   Menu,
   Plus,
   Search,
-  History
+  History,
+  Upload,
+  Eye
 } from 'lucide-react';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
@@ -53,6 +55,8 @@ import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { generarReporte, descargarExcel, TipoReporte } from '@/lib/reportes';
 import { useUser } from '@/hooks/useUser';
+import { createTransporte } from '@/lib/transportes-service';
+import { parseStoredDocumentName, formatFileDisplayName, normalizeBooking, sanitizeFileName } from '@/utils/documentUtils';
 
 export default function TablasPersonalizadasPage() {
   const router = useRouter();
@@ -103,6 +107,10 @@ export default function TablasPersonalizadasPage() {
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [copiedRegistro, setCopiedRegistro] = useState<Registro | null>(null);
   const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+  // Mapear documentos por ref_asli (único por registro) y también por booking (formato antiguo como fallback)
+  const [registroDocuments, setRegistroDocuments] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
+  const [bookingDocumentsFallback, setBookingDocumentsFallback] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
+  const [uploadingRegistro, setUploadingRegistro] = useState<string | null>(null);
   
   // Estados para filtros del panel
   const [filterPanelValues, setFilterPanelValues] = useState({
@@ -735,6 +743,112 @@ export default function TablasPersonalizadasPage() {
     // La lógica de filtrado se maneja en onSelectionChanged
   } as GridOptions);
 
+  // Cargar documentos de booking por registro (ref_asli) y también por booking (formato antiguo)
+  const loadBookingDocuments = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from('documentos')
+        .list('booking', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'updated_at', order: 'desc' },
+        });
+
+      if (error) {
+        console.warn('No se pudieron cargar documentos booking:', error.message);
+        return;
+      }
+
+      // Mapear por ref_asli (nuevo formato) y también por booking (formato antiguo como fallback)
+      const registrosMap = new Map<string, { nombre: string; fecha: string; path: string }>();
+      const bookingsMap = new Map<string, { nombre: string; fecha: string; path: string }>();
+
+      data?.forEach((file) => {
+        const separatorIndex = file.name.indexOf('__');
+        if (separatorIndex === -1) return;
+
+        const segment = file.name.slice(0, separatorIndex);
+        const { originalName } = parseStoredDocumentName(file.name);
+        const nombreFormateado = formatFileDisplayName(originalName);
+        const filePath = `booking/${file.name}`;
+
+        const fechaArchivo = file.updated_at || file.created_at;
+        let fechaFormateada = '-';
+        if (fechaArchivo) {
+          const fecha = new Date(fechaArchivo);
+          const dia = String(fecha.getDate()).padStart(2, '0');
+          const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+          const año = fecha.getFullYear();
+          fechaFormateada = `${dia}-${mes}-${año}`;
+        }
+
+        const docInfo = { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath };
+
+        try {
+          const decoded = decodeURIComponent(segment).trim();
+          if (decoded) {
+            // Intentar determinar si es ref_asli o booking
+            // Los ref_asli suelen tener formato como "POMACEA-CAROZO-2026-0123"
+            // Los bookings pueden ser códigos alfanuméricos
+            // Por ahora, intentamos ambos formatos
+            
+            // Primero intentar como ref_asli (formato nuevo)
+            // Si parece un ref_asli (contiene guiones y números), mapearlo así
+            if (decoded.includes('-') && /^\w+-\w+-\d{4}-\d+/.test(decoded)) {
+              const existente = registrosMap.get(decoded);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                registrosMap.set(decoded, docInfo);
+              }
+            }
+            
+            // También mapear por booking (formato antiguo) para compatibilidad
+            const bookingKey = normalizeBooking(decoded).trim().toUpperCase().replace(/\s+/g, '');
+            if (bookingKey) {
+              const existente = bookingsMap.get(bookingKey);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                bookingsMap.set(bookingKey, docInfo);
+              }
+            }
+          }
+        } catch {
+          // Si falla el decode, intentar usar el segmento directamente
+          const segmentTrimmed = segment.trim();
+          if (segmentTrimmed) {
+            // Intentar como ref_asli
+            if (segmentTrimmed.includes('-') && /^\w+-\w+-\d{4}-\d+/.test(segmentTrimmed)) {
+              const existente = registrosMap.get(segmentTrimmed);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                registrosMap.set(segmentTrimmed, docInfo);
+              }
+            }
+            
+            // También mapear por booking
+            const bookingKey = normalizeBooking(segmentTrimmed).trim().toUpperCase().replace(/\s+/g, '');
+            if (bookingKey) {
+              const existente = bookingsMap.get(bookingKey);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                bookingsMap.set(bookingKey, docInfo);
+              }
+            }
+          }
+        }
+      });
+
+      setRegistroDocuments(registrosMap);
+      setBookingDocumentsFallback(bookingsMap);
+      console.log(`✅ Documentos de booking cargados: ${registrosMap.size} por ref_asli, ${bookingsMap.size} por booking (fallback)`);
+      if (registrosMap.size > 0) {
+        console.log('📚 Primeros 5 registros con PDF (ref_asli):', Array.from(registrosMap.keys()).slice(0, 5));
+      }
+      if (bookingsMap.size > 0) {
+        console.log('📚 Primeros 5 bookings con PDF (fallback):', Array.from(bookingsMap.keys()).slice(0, 5));
+      }
+    } catch (err) {
+      console.error('❌ Error cargando documentos booking:', err);
+    }
+  }, []);
+
   const loadCatalogos = useCallback(async () => {
     try {
       const supabase = createClient();
@@ -862,6 +976,9 @@ export default function TablasPersonalizadasPage() {
                 setConsorciosNavesMapping(cleanMapping);
               }
               break;
+            case 'contratos':
+              setContratosUnicos(valores);
+              break;
           }
         });
       }
@@ -925,9 +1042,7 @@ export default function TablasPersonalizadasPage() {
       const temporadas = [...new Set(registrosConvertidos.map(r => r.temporada).filter((t): t is string => Boolean(t)))].sort();
       const tratamientosFrio = [...new Set(registrosConvertidos.map(r => r.tratamientoFrio).filter((t): t is string => Boolean(t)))].sort();
       const tiposAtmosfera = [...new Set(registrosConvertidos.map(r => r.tipoAtmosfera).filter((t): t is string => Boolean(t)))].sort();
-      const contratos = [...new Set(registrosConvertidos.map(r => r.contrato).filter((t): t is string => Boolean(t)))].sort();
-
-      // ❌ NO sobrescribir navierasUnicas, navesUnicas, polsUnicos ni destinosUnicos: se cargan desde catálogos
+      // ❌ NO sobrescribir navierasUnicas, navesUnicas, polsUnicos, destinosUnicos ni contratosUnicos: se cargan desde catálogos
       setEjecutivosUnicos(ejecutivos);
       setEspeciesUnicas(especies);
       setClientesUnicos(clientes);
@@ -938,7 +1053,7 @@ export default function TablasPersonalizadasPage() {
       setTemporadasUnicas(temporadas);
       setTratamientosFrioOpciones(tratamientosFrio);
       setTiposAtmosferaOpciones(tiposAtmosfera);
-      setContratosUnicos(contratos);
+      // ❌ NO sobrescribir contratosUnicos: se carga desde catálogo "contratos"
 
       // ❌ NO sobrescribir navesUnicas: se cargan desde catalogos_naves
       // Extraer naves únicas
@@ -1149,6 +1264,158 @@ export default function TablasPersonalizadasPage() {
       width: obtenerAnchoColumna('booking'),
       filter: 'agTextColumnFilter',
       editable: canEdit,
+      cellRenderer: (params: ICellRendererParams) => {
+        const registro = params.data as Registro;
+        const bookingValue = registro.booking?.trim() || '';
+        const refAsli = registro.refAsli?.trim() || '';
+        
+        // Buscar PDF primero por ref_asli (nuevo formato), luego por booking (formato antiguo como fallback)
+        let registroDoc = null;
+        let hasPdf = false;
+        
+        if (refAsli && registroDocuments.has(refAsli)) {
+          registroDoc = registroDocuments.get(refAsli);
+          hasPdf = true;
+        } else if (bookingValue) {
+          // Fallback: buscar por booking (formato antiguo)
+          const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
+          if (bookingKey && bookingDocumentsFallback.has(bookingKey)) {
+            registroDoc = bookingDocumentsFallback.get(bookingKey);
+            hasPdf = true;
+          }
+        }
+        
+        const isUploading = uploadingRegistro === refAsli;
+
+        const handleUploadClick = async (e: React.MouseEvent) => {
+          e.stopPropagation();
+          if (!refAsli) {
+            showError('El registro debe tener una referencia ASLI para subir el PDF');
+            return;
+          }
+
+          const input = window.document.createElement('input');
+          input.type = 'file';
+          input.accept = '.pdf';
+          input.onchange = async (event: Event) => {
+            const target = event.target as HTMLInputElement;
+            const file = target.files?.[0];
+            if (!file || !refAsli) return;
+
+            try {
+              setUploadingRegistro(refAsli);
+              const supabase = createClient();
+              
+              const refAsliSegment = encodeURIComponent(refAsli);
+              const safeName = sanitizeFileName(file.name);
+              const filePath = `booking/${refAsliSegment}__${Date.now()}-0-${safeName}`;
+
+              // Eliminar archivos anteriores para este registro (ref_asli)
+              try {
+                const { data: existingFiles } = await supabase.storage
+                  .from('documentos')
+                  .list('booking', { limit: 1000 });
+
+                if (existingFiles) {
+                  const filesToDelete = existingFiles
+                    .filter(f => {
+                      const separatorIndex = f.name.indexOf('__');
+                      if (separatorIndex === -1) return false;
+                      const fileRefAsliSegment = f.name.slice(0, separatorIndex);
+                      try {
+                        const decodedRefAsli = decodeURIComponent(fileRefAsliSegment);
+                        return decodedRefAsli === refAsli || fileRefAsliSegment === refAsliSegment;
+                      } catch {
+                        return fileRefAsliSegment === refAsliSegment;
+                      }
+                    })
+                    .map(f => `booking/${f.name}`);
+
+                  if (filesToDelete.length > 0) {
+                    await supabase.storage.from('documentos').remove(filesToDelete);
+                  }
+                }
+              } catch (deleteErr) {
+                console.warn('Error al eliminar archivos anteriores:', deleteErr);
+              }
+
+              // Subir nuevo archivo
+              const { error: uploadError } = await supabase.storage
+                .from('documentos')
+                .upload(filePath, file, {
+                  contentType: 'application/pdf',
+                  cacheControl: '3600',
+                  upsert: true,
+                });
+
+              if (uploadError) throw uploadError;
+
+              // Recargar documentos
+              await loadBookingDocuments();
+              success('PDF de booking subido correctamente');
+            } catch (err: any) {
+              console.error('Error subiendo PDF:', err);
+              showError('No se pudo subir el PDF. Intenta nuevamente.');
+            } finally {
+              setUploadingRegistro(null);
+            }
+          };
+          input.click();
+        };
+
+        const handleViewClick = async (e: React.MouseEvent) => {
+          e.stopPropagation();
+          if (!registroDoc) return;
+
+          try {
+            const supabase = createClient();
+            const { data, error } = await supabase.storage
+              .from('documentos')
+              .createSignedUrl(registroDoc.path, 60);
+
+            if (error || !data?.signedUrl) {
+              throw error || new Error('No se pudo generar la URL');
+            }
+
+            window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+          } catch (err) {
+            console.error('Error abriendo PDF:', err);
+            showError('No se pudo abrir el PDF');
+          }
+        };
+
+        return (
+          <div className="flex items-center gap-1 h-full w-full">
+            <span className="flex-1 truncate">{bookingValue || ''}</span>
+            {refAsli && (
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {hasPdf ? (
+                  <button
+                    onClick={handleViewClick}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+                    title="Ver PDF de booking"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleUploadClick}
+                    disabled={isUploading}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                    title="Subir PDF de booking"
+                  >
+                    {isUploading ? (
+                      <RefreshCw className="w-3.5 h-3.5 text-gray-500 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      },
     },
     {
       field: 'contenedor',
@@ -1826,6 +2093,11 @@ export default function TablasPersonalizadasPage() {
     setGridApi(params.api);
   };
 
+  // Cargar documentos de booking al inicio
+  useEffect(() => {
+    void loadBookingDocuments();
+  }, [loadBookingDocuments]);
+
   // Cargar preferencias cuando gridApi, user y rowData estén listos
   useEffect(() => {
     if (!gridApi || !user || rowData.length === 0 || preferencesLoadedRef.current) {
@@ -2384,6 +2656,248 @@ export default function TablasPersonalizadasPage() {
       setShowEditNaveViajeModal(true);
     }
     setContextMenu({ ...contextMenu, visible: false });
+  };
+
+  const handleSendToTransportes = async (registros: Registro | Registro[]) => {
+    try {
+      console.log('🚚 handleSendToTransportes llamado con:', registros);
+      const supabase = createClient();
+      const registrosArray = Array.isArray(registros) ? registros : [registros];
+      
+      console.log('📦 Registros recibidos:', registrosArray.length);
+      
+      if (registrosArray.length === 0) {
+        console.warn('⚠️ No hay registros para enviar');
+        showError('No hay registros seleccionados para enviar a transporte');
+        setContextMenu({ ...contextMenu, visible: false });
+        return;
+      }
+
+      // Verificar que los registros tengan booking (requerido para transporte)
+      const registrosValidos = registrosArray.filter(r => {
+        const hasBooking = r.booking && typeof r.booking === 'string' && r.booking.trim().length > 0;
+        if (!hasBooking) {
+          console.warn('⚠️ Registro sin booking:', r.id, r.refAsli);
+        }
+        return hasBooking;
+      });
+      
+      console.log('✅ Registros válidos (con booking):', registrosValidos.length);
+      
+      if (registrosValidos.length === 0) {
+        showError('Los registros seleccionados deben tener un booking para enviar a transporte');
+        setContextMenu({ ...contextMenu, visible: false });
+        return;
+      }
+
+      // Validar que todos los registros tengan PDF de booking (por ref_asli único)
+      console.log('📄 Validando PDFs de booking...');
+      console.log('📚 registroDocuments cargados:', registroDocuments.size);
+      if (registroDocuments.size > 0) {
+        console.log('📚 Keys de registroDocuments (primeros 10):', Array.from(registroDocuments.keys()).slice(0, 10));
+      }
+      
+      const registrosSinPdf: string[] = [];
+      for (const registro of registrosValidos) {
+        const refAsli = registro.refAsli?.trim() || '';
+        if (!refAsli) {
+          console.warn(`⚠️ Registro ${registro.id} no tiene ref_asli`);
+          continue;
+        }
+
+        // Verificar si tiene bookingPdf en el campo (debe ser un path/URL válido, no "POR ASIGNAR" u otros valores inválidos)
+        const bookingPdfValue = registro.bookingPdf && typeof registro.bookingPdf === 'string' 
+          ? registro.bookingPdf.trim() 
+          : '';
+        const hasPdfField = bookingPdfValue !== '' &&
+          bookingPdfValue !== 'null' &&
+          bookingPdfValue !== 'undefined' &&
+          bookingPdfValue !== 'POR ASIGNAR' &&
+          bookingPdfValue.toUpperCase() !== 'POR ASIGNAR' &&
+          (bookingPdfValue.includes('.pdf') || bookingPdfValue.includes('/') || bookingPdfValue.includes('http'));
+
+        // Verificar si existe PDF en storage (primero por ref_asli, luego por booking como fallback)
+        let hasPdfInStorage = false;
+        const bookingValue = registro.booking?.trim() || '';
+        
+        if (refAsli && registroDocuments.size > 0) {
+          hasPdfInStorage = registroDocuments.has(refAsli);
+          console.log(`🔍 Verificando registro "${refAsli}" -> tiene PDF (ref_asli): ${hasPdfInStorage}`);
+        }
+        
+        // Fallback: buscar por booking si no se encontró por ref_asli
+        if (!hasPdfInStorage && bookingValue) {
+          const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
+          if (bookingKey && bookingDocumentsFallback.size > 0) {
+            hasPdfInStorage = bookingDocumentsFallback.has(bookingKey);
+            console.log(`🔍 Verificando registro "${refAsli}" -> booking "${bookingValue}" -> tiene PDF (fallback): ${hasPdfInStorage}`);
+          }
+        }
+        
+        if (!hasPdfInStorage) {
+          console.log(`🔍 Verificando registro "${refAsli}" -> registroDocuments.size: ${registroDocuments.size}, bookingDocumentsFallback.size: ${bookingDocumentsFallback.size}`);
+        }
+
+        const recordHasPdf = hasPdfField || hasPdfInStorage;
+        console.log(`📋 Registro ${refAsli}: hasPdfField=${hasPdfField}, hasPdfInStorage=${hasPdfInStorage}, recordHasPdf=${recordHasPdf}`);
+
+        if (!recordHasPdf) {
+          registrosSinPdf.push(refAsli || 'Registro sin referencia');
+        }
+      }
+
+      if (registrosSinPdf.length > 0) {
+        console.warn(`❌ ${registrosSinPdf.length} registros sin PDF:`, registrosSinPdf);
+        const mensaje = registrosSinPdf.length === 1
+          ? `El registro ${registrosSinPdf[0]} no tiene PDF de booking. Por favor, sube el documento antes de enviar a transporte.`
+          : `${registrosSinPdf.length} registros no tienen PDF de booking: ${registrosSinPdf.slice(0, 3).join(', ')}${registrosSinPdf.length > 3 ? '...' : ''}. Por favor, sube los documentos antes de enviar a transporte.`;
+        showError(mensaje);
+        setContextMenu({ ...contextMenu, visible: false });
+        return;
+      }
+
+      console.log('✅ Todos los registros tienen PDF de booking');
+
+      let creados = 0;
+      let yaExistentes = 0;
+      let errores = 0;
+      const erroresDetalle: string[] = [];
+
+      for (const registro of registrosValidos) {
+        try {
+          // Obtener contenedor (puede ser array o string)
+          const contenedorValue = Array.isArray(registro.contenedor)
+            ? registro.contenedor[0] || ''
+            : (registro.contenedor || '');
+          const contenedorStr = typeof contenedorValue === 'string' ? contenedorValue.trim() : '';
+          const bookingStr = registro.booking!.trim();
+
+          console.log(`🔄 Procesando registro ${registro.id}: booking=${bookingStr}, contenedor=${contenedorStr}`);
+
+          // Primero verificar si ya existe un transporte vinculado a este registro_id específico
+          let transporteExistente = null;
+          if (registro.id) {
+            const { data: transportePorRegistroId, error: errorRegistroId } = await supabase
+              .from('transportes')
+              .select('id')
+              .eq('registro_id', registro.id)
+              .is('deleted_at', null)
+              .limit(1)
+              .maybeSingle();
+
+            if (errorRegistroId) {
+              console.error('❌ Error verificando transporte por registro_id:', errorRegistroId);
+            } else if (transportePorRegistroId) {
+              transporteExistente = transportePorRegistroId;
+              console.log(`ℹ️ Transporte ya existe vinculado al registro_id ${registro.id}`);
+            }
+          }
+
+          // Si no se encontró por registro_id, verificar por booking+contenedor
+          // Pero solo si el booking NO es "POR ASIGNAR" (para evitar conflictos)
+          if (!transporteExistente && bookingStr !== 'POR ASIGNAR' && contenedorStr !== 'POR ASIGNAR') {
+            const { data: transportePorBooking, error: checkError } = await supabase
+              .from('transportes')
+              .select('id')
+              .eq('booking', bookingStr)
+              .eq('contenedor', contenedorStr || '')
+              .is('deleted_at', null)
+              .limit(1)
+              .maybeSingle();
+
+            if (checkError) {
+              console.error('❌ Error verificando transporte existente:', checkError);
+              errores++;
+              erroresDetalle.push(`Error verificando: ${checkError.message}`);
+              continue;
+            }
+
+            if (transportePorBooking) {
+              transporteExistente = transportePorBooking;
+              console.log(`ℹ️ Transporte ya existe para booking ${bookingStr} y contenedor ${contenedorStr}`);
+            }
+          }
+
+          if (transporteExistente) {
+            yaExistentes++;
+            continue;
+          }
+
+          // Crear transporte desde el registro
+          const transporteData: any = {
+            registro_id: registro.id || null,
+            booking: registro.booking?.trim() || null,
+            ref_asli: registro.refAsli?.trim() || null,
+            ref_cliente: registro.refCliente?.trim() || null,
+            nave: registro.naveInicial?.trim() || null,
+            naviera: registro.naviera?.trim() || null,
+            contenedor: contenedorStr || null,
+            especie: registro.especie?.trim() || null,
+            pol: registro.pol?.trim() || null,
+            pod: registro.pod?.trim() || null,
+            deposito: registro.deposito?.trim() || null,
+            temperatura: registro.temperatura !== undefined ? registro.temperatura : null,
+            from_registros: true,
+            created_by: user?.email || null,
+            updated_by: user?.email || null,
+          };
+
+          console.log('💾 Creando transporte con datos:', transporteData);
+          await createTransporte(transporteData);
+          creados++;
+          console.log(`✅ Transporte creado exitosamente para registro ${registro.id}`);
+        } catch (error: any) {
+          console.error(`❌ Error creando transporte para registro ${registro.id}:`, error);
+          errores++;
+          erroresDetalle.push(`Registro ${registro.refAsli || registro.id}: ${error.message || 'Error desconocido'}`);
+        }
+      }
+
+      console.log(`📊 Resultado: ${creados} creados, ${yaExistentes} existentes, ${errores} errores`);
+
+      // Mostrar mensaje de resultado
+      const mensajes: string[] = [];
+      if (creados > 0) {
+        mensajes.push(`${creados} transporte${creados > 1 ? 's' : ''} creado${creados > 1 ? 's' : ''} exitosamente`);
+      }
+      if (yaExistentes > 0) {
+        mensajes.push(`${yaExistentes} transporte${yaExistentes > 1 ? 's' : ''} ya existía${yaExistentes > 1 ? 'n' : ''}`);
+      }
+      if (errores > 0) {
+        mensajes.push(`${errores} error${errores > 1 ? 'es' : ''} al crear`);
+      }
+
+      // Mostrar mensaje apropiado
+      if (creados > 0) {
+        const mensajeCompleto = mensajes.join('. ');
+        success(mensajeCompleto);
+        console.log('✅ Mensaje de éxito mostrado:', mensajeCompleto);
+      } else if (yaExistentes > 0 && errores === 0) {
+        // Si todos ya existían, mostrar como información (no error)
+        const mensajeCompleto = `Todos los transportes ya existían (${yaExistentes} registro${yaExistentes > 1 ? 's' : ''})`;
+        success(mensajeCompleto);
+        console.log('ℹ️ Mensaje de info mostrado:', mensajeCompleto);
+      } else if (errores > 0) {
+        const mensajeCompleto = mensajes.join('. ') + (erroresDetalle.length > 0 ? ` (${erroresDetalle.slice(0, 2).join(', ')})` : '');
+        showError(mensajeCompleto);
+        console.log('❌ Mensaje de error mostrado:', mensajeCompleto);
+      } else {
+        showError('No se pudo crear ningún transporte');
+        console.log('❌ Mensaje de error genérico mostrado');
+      }
+
+      // Recargar datos si se crearon transportes
+      if (creados > 0) {
+        await loadRegistros();
+      }
+    } catch (error: any) {
+      console.error('❌ Error general enviando a transporte:', error);
+      showError('Error al enviar a transporte: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setContextMenu({ ...contextMenu, visible: false });
+      // No limpiar la selección automáticamente para que el usuario vea qué se procesó
+      // handleClearSelection();
+    }
   };
 
   const handleCopyReserva = () => {
@@ -3417,16 +3931,138 @@ export default function TablasPersonalizadasPage() {
             </button>
           )}
           <button
-            onClick={handleBulkEditNaveViaje}
-            disabled={!canEdit}
+            onClick={async () => {
+              console.log('🔘 Botón "Enviar a transporte" clickeado');
+              console.log('📋 selectedRegistros:', selectedRegistros);
+              console.log('📊 Cantidad de registros seleccionados:', selectedRegistros.length);
+              
+              if (selectedRegistros.length > 0) {
+                console.log('✅ Llamando handleSendToTransportes con', selectedRegistros.length, 'registros');
+                await handleSendToTransportes(selectedRegistros);
+              } else {
+                console.warn('⚠️ No hay registros seleccionados');
+                showError('Por favor, selecciona al menos un registro para enviar a transporte');
+              }
+            }}
+            disabled={(() => {
+              if (!canEdit || selectedRegistros.length === 0) return true;
+              
+              // Verificar que todos los registros seleccionados tengan PDF de booking
+              const allHavePdf = selectedRegistros.every(r => {
+                const refAsli = r.refAsli?.trim() || '';
+                if (!refAsli) return false;
+                
+                const bookingValue = r.booking?.trim() || '';
+
+                // Verificar si tiene bookingPdf en el campo (debe ser un path/URL válido, no "POR ASIGNAR" u otros valores inválidos)
+                const bookingPdfValue = r.bookingPdf && typeof r.bookingPdf === 'string' 
+                  ? r.bookingPdf.trim() 
+                  : '';
+                const hasPdfField = bookingPdfValue !== '' &&
+                  bookingPdfValue !== 'null' &&
+                  bookingPdfValue !== 'undefined' &&
+                  bookingPdfValue !== 'POR ASIGNAR' &&
+                  bookingPdfValue.toUpperCase() !== 'POR ASIGNAR' &&
+                  (bookingPdfValue.includes('.pdf') || bookingPdfValue.includes('/') || bookingPdfValue.includes('http'));
+
+                // Verificar si existe PDF en storage (primero por ref_asli, luego por booking como fallback)
+                let hasPdfInStorage = false;
+                
+                if (refAsli && registroDocuments.size > 0) {
+                  hasPdfInStorage = registroDocuments.has(refAsli);
+                }
+                
+                // Fallback: buscar por booking si no se encontró por ref_asli
+                if (!hasPdfInStorage && bookingValue) {
+                  const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
+                  if (bookingKey && bookingDocumentsFallback.size > 0) {
+                    hasPdfInStorage = bookingDocumentsFallback.has(bookingKey);
+                  }
+                }
+
+                return hasPdfField || hasPdfInStorage;
+              });
+
+              return !allHavePdf;
+            })()}
             className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b flex items-center gap-2 ${
-              !canEdit
+              !canEdit || selectedRegistros.length === 0 || (() => {
+                if (selectedRegistros.length === 0) return true;
+                const allHavePdf = selectedRegistros.every(r => {
+                  const refAsli = r.refAsli?.trim() || '';
+                  if (!refAsli) return false;
+                  // Verificar si tiene bookingPdf en el campo (debe ser un path/URL válido, no "POR ASIGNAR" u otros valores inválidos)
+                  const bookingPdfValue = r.bookingPdf && typeof r.bookingPdf === 'string' 
+                    ? r.bookingPdf.trim() 
+                    : '';
+                  const hasPdfField = bookingPdfValue !== '' &&
+                    bookingPdfValue !== 'null' &&
+                    bookingPdfValue !== 'undefined' &&
+                    bookingPdfValue !== 'POR ASIGNAR' &&
+                    bookingPdfValue.toUpperCase() !== 'POR ASIGNAR' &&
+                    (bookingPdfValue.includes('.pdf') || bookingPdfValue.includes('/') || bookingPdfValue.includes('http'));
+                  // Verificar si existe PDF en storage (primero por ref_asli, luego por booking como fallback)
+                  let hasPdfInStorage = false;
+                  const bookingValue = r.booking?.trim() || '';
+                  
+                  if (refAsli && registroDocuments.size > 0) {
+                    hasPdfInStorage = registroDocuments.has(refAsli);
+                  }
+                  
+                  // Fallback: buscar por booking si no se encontró por ref_asli
+                  if (!hasPdfInStorage && bookingValue) {
+                    const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
+                    if (bookingKey && bookingDocumentsFallback.size > 0) {
+                      hasPdfInStorage = bookingDocumentsFallback.has(bookingKey);
+                    }
+                  }
+                  
+                  return hasPdfField || hasPdfInStorage;
+                });
+                return !allHavePdf;
+              })()
                 ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed border-gray-200 dark:border-gray-700'
                 : theme === 'dark'
                 ? 'text-gray-200 border-gray-700 hover:bg-gray-700'
                 : 'text-gray-700 border-gray-200 hover:bg-gray-100'
             }`}
-            title={canEdit ? "Enviar a transporte" : "No tienes permisos para editar registros"}
+            title={(() => {
+              if (!canEdit) return "No tienes permisos para editar registros";
+              if (selectedRegistros.length === 0) return "Selecciona al menos un registro";
+              const allHavePdf = selectedRegistros.every(r => {
+                const refAsli = r.refAsli?.trim() || '';
+                if (!refAsli) return false;
+                // Verificar si tiene bookingPdf en el campo (debe ser un path/URL válido, no "POR ASIGNAR" u otros valores inválidos)
+                const bookingPdfValue = r.bookingPdf && typeof r.bookingPdf === 'string' 
+                  ? r.bookingPdf.trim() 
+                  : '';
+                const hasPdfField = bookingPdfValue !== '' &&
+                  bookingPdfValue !== 'null' &&
+                  bookingPdfValue !== 'undefined' &&
+                  bookingPdfValue !== 'POR ASIGNAR' &&
+                  bookingPdfValue.toUpperCase() !== 'POR ASIGNAR' &&
+                  (bookingPdfValue.includes('.pdf') || bookingPdfValue.includes('/') || bookingPdfValue.includes('http'));
+                // Verificar si existe PDF en storage (primero por ref_asli, luego por booking como fallback)
+                let hasPdfInStorage = false;
+                const bookingValue = r.booking?.trim() || '';
+                
+                if (refAsli && registroDocuments.size > 0) {
+                  hasPdfInStorage = registroDocuments.has(refAsli);
+                }
+                
+                // Fallback: buscar por booking si no se encontró por ref_asli
+                if (!hasPdfInStorage && bookingValue) {
+                  const bookingKey = bookingValue.trim().toUpperCase().replace(/\s+/g, '');
+                  if (bookingKey && bookingDocumentsFallback.size > 0) {
+                    hasPdfInStorage = bookingDocumentsFallback.has(bookingKey);
+                  }
+                }
+                
+                return hasPdfField || hasPdfInStorage;
+              });
+              if (!allHavePdf) return "Todos los registros seleccionados deben tener PDF de booking válido (no se acepta 'POR ASIGNAR')";
+              return "Enviar a transporte";
+            })()}
           >
             <Truck className="w-4 h-4" />
             <span>Enviar a transporte</span>
