@@ -52,7 +52,7 @@ export const MovementCard: React.FC<MovementCardProps> = ({ registro, isSelected
                 <div className="flex items-center gap-2 text-xs">
                     <Ship className="h-3 w-3 text-slate-400" />
                     <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>
-                        {registro.naveInicial} {registro.viaje ? `[${registro.viaje}]` : ''}
+                        {registro.naveInicial || '-'}
                     </span>
                 </div>
             </div>

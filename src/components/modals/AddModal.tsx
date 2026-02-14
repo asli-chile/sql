@@ -450,7 +450,8 @@ REF Externa:           ${formData.refCliente || 'No especificado'}
 Ejecutivo:             ${formData.ejecutivo}
 Cliente:               ${formData.shipper}
 ${formData.contrato ? `Contrato:             ${formData.contrato}\n` : ''}Naviera:               ${formData.naviera}
-Nave:                  ${formData.naveInicial} ${formData.viaje ? `[${formData.viaje}]` : ''}
+Nave:                  ${formData.naveInicial || 'N/A'}
+Viaje:                 ${formData.viaje || 'N/A'}
 POL:                   ${formData.pol}
 POD:                   ${formData.pod}
 Depósito:              ${formData.deposito}
@@ -485,9 +486,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       }
       resolvedCopies = Math.min(resolvedCopies, MAX_COPIES);
 
-      const naveCompleta = formData.naveInicial && formData.viaje.trim()
-        ? `${formData.naveInicial} [${formData.viaje.trim()}]`
-        : formData.naveInicial || '';
+      // Guardar solo el nombre de la nave, sin el viaje (el viaje se guarda por separado)
+      const naveCompleta = formData.naveInicial || '';
 
       const condiciones = [];
       if (formData.temperatura) condiciones.push(`${formData.temperatura}°C`);
@@ -513,7 +513,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
             <li><strong>Cantidad:</strong> ${resolvedCopies} contenedor(es)</li>
             <li><strong>Shipper:</strong> ${formData.shipper || 'N/A'}</li>
             <li><strong>Naviera:</strong> ${formData.naviera || 'N/A'}</li>
-            <li><strong>Nave:</strong> ${naveCompleta || 'N/A'}</li>
+            <li><strong>Nave:</strong> ${formData.naveInicial || 'N/A'}</li>
+            <li><strong>Viaje:</strong> ${formData.viaje || 'N/A'}</li>
             <li><strong>Especie:</strong> ${formData.especie || 'N/A'}</li>
             <li><strong>POL:</strong> ${formData.pol || 'N/A'}</li>
             <li><strong>POD:</strong> ${formData.pod || 'N/A'}</li>
@@ -632,9 +633,8 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
       const todayString = formatDateForInput(new Date());
 
       // Construir el nombre completo de la nave
-      const naveCompleta = formData.naveInicial && formData.viaje.trim()
-        ? `${formData.naveInicial} [${formData.viaje.trim()}]`
-        : formData.naveInicial || '';
+      // Guardar solo el nombre de la nave, sin el viaje (el viaje se guarda por separado)
+      const naveCompleta = formData.naveInicial || '';
 
       // Generar solo REF EXTERNA (REF ASLI se genera automáticamente por trigger SQL)
       const refExternaResult = await generateRefExternaMobile(
@@ -655,6 +655,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         shipper: formData.shipper,
         naviera: formData.naviera,
         nave_inicial: naveCompleta,
+        viaje: formData.viaje?.trim() || null,
         especie: formData.especie,
         temporada: formData.temporada, // ✅ Agregar temporada
         temperatura: formData.temperatura ? parseFloat(formData.temperatura) : null,
@@ -1445,11 +1446,6 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     </p>
                   </div>
                 )}
-                {formData.naveInicial && formData.viaje && (
-                  <p className="text-[10px] sm:text-xs text-gray-700">
-                    El número de viaje se mostrará entre corchetes en la nave completa
-                  </p>
-                )}
               </div>
 
               {/* Depósito */}
@@ -1929,7 +1925,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
                     </div>
                     <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Nave</span>
-                      <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.naveInicial} {formData.viaje ? `[${formData.viaje}]` : ''}</p>
+                      <p className={`mt-1 text-base ${getLabelStyles()}`}>{formData.naveInicial || '-'}</p>
                     </div>
                     <div className={`p-4 border ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700/50' : 'bg-white border border-gray-200'}`}>
                       <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>POL</span>

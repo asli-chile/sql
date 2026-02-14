@@ -95,6 +95,7 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     contenedor: supabaseData.contenedor,
     naviera: supabaseData.naviera,
     naveInicial: supabaseData.nave_inicial,
+    viaje: supabaseData.viaje || undefined,
     especie: supabaseData.especie,
     temperatura: supabaseData.temperatura,
     cbm: supabaseData.cbm,

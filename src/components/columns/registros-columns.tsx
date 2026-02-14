@@ -541,11 +541,10 @@ export const createRegistrosColumns = (
           viaje = match[2].trim();
         }
 
-        // Mostrar nave y viaje juntos, sin edición inline (solo se edita con clic derecho)
+        // Mostrar solo el nombre de la nave, sin edición inline (solo se edita con clic derecho)
         return (
           <div className="text-sm">
             {value || '-'}
-            {viaje && <span className="text-gray-500 dark:text-gray-400"> [{viaje}]</span>}
           </div>
         );
       },

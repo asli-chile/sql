@@ -403,6 +403,11 @@ export default function TablasPersonalizadasPage() {
       // Procesar el valor según el tipo de campo
       let processedValue: any = newValue;
       
+      // Campos de texto (como viaje, booking, etc.) - convertir a string o null
+      if (['viaje', 'booking'].includes(field)) {
+        processedValue = newValue === '' || newValue === null || newValue === undefined ? null : String(newValue).trim();
+      }
+      
       // Campos numéricos
       if (['temperatura', 'cbm', 'co2', 'o2', 'tt', 'cantCont'].includes(field)) {
         processedValue = newValue === '' || newValue === null ? null : Number(newValue);
@@ -600,8 +605,16 @@ export default function TablasPersonalizadasPage() {
           .single();
 
         if (updateError) {
-          console.error('Error al actualizar registro:', updateError);
-          showError('Error al guardar el cambio. Por favor, intenta de nuevo.');
+          console.error('Error al actualizar registro:', {
+            error: updateError,
+            field,
+            dbFieldName,
+            processedValue,
+            recordId: record.id,
+            updateData
+          });
+          const errorMessage = updateError.message || updateError.details || 'Error desconocido al guardar el cambio';
+          showError(`Error al guardar el cambio: ${errorMessage}. Por favor, intenta de nuevo.`);
           // Revertir el cambio en la tabla
           params.node.setDataValue(field, oldValue);
           return;
@@ -623,6 +636,33 @@ export default function TablasPersonalizadasPage() {
           // Actualizar el registro en el estado local
           const updatedRegistro = convertSupabaseToApp(data);
           setRowData(prev => prev.map(r => r.id === updatedRegistro.id ? updatedRegistro : r));
+          
+          // Actualizar el nodo en AgGrid para reflejar los cambios
+          if (finalApi && params.node) {
+            // Actualizar el nodo con el registro completo PRIMERO
+            params.node.setData(updatedRegistro);
+            
+            // Para el campo viaje, asegurarse de que el valor se establezca correctamente
+            if (field === 'viaje') {
+              const viajeValue = updatedRegistro.viaje || '';
+              // Actualizar directamente en el nodo después de setData
+              params.node.setDataValue('viaje', viajeValue);
+              // También actualizar en params.data para asegurar consistencia
+              params.data.viaje = viajeValue;
+            }
+            
+            // Refrescar la celda para que muestre el nuevo valor
+            // Usar setTimeout para asegurar que el refresh ocurra después de la actualización
+            setTimeout(() => {
+              if (finalApi && params.node) {
+                finalApi.refreshCells({
+                  rowNodes: [params.node],
+                  columns: [field],
+                  force: true
+                });
+              }
+            }, 10);
+          }
           
           success('Cambio guardado correctamente');
         }
@@ -1108,15 +1148,42 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Booking',
       width: obtenerAnchoColumna('booking'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
     },
     {
       field: 'contenedor',
       headerName: 'Contenedor',
       width: obtenerAnchoColumna('contenedor'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
+      valueGetter: (params) => {
+        // Convertir array a string para edición (formato: "CONT1 CONT2 CONT3")
+        if (Array.isArray(params.data?.contenedor)) {
+          return params.data.contenedor.join(' ');
+        }
+        return params.data?.contenedor || '';
+      },
+      valueSetter: (params) => {
+        // Convertir string a array si hay múltiples contenedores separados por espacios
+        const value = params.newValue || '';
+        if (typeof value === 'string' && value.trim()) {
+          // Procesar: convertir a mayúsculas y separar por espacios
+          const contenedores = value.trim().split(/\s+/).map(c => c.toUpperCase()).filter(c => c);
+          // Guardar como string con espacios si hay múltiples, o como string simple si hay uno
+          params.data.contenedor = contenedores.length > 1 ? contenedores.join(' ') : (contenedores[0] || '');
+        } else {
+          params.data.contenedor = '';
+        }
+        return true;
+      },
       valueFormatter: (params) => {
+        // Mostrar arrays como string separado por comas
         if (Array.isArray(params.value)) {
           return params.value.join(', ');
+        }
+        // Si es string con espacios, mostrar separado por comas
+        if (typeof params.value === 'string' && params.value.includes(' ')) {
+          return params.value.split(/\s+/).join(', ');
         }
         return params.value || '';
       },
@@ -1156,30 +1223,38 @@ export default function TablasPersonalizadasPage() {
           values: navesUnicas,
         };
       },
-      valueFormatter: (params) => {
-        let value = params.value || '';
-        const registro = params.data as Registro;
-        if (registro.viaje) {
-          value = `${value} [${registro.viaje}]`;
-        }
-        return value;
+      valueGetter: (params) => {
+        // Extraer solo el nombre de la nave, sin el viaje (si viene en formato "NAVE [VIAJE]")
+        const naveInicial = params.data?.naveInicial || '';
+        const match = naveInicial.match(/^(.+?)\s*\[.+\]$/);
+        return match ? match[1].trim() : naveInicial;
       },
     },
     {
       field: 'viaje',
       headerName: 'Viaje',
       valueGetter: (params) => {
-        // Primero intentar obtener el viaje directamente del registro
-        if (params.data?.viaje) {
-          return params.data.viaje;
+        // IMPORTANTE: Siempre priorizar el campo viaje del registro
+        // Verificar primero en params.data.viaje (el valor más actualizado)
+        const viajeValue = params.data?.viaje;
+        if (viajeValue !== undefined && viajeValue !== null && String(viajeValue).trim() !== '') {
+          return String(viajeValue).trim();
         }
-        // Si no existe, extraerlo de la columna naveInicial que tiene formato "NAVE [VIAJE]"
+        // Si no existe en el campo viaje, extraerlo de la columna naveInicial que puede tener formato "NAVE [VIAJE]" (solo para datos antiguos)
         const naveInicial = params.data?.naveInicial || '';
         const match = naveInicial.match(/\[(.+?)\]/);
         return match ? match[1] : '';
       },
+      valueSetter: (params) => {
+        // Guardar el viaje editado directamente en el campo viaje
+        const newViajeValue = params.newValue || '';
+        params.data.viaje = newViajeValue;
+        // También asegurarse de que el valor se propague correctamente
+        return true;
+      },
       width: obtenerAnchoColumna('viaje'),
       filter: 'agTextColumnFilter',
+      editable: canEdit,
     },
     {
       field: 'especie',
@@ -2890,7 +2965,7 @@ export default function TablasPersonalizadasPage() {
                             <p className={`text-xs truncate ${
                               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                             }`}>
-                              {registro.naveInicial || '-'} {registro.viaje ? `(${registro.viaje})` : ''}
+                              {registro.naveInicial || '-'}
                             </p>
                           </div>
                         </div>

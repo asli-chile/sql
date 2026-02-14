@@ -321,8 +321,8 @@ export function EditModal({
       setField('comentario', formData.comentario);
       setField('observacion', formData.observacion);
 
-      const naveCompleta = naveBase ? (viajeTrimmed ? `${naveBase} [${viajeTrimmed}]` : naveBase) : null;
-      setField('naveInicial', naveCompleta);
+      // Guardar solo el nombre de la nave, sin el viaje (el viaje se guarda por separado)
+      setField('naveInicial', naveBase || null);
       setField('viaje', viajeTrimmed ? viajeTrimmed : null);
 
       updatedData.updated_at = new Date().toISOString();
@@ -544,10 +544,7 @@ export function EditModal({
                   Nave actual
                 </span>
                 <span className={`${summaryValueClasses} border-slate-700/60 bg-slate-900/70 text-slate-200`}>
-                  {formData.naveInicial
-                    ? `${formData.naveInicial}${formData.viaje?.trim() ? ` [${formData.viaje.trim()}]` : ''
-                    }`
-                    : '-'}
+                  {formData.naveInicial || '-'}
                 </span>
               </div>
             </div>
@@ -651,11 +648,6 @@ export function EditModal({
               {formData.naveInicial && !formData.viaje && error === VIAJE_REQUIRED_MESSAGE && (
                 <p className="mt-1 text-[11px] text-rose-300">
                   {VIAJE_REQUIRED_MESSAGE}
-                </p>
-              )}
-              {formData.naveInicial && formData.viaje?.trim() && (
-                <p className="mt-1 text-[11px] text-slate-400">
-                  Se guardará como {`${formData.naveInicial} [${formData.viaje.trim()}]`}
                 </p>
               )}
             </div>

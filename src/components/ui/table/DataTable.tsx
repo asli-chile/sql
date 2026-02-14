@@ -183,9 +183,7 @@ export function DataTable({
         return;
       }
 
-      const display = registro.viaje && !rawNave.includes('[')
-        ? `${rawNave} [${registro.viaje.trim()}]`
-        : rawNave;
+      const display = rawNave;
 
       if (!map.has(rawNave)) {
         map.set(rawNave, display);
@@ -1960,11 +1958,9 @@ export function DataTable({
 
                 const formatNave = (): string => {
                   const nave = record.naveInicial || '';
-                  const viaje = record.viaje;
-                  if (viaje && !nave.includes('[')) {
-                    return `${nave} [${viaje}]`;
-                  }
-                  return nave || '-';
+                  // Extraer solo el nombre de la nave si viene con formato "NAVE [VIAJE]"
+                  const match = nave.match(/^(.+?)\s*\[.+\]$/);
+                  return match ? match[1].trim() : (nave || '-');
                 };
 
                 const calculateTransito = (): string => {

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS registros (
   contenedor TEXT NOT NULL,
   naviera TEXT NOT NULL,
   nave_inicial TEXT NOT NULL,
+  viaje TEXT,
   especie TEXT NOT NULL,
   temperatura INTEGER,
   cbm INTEGER,

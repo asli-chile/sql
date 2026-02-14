@@ -28,7 +28,7 @@ export const ANCHOS_COLUMNAS: ColumnaConfig[] = [
   
   // Transporte
   { field: 'naviera', headerName: 'Naviera', width: 120 },
-  { field: 'naveInicial', headerName: 'Nave', width: 210 },
+  { field: 'naveInicial', headerName: 'Nave', width: 180 },
   { field: 'viaje', headerName: 'Viaje', width: 120 },
   
   // Producto y destino
