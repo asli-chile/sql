@@ -82,6 +82,20 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     return parseDateString(datePart);
   };
 
+  // Función para normalizar fechas con hora (datetime) - preserva la hora completa
+  const normalizeSupabaseDateTime = (value: unknown) => {
+    if (!value) return null;
+    if (value instanceof Date) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      // Si es un string ISO, crear Date directamente para preservar hora
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? null : date;
+    }
+    return null;
+  };
+
   return {
     id: supabaseData.id,
     ingresado: normalizeSupabaseDate(supabaseData.ingresado),
@@ -112,6 +126,9 @@ export const convertSupabaseToApp = (supabaseData: any): Registro => {
     estado: supabaseData.estado,
     roleadaDesde: supabaseData.roleada_desde,
     ingresoStacking: normalizeSupabaseDate(supabaseData.ingreso_stacking),
+    inicioStacking: normalizeSupabaseDateTime(supabaseData.inicio_stacking),
+    finStacking: normalizeSupabaseDateTime(supabaseData.fin_stacking),
+    cutOff: normalizeSupabaseDateTime(supabaseData.cut_off),
     tipoIngreso: supabaseData.tipo_ingreso,
     numeroBl: supabaseData.numero_bl,
     estadoBl: supabaseData.estado_bl,

@@ -33,6 +33,9 @@ export interface Registro {
   estado: 'PENDIENTE' | 'CONFIRMADO' | 'CANCELADO';
   roleadaDesde: string;
   ingresoStacking: Date | null;
+  inicioStacking?: Date | null;
+  finStacking?: Date | null;
+  cutOff?: Date | null;
   tipoIngreso: 'NORMAL' | 'EARLY' | 'LATE' | 'EXTRA LATE';
   numeroBl: string;
   estadoBl: string;

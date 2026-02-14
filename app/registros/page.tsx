@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase-browser';
 import { User } from '@supabase/supabase-js';
 import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridOptions, GridReadyEvent, ICellRendererParams, IHeaderParams } from 'ag-grid-community';
+import { ColDef, GridOptions, GridReadyEvent, ICellRendererParams, IHeaderParams, ICellEditorParams } from 'ag-grid-community';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-quartz.css';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -328,6 +328,60 @@ export default function TablasPersonalizadasPage() {
   };
 
   // Manejar cambios de celda para edición inline
+  // Editor personalizado de fecha y hora (calendario y reloj)
+  const DateTimeCellEditor = forwardRef<any, ICellEditorParams>((props, ref) => {
+    const [value, setValue] = useState<string>('');
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+      // Convertir el valor a formato datetime-local (YYYY-MM-DDTHH:mm)
+      if (props.value) {
+        const date = props.value instanceof Date ? props.value : new Date(props.value);
+        if (!isNaN(date.getTime())) {
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          setValue(`${year}-${month}-${day}T${hours}:${minutes}`);
+        }
+      }
+      // Focus en el input después de un pequeño delay
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 0);
+    }, []);
+
+    // Exponer métodos requeridos por ICellEditor
+    useImperativeHandle(ref, () => ({
+      getValue: () => {
+        if (!value) return null;
+        const date = new Date(value);
+        return isNaN(date.getTime()) ? null : date;
+      },
+      isCancelBeforeStart: () => false,
+      isCancelAfterEnd: () => false,
+    }));
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setValue(e.target.value);
+    };
+
+    return (
+      <input
+        ref={inputRef}
+        type="datetime-local"
+        value={value}
+        onChange={handleChange}
+        className="w-full h-full px-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+        style={{ minWidth: '200px' }}
+      />
+    );
+  });
+
+  DateTimeCellEditor.displayName = 'DateTimeCellEditor';
+
   const onCellValueChanged = useCallback(async (params: any) => {
     if (!params.data || !params.data.id) return;
 
@@ -425,7 +479,7 @@ export default function TablasPersonalizadasPage() {
       }
       
       // Campos de fecha
-      if (['etd', 'eta', 'ingresado', 'ingresoStacking'].includes(field)) {
+      if (['etd', 'eta', 'ingresado', 'ingresoStacking', 'inicioStacking', 'finStacking', 'cutOff'].includes(field)) {
         if (newValue) {
           // Si es string, intentar parsearlo
           if (typeof newValue === 'string') {
@@ -554,6 +608,30 @@ export default function TablasPersonalizadasPage() {
             // Guardar los IDs de los nodos que deben mantenerse seleccionados
             const idsToKeepSelected = nodesToUpdate.map(node => node.data?.id).filter(Boolean) as string[];
             
+            // Para campos de fecha/hora (stacking), asegurarse de que los valores Date se establezcan correctamente
+            if (['inicioStacking', 'finStacking', 'cutOff'].includes(field)) {
+              nodesToUpdate.forEach(node => {
+                const updatedRegistro = updatedRegistros.find(ur => ur.id === node.data?.id);
+                if (updatedRegistro) {
+                  const dateValue = updatedRegistro[field as keyof Registro];
+                  if (dateValue && !Array.isArray(dateValue)) {
+                    const date = dateValue instanceof Date ? dateValue : new Date(dateValue as string | number);
+                    if (!isNaN(date.getTime())) {
+                      node.setDataValue(field, date);
+                      if (node.data) {
+                        (node.data as any)[field] = date;
+                      }
+                    }
+                  } else {
+                    node.setDataValue(field, null);
+                    if (node.data) {
+                      (node.data as any)[field] = null;
+                    }
+                  }
+                }
+              });
+            }
+            
             // Refrescar las celdas para que se muestren los cambios
             if (nodesToUpdate.length > 0) {
               // Activar bandera ANTES de refrescar para evitar que onSelectionChanged interfiera
@@ -657,6 +735,22 @@ export default function TablasPersonalizadasPage() {
               params.node.setDataValue('viaje', viajeValue);
               // También actualizar en params.data para asegurar consistencia
               params.data.viaje = viajeValue;
+            }
+            
+            // Para campos de fecha/hora (stacking), asegurarse de que el valor Date se establezca correctamente
+            if (['inicioStacking', 'finStacking', 'cutOff'].includes(field)) {
+              const dateValue = updatedRegistro[field as keyof Registro];
+              if (dateValue && !Array.isArray(dateValue)) {
+                // Convertir a Date si no lo es
+                const date = dateValue instanceof Date ? dateValue : new Date(dateValue as string | number);
+                if (!isNaN(date.getTime())) {
+                  params.node.setDataValue(field, date);
+                  (params.data as any)[field] = date;
+                }
+              } else {
+                params.node.setDataValue(field, null);
+                (params.data as any)[field] = null;
+              }
             }
             
             // Refrescar la celda para que muestre el nuevo valor
@@ -1794,6 +1888,111 @@ export default function TablasPersonalizadasPage() {
       valueFormatter: (params) => {
         if (!params.value) return '';
         return new Date(params.value).toLocaleDateString('es-CL');
+      },
+    },
+    {
+      field: 'inicioStacking',
+      headerName: 'Inicio Stacking',
+      width: obtenerAnchoColumna('inicioStacking'),
+      filter: 'agDateColumnFilter',
+      editable: canEdit,
+      cellEditor: DateTimeCellEditor,
+      valueGetter: (params) => {
+        // Asegurar que obtenemos el valor del registro
+        const value = params.data?.inicioStacking;
+        if (!value) return null;
+        try {
+          const date = value instanceof Date ? value : new Date(value);
+          return isNaN(date.getTime()) ? null : date;
+        } catch {
+          return null;
+        }
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        try {
+          const date = params.value instanceof Date ? params.value : new Date(params.value);
+          if (isNaN(date.getTime())) return '';
+          // Formato: dd/mm/yyyy HH:mm
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year} ${hours}:${minutes}`;
+        } catch {
+          return '';
+        }
+      },
+    },
+    {
+      field: 'finStacking',
+      headerName: 'Fin Stacking',
+      width: obtenerAnchoColumna('finStacking'),
+      filter: 'agDateColumnFilter',
+      editable: canEdit,
+      cellEditor: DateTimeCellEditor,
+      valueGetter: (params) => {
+        // Asegurar que obtenemos el valor del registro
+        const value = params.data?.finStacking;
+        if (!value) return null;
+        try {
+          const date = value instanceof Date ? value : new Date(value);
+          return isNaN(date.getTime()) ? null : date;
+        } catch {
+          return null;
+        }
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        try {
+          const date = params.value instanceof Date ? params.value : new Date(params.value);
+          if (isNaN(date.getTime())) return '';
+          // Formato: dd/mm/yyyy HH:mm
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year} ${hours}:${minutes}`;
+        } catch {
+          return '';
+        }
+      },
+    },
+    {
+      field: 'cutOff',
+      headerName: 'Cut Off',
+      width: obtenerAnchoColumna('cutOff'),
+      filter: 'agDateColumnFilter',
+      editable: canEdit,
+      cellEditor: DateTimeCellEditor,
+      valueGetter: (params) => {
+        // Asegurar que obtenemos el valor del registro
+        const value = params.data?.cutOff;
+        if (!value) return null;
+        try {
+          const date = value instanceof Date ? value : new Date(value);
+          return isNaN(date.getTime()) ? null : date;
+        } catch {
+          return null;
+        }
+      },
+      valueFormatter: (params) => {
+        if (!params.value) return '';
+        try {
+          const date = params.value instanceof Date ? params.value : new Date(params.value);
+          if (isNaN(date.getTime())) return '';
+          // Formato: dd/mm/yyyy HH:mm
+          const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year} ${hours}:${minutes}`;
+        } catch {
+          return '';
+        }
       },
     },
     {

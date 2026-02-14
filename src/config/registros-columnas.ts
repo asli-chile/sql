@@ -64,6 +64,9 @@ export const ANCHOS_COLUMNAS: ColumnaConfig[] = [
   { field: 'tipoAtmosfera', headerName: 'Tipo Atmósfera', width: 160 },
   { field: 'roleadaDesde', headerName: 'Roleada Desde', width: 134 },
   { field: 'ingresoStacking', headerName: 'Ingreso Stacking', width: 173 },
+  { field: 'inicioStacking', headerName: 'Inicio Stacking', width: 173 },
+  { field: 'finStacking', headerName: 'Fin Stacking', width: 173 },
+  { field: 'cutOff', headerName: 'Cut Off', width: 173 },
   
   // Documentación
   { field: 'numeroBl', headerName: 'Número BL', width: 142 },

@@ -77,13 +77,18 @@ export function SimpleStackingModal({ isOpen, onClose, record, onSave }: SimpleS
 
       const supabase = createClient();
 
-      // Función para formatear de datetime-local a timestamp ISO estándar
+      // Función para formatear de datetime-local a timestamp ISO estándar con zona horaria
       const formatForDB = (datetimeLocal: string) => {
         if (!datetimeLocal) return null;
         
         // datetime-local viene como "YYYY-MM-DDTHH:MM"
-        // Devolverlo en formato ISO estándar para Supabase
-        return datetimeLocal + ':00';
+        // Agregar segundos y zona horaria para preservar la hora exacta
+        // Usar UTC para evitar conversiones de zona horaria
+        const date = new Date(datetimeLocal);
+        if (isNaN(date.getTime())) return null;
+        
+        // Devolver en formato ISO con zona horaria UTC para preservar la hora exacta
+        return date.toISOString();
       };
 
       // Guardar en formato ISO estándar
