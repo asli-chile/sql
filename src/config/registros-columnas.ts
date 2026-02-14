@@ -32,7 +32,7 @@ export const ANCHOS_COLUMNAS: ColumnaConfig[] = [
   { field: 'viaje', headerName: 'Viaje', width: 120 },
   
   // Producto y destino
-  { field: 'especie', headerName: 'Especie', width: 120 },
+  { field: 'especie', headerName: 'Especie', width: 160},
   { field: 'pol', headerName: 'POL', width: 120 },
   { field: 'pod', headerName: 'POD', width: 120 },
   { field: 'deposito', headerName: 'Depósito', width: 130 },
