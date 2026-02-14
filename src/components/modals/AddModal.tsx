@@ -523,6 +523,7 @@ Cantidad de reservas (1 contenedor por reserva):      ${resolvedCopies}
         naviera: formData.naviera,
         nave_inicial: naveCompleta,
         especie: formData.especie,
+        temporada: formData.temporada, // ✅ Agregar temporada
         temperatura: formData.temperatura ? parseFloat(formData.temperatura) : null,
         cbm: formData.cbm ? parseFloat(formData.cbm) : null,
         pol: formData.pol,
