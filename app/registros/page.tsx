@@ -1784,7 +1784,7 @@ export default function TablasPersonalizadasPage() {
     {
       title: 'Módulos',
       items: [
-        { label: 'Embarques', id: '/registros', icon: Ship },
+        { label: 'Embarques', id: '/registros', isActive: true, icon: Ship },
         { label: 'Transportes', id: '/transportes', icon: Truck },
         { label: 'Documentos', id: '/documentos', icon: FileText },
         ...(userInfo && userInfo.rol !== 'cliente'
@@ -1801,7 +1801,6 @@ export default function TablasPersonalizadasPage() {
           ]
           : []),
         { label: 'Itinerario', id: '/itinerario', icon: Ship },
-        { label: 'Registros', id: '/registros', isActive: true, icon: Grid3x3 },
       ],
     },
     ...(isSuperAdmin
