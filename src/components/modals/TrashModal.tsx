@@ -5,6 +5,7 @@ import { X, Trash2, RotateCcw, RefreshCw, CheckSquare, Square, Loader2 } from 'l
 import { Registro } from '@/types/registros';
 import { createClient } from '@/lib/supabase-browser';
 import { convertSupabaseToApp } from '@/lib/migration-utils';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface TrashModalProps {
   isOpen: boolean;
@@ -28,6 +29,8 @@ type ConfirmDialogConfig = {
 };
 
 export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: TrashModalProps) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const [deletedRecords, setDeletedRecords] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedDays, setSelectedDays] = useState(7); // Días para conservar registros eliminados
@@ -344,38 +347,70 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur">
-      <div className="relative flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-800/60 bg-slate-950 shadow-2xl shadow-slate-950/50">
+    <div className={`fixed inset-0 z-[1200] flex items-center justify-center px-4 py-6 backdrop-blur-sm ${
+      isDark ? 'bg-black/80' : 'bg-gray-900/70'
+    }`}>
+      <div className={`relative flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded border shadow-xl ${
+        isDark 
+          ? 'border-gray-700 bg-gray-900' 
+          : 'border-gray-300 bg-white'
+      }`}>
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800/60 bg-slate-950/80 px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
+        <div className={`flex items-center justify-between border-b px-6 py-4 ${
+          isDark 
+            ? 'border-gray-700 bg-gray-800' 
+            : 'border-gray-200 bg-gray-50'
+        }`}>
+          <div className="flex items-center gap-4">
+            <div className={`inline-flex h-10 w-10 items-center justify-center rounded border ${
+              isDark
+                ? 'bg-rose-500/30 border-rose-500/50 text-rose-300'
+                : 'bg-rose-100 border-rose-300 text-rose-600'
+            }`}>
               <Trash2 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">Papelera</h2>
-              <p className="text-[12px] text-slate-400">Gestiona los registros eliminados</p>
+              <h2 className={`text-xl font-bold ${
+                isDark ? 'text-white' : 'text-gray-900'
+              }`}>Papelera</h2>
+              <p className={`text-sm mt-1 ${
+                isDark ? 'text-gray-300' : 'text-gray-600'
+              }`}>Gestiona los registros eliminados</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-800/70 bg-slate-900/70 text-slate-300 transition-colors hover:border-slate-600 hover:text-white"
+            className={`inline-flex h-9 w-9 items-center justify-center rounded transition-colors border ${
+              isDark
+                ? 'text-gray-300 hover:bg-gray-700 hover:text-white border-gray-700'
+                : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900 border-gray-300'
+            }`}
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Controls */}
-        <div className="border-b border-slate-800/60 bg-slate-950/80 px-6 py-4">
+        <div className={`border-b px-6 py-4 ${
+          isDark 
+            ? 'border-gray-700 bg-gray-800' 
+            : 'border-gray-200 bg-gray-50'
+        }`}>
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <label className="text-sm font-medium text-slate-300">
+              <label className={`text-sm font-medium ${
+                isDark ? 'text-gray-200' : 'text-gray-700'
+              }`}>
                 Conservar registros eliminados por:
               </label>
               <select
                 value={selectedDays}
                 onChange={(e) => setSelectedDays(Number(e.target.value))}
-                className="rounded-full border border-slate-800/70 bg-slate-900/70 px-3 py-1.5 text-sm text-slate-200 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                className={`rounded border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 ${
+                  isDark
+                    ? 'border-gray-600 bg-gray-800 text-white focus:border-blue-500 focus:ring-blue-500/50'
+                    : 'border-gray-300 bg-white text-gray-900 focus:border-blue-500 focus:ring-blue-500/50'
+                }`}
               >
                 <option value={7}>7 días</option>
                 <option value={14}>14 días</option>
@@ -385,7 +420,7 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
               <button
                 onClick={loadDeletedRecords}
                 disabled={loading}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sky-500/20 transition disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-blue-700 hover:border-blue-700 disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Actualizar
@@ -396,19 +431,31 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   onClick={isAllSelected ? clearSelection : selectAllRecords}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-3 py-1.5 text-sm text-slate-200 hover:border-sky-500/60 hover:text-sky-200"
+                  className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm transition ${
+                    isDark
+                      ? 'border-gray-600 bg-gray-800 text-gray-200 hover:border-blue-500 hover:bg-gray-700 hover:text-blue-200'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 hover:bg-gray-50 hover:text-blue-600'
+                  }`}
                 >
                   {isAllSelected ? (
-                    <CheckSquare className="h-4 w-4 text-sky-300" />
+                    <CheckSquare className={`h-4 w-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
                   ) : isPartiallySelected ? (
-                    <div className="h-4 w-4 rounded border-2 border-sky-400 bg-sky-400/20" />
+                    <div className={`h-4 w-4 rounded border-2 ${
+                      isDark 
+                        ? 'border-blue-400 bg-blue-400/30' 
+                        : 'border-blue-500 bg-blue-100'
+                    }`} />
                   ) : (
-                    <Square className="h-4 w-4 text-slate-400" />
+                    <Square className={`h-4 w-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                   )}
                   {isAllSelected ? 'Deseleccionar todo' : 'Seleccionar todo'}
                 </button>
                 {selectedRecords.size > 0 && (
-                  <span className="inline-flex items-center gap-2 rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-200">
+                  <span className={`inline-flex items-center gap-2 rounded border px-3 py-1 text-sm font-medium ${
+                    isDark
+                      ? 'border-blue-500/60 bg-blue-500/20 text-blue-200'
+                      : 'border-blue-500/40 bg-blue-50 text-blue-700'
+                  }`}>
                     {selectedRecords.size} seleccionado(s)
                   </span>
                 )}
@@ -417,7 +464,11 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
                     <button
                       onClick={handleBulkRestore}
                       disabled={bulkLoading}
-                      className="inline-flex items-center gap-2 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50"
+                      className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
+                        isDark
+                          ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 hover:border-emerald-500'
+                          : 'border-emerald-500/60 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-600'
+                      }`}
                     >
                       <RotateCcw className="h-4 w-4" />
                       Restaurar
@@ -425,7 +476,11 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
                     <button
                       onClick={handleBulkDelete}
                       disabled={bulkLoading}
-                      className="inline-flex items-center gap-2 rounded-full border border-rose-500/60 bg-rose-500/10 px-3 py-1.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+                      className={`inline-flex items-center gap-2 rounded border px-3 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
+                        isDark
+                          ? 'border-rose-500/60 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 hover:border-rose-500'
+                          : 'border-rose-500/60 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-600'
+                      }`}
                     >
                       <Trash2 className="h-4 w-4" />
                       Eliminar
@@ -438,14 +493,26 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
+        <div className={`flex-1 overflow-y-auto px-6 py-5 ${
+          isDark ? 'bg-gray-900' : 'bg-white'
+        }`}>
           {loading ? (
-            <div className="flex items-center justify-center py-10 text-slate-300">
-              <div className="mr-3 h-8 w-8 animate-spin rounded-full border-2 border-slate-700 border-t-sky-400" />
+            <div className={`flex items-center justify-center py-10 ${
+              isDark ? 'text-gray-200' : 'text-gray-700'
+            }`}>
+              <div className={`mr-3 h-8 w-8 animate-spin rounded-full border-2 ${
+                isDark 
+                  ? 'border-gray-600 border-t-blue-500' 
+                  : 'border-gray-300 border-t-blue-600'
+              }`} />
               Cargando registros eliminados…
             </div>
           ) : deletedRecords.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-800/60 bg-slate-950/70 py-12 text-slate-400">
+            <div className={`flex flex-col items-center justify-center rounded border py-12 ${
+              isDark
+                ? 'border-gray-700 bg-gray-800 text-gray-300'
+                : 'border-gray-200 bg-gray-50 text-gray-600'
+            }`}>
               <Trash2 className="mb-3 h-10 w-10" />
               <p className="text-sm">No hay registros en la papelera.</p>
             </div>
@@ -454,44 +521,68 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
               {deletedRecords.map((record) => (
                 <div
                   key={record.id}
-                  className={`rounded-2xl border px-4 py-4 transition ${
+                  className={`rounded border px-4 py-4 transition ${
                     selectedRecords.has(record.id!)
-                      ? 'border-sky-500/50 bg-sky-500/10'
-                      : 'border-slate-800/60 bg-slate-900/60'
+                      ? isDark
+                        ? 'border-blue-500/70 bg-blue-500/15'
+                        : 'border-blue-500/50 bg-blue-50'
+                      : isDark
+                        ? 'border-gray-700 bg-gray-800'
+                        : 'border-gray-200 bg-gray-50'
                   }`}
                 >
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div className="flex items-start gap-3">
                       <button
                         onClick={() => toggleRecordSelection(record.id!)}
-                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-slate-800/60 bg-slate-900/60 text-slate-300 transition hover:border-sky-500/60 hover:text-sky-200"
+                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded border transition ${
+                          isDark
+                            ? 'border-gray-600 bg-gray-800 text-gray-300 hover:border-blue-500 hover:bg-gray-700 hover:text-blue-200'
+                            : 'border-gray-300 bg-white text-gray-600 hover:border-blue-500 hover:bg-gray-50 hover:text-blue-600'
+                        }`}
                       >
                         {selectedRecords.has(record.id!) ? (
-                          <CheckSquare className="h-4 w-4 text-sky-300" />
+                          <CheckSquare className={`h-4 w-4 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
                         ) : (
-                          <Square className="h-4 w-4 text-slate-400" />
+                          <Square className={`h-4 w-4 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} />
                         )}
                       </button>
                       <div>
                         <div className="flex flex-wrap items-center gap-3">
-                          <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sm font-semibold text-sky-200">
+                          <span className={`rounded border px-3 py-1 text-sm font-medium ${
+                            isDark
+                              ? 'border-blue-500/60 bg-blue-500/20 text-blue-200'
+                              : 'border-blue-500/40 bg-blue-50 text-blue-700'
+                          }`}>
                             {record.refAsli}
                           </span>
-                          <span className="text-sm text-slate-300">
+                          <span className={`text-sm ${
+                            isDark ? 'text-gray-200' : 'text-gray-700'
+                          }`}>
                             {record.ejecutivo} · {record.shipper}
                           </span>
-                          <span className="text-sm text-slate-400">
+                          <span className={`text-sm ${
+                            isDark ? 'text-gray-300' : 'text-gray-600'
+                          }`}>
                             {record.naviera} · {record.especie}
                           </span>
                         </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-3 text-[12px] text-slate-400">
+                        <div className={`mt-2 flex flex-wrap items-center gap-3 text-xs ${
+                          isDark ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
                           <span className="inline-flex items-center gap-1">
-                            Eliminado: <span className="font-semibold text-slate-200">{formatDate(record.deletedAt || null)}</span>
+                            Eliminado: <span className={`font-semibold ${
+                              isDark ? 'text-gray-100' : 'text-gray-900'
+                            }`}>{formatDate(record.deletedAt || null)}</span>
                           </span>
                           <span className="inline-flex items-center gap-1">
-                            Por: <span className="font-semibold text-slate-200">{record.deletedBy || 'Usuario'}</span>
+                            Por: <span className={`font-semibold ${
+                              isDark ? 'text-gray-100' : 'text-gray-900'
+                            }`}>{record.deletedBy || 'Usuario'}</span>
                           </span>
-                          <span className="inline-flex items-center gap-1 text-amber-300">
+                          <span className={`inline-flex items-center gap-1 font-medium ${
+                            isDark ? 'text-amber-400' : 'text-amber-600'
+                          }`}>
                             Se eliminará en {calculateDaysRemaining(record.deletedAt || null)} días
                           </span>
                         </div>
@@ -501,14 +592,22 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
                     <div className="flex flex-shrink-0 items-center gap-2">
                       <button
                         onClick={() => handleRestore(record.id!)}
-                        className="inline-flex items-center gap-1 rounded-full border border-emerald-500/50 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-200 hover:bg-emerald-500/20"
+                        className={`inline-flex items-center gap-1 rounded border px-3 py-1.5 text-sm font-medium transition ${
+                          isDark
+                            ? 'border-emerald-500/60 bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30 hover:border-emerald-500'
+                            : 'border-emerald-500/60 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-600'
+                        }`}
                       >
                         <RotateCcw className="h-4 w-4" />
                         Restaurar
                       </button>
                       <button
                         onClick={() => handlePermanentDelete(record.id!)}
-                        className="inline-flex items-center gap-1 rounded-full border border-rose-500/60 bg-rose-500/10 px-3 py-1.5 text-sm font-semibold text-rose-200 hover:bg-rose-500/20"
+                        className={`inline-flex items-center gap-1 rounded border px-3 py-1.5 text-sm font-medium transition ${
+                          isDark
+                            ? 'border-rose-500/60 bg-rose-500/20 text-rose-200 hover:bg-rose-500/30 hover:border-rose-500'
+                            : 'border-rose-500/60 bg-rose-50 text-rose-700 hover:bg-rose-100 hover:border-rose-600'
+                        }`}
                       >
                         <Trash2 className="h-4 w-4" />
                         Eliminar
@@ -522,12 +621,22 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
         </div>
 
         {/* Footer */}
-        <div className="border-t border-slate-800/60 bg-slate-950/75 px-6 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-400">
-            <p>{deletedRecords.length} registro(s) eliminado(s)</p>
+        <div className={`border-t px-6 py-4 ${
+          isDark 
+            ? 'border-gray-700 bg-gray-800' 
+            : 'border-gray-200 bg-gray-50'
+        }`}>
+          <div className={`flex flex-wrap items-center justify-between gap-3 text-sm ${
+            isDark ? 'text-gray-300' : 'text-gray-700'
+          }`}>
+            <p className="font-medium">{deletedRecords.length} registro(s) eliminado(s)</p>
             <button
               onClick={onClose}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 px-4 py-1.5 text-sm font-medium text-slate-200 hover:border-slate-600 hover:text-white"
+              className={`inline-flex items-center gap-2 rounded border px-4 py-1.5 text-sm font-medium transition ${
+                isDark
+                  ? 'border-gray-600 bg-gray-800 text-gray-200 hover:border-gray-500 hover:bg-gray-700 hover:text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900'
+              }`}
             >
               Cerrar
             </button>
@@ -535,12 +644,18 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
         </div>
         {confirmConfig && (
           <div
-            className="fixed inset-0 z-[1300] flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm"
+            className={`fixed inset-0 z-[1300] flex items-center justify-center px-4 py-6 backdrop-blur-sm ${
+              isDark ? 'bg-black/70' : 'bg-gray-900/70'
+            }`}
             onClick={cancelConfirmAction}
             role="presentation"
           >
             <div
-              className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-950/90 p-6 shadow-2xl"
+              className={`w-full max-w-md rounded border p-6 shadow-lg ${
+                isDark
+                  ? 'border-gray-800 bg-gray-900'
+                  : 'border-gray-300 bg-white'
+              }`}
               onClick={(event) => event.stopPropagation()}
               role="dialog"
               aria-modal="true"
@@ -548,19 +663,27 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
             >
               <div className="flex items-start gap-4">
                 <span
-                  className={`inline-flex h-12 w-12 items-center justify-center rounded-full border ${
+                  className={`inline-flex h-12 w-12 items-center justify-center rounded border ${
                     confirmConfig.tone === 'sky'
-                      ? 'border-sky-500/40 bg-sky-500/15 text-sky-200'
-                      : 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                      ? isDark
+                        ? 'border-blue-500/40 bg-blue-500/15 text-blue-200'
+                        : 'border-blue-500/40 bg-blue-50 text-blue-600'
+                      : isDark
+                        ? 'border-rose-500/40 bg-rose-500/15 text-rose-200'
+                        : 'border-rose-500/40 bg-rose-50 text-rose-600'
                   }`}
                 >
                   <confirmConfig.Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <div>
-                  <h3 id="trash-confirm-title" className="text-lg font-semibold text-white">
+                  <h3 id="trash-confirm-title" className={`text-lg font-bold ${
+                    isDark ? 'text-white' : 'text-gray-900'
+                  }`}>
                     {confirmConfig.title}
                   </h3>
-                  <p className="mt-1 text-sm text-slate-300">{confirmConfig.description}</p>
+                  <p className={`mt-1 text-sm ${
+                    isDark ? 'text-gray-300' : 'text-gray-600'
+                  }`}>{confirmConfig.description}</p>
                 </div>
               </div>
 
@@ -569,7 +692,11 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
                   type="button"
                   onClick={cancelConfirmAction}
                   disabled={confirmProcessing || bulkLoading}
-                  className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-700/70 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  className={`inline-flex items-center justify-center gap-2 rounded border px-4 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isDark
+                      ? 'border-gray-700 bg-gray-800 text-gray-200 hover:border-gray-500 hover:text-white'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
                 >
                   Cancelar
                 </button>
@@ -577,10 +704,10 @@ export function TrashModal({ isOpen, onClose, onRestore, onSuccess, onError }: T
                   type="button"
                   onClick={executeConfirmAction}
                   disabled={confirmProcessing || bulkLoading}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:scale-[1.02] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`inline-flex items-center justify-center gap-2 rounded px-4 py-2 text-sm font-medium text-white transition focus:outline-none disabled:cursor-not-allowed disabled:opacity-60 ${
                     confirmConfig.tone === 'sky'
-                      ? 'bg-gradient-to-r from-sky-500 to-indigo-500 shadow-sky-500/20'
-                      : 'bg-gradient-to-r from-rose-500 to-red-500 shadow-rose-500/20'
+                      ? 'border border-blue-600 bg-blue-600 hover:bg-blue-700'
+                      : 'border border-rose-600 bg-rose-600 hover:bg-rose-700'
                   }`}
                 >
                   {confirmProcessing || bulkLoading ? (
