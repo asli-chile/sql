@@ -40,6 +40,10 @@ import { AppFooter } from '@/components/layout/AppFooter';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { SidebarSection } from '@/types/layout';
 import { useUser } from '@/hooks/useUser';
+import { BookingModal } from '@/components/modals/BookingModal';
+import { Upload, Eye, RefreshCw } from 'lucide-react';
+import { normalizeBooking, sanitizeFileName, parseStoredDocumentName, formatFileDisplayName } from '@/utils/documentUtils';
+import { useToast } from '@/hooks/useToast';
 
 // Importar el mapa dinámicamente para evitar problemas con SSR
 const ShipmentsMap = dynamic(() => import('@/components/tracking/ShipmentsMap').then(mod => ({ default: mod.ShipmentsMap })), {
@@ -175,6 +179,8 @@ const computeStatsForRecords = (records: RawRegistroStats[]): DashboardStats => 
 const DEFAULT_SEASON_ORDER = ['2025-2026', '2024-2025', '2023-2024', '2022-2023'];
 
 function DashboardPage() {
+  console.log('🚀 DashboardPage - Componente renderizado');
+  
   const [user, setUser] = useState<User | null>(null);
   const [userInfo, setUserInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -194,6 +200,15 @@ function DashboardPage() {
   const searchParams = useSearchParams();
   const { theme } = useTheme();
   const { transportesCount, registrosCount, setCurrentUser, currentUser } = useUser();
+  const { success, error: showError } = useToast();
+  
+  // Estados para modal de booking y documentos
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedRecordForBooking, setSelectedRecordForBooking] = useState<RawRegistroStats | null>(null);
+  const [bookingDocuments, setBookingDocuments] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
+  const [uploadingBooking, setUploadingBooking] = useState<string | null>(null);
+  
+  console.log('🚀 DashboardPage - Estados inicializados, showBookingModal:', showBookingModal);
 
   // Detectar si estamos en la página de registros y qué filtro está activo
   const isRegistrosPage = pathname === '/registros';
@@ -457,6 +472,7 @@ function DashboardPage() {
     if (user && currentUser) {
       loadStats();
       void loadActiveVessels();
+      void loadBookingDocuments();
 
       // Refrescar datos de buques automáticamente cada 60 segundos (1 minuto)
       const intervalId = setInterval(() => {
@@ -467,7 +483,17 @@ function DashboardPage() {
         clearInterval(intervalId);
       };
     }
-  }, [user, currentUser, loadStats]);
+  }, [user, currentUser, loadStats, loadBookingDocuments]);
+
+  // Debug: Verificar estado del modal
+  useEffect(() => {
+    console.log('🔍 Estado del modal actualizado:', {
+      showBookingModal,
+      selectedRecordForBooking: selectedRecordForBooking?.ref_asli,
+      booking: selectedRecordForBooking?.booking,
+      timestamp: new Date().toISOString()
+    });
+  }, [showBookingModal, selectedRecordForBooking]);
 
   const checkUser = async () => {
     try {
@@ -539,6 +565,152 @@ function DashboardPage() {
       console.error('Error loading active vessels for main map:', error);
     }
   };
+
+  // Cargar documentos de booking
+  const loadBookingDocuments = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from('documentos')
+        .list('booking', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'updated_at', order: 'desc' },
+        });
+
+      if (error) {
+        console.warn('No se pudieron cargar documentos booking:', error.message);
+        return;
+      }
+
+      const bookingsMap = new Map<string, { nombre: string; fecha: string; path: string }>();
+
+      data?.forEach((file) => {
+        const separatorIndex = file.name.indexOf('__');
+        if (separatorIndex === -1) return;
+
+        const segment = file.name.slice(0, separatorIndex);
+        const { originalName } = parseStoredDocumentName(file.name);
+        const nombreFormateado = formatFileDisplayName(originalName);
+        const filePath = `booking/${file.name}`;
+
+        const fechaArchivo = file.updated_at || file.created_at;
+        let fechaFormateada = '-';
+        if (fechaArchivo) {
+          const fecha = new Date(fechaArchivo);
+          const dia = String(fecha.getDate()).padStart(2, '0');
+          const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+          const año = fecha.getFullYear();
+          fechaFormateada = `${dia}-${mes}-${año}`;
+        }
+
+        const docInfo = { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath };
+
+        try {
+          const decoded = decodeURIComponent(segment).trim();
+          if (decoded) {
+            const bookingKey = normalizeBooking(decoded).trim().toUpperCase().replace(/\s+/g, '');
+            if (bookingKey) {
+              const existente = bookingsMap.get(bookingKey);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                bookingsMap.set(bookingKey, docInfo);
+              }
+            }
+          }
+        } catch {
+          const segmentTrimmed = segment.trim();
+          if (segmentTrimmed) {
+            const bookingKey = normalizeBooking(segmentTrimmed).trim().toUpperCase().replace(/\s+/g, '');
+            if (bookingKey) {
+              const existente = bookingsMap.get(bookingKey);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                bookingsMap.set(bookingKey, docInfo);
+              }
+            }
+          }
+        }
+      });
+
+      setBookingDocuments(bookingsMap);
+    } catch (err) {
+      console.error('Error cargando documentos booking:', err);
+    }
+  }, []);
+
+  // Función para manejar la subida del documento de booking
+  const handleSaveBooking = useCallback(async (booking: string, file?: File, customFileName?: string) => {
+    if (!booking || !booking.trim()) {
+      showError('El número de booking es requerido');
+      return;
+    }
+
+    if (!file) {
+      showError('Debe seleccionar un archivo PDF');
+      return;
+    }
+
+    try {
+      const normalizedBooking = normalizeBooking(booking);
+      setUploadingBooking(normalizedBooking.trim().toUpperCase().replace(/\s+/g, ''));
+      const supabase = createClient();
+      
+      const bookingSegment = encodeURIComponent(normalizedBooking);
+      const safeName = customFileName 
+        ? sanitizeFileName(`${customFileName}.pdf`)
+        : sanitizeFileName(file.name);
+      const filePath = `booking/${bookingSegment}__${Date.now()}-0-${safeName}`;
+
+      // Eliminar archivos anteriores para este booking
+      try {
+        const { data: existingFiles } = await supabase.storage
+          .from('documentos')
+          .list('booking', { limit: 1000 });
+
+        if (existingFiles) {
+          const filesToDelete = existingFiles
+            .filter(f => {
+              const separatorIndex = f.name.indexOf('__');
+              if (separatorIndex === -1) return false;
+              const fileBookingSegment = f.name.slice(0, separatorIndex);
+              try {
+                const decodedBooking = normalizeBooking(decodeURIComponent(fileBookingSegment));
+                return decodedBooking === normalizedBooking || fileBookingSegment === bookingSegment;
+              } catch {
+                return fileBookingSegment === bookingSegment;
+              }
+            })
+            .map(f => `booking/${f.name}`);
+
+          if (filesToDelete.length > 0) {
+            await supabase.storage.from('documentos').remove(filesToDelete);
+          }
+        }
+      } catch (deleteErr) {
+        console.warn('Error al eliminar archivos anteriores:', deleteErr);
+      }
+
+      // Subir nuevo archivo
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Recargar documentos
+      await loadBookingDocuments();
+      success('PDF de booking subido correctamente');
+    } catch (err: any) {
+      console.error('Error subiendo PDF:', err);
+      showError('No se pudo subir el PDF. Intenta nuevamente.');
+      throw err;
+    } finally {
+      setUploadingBooking(null);
+    }
+  }, [loadBookingDocuments, success, showError]);
 
   const handleLogout = async () => {
     try {
@@ -722,6 +894,7 @@ function DashboardPage() {
   ];
 
   return (
+    <>
     <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
       {/* Overlay para móvil */}
       {isMobileMenuOpen && (
@@ -916,6 +1089,350 @@ function DashboardPage() {
             </div>
           </section>
 
+          {/* Tabla de registros recientes */}
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className={`text-base sm:text-lg font-medium mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Registros recientes</h3>
+                <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Vista resumida de tus embarques activos</p>
+              </div>
+              <button
+                onClick={() => router.push('/registros')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    router.push('/registros');
+                  }
+                }}
+                className={`text-xs sm:text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${theme === 'dark'
+                  ? 'text-sky-400 hover:text-sky-300 focus:ring-sky-500'
+                  : 'text-blue-600 hover:text-blue-700 focus:ring-blue-500'
+                  }`}
+                aria-label="Ver todos los registros"
+                tabIndex={0}
+              >
+                Ver todos →
+              </button>
+            </div>
+            <div className={`border overflow-hidden ${theme === 'dark'
+              ? 'border-slate-700/60 bg-slate-800/60'
+              : 'border-gray-200 bg-white'
+              }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full" role="table" aria-label="Tabla de registros recientes">
+                  <thead className={`${theme === 'dark'
+                    ? 'bg-slate-900/60 border-b border-slate-700/60'
+                    : 'bg-gray-50 border-b border-gray-200'
+                    }`}>
+                    <tr>
+                      <th className={`px-2 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        REF ASLI
+                      </th>
+                      <th className={`hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Cliente
+                      </th>
+                      <th className={`px-2 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Booking
+                      </th>
+                      <th className={`px-2 sm:px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        Estado
+                      </th>
+                      <th className={`hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        ETD
+                      </th>
+                      <th className={`hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        ETA
+                      </th>
+                      <th className={`hidden lg:table-cell px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        POD
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700/60' : 'divide-gray-200'}`}>
+                    {filteredByAll.slice(0, 10).length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className={`px-4 py-8 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} role="status" aria-live="polite">
+                          No hay registros disponibles
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredByAll
+                        .sort((a, b) => {
+                          const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+                          const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+                          return dateB - dateA;
+                        })
+                        .slice(0, 10)
+                        .map((record, index) => {
+                          const estado = record.estado?.toUpperCase() || 'PENDIENTE';
+                          const estadoColors = {
+                            CONFIRMADO: theme === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                            PENDIENTE: theme === 'dark' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200',
+                            CANCELADO: theme === 'dark' ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-red-50 text-red-700 border-red-200',
+                          };
+                          const estadoColor = estadoColors[estado as keyof typeof estadoColors] || estadoColors.PENDIENTE;
+
+                          const formatDate = (dateString: string | null): string => {
+                            if (!dateString) return '—';
+                            try {
+                              const date = new Date(dateString);
+                              return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                            } catch {
+                              return '—';
+                            }
+                          };
+
+                          const bookingValue = record.booking?.trim() || '';
+                          const bookingKey = bookingValue ? normalizeBooking(bookingValue).trim().toUpperCase().replace(/\s+/g, '') : '';
+                          const hasPdf = bookingKey ? bookingDocuments.has(bookingKey) : false;
+                          const bookingDoc = bookingKey ? bookingDocuments.get(bookingKey) : null;
+                          const isUploading = uploadingBooking === bookingKey;
+                          
+                          // Log para verificar que el código se está ejecutando
+                          console.log('📋 Renderizando fila:', {
+                            ref_asli: record.ref_asli,
+                            booking: bookingValue,
+                            hasPdf,
+                            isUploading,
+                            bookingDocumentsSize: bookingDocuments.size
+                          });
+
+                          const handleBookingUploadClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+                            console.log('🔘 CLICK DETECTADO - Iniciando handleBookingUploadClick');
+                            e.stopPropagation();
+                            e.preventDefault();
+                            e.nativeEvent.stopImmediatePropagation();
+                            
+                            console.log('🔘 Click en botón de upload, registro:', record.ref_asli, 'booking:', record.booking);
+                            
+                            if (!record.booking?.trim()) {
+                              console.log('❌ No hay booking en el registro');
+                              showError('El registro debe tener un número de booking para subir el documento');
+                              return;
+                            }
+                            
+                            console.log('📝 Configurando registro seleccionado:', record);
+                            setSelectedRecordForBooking(record);
+                            console.log('📝 Estado antes de abrir modal');
+                            
+                            // Abrir modal inmediatamente
+                            setShowBookingModal(true);
+                            console.log('✅ Modal abierto - showBookingModal:', true);
+                          };
+
+                          const handleBookingViewClick = async (e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            if (!bookingDoc) return;
+
+                            try {
+                              const supabase = createClient();
+                              const { data, error } = await supabase.storage
+                                .from('documentos')
+                                .createSignedUrl(bookingDoc.path, 60);
+
+                              if (error || !data?.signedUrl) {
+                                throw error || new Error('No se pudo generar la URL');
+                              }
+
+                              window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                            } catch (err) {
+                              console.error('Error abriendo PDF:', err);
+                              showError('No se pudo abrir el PDF');
+                            }
+                          };
+
+                          return (
+                            <tr
+                              key={`${record.ref_asli}-${index}`}
+                              className={`transition-colors ${theme === 'dark'
+                                ? 'hover:bg-slate-700/40'
+                                : 'hover:bg-gray-50'
+                                } cursor-pointer focus-within:outline-none focus-within:ring-2 ${theme === 'dark' ? 'focus-within:ring-sky-500' : 'focus-within:ring-blue-500'}`}
+                              onClick={(e) => {
+                                // No navegar si se hizo click en un botón, input, o div con data-booking-upload-button
+                                const target = e.target as HTMLElement;
+                                if (
+                                  target.closest('button') || 
+                                  target.closest('input') || 
+                                  target.closest('td[data-booking-cell]') ||
+                                  target.closest('[data-booking-upload-button]') ||
+                                  target.hasAttribute('data-booking-upload-button')
+                                ) {
+                                  console.log('🚫 Navegación cancelada - click en botón/input');
+                                  return;
+                                }
+                                router.push(`/registros?ref=${encodeURIComponent(record.ref_asli || '')}`);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  const target = e.target as HTMLElement;
+                                  if (target.closest('button')) {
+                                    return;
+                                  }
+                                  e.preventDefault();
+                                  router.push(`/registros?ref=${encodeURIComponent(record.ref_asli || '')}`);
+                                }
+                              }}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`Ver detalles del registro ${record.ref_asli || 'sin referencia'}`}
+                            >
+                              <td className={`px-2 sm:px-4 py-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                                {record.ref_asli || '—'}
+                              </td>
+                              <td className={`hidden sm:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                                <span className="truncate block max-w-[200px]" title={record.shipper || undefined}>
+                                  {record.shipper || '—'}
+                                </span>
+                              </td>
+                              <td 
+                                data-booking-cell="true"
+                                className={`px-2 sm:px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  e.preventDefault();
+                                }}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
+                                }}
+                              >
+                                <div className="flex items-center gap-1.5">
+                                  <span className="truncate flex-1">{bookingValue || '—'}</span>
+                                  {/* Botón siempre visible para debugging */}
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    {hasPdf && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          handleBookingViewClick(e);
+                                        }}
+                                        className={`p-1 hover:bg-slate-700/60 dark:hover:bg-slate-600 rounded transition-colors ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}
+                                        title="Ver PDF de booking"
+                                      >
+                                        <Eye className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    {/* Botón de upload - siempre visible */}
+                                    {(() => {
+                                      const buttonId = `booking-upload-${record.ref_asli}-${index}`;
+                                      return (
+                                        <button
+                                          id={buttonId}
+                                          type="button"
+                                          ref={(el) => {
+                                            if (el && !isUploading) {
+                                              // Agregar listener directo al DOM como fallback
+                                              const handleClick = (e: MouseEvent) => {
+                                                console.log('🔵🔵🔵 CLICK DETECTADO EN BOTÓN (DOM) 🔵🔵🔵');
+                                                e.stopPropagation();
+                                                e.preventDefault();
+                                                
+                                                if (!record.booking?.trim()) {
+                                                  showError('Este registro no tiene booking. Por favor, agrega un booking primero.');
+                                                  return;
+                                                }
+                                                
+                                                setSelectedRecordForBooking(record);
+                                                setShowBookingModal(true);
+                                              };
+                                              
+                                              // Remover listener anterior si existe
+                                              el.removeEventListener('click', handleClick as any);
+                                              // Agregar nuevo listener
+                                              el.addEventListener('click', handleClick, { capture: true });
+                                            }
+                                          }}
+                                          onClick={(e) => {
+                                            // Log inmediato para verificar que se ejecuta
+                                            console.log('🔵🔵🔵 CLICK EN BOTÓN DE UPLOAD (React) 🔵🔵🔵');
+                                            console.log('🔵 Evento:', e);
+                                            console.log('🔵 Registro:', record.ref_asli);
+                                            
+                                            // Prevenir cualquier comportamiento por defecto y propagación
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            if (e.nativeEvent) {
+                                              e.nativeEvent.stopImmediatePropagation();
+                                            }
+                                            
+                                            // Verificar booking
+                                            if (!record.booking?.trim()) {
+                                              console.log('❌ No hay booking');
+                                              showError('Este registro no tiene booking. Por favor, agrega un booking primero.');
+                                              return;
+                                            }
+                                            
+                                            console.log('✅ Hay booking, abriendo modal');
+                                            
+                                            // Abrir modal directamente
+                                            setSelectedRecordForBooking(record);
+                                            setShowBookingModal(true);
+                                            
+                                            console.log('✅ Estado actualizado - showBookingModal:', true);
+                                          }}
+                                          onMouseDown={(e) => {
+                                            console.log('🟢 MouseDown en botón de upload');
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            if (e.nativeEvent) {
+                                              e.nativeEvent.stopImmediatePropagation();
+                                            }
+                                          }}
+                                          disabled={isUploading}
+                                          style={{ 
+                                            zIndex: 1000, 
+                                            position: 'relative',
+                                            cursor: isUploading ? 'not-allowed' : 'pointer',
+                                            pointerEvents: isUploading ? 'none' : 'auto',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '0.375rem',
+                                            opacity: isUploading ? 0.5 : 1,
+                                            background: 'transparent',
+                                            border: 'none'
+                                          }}
+                                          className={`hover:bg-slate-700/60 dark:hover:bg-slate-600 rounded transition-colors ${theme === 'dark' ? 'text-slate-400 hover:text-slate-200' : 'text-gray-500 hover:text-gray-700'}`}
+                                          title="Subir PDF de booking"
+                                          aria-label="Subir PDF de booking"
+                                        >
+                                          {isUploading ? (
+                                            <RefreshCw className="w-4 h-4 animate-spin" />
+                                          ) : (
+                                            <Upload className="w-4 h-4" />
+                                          )}
+                                        </button>
+                                      );
+                                    })()}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-2 sm:px-4 py-3">
+                                <span className={`inline-flex items-center px-2 py-1 text-xs font-medium border rounded ${estadoColor}`}>
+                                  {estado}
+                                </span>
+                              </td>
+                              <td className={`hidden md:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                                {formatDate(record.etd)}
+                              </td>
+                              <td className={`hidden md:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                                {formatDate(record.eta)}
+                              </td>
+                              <td className={`hidden lg:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
+                                {record.pod || '—'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
           {/* Mapa de embarques - Simplificado */}
           <section className="space-y-4">
             <div>
@@ -940,7 +1457,40 @@ function DashboardPage() {
         userInfo={userInfo}
         onUserUpdate={handleUserUpdate}
       />
+
     </div>
+    
+    {/* Booking Modal - Renderizado fuera del contenedor principal */}
+    {showBookingModal && selectedRecordForBooking && (
+      <BookingModal
+        isOpen={true}
+        onClose={() => {
+          console.log('🔴 Cerrando modal de booking');
+          setShowBookingModal(false);
+          setSelectedRecordForBooking(null);
+        }}
+        onSave={async (booking, file, customFileName) => {
+          console.log('💾 Guardando booking:', booking, 'archivo:', file?.name);
+          try {
+            await handleSaveBooking(booking, file, customFileName);
+            setShowBookingModal(false);
+            setSelectedRecordForBooking(null);
+          } catch (error) {
+            console.error('Error al guardar booking:', error);
+            throw error; // Re-lanzar para que el modal lo maneje
+          }
+        }}
+        currentBooking={selectedRecordForBooking.booking || ''}
+        registroId={selectedRecordForBooking.ref_asli || ''}
+        existingDocument={(() => {
+          const bookingValue = selectedRecordForBooking.booking?.trim() || '';
+          const bookingKey = bookingValue ? normalizeBooking(bookingValue).trim().toUpperCase().replace(/\s+/g, '') : '';
+          const doc = bookingKey ? bookingDocuments.get(bookingKey) : null;
+          return doc || null;
+        })()}
+      />
+    )}
+    </>
   );
 }
 

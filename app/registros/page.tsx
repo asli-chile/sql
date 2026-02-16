@@ -51,6 +51,7 @@ import { AddModal } from '@/components/modals/AddModal';
 import { EditNaveViajeModal } from '@/components/EditNaveViajeModal';
 import { TrashModal } from '@/components/modals/TrashModal';
 import { HistorialModal } from '@/components/modals/HistorialModal';
+import { BookingModal } from '@/components/modals/BookingModal';
 import { logHistoryEntry, mapRegistroFieldToDb } from '@/lib/history';
 import { calculateTransitTime } from '@/lib/transit-time-utils';
 import { generarReporte, descargarExcel, TipoReporte } from '@/lib/reportes';
@@ -111,6 +112,13 @@ export default function TablasPersonalizadasPage() {
   const [registroDocuments, setRegistroDocuments] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
   const [bookingDocumentsFallback, setBookingDocumentsFallback] = useState<Map<string, { nombre: string; fecha: string; path: string }>>(new Map());
   const [uploadingRegistro, setUploadingRegistro] = useState<string | null>(null);
+  // Estados para modal de booking
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedRecordForBooking, setSelectedRecordForBooking] = useState<Registro | null>(null);
+  // Estados para modal de previsualización de PDF
+  const [showPdfPreviewModal, setShowPdfPreviewModal] = useState(false);
+  const [previewPdfPath, setPreviewPdfPath] = useState<string | null>(null);
+  const [previewPdfName, setPreviewPdfName] = useState<string>('');
   
   // Estados para filtros del panel
   const [filterPanelValues, setFilterPanelValues] = useState({
@@ -299,12 +307,62 @@ export default function TablasPersonalizadasPage() {
               ))}
             </select>
           ) : isDateFilter ? (
-            <input
-              type="date"
-              className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              onChange={onFilterChange}
-              value={filterValue}
-            />
+            (() => {
+              // Para columnas de stacking (con hora), usar input de texto con formato dd/mm/yyyy
+              const field = props.column.getColDef().field;
+              const isStackingField = field === 'inicioStacking' || field === 'finStacking' || field === 'cutOff';
+              
+              if (isStackingField) {
+                // Input de texto con formato personalizado para fecha
+                const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+                  let input = e.target.value.replace(/\D/g, ''); // Solo números
+                  if (input.length > 8) input = input.slice(0, 8);
+                  
+                  // Formatear como dd/mm/yyyy
+                  let formatted = input;
+                  if (input.length > 2) {
+                    formatted = input.slice(0, 2) + '/' + input.slice(2);
+                  }
+                  if (input.length > 4) {
+                    formatted = input.slice(0, 2) + '/' + input.slice(2, 4) + '/' + input.slice(4);
+                  }
+                  
+                  setFilterValue(formatted);
+                  
+                  // Convertir a formato YYYY-MM-DD para el filtro
+                  if (formatted.length === 10) {
+                    const [day, month, year] = formatted.split('/');
+                    if (day && month && year) {
+                      const dateForFilter = `${year}-${month}-${day}`;
+                      applyFilter(dateForFilter);
+                    }
+                  } else if (formatted === '') {
+                    applyFilter('');
+                  }
+                };
+                
+                return (
+                  <input
+                    type="text"
+                    className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                    onChange={handleDateInputChange}
+                    value={filterValue}
+                    placeholder="dd/mm/yyyy"
+                    maxLength={10}
+                  />
+                );
+              }
+              
+              // Para otras fechas, usar input de fecha normal
+              return (
+                <input
+                  type="date"
+                  className="w-full h-6 text-xs border border-gray-300 dark:border-gray-600 px-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                  onChange={onFilterChange}
+                  value={filterValue}
+                />
+              );
+            })()
           ) : isNumberFilter ? (
             <input
               type="number"
@@ -328,70 +386,400 @@ export default function TablasPersonalizadasPage() {
   };
 
   // Manejar cambios de celda para edición inline
-  // Editor personalizado de fecha y hora (calendario y reloj)
+  // Editor personalizado de fecha y hora (calendario y reloj) con formato dd/mm/yyyy HH:mm
   const DateTimeCellEditor = forwardRef<any, ICellEditorParams>((props, ref) => {
-    const [value, setValue] = useState<string>('');
-    const inputRef = useRef<HTMLInputElement>(null);
+    const [dateValue, setDateValue] = useState<string>('');
+    const [timeValue, setTimeValue] = useState<string>('');
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const dateInputRef = useRef<HTMLInputElement>(null);
+    const timeInputRef = useRef<HTMLInputElement>(null);
+    const datePickerRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      // Convertir el valor a formato datetime-local (YYYY-MM-DDTHH:mm)
+      // Convertir el valor a formato separado (fecha y hora)
       if (props.value) {
         const date = props.value instanceof Date ? props.value : new Date(props.value);
         if (!isNaN(date.getTime())) {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
           const day = String(date.getDate()).padStart(2, '0');
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const year = date.getFullYear();
           const hours = String(date.getHours()).padStart(2, '0');
           const minutes = String(date.getMinutes()).padStart(2, '0');
-          setValue(`${year}-${month}-${day}T${hours}:${minutes}`);
+          const formattedDate = `${day}/${month}/${year}`;
+          const formattedTime = `${hours}:${minutes}`;
+          
+          // Solo actualizar si el valor realmente cambió para evitar loops
+          if (dateValue !== formattedDate) {
+            setDateValue(formattedDate);
+          }
+          if (timeValue !== formattedTime) {
+            setTimeValue(formattedTime);
+          }
+        } else {
+          setDateValue('');
+          setTimeValue('');
         }
+      } else {
+        setDateValue('');
+        setTimeValue('');
       }
-      // Focus en el input después de un pequeño delay
+      // Focus en el input de fecha después de un pequeño delay
       setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
+        dateInputRef.current?.focus();
+        dateInputRef.current?.select();
       }, 0);
-    }, []);
+    }, [props.value]);
+
+    // Cerrar date picker y editor al hacer clic fuera
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+          setShowDatePicker(false);
+          // Si se hace clic fuera del editor, cerrar el editor para que AgGrid llame a getValue()
+          setTimeout(() => {
+            if (props.api && props.node) {
+              console.log('🖱️ Clic fuera del editor, cerrando editor');
+              // Usar stopEditing(true) para forzar que se guarde el valor
+              props.api.stopEditing(true);
+            }
+          }, 0);
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [props.api, props.node]);
 
     // Exponer métodos requeridos por ICellEditor
     useImperativeHandle(ref, () => ({
       getValue: () => {
-        if (!value) return null;
-        const date = new Date(value);
-        return isNaN(date.getTime()) ? null : date;
+        console.log('🔍 DateTimeCellEditor.getValue llamado:', { dateValue, timeValue });
+        
+        // Si no hay fecha, retornar null
+        if (!dateValue || dateValue.trim() === '') {
+          console.log('⚠️ DateTimeCellEditor.getValue: sin fecha, retornando null');
+          return null;
+        }
+        
+        // Si hay fecha pero no hora, usar hora 00:00
+        let hours = 0;
+        let minutes = 0;
+        if (timeValue && timeValue.trim() !== '') {
+          const [h, m] = timeValue.split(':');
+          if (h && m) {
+            hours = parseInt(h) || 0;
+            minutes = parseInt(m) || 0;
+          }
+        }
+        
+        // Parsear formato dd/mm/yyyy
+        const [day, month, year] = dateValue.split('/');
+        if (day && month && year && day.length === 2 && month.length === 2 && year.length === 4) {
+          const date = new Date(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            hours,
+            minutes
+          );
+          if (!isNaN(date.getTime())) {
+            console.log(`✅ DateTimeCellEditor.getValue: retornando fecha válida`, {
+              dateValue,
+              timeValue,
+              result: date,
+              iso: date.toISOString()
+            });
+            return date;
+          } else {
+            console.warn(`⚠️ DateTimeCellEditor.getValue: fecha inválida después de parsear`, { day, month, year, hours, minutes });
+          }
+        } else {
+          console.warn(`⚠️ DateTimeCellEditor.getValue: formato de fecha inválido`, { day, month, year, dateValue });
+        }
+        console.warn(`⚠️ DateTimeCellEditor.getValue: retornando null`);
+        return null;
       },
-      isCancelBeforeStart: () => false,
-      isCancelAfterEnd: () => false,
+      isCancelBeforeStart: () => {
+        console.log('❓ DateTimeCellEditor.isCancelBeforeStart');
+        return false;
+      },
+      isCancelAfterEnd: () => {
+        console.log('❓ DateTimeCellEditor.isCancelAfterEnd');
+        // No cancelar después de editar, permitir que el valor se guarde
+        return false;
+      },
+      afterGuiAttached: () => {
+        console.log('🎯 DateTimeCellEditor.afterGuiAttached');
+        // Asegurar que el input tenga focus después de que se adjunte al DOM
+        setTimeout(() => {
+          dateInputRef.current?.focus();
+          dateInputRef.current?.select();
+        }, 0);
+      },
+      focusIn: () => {
+        console.log('🎯 DateTimeCellEditor.focusIn');
+        setTimeout(() => {
+          dateInputRef.current?.focus();
+        }, 0);
+      },
+      focusOut: () => {
+        console.log('🎯 DateTimeCellEditor.focusOut');
+        // Cuando se pierde el foco, AgGrid debería llamar a getValue()
+        // No necesitamos hacer nada aquí, AgGrid lo manejará
+      },
     }));
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      setValue(e.target.value);
+    const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let input = e.target.value.replace(/\D/g, ''); // Solo números
+      if (input.length > 8) input = input.slice(0, 8);
+      
+      // Formatear como dd/mm/yyyy
+      let formatted = input;
+      if (input.length > 2) {
+        formatted = input.slice(0, 2) + '/' + input.slice(2);
+      }
+      if (input.length > 4) {
+        formatted = input.slice(0, 2) + '/' + input.slice(2, 4) + '/' + input.slice(4);
+      }
+      setDateValue(formatted);
+    };
+
+    const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      let input = e.target.value.replace(/\D/g, ''); // Solo números
+      if (input.length > 4) input = input.slice(0, 4);
+      
+      // Formatear como HH:mm
+      let formatted = input;
+      if (input.length > 2) {
+        formatted = input.slice(0, 2) + ':' + input.slice(2);
+      }
+      setTimeValue(formatted);
+    };
+
+    const handleDatePickerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.value) {
+        const date = new Date(e.target.value + 'T00:00:00');
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        setDateValue(`${day}/${month}/${year}`);
+        setShowDatePicker(false);
+        timeInputRef.current?.focus();
+      }
+    };
+
+    const handleDateKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Tab' && dateValue) {
+        e.preventDefault();
+        timeInputRef.current?.focus();
+      } else if (e.key === 'Enter') {
+        // Presionar Enter debería cerrar el editor y guardar
+        e.preventDefault();
+        e.stopPropagation();
+        // Forzar que AgGrid llame a getValue() y cierre el editor
+        if (props.api && props.node) {
+          console.log('⌨️ Presionando Enter en input de fecha, cerrando editor');
+          // Usar stopEditing(true) para forzar que se guarde el valor
+          props.api.stopEditing(true);
+        }
+      }
+    };
+
+    // Log cuando el componente se renderiza
+    useEffect(() => {
+      console.log('🎨 DateTimeCellEditor renderizado:', {
+        dateValue,
+        timeValue,
+        propsValue: props.value,
+        propsValueType: typeof props.value
+      });
+    }, [dateValue, timeValue, props.value]);
+
+    // Handler para cuando el contenedor pierde el foco
+    const handleContainerBlur = (e: React.FocusEvent) => {
+      // Solo cerrar si el foco no se movió a otro elemento dentro del editor
+      const relatedTarget = e.relatedTarget as Node;
+      const isFocusMovingInside = containerRef.current?.contains(relatedTarget);
+      
+      console.log('📦 Contenedor del editor perdió foco:', {
+        relatedTarget,
+        isFocusMovingInside,
+        dateValue,
+        timeValue
+      });
+      
+      if (!isFocusMovingInside && props.api && props.node) {
+        console.log('🔄 Contenedor: cerrando editor desde handleContainerBlur');
+        // Usar stopEditing(false) para permitir que AgGrid navegue después de editar
+        // Esto debería hacer que AgGrid llame a getValue() automáticamente
+        setTimeout(() => {
+          console.log('🔄 Ejecutando stopEditing(false)');
+          // Primero, asegurarnos de que getValue() retorne el valor correcto
+          // Luego cerrar el editor
+          const currentValue = containerRef.current ? {
+            dateValue,
+            timeValue
+          } : null;
+          console.log('📊 Valor actual antes de cerrar:', currentValue);
+          props.api.stopEditing(false);
+        }, 50);
+      }
     };
 
     return (
-      <input
-        ref={inputRef}
-        type="datetime-local"
-        value={value}
-        onChange={handleChange}
-        className="w-full h-full px-2 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600"
-        style={{ minWidth: '200px' }}
-      />
+      <div 
+        ref={containerRef} 
+        className="relative flex items-center gap-1 w-full h-full px-2 border border-blue-500 rounded bg-white dark:bg-gray-800 focus-within:ring-2 focus-within:ring-blue-500"
+        onBlur={handleContainerBlur}
+        tabIndex={-1}
+      >
+        <input
+          ref={dateInputRef}
+          type="text"
+          value={dateValue}
+          onChange={handleDateChange}
+          onKeyDown={handleDateKeyDown}
+          onFocus={() => {
+            console.log('📅 Input de fecha enfocado');
+            setShowDatePicker(true);
+          }}
+          onBlur={(e) => {
+            console.log('📅 Input de fecha perdió foco, dateValue:', dateValue);
+            // Si el foco se mueve al input de hora, mover el foco allí
+            // Si no, dejar que el contenedor maneje el blur
+            if (e.relatedTarget !== timeInputRef.current) {
+              // El foco no se movió al input de hora, podría estar saliendo del editor
+              // Pero no cerrar aquí, dejar que el contenedor lo maneje
+            }
+          }}
+          placeholder="dd/mm/yyyy"
+          className="flex-1 border-none outline-none bg-transparent dark:text-white"
+          style={{ minWidth: '100px', fontSize: '14px' }}
+          maxLength={10}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setShowDatePicker(!showDatePicker);
+            datePickerRef.current?.showPicker?.();
+          }}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          tabIndex={-1}
+        >
+          📅
+        </button>
+        <input
+          ref={datePickerRef}
+          type="date"
+          className="absolute opacity-0 pointer-events-none"
+          tabIndex={-1}
+          onChange={handleDatePickerChange}
+          style={{ width: 0, height: 0 }}
+        />
+        <input
+          ref={timeInputRef}
+          type="time"
+          value={timeValue}
+          onChange={(e) => setTimeValue(e.target.value)}
+          onKeyDown={(e) => {
+            // Si se presiona Tab o Enter, cerrar el editor
+            if (e.key === 'Tab' || e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('⌨️ Presionando Tab/Enter en input de hora, cerrando editor');
+              // Forzar que AgGrid llame a getValue() y cierre el editor
+              if (props.api && props.node) {
+                // Usar stopEditing(true) para forzar que se guarde el valor
+                props.api.stopEditing(true);
+              }
+            }
+          }}
+          onBlur={(e) => {
+            console.log('⏰ Input de hora perdió foco, timeValue:', timeValue);
+            // No cerrar aquí, dejar que el contenedor maneje el blur
+            // Esto permite que AgGrid detecte automáticamente cuando el editor pierde el foco
+          }}
+          placeholder="HH:mm"
+          className="w-20 border-none outline-none bg-transparent dark:text-white"
+          style={{ fontSize: '14px' }}
+        />
+      </div>
     );
   });
 
   DateTimeCellEditor.displayName = 'DateTimeCellEditor';
 
   const onCellValueChanged = useCallback(async (params: any) => {
-    if (!params.data || !params.data.id) return;
+    console.log('🔔 onCellValueChanged llamado:', {
+      hasData: !!params.data,
+      hasId: !!params.data?.id,
+      field: params.colDef?.field,
+      newValue: params.newValue,
+      oldValue: params.oldValue,
+      newValueType: typeof params.newValue
+    });
+
+    if (!params.data || !params.data.id) {
+      console.warn('⚠️ onCellValueChanged: sin data o id, saliendo');
+      return;
+    }
 
     const field = params.colDef.field as keyof Registro;
     const newValue = params.newValue;
     const oldValue = params.oldValue;
     const record = params.data as Registro;
+    
+    console.log(`📝 Procesando cambio en campo: ${field}`, {
+      newValue,
+      oldValue,
+      recordId: record.id
+    });
 
-    // Si el valor no cambió, no hacer nada
-    if (newValue === oldValue) return;
+    // Para campos de fecha, comparar como timestamps para evitar problemas de referencia
+    const isDateField = ['etd', 'eta', 'ingresado', 'ingresoStacking', 'inicioStacking', 'finStacking', 'cutOff'].includes(field as string);
+    if (isDateField) {
+      // Normalizar valores para comparación
+      let newTime: number | null = null;
+      let oldTime: number | null = null;
+      
+      if (newValue instanceof Date) {
+        newTime = isNaN(newValue.getTime()) ? null : newValue.getTime();
+      } else if (newValue) {
+        const date = new Date(newValue);
+        newTime = isNaN(date.getTime()) ? null : date.getTime();
+      }
+      
+      if (oldValue instanceof Date) {
+        oldTime = isNaN(oldValue.getTime()) ? null : oldValue.getTime();
+      } else if (oldValue) {
+        const date = new Date(oldValue);
+        oldTime = isNaN(date.getTime()) ? null : date.getTime();
+      }
+      
+      // Log para debugging de campos de stacking
+      if (['inicioStacking', 'finStacking', 'cutOff'].includes(field as string)) {
+        console.log(`📅 Editando ${field}:`, {
+          newValue,
+          oldValue,
+          newTime,
+          oldTime,
+          newValueType: typeof newValue,
+          isDate: newValue instanceof Date,
+          willSave: newTime !== oldTime && (newTime !== null || oldTime !== null)
+        });
+      }
+      
+      // Si ambos son null o tienen el mismo timestamp, no hay cambio
+      if (newTime === oldTime) {
+        if (['inicioStacking', 'finStacking', 'cutOff'].includes(field as string)) {
+          console.log(`⚠️ No hay cambio detectado para ${field}, saltando guardado`);
+        }
+        return; // No hay cambio real
+      }
+    } else {
+      // Si el valor no cambió, no hacer nada
+      if (newValue === oldValue) return;
+    }
 
     // Campos que NO permiten edición múltiple (son únicos)
     const UNIQUE_FIELDS = ['refCliente', 'refAsli', 'ejecutivo', 'usuario', 'booking', 'contenedor', 'semanaIngreso', 'semanaZarpe'];
@@ -481,14 +869,44 @@ export default function TablasPersonalizadasPage() {
       // Campos de fecha
       if (['etd', 'eta', 'ingresado', 'ingresoStacking', 'inicioStacking', 'finStacking', 'cutOff'].includes(field)) {
         if (newValue) {
+          let date: Date | null = null;
+          
           // Si es string, intentar parsearlo
           if (typeof newValue === 'string') {
-            processedValue = new Date(newValue).toISOString();
+            date = new Date(newValue);
+            if (isNaN(date.getTime())) {
+              date = null;
+            }
           } else if (newValue instanceof Date) {
-            processedValue = newValue.toISOString();
+            // Asegurar que la fecha es válida
+            date = isNaN(newValue.getTime()) ? null : newValue;
+          }
+          
+          // Convertir a ISO string si tenemos una fecha válida
+          if (date && !isNaN(date.getTime())) {
+            processedValue = date.toISOString();
+          } else {
+            processedValue = null;
+          }
+          
+          // Log para debugging de campos de stacking
+          if (['inicioStacking', 'finStacking', 'cutOff'].includes(field)) {
+            console.log(`💾 Procesando ${field}:`, {
+              newValue,
+              newValueType: typeof newValue,
+              isDate: newValue instanceof Date,
+              date,
+              processedValue,
+              field,
+              dbFieldName: mapRegistroFieldToDb(field)
+            });
           }
         } else {
           processedValue = null;
+          // Log para debugging cuando se borra el valor
+          if (['inicioStacking', 'finStacking', 'cutOff'].includes(field)) {
+            console.log(`🗑️ Borrando ${field}`);
+          }
         }
       }
 
@@ -744,10 +1162,20 @@ export default function TablasPersonalizadasPage() {
                 // Convertir a Date si no lo es
                 const date = dateValue instanceof Date ? dateValue : new Date(dateValue as string | number);
                 if (!isNaN(date.getTime())) {
+                  console.log(`✅ Actualizando ${field} en nodo:`, {
+                    dateValue,
+                    date,
+                    iso: date.toISOString()
+                  });
                   params.node.setDataValue(field, date);
                   (params.data as any)[field] = date;
+                } else {
+                  console.warn(`⚠️ Fecha inválida para ${field}:`, dateValue);
+                  params.node.setDataValue(field, null);
+                  (params.data as any)[field] = null;
                 }
               } else {
+                console.log(`🗑️ Estableciendo ${field} a null`);
                 params.node.setDataValue(field, null);
                 (params.data as any)[field] = null;
               }
@@ -818,6 +1246,12 @@ export default function TablasPersonalizadasPage() {
     },
     // Guardar la selección antes de que se pierda al editar (backup)
     onCellEditingStarted: (params: any) => {
+      console.log('✏️ onCellEditingStarted:', {
+        field: params.colDef?.field,
+        value: params.value,
+        valueType: typeof params.value,
+        isDate: params.value instanceof Date
+      });
       // Usar el API del grid desde el evento
       const api = params.api;
       if (api) {
@@ -942,6 +1376,86 @@ export default function TablasPersonalizadasPage() {
       console.error('❌ Error cargando documentos booking:', err);
     }
   }, []);
+
+  // Función para manejar la subida del documento de booking
+  const handleSaveBooking = useCallback(async (booking: string, file?: File, customFileName?: string) => {
+    if (!booking || !booking.trim()) {
+      showError('El número de booking es requerido');
+      return;
+    }
+
+    if (!file) {
+      showError('Debe seleccionar un archivo PDF');
+      return;
+    }
+
+    if (!selectedRecordForBooking) {
+      showError('No se encontró el registro');
+      return;
+    }
+
+    try {
+      setUploadingRegistro(selectedRecordForBooking.refAsli || null);
+      const supabase = createClient();
+      
+      const normalizedBooking = normalizeBooking(booking);
+      const bookingSegment = encodeURIComponent(normalizedBooking);
+      const safeName = customFileName 
+        ? sanitizeFileName(`${customFileName}.pdf`)
+        : sanitizeFileName(file.name);
+      const filePath = `booking/${bookingSegment}__${Date.now()}-0-${safeName}`;
+
+      // Eliminar archivos anteriores para este booking
+      try {
+        const { data: existingFiles } = await supabase.storage
+          .from('documentos')
+          .list('booking', { limit: 1000 });
+
+        if (existingFiles) {
+          const filesToDelete = existingFiles
+            .filter(f => {
+              const separatorIndex = f.name.indexOf('__');
+              if (separatorIndex === -1) return false;
+              const fileBookingSegment = f.name.slice(0, separatorIndex);
+              try {
+                const decodedBooking = normalizeBooking(decodeURIComponent(fileBookingSegment));
+                return decodedBooking === normalizedBooking || fileBookingSegment === bookingSegment;
+              } catch {
+                return fileBookingSegment === bookingSegment;
+              }
+            })
+            .map(f => `booking/${f.name}`);
+
+          if (filesToDelete.length > 0) {
+            await supabase.storage.from('documentos').remove(filesToDelete);
+          }
+        }
+      } catch (deleteErr) {
+        console.warn('Error al eliminar archivos anteriores:', deleteErr);
+      }
+
+      // Subir nuevo archivo
+      const { error: uploadError } = await supabase.storage
+        .from('documentos')
+        .upload(filePath, file, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Recargar documentos
+      await loadBookingDocuments();
+      success('PDF de booking subido correctamente');
+    } catch (err: any) {
+      console.error('Error subiendo PDF:', err);
+      showError('No se pudo subir el PDF. Intenta nuevamente.');
+      throw err;
+    } finally {
+      setUploadingRegistro(null);
+    }
+  }, [selectedRecordForBooking, loadBookingDocuments, showError, success]);
 
   const loadCatalogos = useCallback(async () => {
     try {
@@ -1383,99 +1897,29 @@ export default function TablasPersonalizadasPage() {
 
         const handleUploadClick = async (e: React.MouseEvent) => {
           e.stopPropagation();
-          if (!refAsli) {
-            showError('El registro debe tener una referencia ASLI para subir el PDF');
+          e.preventDefault();
+          
+          // Encontrar el registro completo
+          const registro = rowData.find(r => r.refAsli === refAsli);
+          if (!registro) {
+            showError('No se encontró el registro');
             return;
           }
-
-          const input = window.document.createElement('input');
-          input.type = 'file';
-          input.accept = '.pdf';
-          input.onchange = async (event: Event) => {
-            const target = event.target as HTMLInputElement;
-            const file = target.files?.[0];
-            if (!file || !refAsli) return;
-
-            try {
-              setUploadingRegistro(refAsli);
-              const supabase = createClient();
-              
-              const refAsliSegment = encodeURIComponent(refAsli);
-              const safeName = sanitizeFileName(file.name);
-              const filePath = `booking/${refAsliSegment}__${Date.now()}-0-${safeName}`;
-
-              // Eliminar archivos anteriores para este registro (ref_asli)
-              try {
-                const { data: existingFiles } = await supabase.storage
-                  .from('documentos')
-                  .list('booking', { limit: 1000 });
-
-                if (existingFiles) {
-                  const filesToDelete = existingFiles
-                    .filter(f => {
-                      const separatorIndex = f.name.indexOf('__');
-                      if (separatorIndex === -1) return false;
-                      const fileRefAsliSegment = f.name.slice(0, separatorIndex);
-                      try {
-                        const decodedRefAsli = decodeURIComponent(fileRefAsliSegment);
-                        return decodedRefAsli === refAsli || fileRefAsliSegment === refAsliSegment;
-                      } catch {
-                        return fileRefAsliSegment === refAsliSegment;
-                      }
-                    })
-                    .map(f => `booking/${f.name}`);
-
-                  if (filesToDelete.length > 0) {
-                    await supabase.storage.from('documentos').remove(filesToDelete);
-                  }
-                }
-              } catch (deleteErr) {
-                console.warn('Error al eliminar archivos anteriores:', deleteErr);
-              }
-
-              // Subir nuevo archivo
-              const { error: uploadError } = await supabase.storage
-                .from('documentos')
-                .upload(filePath, file, {
-                  contentType: 'application/pdf',
-                  cacheControl: '3600',
-                  upsert: true,
-                });
-
-              if (uploadError) throw uploadError;
-
-              // Recargar documentos
-              await loadBookingDocuments();
-              success('PDF de booking subido correctamente');
-            } catch (err: any) {
-              console.error('Error subiendo PDF:', err);
-              showError('No se pudo subir el PDF. Intenta nuevamente.');
-            } finally {
-              setUploadingRegistro(null);
-            }
-          };
-          input.click();
+          
+          // Abrir modal de booking
+          setSelectedRecordForBooking(registro);
+          setShowBookingModal(true);
         };
 
         const handleViewClick = async (e: React.MouseEvent) => {
           e.stopPropagation();
+          e.preventDefault();
           if (!registroDoc) return;
 
-          try {
-            const supabase = createClient();
-            const { data, error } = await supabase.storage
-              .from('documentos')
-              .createSignedUrl(registroDoc.path, 60);
-
-            if (error || !data?.signedUrl) {
-              throw error || new Error('No se pudo generar la URL');
-            }
-
-            window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-          } catch (err) {
-            console.error('Error abriendo PDF:', err);
-            showError('No se pudo abrir el PDF');
-          }
+          // Abrir modal de previsualización
+          setPreviewPdfPath(registroDoc.path);
+          setPreviewPdfName(registroDoc.nombre);
+          setShowPdfPreviewModal(true);
         };
 
         return (
@@ -1895,8 +2339,26 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Inicio Stacking',
       width: obtenerAnchoColumna('inicioStacking'),
       filter: 'agDateColumnFilter',
+      filterParams: {
+        browserDatePicker: true,
+        minValidYear: 2000,
+        maxValidYear: 2100,
+        comparator: (filterLocalDateAtMidnight: Date, cellValue: Date) => {
+          if (!cellValue) return -1;
+          const cellDate = new Date(cellValue);
+          cellDate.setHours(0, 0, 0, 0);
+          if (cellDate < filterLocalDateAtMidnight) {
+            return -1;
+          } else if (cellDate > filterLocalDateAtMidnight) {
+            return 1;
+          } else {
+            return 0;
+          }
+        },
+        inRangeInclusive: true,
+      },
       editable: canEdit,
-      cellEditor: DateTimeCellEditor,
+      cellEditor: 'dateTimeCellEditor',
       valueGetter: (params) => {
         // Asegurar que obtenemos el valor del registro
         const value = params.data?.inicioStacking;
@@ -1930,8 +2392,26 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Fin Stacking',
       width: obtenerAnchoColumna('finStacking'),
       filter: 'agDateColumnFilter',
+      filterParams: {
+        browserDatePicker: true,
+        minValidYear: 2000,
+        maxValidYear: 2100,
+        comparator: (filterLocalDateAtMidnight: Date, cellValue: Date) => {
+          if (!cellValue) return -1;
+          const cellDate = new Date(cellValue);
+          cellDate.setHours(0, 0, 0, 0);
+          if (cellDate < filterLocalDateAtMidnight) {
+            return -1;
+          } else if (cellDate > filterLocalDateAtMidnight) {
+            return 1;
+          } else {
+            return 0;
+          }
+        },
+        inRangeInclusive: true,
+      },
       editable: canEdit,
-      cellEditor: DateTimeCellEditor,
+      cellEditor: 'dateTimeCellEditor',
       valueGetter: (params) => {
         // Asegurar que obtenemos el valor del registro
         const value = params.data?.finStacking;
@@ -1965,8 +2445,26 @@ export default function TablasPersonalizadasPage() {
       headerName: 'Cut Off',
       width: obtenerAnchoColumna('cutOff'),
       filter: 'agDateColumnFilter',
+      filterParams: {
+        browserDatePicker: true,
+        minValidYear: 2000,
+        maxValidYear: 2100,
+        comparator: (filterLocalDateAtMidnight: Date, cellValue: Date) => {
+          if (!cellValue) return -1;
+          const cellDate = new Date(cellValue);
+          cellDate.setHours(0, 0, 0, 0);
+          if (cellDate < filterLocalDateAtMidnight) {
+            return -1;
+          } else if (cellDate > filterLocalDateAtMidnight) {
+            return 1;
+          } else {
+            return 0;
+          }
+        },
+        inRangeInclusive: true,
+      },
       editable: canEdit,
-      cellEditor: DateTimeCellEditor,
+      cellEditor: 'dateTimeCellEditor',
       valueGetter: (params) => {
         // Asegurar que obtenemos el valor del registro
         const value = params.data?.cutOff;
@@ -3023,6 +3521,15 @@ export default function TablasPersonalizadasPage() {
           }
 
           // Crear transporte desde el registro
+          // Convertir fechas de stacking de Date a ISO string si existen
+          const formatDateForTransporte = (date: Date | null | undefined): string | null => {
+            if (!date) return null;
+            if (date instanceof Date && !isNaN(date.getTime())) {
+              return date.toISOString();
+            }
+            return null;
+          };
+
           const transporteData: any = {
             registro_id: registro.id || null,
             booking: registro.booking?.trim() || null,
@@ -3036,6 +3543,10 @@ export default function TablasPersonalizadasPage() {
             pod: registro.pod?.trim() || null,
             deposito: registro.deposito?.trim() || null,
             temperatura: registro.temperatura !== undefined ? registro.temperatura : null,
+            // Copiar fechas de stacking del registro al transporte
+            stacking: formatDateForTransporte(registro.inicioStacking),
+            fin_stacking: formatDateForTransporte(registro.finStacking),
+            cut_off: formatDateForTransporte(registro.cutOff),
             from_registros: true,
             created_by: user?.email || null,
             updated_by: user?.email || null,
@@ -3541,6 +4052,9 @@ export default function TablasPersonalizadasPage() {
                   rowData={rowData}
                   columnDefs={columnDefs}
                   gridOptions={gridOptions}
+                  components={{
+                    dateTimeCellEditor: DateTimeCellEditor,
+                  }}
                   onGridReady={onGridReady}
                   onSelectionChanged={onSelectionChanged}
                   onSortChanged={onSortChanged}
@@ -4394,6 +4908,75 @@ export default function TablasPersonalizadasPage() {
           justify-content: center !important;
         }
       `}</style>
+      
+      {/* Booking Modal */}
+      {showBookingModal && selectedRecordForBooking && (
+        <BookingModal
+          isOpen={true}
+          onClose={() => {
+            setShowBookingModal(false);
+            setSelectedRecordForBooking(null);
+          }}
+          onSave={async (booking, file, customFileName) => {
+            try {
+              await handleSaveBooking(booking, file, customFileName);
+              setShowBookingModal(false);
+              setSelectedRecordForBooking(null);
+            } catch (error) {
+              console.error('Error al guardar booking:', error);
+              throw error; // Re-lanzar para que el modal lo maneje
+            }
+          }}
+          currentBooking={selectedRecordForBooking.booking || ''}
+          registroId={selectedRecordForBooking.refAsli || ''}
+          existingDocument={(() => {
+            const bookingValue = selectedRecordForBooking.booking?.trim() || '';
+            const bookingKey = bookingValue ? normalizeBooking(bookingValue).trim().toUpperCase().replace(/\s+/g, '') : '';
+            const doc = bookingKey ? bookingDocumentsFallback.get(bookingKey) : null;
+            return doc || null;
+          })()}
+        />
+      )}
+
+      {/* Modal de previsualización de PDF - Pantalla completa */}
+      {showPdfPreviewModal && previewPdfPath && (
+        <div className="fixed inset-0 z-[9999] flex flex-col bg-black/95 backdrop-blur-sm">
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-gray-700 dark:border-slate-700 bg-white dark:bg-slate-900 flex-shrink-0">
+            <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              {previewPdfName || 'Vista previa del PDF'}
+            </h2>
+            <button
+              onClick={() => {
+                setShowPdfPreviewModal(false);
+                setPreviewPdfPath(null);
+                setPreviewPdfName('');
+              }}
+              className={`p-2 rounded-lg transition-colors ${
+                theme === 'dark'
+                  ? 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
+                  : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Contenido - PDF en iframe - Ocupa todo el espacio restante */}
+          <div className="flex-1 overflow-hidden w-full h-full">
+            <iframe
+              src={`/api/bookings/signed-url?documentPath=${encodeURIComponent(previewPdfPath)}`}
+              className="w-full h-full border-0"
+              title={`Vista previa de ${previewPdfName}`}
+              onLoad={() => console.log('✅ PDF cargado exitosamente')}
+              onError={(e) => {
+                console.error('❌ Error al cargar PDF:', e);
+                showError('No se pudo cargar el PDF');
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

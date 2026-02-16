@@ -177,24 +177,42 @@ export async function createTransporte(payload: Partial<TransporteRecord>): Prom
     }
   });
   
-  // Convertir fechas de string a formato correcto
+  // Convertir fechas de string o Date a formato correcto (TIMESTAMPTZ con hora)
   const dateFields = ['stacking', 'fin_stacking', 'cut_off', 'fecha_planta'];
   dateFields.forEach((field) => {
-    if (insertData[field] && typeof insertData[field] === 'string') {
-      const dateStr = insertData[field].trim();
-      if (dateStr === '') {
-        insertData[field] = null;
-      } else {
-        // Asegurar que la fecha esté en formato ISO
-        try {
-          const date = new Date(dateStr);
-          if (!Number.isNaN(date.getTime())) {
-            insertData[field] = date.toISOString().split('T')[0];
-          } else {
+    if (insertData[field]) {
+      // Si es un objeto Date, convertir a ISO string completo (con hora)
+      if (insertData[field] instanceof Date) {
+        if (!Number.isNaN(insertData[field].getTime())) {
+          insertData[field] = insertData[field].toISOString();
+        } else {
+          insertData[field] = null;
+        }
+      } 
+      // Si es string, intentar parsearlo
+      else if (typeof insertData[field] === 'string') {
+        const dateStr = insertData[field].trim();
+        if (dateStr === '') {
+          insertData[field] = null;
+        } else {
+          // Asegurar que la fecha esté en formato ISO completo (con hora si está presente)
+          try {
+            const date = new Date(dateStr);
+            if (!Number.isNaN(date.getTime())) {
+              // Si el string original tiene hora (contiene 'T' o tiene más de 10 caracteres), preservar hora
+              // Si no, solo usar la fecha
+              if (dateStr.includes('T') || dateStr.length > 10) {
+                insertData[field] = date.toISOString();
+              } else {
+                // Solo fecha, sin hora
+                insertData[field] = date.toISOString().split('T')[0];
+              }
+            } else {
+              insertData[field] = null;
+            }
+          } catch {
             insertData[field] = null;
           }
-        } catch {
-          insertData[field] = null;
         }
       }
     }

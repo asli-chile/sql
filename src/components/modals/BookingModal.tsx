@@ -37,9 +37,14 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       setSelectedFile(null);
       setCustomFileName('');
       setError('');
-      console.log('BookingModal - isOpen:', isOpen);
-      console.log('BookingModal - currentBooking:', currentBooking);
-      console.log('BookingModal - existingDocument:', existingDocument);
+      console.log('🎯 BookingModal - isOpen:', isOpen);
+      console.log('🎯 BookingModal - currentBooking:', currentBooking);
+      console.log('🎯 BookingModal - existingDocument:', existingDocument);
+      
+      // Asegurar que el input de archivo esté limpio
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   }, [isOpen, currentBooking, existingDocument]);
 
@@ -100,7 +105,19 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    console.log('🎯 BookingModal - isOpen cambió a:', isOpen);
+    if (isOpen) {
+      console.log('🎯 BookingModal - Se debería mostrar ahora');
+    }
+  }, [isOpen]);
+
+  if (!isOpen) {
+    console.log('🎯 BookingModal - No se renderiza porque isOpen es false');
+    return null;
+  }
+
+  console.log('🎯 BookingModal - Renderizando modal');
 
   const getLabelStyles = () => {
     return theme === 'dark'
@@ -127,7 +144,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Overlay */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
