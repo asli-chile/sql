@@ -637,50 +637,6 @@ function DashboardPage() {
     }
   };
 
-  const checkUser = async () => {
-    try {
-      const supabase = createClient();
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
-      setUser(user);
-      if (user) {
-        const { data: userInfo, error: userInfoError } = await supabase
-          .from('usuarios')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        if (userInfoError) {
-          console.error('Error fetching user info:', userInfoError);
-        } else {
-          setUserInfo(userInfo);
-          setCurrentUser(userInfo);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadActiveVessels = async () => {
-    try {
-      // Agregar timestamp para evitar cache
-      const response = await fetch(`/api/vessels/active?t=${Date.now()}`, {
-        cache: 'no-store',
-        next: { revalidate: 0 },
-      });
-      if (!response.ok) {
-        return;
-      }
-      const payload = (await response.json()) as { vessels?: ActiveVessel[] } | ActiveVessel[];
-      const vessels = Array.isArray(payload) ? payload : payload.vessels ?? [];
-      setActiveVessels(vessels);
-    } catch (error) {
-      console.error('Error loading active vessels for main map:', error);
-    }
-  };
-
   // Función para manejar la subida del documento de booking
   const handleSaveBooking = useCallback(async (booking: string, file?: File, customFileName?: string) => {
     if (!booking || !booking.trim()) {
