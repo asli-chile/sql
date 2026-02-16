@@ -464,6 +464,77 @@ function DashboardPage() {
     }
   }, [currentUser]);
 
+  // Cargar documentos de booking
+  const loadBookingDocuments = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from('documentos')
+        .list('booking', {
+          limit: 1000,
+          offset: 0,
+          sortBy: { column: 'updated_at', order: 'desc' },
+        });
+
+      if (error) {
+        console.warn('No se pudieron cargar documentos booking:', error.message);
+        return;
+      }
+
+      const bookingsMap = new Map<string, { nombre: string; fecha: string; path: string }>();
+
+      data?.forEach((file) => {
+        const separatorIndex = file.name.indexOf('__');
+        if (separatorIndex === -1) return;
+
+        const segment = file.name.slice(0, separatorIndex);
+        const { originalName } = parseStoredDocumentName(file.name);
+        const nombreFormateado = formatFileDisplayName(originalName);
+        const filePath = `booking/${file.name}`;
+
+        const fechaArchivo = file.updated_at || file.created_at;
+        let fechaFormateada = '-';
+        if (fechaArchivo) {
+          const fecha = new Date(fechaArchivo);
+          const dia = String(fecha.getDate()).padStart(2, '0');
+          const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+          const año = fecha.getFullYear();
+          fechaFormateada = `${dia}-${mes}-${año}`;
+        }
+
+        const docInfo = { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath };
+
+        try {
+          const decoded = decodeURIComponent(segment).trim();
+          if (decoded) {
+            const bookingKey = normalizeBooking(decoded).trim().toUpperCase().replace(/\s+/g, '');
+            if (bookingKey) {
+              const existente = bookingsMap.get(bookingKey);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                bookingsMap.set(bookingKey, docInfo);
+              }
+            }
+          }
+        } catch {
+          const segmentTrimmed = segment.trim();
+          if (segmentTrimmed) {
+            const bookingKey = normalizeBooking(segmentTrimmed).trim().toUpperCase().replace(/\s+/g, '');
+            if (bookingKey) {
+              const existente = bookingsMap.get(bookingKey);
+              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
+                bookingsMap.set(bookingKey, docInfo);
+              }
+            }
+          }
+        }
+      });
+
+      setBookingDocuments(bookingsMap);
+    } catch (err) {
+      console.error('Error cargando documentos booking:', err);
+    }
+  }, []);
+
   useEffect(() => {
     checkUser();
   }, []);
@@ -566,76 +637,49 @@ function DashboardPage() {
     }
   };
 
-  // Cargar documentos de booking
-  const loadBookingDocuments = useCallback(async () => {
+  const checkUser = async () => {
     try {
       const supabase = createClient();
-      const { data, error } = await supabase.storage
-        .from('documentos')
-        .list('booking', {
-          limit: 1000,
-          offset: 0,
-          sortBy: { column: 'updated_at', order: 'desc' },
-        });
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      setUser(user);
+      if (user) {
+        const { data: userInfo, error: userInfoError } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (userInfoError) {
+          console.error('Error fetching user info:', userInfoError);
+        } else {
+          setUserInfo(userInfo);
+          setCurrentUser(userInfo);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      if (error) {
-        console.warn('No se pudieron cargar documentos booking:', error.message);
+  const loadActiveVessels = async () => {
+    try {
+      // Agregar timestamp para evitar cache
+      const response = await fetch(`/api/vessels/active?t=${Date.now()}`, {
+        cache: 'no-store',
+        next: { revalidate: 0 },
+      });
+      if (!response.ok) {
         return;
       }
-
-      const bookingsMap = new Map<string, { nombre: string; fecha: string; path: string }>();
-
-      data?.forEach((file) => {
-        const separatorIndex = file.name.indexOf('__');
-        if (separatorIndex === -1) return;
-
-        const segment = file.name.slice(0, separatorIndex);
-        const { originalName } = parseStoredDocumentName(file.name);
-        const nombreFormateado = formatFileDisplayName(originalName);
-        const filePath = `booking/${file.name}`;
-
-        const fechaArchivo = file.updated_at || file.created_at;
-        let fechaFormateada = '-';
-        if (fechaArchivo) {
-          const fecha = new Date(fechaArchivo);
-          const dia = String(fecha.getDate()).padStart(2, '0');
-          const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-          const año = fecha.getFullYear();
-          fechaFormateada = `${dia}-${mes}-${año}`;
-        }
-
-        const docInfo = { nombre: nombreFormateado, fecha: fechaFormateada, path: filePath };
-
-        try {
-          const decoded = decodeURIComponent(segment).trim();
-          if (decoded) {
-            const bookingKey = normalizeBooking(decoded).trim().toUpperCase().replace(/\s+/g, '');
-            if (bookingKey) {
-              const existente = bookingsMap.get(bookingKey);
-              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
-                bookingsMap.set(bookingKey, docInfo);
-              }
-            }
-          }
-        } catch {
-          const segmentTrimmed = segment.trim();
-          if (segmentTrimmed) {
-            const bookingKey = normalizeBooking(segmentTrimmed).trim().toUpperCase().replace(/\s+/g, '');
-            if (bookingKey) {
-              const existente = bookingsMap.get(bookingKey);
-              if (!existente || (fechaArchivo && existente.fecha !== '-' && fechaArchivo.split('T')[0] > existente.fecha.split('-').reverse().join('-'))) {
-                bookingsMap.set(bookingKey, docInfo);
-              }
-            }
-          }
-        }
-      });
-
-      setBookingDocuments(bookingsMap);
-    } catch (err) {
-      console.error('Error cargando documentos booking:', err);
+      const payload = (await response.json()) as { vessels?: ActiveVessel[] } | ActiveVessel[];
+      const vessels = Array.isArray(payload) ? payload : payload.vessels ?? [];
+      setActiveVessels(vessels);
+    } catch (error) {
+      console.error('Error loading active vessels for main map:', error);
     }
-  }, []);
+  };
 
   // Función para manejar la subida del documento de booking
   const handleSaveBooking = useCallback(async (booking: string, file?: File, customFileName?: string) => {
