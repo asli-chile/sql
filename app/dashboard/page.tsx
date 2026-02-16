@@ -1172,7 +1172,7 @@ function DashboardPage() {
                           };
                           const estadoColor = estadoColors[estado as keyof typeof estadoColors] || estadoColors.PENDIENTE;
 
-                          const formatDate = (dateString: string | null): string => {
+                          const formatDate = (dateString: string | null | undefined): string => {
                             if (!dateString) return '—';
                             try {
                               const date = new Date(dateString);
@@ -1415,10 +1415,10 @@ function DashboardPage() {
                                 </span>
                               </td>
                               <td className={`hidden md:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-                                {formatDate(record.etd)}
+                                {formatDate(record.etd ?? null)}
                               </td>
                               <td className={`hidden md:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
-                                {formatDate(record.eta)}
+                                {formatDate(record.eta ?? null)}
                               </td>
                               <td className={`hidden lg:table-cell px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-600'}`}>
                                 {record.pod || '—'}
