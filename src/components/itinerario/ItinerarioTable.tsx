@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import React from 'react';
-import { Eye } from 'lucide-react';
+import { Eye, Edit2, X, Save } from 'lucide-react';
+import { createClient } from '@/lib/supabase-browser';
 import type { ItinerarioWithEscalas } from '@/types/itinerarios';
 
 interface ItinerarioTableProps {
@@ -10,6 +11,7 @@ interface ItinerarioTableProps {
   onViewDetail: (itinerario: ItinerarioWithEscalas) => void;
   etaViewMode?: 'dias' | 'fecha' | 'ambos';
   hideActionColumn?: boolean;
+  onGroupServiceChange?: (itinerarioIds: string[], nuevoServicio: string, nuevoConsorcio: string | null) => Promise<void>;
 }
 
 // Normalizar nombre de servicio para agrupar variantes del mismo servicio
@@ -68,7 +70,12 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
     grouped.get(key)!.push(it);
   });
   
-  return Array.from(grouped.entries()).map(([servicio, items]) => {
+  return Array.from(grouped.entries()).map(([servicioNormalizado, items]) => {
+    // Obtener el servicio original (el más común o el primero)
+    // Si todos tienen el mismo servicio, usar ese; si no, usar el más frecuente
+    const serviciosOriginales = items.map(it => it.servicio);
+    const servicioOriginal = serviciosOriginales[0] || servicioNormalizado;
+    
     // Obtener todos los consorcios únicos del servicio
     const consorcios = Array.from(new Set(
       items.map(it => it.consorcio).filter((c): c is string => !!c)
@@ -95,7 +102,7 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
     });
     
     return {
-      servicio,
+      servicio: servicioOriginal, // Usar el servicio original, no el normalizado
       consorcios, // Ahora es un array de consorcios
       items: itemsOrdenados,
     };
@@ -168,11 +175,107 @@ function formatDate(dateString: string | null): string {
   }
 }
 
-export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias', hideActionColumn = false }: ItinerarioTableProps) {
+export function ItinerarioTable({ 
+  itinerarios, 
+  onViewDetail, 
+  etaViewMode = 'dias', 
+  hideActionColumn = false,
+  onGroupServiceChange 
+}: ItinerarioTableProps) {
   const grouped = useMemo(() => groupByService(itinerarios), [itinerarios]);
   
   // Obtener todos los PODs únicos para crear columnas dinámicas
   const allPODs = useMemo(() => getAllPODs(itinerarios), [itinerarios]);
+  
+  // Estado para el modal de edición de grupo
+  const [editingGroup, setEditingGroup] = useState<{
+    servicio: string;
+    itinerarioIds: string[];
+  } | null>(null);
+  const [serviciosDisponibles, setServiciosDisponibles] = useState<Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }>>([]);
+  const [nuevoServicioId, setNuevoServicioId] = useState<string>('');
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
+  const [loadingServicios, setLoadingServicios] = useState(false);
+
+  // Cargar servicios disponibles cuando se abre el modal
+  useEffect(() => {
+    const cargarServicios = async () => {
+      if (!editingGroup) return;
+      
+      try {
+        setLoadingServicios(true);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+        
+        const [serviciosUnicosResponse, consorciosResponse] = await Promise.all([
+          fetch(`${apiUrl}/api/admin/servicios-unicos`).then(r => r.json()).catch(() => ({ servicios: [] })),
+          fetch(`${apiUrl}/api/admin/consorcios`).then(r => r.json()).catch(() => ({ consorcios: [] }))
+        ]);
+
+        const serviciosList: Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }> = [];
+        
+        if (serviciosUnicosResponse?.servicios) {
+          serviciosUnicosResponse.servicios
+            .filter((s: any) => s.activo)
+            .forEach((servicio: any) => {
+              serviciosList.push({
+                id: servicio.id,
+                nombre: servicio.nombre,
+                consorcio: servicio.naviera_nombre || null,
+                tipo: 'servicio_unico',
+              });
+            });
+        }
+
+        if (consorciosResponse?.consorcios) {
+          consorciosResponse.consorcios
+            .filter((c: any) => c.activo)
+            .forEach((consorcio: any) => {
+              serviciosList.push({
+                id: consorcio.id,
+                nombre: consorcio.nombre,
+                consorcio: 'Consorcio',
+                tipo: 'consorcio',
+              });
+            });
+        }
+
+        serviciosList.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        setServiciosDisponibles(serviciosList);
+      } catch (err) {
+        console.error('Error cargando servicios:', err);
+      } finally {
+        setLoadingServicios(false);
+      }
+    };
+
+    cargarServicios();
+  }, [editingGroup]);
+
+  const handleSaveGroupService = async () => {
+    if (!editingGroup || !nuevoServicioId || !onGroupServiceChange) return;
+
+    setIsSavingGroup(true);
+    try {
+      const servicioSeleccionado = serviciosDisponibles.find(s => s.id === nuevoServicioId);
+      if (!servicioSeleccionado) {
+        throw new Error('Servicio no encontrado');
+      }
+
+      const nuevoServicio = servicioSeleccionado.nombre;
+      const nuevoConsorcio = servicioSeleccionado.tipo === 'consorcio' 
+        ? servicioSeleccionado.nombre 
+        : servicioSeleccionado.consorcio;
+
+      await onGroupServiceChange(editingGroup.itinerarioIds, nuevoServicio, nuevoConsorcio);
+      setEditingGroup(null);
+      setNuevoServicioId('');
+    } catch (err: any) {
+      console.error('Error actualizando grupo:', err);
+      alert(err?.message || 'Error al actualizar el servicio del grupo');
+    } finally {
+      setIsSavingGroup(false);
+    }
+  };
 
   if (itinerarios.length === 0) {
     return (
@@ -258,7 +361,7 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                   return <React.Fragment key={consorcio}>{logos}</React.Fragment>;
                 })}
                 <div className="flex-1 min-w-0 flex items-center justify-between">
-                  <div className="flex-1 min-w-0 text-center">
+                  <div className="flex-1 min-w-0 text-center flex items-center justify-center gap-2">
                     {(() => {
                       // Obtener navieras únicas de todos los itinerarios del grupo
                       const navierasUnicas = new Set<string>();
@@ -293,12 +396,31 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
                       
                       return (
                         <>
-                          <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
-                            {navierasTexto}
-                          </h2>
-                          <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
-                            Servicio: <span className="font-semibold">{group.servicio}</span>
-                          </p>
+                          <div className="flex-1 min-w-0 text-center">
+                            <h2 className="text-lg font-bold text-white dark:text-white leading-tight">
+                              {navierasTexto}
+                            </h2>
+                            <p className="text-xs text-white/90 dark:text-[#4FC3F7] mt-0.5">
+                              Servicio: <span className="font-semibold">
+                                {group.items.length > 0 ? group.items[0].servicio : group.servicio}
+                              </span>
+                            </p>
+                          </div>
+                          {onGroupServiceChange && (
+                            <button
+                              onClick={() => {
+                                const itinerarioIds = group.items.map(it => it.id);
+                                setEditingGroup({
+                                  servicio: group.servicio,
+                                  itinerarioIds
+                                });
+                              }}
+                              className="flex-shrink-0 p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                              title="Editar servicio/consorcio del grupo"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          )}
                         </>
                       );
                     })()}
@@ -460,6 +582,93 @@ export function ItinerarioTable({ itinerarios, onViewDetail, etaViewMode = 'dias
           </div>
         );
       })}
+
+      {/* Modal para editar servicio del grupo */}
+      {editingGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-lg shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  Editar Servicio del Grupo
+                </h2>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Cambiará el servicio de {editingGroup.itinerarioIds.length} itinerario(s)
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setEditingGroup(null);
+                  setNuevoServicioId('');
+                }}
+                className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Servicio Actual
+                </label>
+                <p className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-lg">
+                  {editingGroup.servicio}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                  Nuevo Servicio
+                </label>
+                {loadingServicios ? (
+                  <div className="flex items-center justify-center py-4">
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#00AEEF] border-t-transparent" />
+                  </div>
+                ) : (
+                  <select
+                    value={nuevoServicioId}
+                    onChange={(e) => setNuevoServicioId(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+                  >
+                    <option value="">Seleccionar nuevo servicio</option>
+                    {serviciosDisponibles.map((servicio) => (
+                      <option key={servicio.id} value={servicio.id}>
+                        {servicio.tipo === 'servicio_unico' && servicio.consorcio 
+                          ? `${servicio.nombre} (${servicio.consorcio})` 
+                          : servicio.nombre}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => {
+                  setEditingGroup(null);
+                  setNuevoServicioId('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveGroupService}
+                disabled={!nuevoServicioId || isSavingGroup}
+                className="inline-flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-[#00AEEF] hover:bg-[#4FC3F7] rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="h-4 w-4" />
+                {isSavingGroup ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -36,6 +36,15 @@ export function VoyageDrawer({
   const [viaje, setViaje] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Nuevos estados para edición
+  const [servicioId, setServicioId] = useState<string>('');
+  const [servicioNombre, setServicioNombre] = useState<string>('');
+  const [nave, setNave] = useState<string>('');
+  const [consorcio, setConsorcio] = useState<string | null>(null);
+  const [serviciosDisponibles, setServiciosDisponibles] = useState<Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }>>([]);
+  const [navesDisponibles, setNavesDisponibles] = useState<string[]>([]);
+  const [loadingCatalogos, setLoadingCatalogos] = useState(false);
 
   // Función para calcular el número de semana del año basado en el ETD
   const calcularSemana = (fecha: Date): number => {
@@ -46,30 +55,95 @@ export function VoyageDrawer({
     return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   };
 
-  // Cargar POLs disponibles
+  // Cargar catálogos (POLs, servicios, naves)
   useEffect(() => {
-    const cargarPols = async () => {
+    const cargarCatalogos = async () => {
+      if (!isOpen) return;
+      
       try {
+        setLoadingCatalogos(true);
         const supabase = createClient();
-        const { data: registrosData, error: registrosError } = await supabase
-          .from('registros')
-          .select('pol')
-          .not('pol', 'is', null)
-          .is('deleted_at', null);
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
-        if (!registrosError && registrosData) {
+        // Cargar en paralelo
+        const [
+          { data: registrosData },
+          serviciosUnicosResponse,
+          consorciosResponse,
+          { data: navesData }
+        ] = await Promise.all([
+          // POLs
+          supabase
+            .from('registros')
+            .select('pol')
+            .not('pol', 'is', null)
+            .is('deleted_at', null),
+          // Servicios únicos
+          fetch(`${apiUrl}/api/admin/servicios-unicos`).then(r => r.json()).catch(() => ({ servicios: [] })),
+          // Consorcios
+          fetch(`${apiUrl}/api/admin/consorcios`).then(r => r.json()).catch(() => ({ consorcios: [] })),
+          // Naves
+          supabase
+            .from('catalogos_naves')
+            .select('nombre')
+            .eq('activo', true)
+            .order('nombre')
+        ]);
+
+        // Procesar POLs
+        if (registrosData) {
           const polsUnicos = Array.from(
             new Set(registrosData.map((r: any) => r.pol).filter(Boolean))
           ).sort() as string[];
           setPols(polsUnicos);
         }
+
+        // Procesar servicios únicos y consorcios
+        const serviciosList: Array<{ id: string; nombre: string; consorcio: string | null; tipo: 'servicio_unico' | 'consorcio' }> = [];
+        
+        if (serviciosUnicosResponse?.servicios) {
+          serviciosUnicosResponse.servicios
+            .filter((s: any) => s.activo)
+            .forEach((servicio: any) => {
+              serviciosList.push({
+                id: servicio.id,
+                nombre: servicio.nombre,
+                consorcio: servicio.naviera_nombre || null,
+                tipo: 'servicio_unico',
+              });
+            });
+        }
+
+        if (consorciosResponse?.consorcios) {
+          consorciosResponse.consorcios
+            .filter((c: any) => c.activo)
+            .forEach((consorcio: any) => {
+              serviciosList.push({
+                id: consorcio.id,
+                nombre: consorcio.nombre,
+                consorcio: 'Consorcio',
+                tipo: 'consorcio',
+              });
+            });
+        }
+
+        serviciosList.sort((a, b) => a.nombre.localeCompare(b.nombre));
+        setServiciosDisponibles(serviciosList);
+
+        // Procesar naves
+        if (navesData) {
+          const navesList = [...new Set(navesData.map((n: any) => n.nombre).filter(Boolean))].sort();
+          setNavesDisponibles(navesList);
+        }
       } catch (err) {
-        console.error('Error cargando POLs:', err);
+        console.error('Error cargando catálogos:', err);
+      } finally {
+        setLoadingCatalogos(false);
       }
     };
 
     if (isOpen) {
-      cargarPols();
+      cargarCatalogos();
     }
   }, [isOpen]);
 
@@ -84,8 +158,21 @@ export function VoyageDrawer({
       setPol(itinerario.pol || '');
       setEtd(itinerario.etd ? itinerario.etd.split('T')[0] : '');
       setViaje(itinerario.viaje || '');
+      setNave(itinerario.nave || '');
+      setConsorcio(itinerario.consorcio || null);
+      setServicioNombre(itinerario.servicio || '');
+      
+      // Buscar el servicio en la lista de disponibles para establecer el ID
+      if (serviciosDisponibles.length > 0 && itinerario.servicio) {
+        const servicioEncontrado = serviciosDisponibles.find(
+          s => s.nombre === itinerario.servicio
+        );
+        if (servicioEncontrado) {
+          setServicioId(servicioEncontrado.id);
+        }
+      }
     }
-  }, [itinerario]);
+  }, [itinerario, serviciosDisponibles]);
 
   if (!isOpen || !itinerario) return null;
 
@@ -182,15 +269,43 @@ export function VoyageDrawer({
         semanaCalculada = calcularSemana(fechaLocal);
       }
 
-      // Actualizar el POL, ETD, semana y viaje del itinerario
+      // Determinar el servicio final y consorcio
+      let servicioFinal = servicioNombre;
+      let consorcioFinal = consorcio;
+      
+      if (servicioId) {
+        const servicioSeleccionado = serviciosDisponibles.find(s => s.id === servicioId);
+        if (servicioSeleccionado) {
+          servicioFinal = servicioSeleccionado.nombre;
+          // Si es consorcio, usar el nombre del consorcio; si es servicio único, usar su consorcio
+          if (servicioSeleccionado.tipo === 'consorcio') {
+            consorcioFinal = servicioSeleccionado.nombre;
+          } else {
+            consorcioFinal = servicioSeleccionado.consorcio || null;
+          }
+        }
+      }
+
+      // Actualizar el itinerario con todos los campos editables
+      const updateData: any = {
+        servicio: servicioFinal || itinerario.servicio,
+        consorcio: consorcioFinal,
+        nave: nave || itinerario.nave,
+        pol: pol || null,
+        etd: etdFormateada,
+        semana: semanaCalculada,
+        viaje: viaje || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      // Si se proporciona servicio_id, incluirlo
+      if (servicioId) {
+        updateData.servicio_id = servicioId;
+      }
+
       const { error: updateError } = await supabase
         .from('itinerarios')
-        .update({ 
-          pol: pol || null,
-          etd: etdFormateada,
-          semana: semanaCalculada,
-          viaje: viaje || null
-        })
+        .update(updateData)
         .eq('id', itinerario.id);
 
       if (updateError) throw updateError;
@@ -317,21 +432,70 @@ export function VoyageDrawer({
             {/* Información del viaje */}
             <div className="mb-6 space-y-3">
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5 block">
                   Servicio
                 </label>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                  {itinerario.servicio}
-                </p>
+                <select
+                  value={servicioId}
+                  onChange={(e) => {
+                    const nuevoServicioId = e.target.value;
+                    setServicioId(nuevoServicioId);
+                    const servicioSeleccionado = serviciosDisponibles.find(s => s.id === nuevoServicioId);
+                    if (servicioSeleccionado) {
+                      setServicioNombre(servicioSeleccionado.nombre);
+                      if (servicioSeleccionado.tipo === 'consorcio') {
+                        setConsorcio(servicioSeleccionado.nombre);
+                      } else {
+                        setConsorcio(servicioSeleccionado.consorcio || null);
+                      }
+                    }
+                  }}
+                  disabled={loadingCatalogos}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="">Seleccionar servicio</option>
+                  {serviciosDisponibles.map((servicio) => (
+                    <option key={servicio.id} value={servicio.id}>
+                      {servicio.tipo === 'servicio_unico' && servicio.consorcio 
+                        ? `${servicio.nombre} (${servicio.consorcio})` 
+                        : servicio.nombre}
+                    </option>
+                  ))}
+                </select>
+                {!servicioId && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Actual: {itinerario.servicio}
+                  </p>
+                )}
               </div>
               <div>
-                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5 block">
                   Nave
                 </label>
-                <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
-                  {itinerario.nave}
-                </p>
+                <select
+                  value={nave}
+                  onChange={(e) => setNave(e.target.value)}
+                  disabled={loadingCatalogos}
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent disabled:opacity-50"
+                >
+                  <option value="">Seleccionar nave</option>
+                  {navesDisponibles.map((naveOption) => (
+                    <option key={naveOption} value={naveOption}>
+                      {naveOption}
+                    </option>
+                  ))}
+                </select>
               </div>
+              {consorcio && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    Consorcio/Naviera
+                  </label>
+                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100 mt-1">
+                    {consorcio}
+                  </p>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-1.5 block">
                   Viaje

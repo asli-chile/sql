@@ -436,6 +436,46 @@ export default function ItinerarioPage() {
     }
   };
 
+  const handleGroupServiceChange = async (itinerarioIds: string[], nuevoServicio: string, nuevoConsorcio: string | null) => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        throw new Error('Usuario no autenticado');
+      }
+
+      // Actualizar todos los itinerarios del grupo
+      const { error: updateError } = await supabase
+        .from('itinerarios')
+        .update({
+          servicio: nuevoServicio,
+          consorcio: nuevoConsorcio,
+          updated_at: new Date().toISOString(),
+          updated_by: user.email || null,
+        })
+        .in('id', itinerarioIds);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Recargar itinerarios
+      const data = await fetchItinerarios();
+      setItinerarios(data);
+      setSuccess('Servicio del grupo actualizado correctamente');
+      
+      // Limpiar mensaje después de 5 segundos
+      setTimeout(() => {
+        setSuccess(null);
+      }, 5000);
+    } catch (error: any) {
+      console.error('Error actualizando grupo:', error);
+      setError(error?.message || 'Error al actualizar el servicio del grupo');
+      throw error;
+    }
+  };
+
   const handleDownloadPDF = async () => {
     try {
       // Usar itinerarios filtrados o todos si no hay filtro
@@ -743,6 +783,7 @@ export default function ItinerarioPage() {
                       itinerarios={filteredItinerarios}
                       onViewDetail={handleViewDetail}
                       etaViewMode={etaViewMode}
+                      onGroupServiceChange={handleGroupServiceChange}
                     />
                   </div>
 
@@ -1036,6 +1077,7 @@ export default function ItinerarioPage() {
                             onViewDetail={() => {}} // Sin acción en modo solo lectura
                             etaViewMode={viewModalEtaMode}
                             hideActionColumn={true}
+                            // No permitir edición en modo solo lectura
                           />
                         </div>
 
