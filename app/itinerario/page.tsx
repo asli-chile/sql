@@ -75,6 +75,8 @@ export default function ItinerarioPage() {
   const [viewModalEtaMode, setViewModalEtaMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [showMap, setShowMap] = useState(false);
   const [puertoSeleccionadoMapa, setPuertoSeleccionadoMapa] = useState<string | null>(null);
+  const [initialServicio, setInitialServicio] = useState<string | undefined>(undefined);
+  const [initialConsorcio, setInitialConsorcio] = useState<string | null | undefined>(undefined);
 
   // Verificar si es superadmin (Hans o Rodrigo)
   const isSuperAdmin = useMemo(() => {
@@ -513,11 +515,22 @@ export default function ItinerarioPage() {
     }
   };
 
+  const handleAddItinerario = (servicio: string, consorcio: string | null) => {
+    setInitialServicio(servicio);
+    setInitialConsorcio(consorcio);
+    setIsCreateModalOpen(true);
+    setIsCreateModalMinimized(false);
+    setModalPosition({ x: 0, y: 0 });
+  };
+
   const handleCreateSuccess = async () => {
     // Cerrar el modal primero
     setIsCreateModalOpen(false);
     setIsCreateModalMinimized(false);
     setModalPosition({ x: 0, y: 0 });
+    // Limpiar valores iniciales
+    setInitialServicio(undefined);
+    setInitialConsorcio(undefined);
     // Limpiar mensajes previos
     setError(null);
     setSuccess(null);
@@ -889,6 +902,7 @@ export default function ItinerarioPage() {
                       onViewDetail={handleViewDetail}
                       etaViewMode={etaViewMode}
                       onGroupServiceChange={handleGroupServiceChange}
+                      onAddItinerario={handleAddItinerario}
                     />
                   </div>
 
@@ -990,6 +1004,8 @@ export default function ItinerarioPage() {
                       setIsCreateModalOpen(false);
                       setIsCreateModalMinimized(false);
                       setModalPosition({ x: 0, y: 0 });
+                      setInitialServicio(undefined);
+                      setInitialConsorcio(undefined);
                     }}
                     className={`p-1.5 rounded-md transition-colors ${theme === 'dark'
                       ? 'text-slate-400 hover:text-white hover:bg-slate-700'
@@ -1007,7 +1023,11 @@ export default function ItinerarioPage() {
                 className={`overflow-y-auto max-h-[calc(90vh-4rem)] ${isCreateModalMinimized ? 'hidden' : ''}`}
               >
                 <div className="p-4 sm:p-6">
-                  <ItinerariosManager onSuccess={handleCreateSuccess} />
+                  <ItinerariosManager 
+                    onSuccess={handleCreateSuccess} 
+                    initialServicio={initialServicio}
+                    initialConsorcio={initialConsorcio}
+                  />
                 </div>
               </div>
             </div>

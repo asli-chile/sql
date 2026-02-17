@@ -49,9 +49,11 @@ function parsearFechaLatinoamericana(fechaStr: string): Date | null {
 
 interface ItinerariosManagerProps {
   onSuccess?: () => void;
+  initialServicio?: string;
+  initialConsorcio?: string | null;
 }
 
-export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
+export function ItinerariosManager({ onSuccess, initialServicio, initialConsorcio }: ItinerariosManagerProps) {
   const { theme } = useTheme();
 
   // Catálogos desde BD
@@ -174,7 +176,8 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
             if (!registrosError && registrosData) {
               const polsUnicos = Array.from(new Set(registrosData.map((r: any) => r.pol).filter(Boolean))).sort() as string[];
               setPols(polsUnicos);
-              if (polsUnicos.length > 0 && !pol) {
+              // Solo establecer el primer POL si no hay uno ya establecido y no hay un servicio con puerto de origen
+              if (polsUnicos.length > 0 && !pol && !servicioId) {
                 setPol(polsUnicos[0]);
               }
             }
@@ -289,6 +292,51 @@ export function ItinerariosManager({ onSuccess }: ItinerariosManagerProps) {
   useEffect(() => {
     void cargarCatalogos();
   }, []);
+
+  // Pre-cargar servicio y consorcio si se pasan valores iniciales
+  useEffect(() => {
+    if (initialServicio && serviciosExistentes.length > 0 && loadingCatalogos === false) {
+      // Buscar el servicio que coincida con el nombre
+      const servicioEncontrado = serviciosExistentes.find(
+        s => s.nombre === initialServicio || 
+        s.nombre.toUpperCase() === initialServicio.toUpperCase()
+      );
+      
+      if (servicioEncontrado && servicioId !== servicioEncontrado.id) {
+        setServicioId(servicioEncontrado.id);
+        setServicioNombre(servicioEncontrado.nombre);
+        
+        // Si hay consorcio inicial y coincide, establecerlo
+        if (initialConsorcio && servicioEncontrado.consorcio) {
+          const consorcioCoincide = servicioEncontrado.consorcio === initialConsorcio ||
+            servicioEncontrado.consorcio.toUpperCase() === initialConsorcio.toUpperCase();
+          if (consorcioCoincide && navieras.includes(servicioEncontrado.consorcio)) {
+            setNaviera(servicioEncontrado.consorcio);
+          }
+        } else if (servicioEncontrado.consorcio && navieras.includes(servicioEncontrado.consorcio)) {
+          // Si no hay consorcio inicial pero el servicio tiene uno, usarlo
+          setNaviera(servicioEncontrado.consorcio);
+        }
+        
+      }
+    }
+  }, [initialServicio, initialConsorcio, serviciosExistentes, servicioId, navieras, loadingCatalogos]);
+
+  // Cargar puerto de origen cuando se establece el servicioId y los catálogos están listos
+  useEffect(() => {
+    if (servicioId && puertoOrigenPorServicio[servicioId] && !loadingCatalogos) {
+      const puertoOrigen = puertoOrigenPorServicio[servicioId];
+      // Si el puerto de origen no está en la lista de POLs, agregarlo
+      if (pols.length > 0 && !pols.includes(puertoOrigen)) {
+        setPols(prev => {
+          const nuevos = [...prev, puertoOrigen].sort();
+          return nuevos;
+        });
+      }
+      // Establecer el POL del servicio
+      setPol(puertoOrigen);
+    }
+  }, [servicioId, puertoOrigenPorServicio, loadingCatalogos, pols]);
 
   // Navieras disponibles: filtrar según el servicio seleccionado
   const navierasDisponibles = useMemo(() => {

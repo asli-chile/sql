@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import React from 'react';
-import { Eye, Edit2, X, Save } from 'lucide-react';
+import { Eye, Edit2, X, Save, Plus } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
 import type { ItinerarioWithEscalas } from '@/types/itinerarios';
 
@@ -12,6 +12,7 @@ interface ItinerarioTableProps {
   etaViewMode?: 'dias' | 'fecha' | 'ambos';
   hideActionColumn?: boolean;
   onGroupServiceChange?: (itinerarioIds: string[], nuevoServicio: string, nuevoConsorcio: string | null) => Promise<void>;
+  onAddItinerario?: (servicio: string, consorcio: string | null) => void;
 }
 
 // Normalizar nombre de servicio para agrupar variantes del mismo servicio
@@ -180,7 +181,8 @@ export function ItinerarioTable({
   onViewDetail, 
   etaViewMode = 'dias', 
   hideActionColumn = false,
-  onGroupServiceChange 
+  onGroupServiceChange,
+  onAddItinerario
 }: ItinerarioTableProps) {
   const grouped = useMemo(() => groupByService(itinerarios), [itinerarios]);
   
@@ -406,21 +408,36 @@ export function ItinerarioTable({
                               </span>
                             </p>
                           </div>
-                          {onGroupServiceChange && (
-                            <button
-                              onClick={() => {
-                                const itinerarioIds = group.items.map(it => it.id);
-                                setEditingGroup({
-                                  servicio: group.servicio,
-                                  itinerarioIds
-                                });
-                              }}
-                              className="flex-shrink-0 p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-                              title="Editar servicio/consorcio del grupo"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            {onAddItinerario && (
+                              <button
+                                onClick={() => {
+                                  const servicio = group.items.length > 0 ? group.items[0].servicio : group.servicio;
+                                  const consorcio = group.consorcios.length > 0 ? group.consorcios[0] : null;
+                                  onAddItinerario(servicio, consorcio);
+                                }}
+                                className="flex-shrink-0 p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                                title="Agregar nueva nave al servicio"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            )}
+                            {onGroupServiceChange && (
+                              <button
+                                onClick={() => {
+                                  const itinerarioIds = group.items.map(it => it.id);
+                                  setEditingGroup({
+                                    servicio: group.servicio,
+                                    itinerarioIds
+                                  });
+                                }}
+                                className="flex-shrink-0 p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                                title="Editar servicio/consorcio del grupo"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </>
                       );
                     })()}
