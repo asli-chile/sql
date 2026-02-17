@@ -56,24 +56,56 @@ function normalizarNombreServicio(nombre: string): string {
   return normalizado;
 }
 
-// Agrupar itinerarios por servicio (normalizado)
+// Obtener todas las regiones únicas de un itinerario
+function obtenerRegiones(itinerario: ItinerarioWithEscalas): string[] {
+  if (!itinerario.escalas || itinerario.escalas.length === 0) {
+    return ['SIN REGIÓN'];
+  }
+  
+  const regionesSet = new Set<string>();
+  itinerario.escalas.forEach((escala) => {
+    if (escala.area) {
+      const region = escala.area.toUpperCase().trim();
+      if (region) {
+        regionesSet.add(region);
+      }
+    }
+  });
+  
+  if (regionesSet.size === 0) {
+    return ['SIN REGIÓN'];
+  }
+  
+  return Array.from(regionesSet).sort();
+}
+
+// Agrupar itinerarios por servicio y región
+// Si un itinerario tiene múltiples regiones, aparecerá en múltiples grupos
 function groupByService(itinerarios: ItinerarioWithEscalas[]) {
   const grouped = new Map<string, ItinerarioWithEscalas[]>();
   
   itinerarios.forEach((it) => {
     // Normalizar el nombre del servicio para agrupar variantes
     const servicioNormalizado = normalizarNombreServicio(it.servicio);
-    const key = servicioNormalizado;
+    // Obtener todas las regiones del itinerario
+    const regiones = obtenerRegiones(it);
     
-    if (!grouped.has(key)) {
-      grouped.set(key, []);
-    }
-    grouped.get(key)!.push(it);
+    // Agregar el itinerario a cada grupo de región correspondiente
+    regiones.forEach((region) => {
+      // Crear key combinando servicio y región
+      const key = `${servicioNormalizado}|||${region}`;
+      
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(it);
+    });
   });
   
-  return Array.from(grouped.entries()).map(([servicioNormalizado, items]) => {
+  return Array.from(grouped.entries()).map(([key, items]) => {
+    const [servicioNormalizado, region] = key.split('|||');
+    
     // Obtener el servicio original (el más común o el primero)
-    // Si todos tienen el mismo servicio, usar ese; si no, usar el más frecuente
     const serviciosOriginales = items.map(it => it.servicio);
     const servicioOriginal = serviciosOriginales[0] || servicioNormalizado;
     
@@ -82,8 +114,28 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
       items.map(it => it.consorcio).filter((c): c is string => !!c)
     )).sort();
     
+    // Filtrar escalas para mostrar solo las de la región del grupo
+    const itemsConEscalasFiltradas = items.map(it => {
+      if (!it.escalas || it.escalas.length === 0) {
+        return it;
+      }
+      
+      // Filtrar escalas que pertenecen a esta región
+      const escalasFiltradas = it.escalas.filter(escala => {
+        if (!escala.area) return false;
+        return escala.area.toUpperCase().trim() === region;
+      });
+      
+      // Si no hay escalas de esta región, mantener todas las escalas (para mostrar el itinerario completo)
+      // pero marcar que este grupo es para esta región específica
+      return {
+        ...it,
+        escalas: escalasFiltradas.length > 0 ? escalasFiltradas : it.escalas,
+      };
+    });
+    
     // Ordenar items primero por ETD (ascendente), luego por consorcio
-    const itemsOrdenados = [...items].sort((a, b) => {
+    const itemsOrdenados = [...itemsConEscalasFiltradas].sort((a, b) => {
       // Primero ordenar por ETD
       if (a.etd && b.etd) {
         const etdA = new Date(a.etd).getTime();
@@ -104,6 +156,7 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
     
     return {
       servicio: servicioOriginal, // Usar el servicio original, no el normalizado
+      region: region, // Región del grupo
       consorcios, // Ahora es un array de consorcios
       items: itemsOrdenados,
     };
@@ -294,7 +347,7 @@ export function ItinerarioTable({
         
         return (
           <div
-            key={group.servicio}
+            key={`${group.servicio}-${group.region}`}
             className="border border-[#E1E1E1] dark:border-[#3D3D3D] bg-white dark:bg-[#2D2D2D] overflow-hidden flex flex-col"
             style={{ borderRadius: '4px' }}
           >
@@ -381,21 +434,6 @@ export function ItinerarioTable({
                         ? Array.from(navierasUnicas).join(' - ')
                         : (group.consorcios.length > 0 ? group.consorcios.join(' / ') : group.servicio);
                       
-                      // Obtener regiones únicas de las escalas
-                      const regionesUnicas = new Set<string>();
-                      group.items.forEach((it: any) => {
-                        if (it.escalas) {
-                          it.escalas.forEach((escala: any) => {
-                            if (escala.area) {
-                              regionesUnicas.add(escala.area);
-                            }
-                          });
-                        }
-                      });
-                      const regionesTexto = regionesUnicas.size > 0 
-                        ? Array.from(regionesUnicas).join(' / ')
-                        : null;
-                      
                       return (
                         <>
                           <div className="flex-1 min-w-0 text-center">
@@ -406,6 +444,9 @@ export function ItinerarioTable({
                               Servicio: <span className="font-semibold">
                                 {group.items.length > 0 ? group.items[0].servicio : group.servicio}
                               </span>
+                              {group.region && group.region !== 'SIN REGIÓN' && (
+                                <> • Región: <span className="font-semibold">{group.region}</span></>
+                              )}
                             </p>
                           </div>
                           <div className="flex items-center gap-1.5">
@@ -442,30 +483,13 @@ export function ItinerarioTable({
                       );
                     })()}
                   </div>
-                  {(() => {
-                    // Obtener regiones únicas de las escalas
-                    const regionesUnicas = new Set<string>();
-                    group.items.forEach((it: any) => {
-                      if (it.escalas) {
-                        it.escalas.forEach((escala: any) => {
-                          if (escala.area) {
-                            regionesUnicas.add(escala.area);
-                          }
-                        });
-                      }
-                    });
-                    const regionesTexto = regionesUnicas.size > 0 
-                      ? Array.from(regionesUnicas).join(' / ')
-                      : null;
-                    
-                    return regionesTexto ? (
-                      <div className="flex-shrink-0 ml-4">
-                        <h3 className="text-lg font-bold text-white dark:text-white leading-tight">
-                          {regionesTexto}
-                        </h3>
-                      </div>
-                    ) : null;
-                  })()}
+                  {group.region && group.region !== 'SIN REGIÓN' && (
+                    <div className="flex-shrink-0 ml-4">
+                      <h3 className="text-lg font-bold text-white dark:text-white leading-tight">
+                        {group.region}
+                      </h3>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
