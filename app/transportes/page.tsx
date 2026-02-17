@@ -1069,16 +1069,17 @@ export default function TransportesPage() {
                     </div>
                   </div>
                 ) : (
-                  <AgGridReact<TransporteRecord>
-                    ref={gridRef}
-                    rowData={rowData}
-                    columnDefs={columnDefs}
-                    gridOptions={gridOptions}
-                    onGridReady={onGridReady}
-                    onSelectionChanged={onSelectionChanged}
-                    getRowStyle={getRowStyle}
-                    style={{ height: '100%', width: '100%' }}
-                  />
+                  <div style={{ height: '100%', width: '100%' }}>
+                    <AgGridReact<TransporteRecord>
+                      ref={gridRef}
+                      rowData={rowData}
+                      columnDefs={columnDefs}
+                      gridOptions={gridOptions}
+                      onGridReady={onGridReady}
+                      onSelectionChanged={onSelectionChanged}
+                      getRowStyle={getRowStyle}
+                    />
+                  </div>
                 )}
               </div>
             </div>
