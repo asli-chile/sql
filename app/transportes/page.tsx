@@ -845,7 +845,7 @@ export default function TransportesPage() {
         backgroundColor: theme === 'dark' ? 'rgba(56, 189, 248, 0.2)' : 'rgba(59, 130, 246, 0.1)',
       };
     }
-    return null;
+    return undefined;
   }, [theme]);
 
   const isSuperAdmin = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl' || 
