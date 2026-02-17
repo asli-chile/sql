@@ -21,12 +21,17 @@ import {
   Plus,
   Settings,
   Download,
-  Eye
+  Eye,
+  Minus,
+  Maximize2,
+  X,
+  Map as MapIcon
 } from 'lucide-react';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
 import { ItinerarioCard } from '@/components/itinerario/ItinerarioCard';
 import { VoyageDrawer } from '@/components/itinerario/VoyageDrawer';
+import { ItinerarioMap } from '@/components/itinerario/ItinerarioMap';
 import { ItinerariosManager } from '@/components/itinerarios/ItinerariosManager';
 import { ServiciosUnicosManager } from '@/components/itinerarios/ServiciosUnicosManager';
 import { ConsorciosManager } from '@/components/itinerarios/ConsorciosManager';
@@ -59,11 +64,17 @@ export default function ItinerarioPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isCreateModalMinimized, setIsCreateModalMinimized] = useState(false);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [showServiciosManager, setShowServiciosManager] = useState(false);
   const [serviciosManagerTab, setServiciosManagerTab] = useState<'unicos' | 'consorcios'>('unicos');
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewModalFilters, setViewModalFilters] = useState<FiltersType>({});
   const [viewModalEtaMode, setViewModalEtaMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
+  const [showMap, setShowMap] = useState(false);
+  const [puertoSeleccionadoMapa, setPuertoSeleccionadoMapa] = useState<string | null>(null);
 
   // Verificar si es superadmin (Hans o Rodrigo)
   const isSuperAdmin = useMemo(() => {
@@ -294,6 +305,13 @@ export default function ItinerarioPage() {
         const hasRegion = it.escalas?.some((escala) => escala.area === filters.region);
         if (!hasRegion) return false;
       }
+      // Filtrar por puerto seleccionado en el mapa
+      if (puertoSeleccionadoMapa) {
+        const hasPuerto = it.escalas?.some((escala) => 
+          (escala.puerto || escala.puerto_nombre) === puertoSeleccionadoMapa
+        );
+        if (!hasPuerto) return false;
+      }
       return true;
     });
     
@@ -339,7 +357,7 @@ export default function ItinerarioPage() {
     });
     
     return filtered;
-  }, [itinerarios, filters]);
+  }, [itinerarios, filters, puertoSeleccionadoMapa]);
 
   // Filtrar itinerarios para el modal de vista
   const filteredItinerariosForModal = useMemo(() => {
@@ -498,6 +516,8 @@ export default function ItinerarioPage() {
   const handleCreateSuccess = async () => {
     // Cerrar el modal primero
     setIsCreateModalOpen(false);
+    setIsCreateModalMinimized(false);
+    setModalPosition({ x: 0, y: 0 });
     // Limpiar mensajes previos
     setError(null);
     setSuccess(null);
@@ -520,6 +540,54 @@ export default function ItinerarioPage() {
       setIsLoading(false);
     }
   };
+
+  // Manejar minimizar - posicionar en esquina inferior derecha
+  const handleMinimize = () => {
+    setIsCreateModalMinimized(true);
+    // Posicionar en esquina inferior derecha
+    setModalPosition({ x: 0, y: 0 });
+  };
+
+  // Manejar maximizar - resetear posición
+  const handleMaximize = () => {
+    setIsCreateModalMinimized(false);
+    setModalPosition({ x: 0, y: 0 });
+  };
+
+  // Manejar inicio de arrastre
+  const handleDragStart = (e: React.MouseEvent) => {
+    if (!isCreateModalMinimized) return;
+    setIsDragging(true);
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
+  };
+
+  // Efecto para manejar el arrastre global
+  useEffect(() => {
+    if (isDragging) {
+      const handleMouseMove = (e: MouseEvent) => {
+        setModalPosition({
+          x: e.clientX - dragOffset.x,
+          y: e.clientY - dragOffset.y,
+        });
+      };
+
+      const handleMouseUp = () => {
+        setIsDragging(false);
+      };
+
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragOffset]);
 
   if (loadingUser) {
     return <LoadingScreen message="Cargando itinerarios..." />;
@@ -592,6 +660,27 @@ export default function ItinerarioPage() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+              {/* Botón Mapa */}
+              <button
+                onClick={() => {
+                  setShowMap(!showMap);
+                  if (showMap) {
+                    setPuertoSeleccionadoMapa(null);
+                  }
+                }}
+                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${showMap
+                  ? theme === 'dark'
+                    ? 'border-[#00AEEF] bg-[#00AEEF]/30 text-[#00AEEF] hover:bg-[#00AEEF]/40'
+                    : 'border-[#00AEEF] bg-[#00AEEF] text-white hover:bg-[#0099D6]'
+                  : theme === 'dark'
+                    ? 'border-slate-600 bg-slate-700/60 text-slate-200 hover:bg-slate-700 hover:border-slate-500'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                  }`}
+                title="Ver Mapa de Destinos"
+              >
+                <MapIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">{showMap ? 'Ocultar Mapa' : 'Ver Mapa'}</span>
+              </button>
               {/* Botón Ver Itinerario */}
               <button
                 onClick={() => {
@@ -739,9 +828,25 @@ export default function ItinerarioPage() {
                 regiones={regionesDisponibles}
                 filters={filters}
                 onFiltersChange={setFilters}
-                onReset={() => setFilters({})}
+                onReset={() => {
+                  setFilters({});
+                  setPuertoSeleccionadoMapa(null);
+                }}
               />
             </div>
+
+            {/* Mapa de Destinos */}
+            {showMap && (
+              <div className="flex-shrink-0 h-96 mb-4">
+                <ItinerarioMap
+                  itinerarios={itinerarios}
+                  onPuertoClick={(puerto) => {
+                    setPuertoSeleccionadoMapa(puerto);
+                  }}
+                  puertoSeleccionado={puertoSeleccionadoMapa}
+                />
+              </div>
+            )}
 
             {/* Contenido */}
             <div className="flex-1 min-h-0 overflow-auto">
@@ -822,26 +927,85 @@ export default function ItinerarioPage() {
 
         {/* Modal de creación */}
         {isCreateModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-            <div className={`relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-lg shadow-xl ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'}`}>
+          <div 
+            className="fixed inset-0 z-50 bg-black/60 px-4"
+            style={isCreateModalMinimized ? { pointerEvents: 'none' } : {}}
+          >
+            <div 
+              className={`absolute ${isCreateModalMinimized ? 'w-80' : 'w-full max-w-6xl'} ${isCreateModalMinimized ? 'h-auto' : 'max-h-[90vh]'} overflow-hidden rounded-lg shadow-xl transition-all duration-300 ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} ${isCreateModalMinimized ? 'cursor-move' : ''}`}
+              style={
+                isCreateModalMinimized
+                  ? {
+                      top: modalPosition.y || 'auto',
+                      left: modalPosition.x || 'auto',
+                      right: modalPosition.x === 0 && modalPosition.y === 0 ? '1rem' : 'auto',
+                      bottom: modalPosition.x === 0 && modalPosition.y === 0 ? '1rem' : 'auto',
+                      pointerEvents: 'auto',
+                    }
+                  : {
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                    }
+              }
+            >
               {/* Header del modal */}
-              <div className={`flex items-center justify-between px-4 sm:px-6 py-3 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
+              <div 
+                className={`flex items-center justify-between px-4 sm:px-6 py-3 border-b ${isCreateModalMinimized ? 'cursor-move select-none' : ''} ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}
+                onDoubleClick={() => {
+                  if (isCreateModalMinimized) {
+                    handleMaximize();
+                  } else {
+                    handleMinimize();
+                  }
+                }}
+                onMouseDown={isCreateModalMinimized ? handleDragStart : undefined}
+              >
                 <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   Crear Nuevo Itinerario
                 </h2>
-                <button
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className={`p-1.5 rounded-md transition-colors ${theme === 'dark'
-                    ? 'text-slate-400 hover:text-white hover:bg-slate-700'
-                    : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                >
-                  <ChevronRight className="h-5 w-5 rotate-90" />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (isCreateModalMinimized) {
+                        handleMaximize();
+                      } else {
+                        handleMinimize();
+                      }
+                    }}
+                    className={`p-1.5 rounded-md transition-colors ${theme === 'dark'
+                      ? 'text-slate-400 hover:text-white hover:bg-slate-700'
+                      : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    title={isCreateModalMinimized ? 'Maximizar' : 'Minimizar'}
+                  >
+                    {isCreateModalMinimized ? (
+                      <Maximize2 className="h-5 w-5" />
+                    ) : (
+                      <Minus className="h-5 w-5" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsCreateModalOpen(false);
+                      setIsCreateModalMinimized(false);
+                      setModalPosition({ x: 0, y: 0 });
+                    }}
+                    className={`p-1.5 rounded-md transition-colors ${theme === 'dark'
+                      ? 'text-slate-400 hover:text-white hover:bg-slate-700'
+                      : 'text-gray-400 hover:text-gray-900 hover:bg-gray-100'
+                      }`}
+                    title="Cerrar"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Contenido del modal */}
-              <div className="overflow-y-auto max-h-[calc(90vh-4rem)]">
+              <div 
+                className={`overflow-y-auto max-h-[calc(90vh-4rem)] ${isCreateModalMinimized ? 'hidden' : ''}`}
+              >
                 <div className="p-4 sm:p-6">
                   <ItinerariosManager onSuccess={handleCreateSuccess} />
                 </div>

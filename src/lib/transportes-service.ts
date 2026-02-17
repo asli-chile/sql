@@ -8,6 +8,7 @@ export type TransporteRecord = {
   deposito: string | null;
   booking: string | null;
   nave: string | null;
+  viaje: string | null;
   naviera: string | null;
   stacking: string | null;
   cut_off: string | null;
