@@ -1046,6 +1046,61 @@ function DocumentosPage() {
 
   const hasActiveFilters = Boolean(selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta);
 
+  // Verificar si es superadmin (Hans o Rodrigo) - DEBE ESTAR ANTES DEL RETURN CONDICIONAL
+  const isSuperAdmin = useMemo(() => {
+    const email = (currentUser?.email || '').toLowerCase();
+    if (!email) {
+      console.log('⚠️ No se encontró email del usuario en documentos:', { currentUser: currentUser?.email });
+      return false;
+    }
+    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
+    console.log('🔍 Verificando superadmin en documentos:', { email, isSuperAdmin });
+    return isSuperAdmin;
+  }, [currentUser]);
+  
+  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
+
+  const sidebarSections: SidebarSection[] = useMemo(() => [
+    {
+      title: 'Inicio',
+      items: [
+        { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: 'Módulos',
+      items: [
+        { label: 'Embarques', id: '/registros', isActive: pathname === '/registros', icon: Ship },
+        { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
+        { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText, counter: documentosCount, tone: 'sky' },
+        ...(currentUser && currentUser.rol !== 'cliente'
+          ? [{ label: 'Generar Documentos', id: '/generar-documentos', isActive: pathname === '/generar-documentos', icon: FileCheck }]
+          : []),
+        ...(isSuperAdmin
+          ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: pathname === '/dashboard/seguimiento', icon: Globe }]
+          : []),
+        { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
+        ...(isSuperAdmin
+          ? [
+            { label: 'Finanzas', id: '/finanzas', isActive: pathname === '/finanzas', icon: DollarSign },
+            { label: 'Reportes', id: '/reportes', isActive: pathname === '/reportes', icon: BarChart3 },
+          ]
+          : []),
+        { label: 'Itinerario', id: '/itinerario', isActive: pathname === '/itinerario', icon: Ship },
+      ],
+    },
+    ...(isSuperAdmin
+      ? [
+        {
+          title: 'Mantenimiento',
+          items: [
+            { label: 'Usuarios', id: '/mantenimiento', isActive: pathname === '/mantenimiento', icon: Users },
+          ],
+        },
+      ]
+      : []),
+  ], [currentUser, isSuperAdmin, pathname, documentosCount]);
+
   // IMPORTANTE: El return condicional debe estar DESPUÉS de todos los hooks
   if (!currentUser) {
     return null; // El PageWrapper manejará el loading
@@ -1159,61 +1214,6 @@ function DocumentosPage() {
       </div>
     );
   };
-
-  // Verificar si es superadmin (Hans o Rodrigo)
-  const isSuperAdmin = useMemo(() => {
-    const email = (currentUser?.email || '').toLowerCase();
-    if (!email) {
-      console.log('⚠️ No se encontró email del usuario en documentos:', { currentUser: currentUser?.email });
-      return false;
-    }
-    const isSuperAdmin = email === 'rodrigo.caceres@asli.cl' || email === 'hans.vasquez@asli.cl';
-    console.log('🔍 Verificando superadmin en documentos:', { email, isSuperAdmin });
-    return isSuperAdmin;
-  }, [currentUser]);
-  
-  const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
-
-  const sidebarSections: SidebarSection[] = [
-    {
-      title: 'Inicio',
-      items: [
-        { label: 'Dashboard', id: '/dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      title: 'Módulos',
-      items: [
-        { label: 'Embarques', id: '/registros', isActive: pathname === '/registros', icon: Ship },
-        { label: 'Transportes', id: '/transportes', isActive: pathname === '/transportes', icon: Truck },
-        { label: 'Documentos', id: '/documentos', isActive: pathname === '/documentos', icon: FileText, counter: documentosCount, tone: 'sky' },
-        ...(currentUser && currentUser.rol !== 'cliente'
-          ? [{ label: 'Generar Documentos', id: '/generar-documentos', isActive: pathname === '/generar-documentos', icon: FileCheck }]
-          : []),
-        ...(isSuperAdmin
-          ? [{ label: 'Seguimiento Marítimo', id: '/dashboard/seguimiento', isActive: pathname === '/dashboard/seguimiento', icon: Globe }]
-          : []),
-        { label: 'Tracking Movs', id: '/dashboard/tracking', icon: Activity },
-        ...(isSuperAdmin
-          ? [
-            { label: 'Finanzas', id: '/finanzas', isActive: pathname === '/finanzas', icon: DollarSign },
-            { label: 'Reportes', id: '/reportes', isActive: pathname === '/reportes', icon: BarChart3 },
-          ]
-          : []),
-        { label: 'Itinerario', id: '/itinerario', isActive: pathname === '/itinerario', icon: Ship },
-      ],
-    },
-    ...(isSuperAdmin
-      ? [
-        {
-          title: 'Mantenimiento',
-          items: [
-            { label: 'Usuarios', id: '/mantenimiento', isActive: pathname === '/mantenimiento', icon: Users },
-          ],
-        },
-      ]
-      : []),
-  ];
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
