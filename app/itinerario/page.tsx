@@ -93,6 +93,10 @@ export default function ItinerarioPage() {
   
   const isRodrigo = currentUser?.email?.toLowerCase() === 'rodrigo.caceres@asli.cl';
   const isAdmin = currentUser?.rol === 'admin';
+  const isEjecutivo = currentUser?.rol === 'ejecutivo';
+  const isCliente = currentUser?.rol === 'cliente';
+  // Solo admin y ejecutivo pueden editar
+  const canEdit = isAdmin || isEjecutivo;
 
   useEffect(() => {
     const checkUser = async () => {
@@ -437,6 +441,7 @@ export default function ItinerarioPage() {
   }, [itinerarios, viewModalFilters]);
 
   const handleViewDetail = (itinerario: ItinerarioWithEscalas) => {
+    // Permitir abrir el drawer para todos, pero solo con permisos de edición si el usuario puede editar
     setSelectedItinerario(itinerario);
     setIsDrawerOpen(true);
   };
@@ -643,14 +648,17 @@ export default function ItinerarioPage() {
 
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
         {/* Header */}
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
+        <header className={`sticky top-0 z-40 border-b backdrop-blur-xl overflow-hidden ${theme === 'dark' 
+          ? 'border-[#3D3D3D]/50 bg-gradient-to-r from-[#0078D4]/20 via-[#00AEEF]/20 to-[#0078D4]/20' 
+          : 'border-[#E1E1E1] bg-gradient-to-r from-[#00AEEF]/10 via-white to-[#00AEEF]/10'
+        } shadow-lg`}>
           <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 py-2 sm:py-3">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
-                : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+              className={`lg:hidden flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 ${theme === 'dark'
+                ? 'border border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-300 hover:bg-[#3D3D3D] hover:scale-105'
+                : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'
                 }`}
               aria-label="Abrir menú"
             >
@@ -660,9 +668,9 @@ export default function ItinerarioPage() {
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-8 w-8 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'border-slate-700/60 text-slate-300 hover:bg-slate-700'
-                  : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 flex-shrink-0 ${theme === 'dark'
+                  ? 'border border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-300 hover:bg-[#3D3D3D] hover:scale-105'
+                  : 'border border-gray-300 bg-white text-gray-600 hover:bg-gray-100 hover:scale-105'
                   }`}
                 aria-label="Expandir menú lateral"
               >
@@ -671,18 +679,21 @@ export default function ItinerarioPage() {
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
+              <div className={`p-2 sm:p-2.5 rounded-xl flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                <Ship className={`h-5 w-5 sm:h-6 sm:w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+              </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Itinerarios</p>
-                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Itinerarios</p>
+                <h1 className={`text-lg sm:text-xl md:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                   Itinerarios
                 </h1>
-                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
                   Tentativo semanal por servicio
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+            <div className="flex items-center gap-2 sm:gap-3 ml-auto flex-wrap">
               {/* Botón Mapa */}
               <button
                 onClick={() => {
@@ -691,13 +702,13 @@ export default function ItinerarioPage() {
                     setPuertoSeleccionadoMapa(null);
                   }
                 }}
-                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${showMap
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${showMap
                   ? theme === 'dark'
-                    ? 'border-[#00AEEF] bg-[#00AEEF]/30 text-[#00AEEF] hover:bg-[#00AEEF]/40'
-                    : 'border-[#00AEEF] bg-[#00AEEF] text-white hover:bg-[#0099D6]'
+                    ? 'border-[#00AEEF] bg-gradient-to-r from-[#00AEEF]/30 to-[#0078D4]/30 text-[#4FC3F7] hover:from-[#00AEEF]/40 hover:to-[#0078D4]/40'
+                    : 'border-[#00AEEF] bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white hover:from-[#0099CC] hover:to-[#0078D4]'
                   : theme === 'dark'
-                    ? 'border-slate-600 bg-slate-700/60 text-slate-200 hover:bg-slate-700 hover:border-slate-500'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                    ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-200 hover:bg-[#3D3D3D] hover:border-[#00AEEF]/50'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-[#00AEEF]'
                   }`}
                 title="Ver Mapa de Destinos"
               >
@@ -711,9 +722,9 @@ export default function ItinerarioPage() {
                   setViewModalEtaMode(etaViewMode);
                   setShowViewModal(true);
                 }}
-                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
-                  ? 'border-blue-600 bg-blue-700/60 text-blue-200 hover:bg-blue-700 hover:border-blue-500'
-                  : 'border-blue-500 bg-blue-500 text-white hover:bg-blue-600 hover:border-blue-600'
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${theme === 'dark'
+                  ? 'border-blue-500/50 bg-gradient-to-r from-blue-600/40 to-blue-700/40 text-blue-200 hover:from-blue-600/60 hover:to-blue-700/60'
+                  : 'border-blue-500 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700'
                   }`}
                 title="Ver Itinerario"
               >
@@ -723,9 +734,9 @@ export default function ItinerarioPage() {
               {/* Botón Descargar PDF */}
               <button
                 onClick={handleDownloadPDF}
-                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
-                  ? 'border-emerald-600 bg-emerald-700/60 text-emerald-200 hover:bg-emerald-700 hover:border-emerald-500'
-                  : 'border-emerald-500 bg-emerald-500 text-white hover:bg-emerald-600 hover:border-emerald-600'
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${theme === 'dark'
+                  ? 'border-emerald-500/50 bg-gradient-to-r from-emerald-600/40 to-emerald-700/40 text-emerald-200 hover:from-emerald-600/60 hover:to-emerald-700/60'
+                  : 'border-emerald-500 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700'
                   }`}
                 title="Descargar Itinerario en PDF"
               >
@@ -736,9 +747,9 @@ export default function ItinerarioPage() {
               {isSuperAdmin && (
                 <button
                   onClick={() => setShowServiciosManager(true)}
-                  className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
-                    ? 'border-slate-600 bg-slate-700/60 text-slate-200 hover:bg-slate-700 hover:border-slate-500'
-                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400'
+                  className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${theme === 'dark'
+                    ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-200 hover:bg-[#3D3D3D] hover:border-[#00AEEF]/50'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-[#00AEEF]'
                     }`}
                   title="Gestionar Servicios"
                 >
@@ -746,31 +757,33 @@ export default function ItinerarioPage() {
                   <span className="hidden sm:inline">Gestionar Servicios</span>
                 </button>
               )}
-              {/* Botón Agregar */}
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className={`flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${theme === 'dark'
-                  ? 'border-[#00AEEF]/60 bg-[#00AEEF]/20 text-[#00AEEF] hover:bg-[#00AEEF]/30 hover:border-[#00AEEF]'
-                  : 'border-[#00AEEF] bg-[#00AEEF] text-white hover:bg-[#0099D6]'
-                  }`}
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Agregar</span>
-              </button>
+              {/* Botón Agregar - Solo para admin y ejecutivo */}
+              {canEdit && (
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${theme === 'dark'
+                    ? 'border-[#00AEEF]/60 bg-gradient-to-r from-[#00AEEF]/20 to-[#0078D4]/20 text-[#4FC3F7] hover:from-[#00AEEF]/30 hover:to-[#0078D4]/30 hover:border-[#00AEEF]'
+                    : 'border-[#00AEEF] bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white hover:from-[#0099CC] hover:to-[#0078D4]'
+                    }`}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Agregar</span>
+                </button>
+              )}
               {/* Toggle de vista ETA */}
-              <div className={`flex items-center gap-0 border rounded-md overflow-hidden ${theme === 'dark'
-                ? 'border-slate-700/60 bg-slate-800/60'
+              <div className={`flex items-center gap-0 border rounded-xl overflow-hidden shadow-sm ${theme === 'dark'
+                ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80'
                 : 'border-gray-300 bg-white'
                 }`}>
                 <button
                   onClick={() => setEtaViewMode('dias')}
-                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-medium transition-colors ${
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold transition-all duration-200 ${
                     etaViewMode === 'dias'
                       ? theme === 'dark'
-                        ? 'bg-[#00AEEF] text-white'
-                        : 'bg-[#00AEEF] text-white'
+                        ? 'bg-gradient-to-r from-[#00AEEF] to-[#0078D4] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white shadow-sm'
                       : theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
+                        ? 'text-slate-300 hover:bg-[#3D3D3D]'
                         : 'text-gray-600 hover:bg-gray-100'
                   }`}
                   title="Mostrar días de tránsito"
@@ -779,15 +792,15 @@ export default function ItinerarioPage() {
                 </button>
                 <button
                   onClick={() => setEtaViewMode('fecha')}
-                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border-l ${
-                    theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold transition-all duration-200 border-l ${
+                    theme === 'dark' ? 'border-[#3D3D3D]/50' : 'border-gray-300'
                   } ${
                     etaViewMode === 'fecha'
                       ? theme === 'dark'
-                        ? 'bg-[#00AEEF] text-white'
-                        : 'bg-[#00AEEF] text-white'
+                        ? 'bg-gradient-to-r from-[#00AEEF] to-[#0078D4] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white shadow-sm'
                       : theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
+                        ? 'text-slate-300 hover:bg-[#3D3D3D]'
                         : 'text-gray-600 hover:bg-gray-100'
                   }`}
                   title="Mostrar fecha de llegada"
@@ -796,15 +809,15 @@ export default function ItinerarioPage() {
                 </button>
                 <button
                   onClick={() => setEtaViewMode('ambos')}
-                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-medium transition-colors border-l ${
-                    theme === 'dark' ? 'border-slate-700/60' : 'border-gray-300'
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold transition-all duration-200 border-l ${
+                    theme === 'dark' ? 'border-[#3D3D3D]/50' : 'border-gray-300'
                   } ${
                     etaViewMode === 'ambos'
                       ? theme === 'dark'
-                        ? 'bg-[#00AEEF] text-white'
-                        : 'bg-[#00AEEF] text-white'
+                        ? 'bg-gradient-to-r from-[#00AEEF] to-[#0078D4] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white shadow-sm'
                       : theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700'
+                        ? 'text-slate-300 hover:bg-[#3D3D3D]'
                         : 'text-gray-600 hover:bg-gray-100'
                   }`}
                   title="Mostrar días y fecha"
@@ -814,9 +827,9 @@ export default function ItinerarioPage() {
               </div>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-1.5 border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-700/60 bg-slate-800/60 text-slate-200 hover:border-sky-500/60 hover:text-sky-200'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 hover:text-blue-700'
+                className={`hidden sm:flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${theme === 'dark'
+                  ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-200 hover:border-[#00AEEF]/50 hover:bg-[#3D3D3D]'
+                  : 'border-gray-300 bg-white text-gray-700 hover:border-[#00AEEF] hover:bg-gray-50'
                   }`}
               >
                 <UserIcon className="h-4 w-4" />
@@ -831,13 +844,29 @@ export default function ItinerarioPage() {
           <div className="flex flex-col w-full px-1 sm:px-2 py-2 space-y-2">
             {/* Mensajes */}
             {error && (
-              <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 rounded">
-                {error}
+              <div className={`p-4 rounded-xl border shadow-lg backdrop-blur-sm ${theme === 'dark'
+                ? 'bg-red-900/30 border-red-500/50 text-red-200'
+                : 'bg-red-50 border-red-300 text-red-700'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-red-500/20' : 'bg-red-100'}`}>
+                    <X className={`h-4 w-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+                  </div>
+                  <p className="font-semibold text-sm">{error}</p>
+                </div>
               </div>
             )}
             {success && (
-              <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-400 rounded">
-                {success}
+              <div className={`p-4 rounded-xl border shadow-lg backdrop-blur-sm ${theme === 'dark'
+                ? 'bg-emerald-900/30 border-emerald-500/50 text-emerald-200'
+                : 'bg-emerald-50 border-emerald-300 text-emerald-700'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                    <FileCheck className={`h-4 w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  </div>
+                  <p className="font-semibold text-sm">{success}</p>
+                </div>
               </div>
             )}
             
@@ -874,33 +903,61 @@ export default function ItinerarioPage() {
             {/* Contenido */}
             <div className="flex-1 min-h-0 overflow-auto">
               {isLoading ? (
-                <div className="h-full flex items-center justify-center rounded-2xl border border-slate-800/60 bg-slate-950/60">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#00AEEF] border-t-transparent" />
-                    <span className="text-sm text-slate-400">Cargando itinerarios...</span>
+                <div className={`h-full flex items-center justify-center rounded-xl border shadow-lg ${theme === 'dark'
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]'
+                  : 'border-[#E1E1E1] bg-white'
+                }`}>
+                  <div className="flex flex-col items-center justify-center gap-4">
+                    <div className={`relative h-12 w-12 ${theme === 'dark' ? 'text-[#00AEEF]' : 'text-[#00AEEF]'}`}>
+                      <div className="absolute inset-0 animate-spin rounded-full border-4 border-t-transparent border-[#00AEEF]/30"></div>
+                      <div className="absolute inset-0 animate-spin rounded-full border-4 border-t-transparent border-[#00AEEF] [animation-delay:-0.15s]"></div>
+                    </div>
+                    <div className="text-center">
+                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        Cargando itinerarios...
+                      </p>
+                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Por favor espera
+                      </p>
+                    </div>
                   </div>
                 </div>
               ) : error ? (
-                <div className="h-full flex items-center justify-center rounded-2xl border border-amber-500/40 bg-amber-500/10 p-8">
-                  <div className="space-y-4 text-center">
-                    <div className="text-amber-400 text-lg font-semibold">
-                      ⚠️ Configuración Requerida
+                <div className={`h-full flex items-center justify-center rounded-xl border shadow-lg p-8 ${theme === 'dark'
+                  ? 'border-amber-500/40 bg-gradient-to-br from-amber-900/20 to-[#1F1F1F]'
+                  : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white'
+                }`}>
+                  <div className="space-y-4 text-center max-w-md">
+                    <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-100'} inline-block`}>
+                      <div className={`text-2xl ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>
+                        ⚠️
+                      </div>
                     </div>
-                    <div className="text-slate-300 space-y-2">
-                      <p className="text-sm">{error}</p>
-                      {error.includes('tabla') && (
-                        <div className="mt-4 p-4 bg-slate-900/60 rounded-lg text-left text-xs space-y-2">
-                          <p className="font-semibold text-amber-300">Pasos para resolver:</p>
-                          <ol className="list-decimal list-inside space-y-1 text-slate-400">
-                            <li>Ve a tu proyecto en Supabase Dashboard</li>
-                            <li>Abre el "SQL Editor" en el menú lateral</li>
-                            <li>Copia el contenido del archivo: <code className="text-amber-400">scripts/create-itinerarios-table.sql</code></li>
-                            <li>Pega y ejecuta el script en el SQL Editor</li>
-                            <li>Recarga esta página</li>
-                          </ol>
-                        </div>
-                      )}
+                    <div>
+                      <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                        Configuración Requerida
+                      </h3>
+                      <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                        {error}
+                      </p>
                     </div>
+                    {error.includes('tabla') && (
+                      <div className={`mt-4 p-4 rounded-xl border text-left ${theme === 'dark'
+                        ? 'bg-[#2D2D2D]/80 border-amber-500/30'
+                        : 'bg-amber-50/50 border-amber-200'
+                      }`}>
+                        <p className={`font-semibold text-xs mb-2 ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                          Pasos para resolver:
+                        </p>
+                        <ol className="list-decimal list-inside space-y-1 text-xs">
+                          <li className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Ve a tu proyecto en Supabase Dashboard</li>
+                          <li className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Abre el "SQL Editor" en el menú lateral</li>
+                          <li className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Copia el contenido del archivo: <code className={`font-mono ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>scripts/create-itinerarios-table.sql</code></li>
+                          <li className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Pega y ejecuta el script en el SQL Editor</li>
+                          <li className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Recarga esta página</li>
+                        </ol>
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -911,8 +968,8 @@ export default function ItinerarioPage() {
                       itinerarios={filteredItinerarios}
                       onViewDetail={handleViewDetail}
                       etaViewMode={etaViewMode}
-                      onGroupServiceChange={handleGroupServiceChange}
-                      onAddItinerario={handleAddItinerario}
+                      onGroupServiceChange={canEdit ? handleGroupServiceChange : undefined}
+                      onAddItinerario={canEdit ? handleAddItinerario : undefined}
                       regionFilter={filters.region || null}
                     />
                   </div>
@@ -920,8 +977,21 @@ export default function ItinerarioPage() {
                   {/* Vista Mobile (Cards) */}
                   <div className="lg:hidden space-y-2">
                     {filteredItinerarios.length === 0 ? (
-                      <div className="flex items-center justify-center py-12 rounded-2xl border border-slate-800/60 bg-slate-950/60">
-                        <p className="text-slate-400">No hay itinerarios disponibles</p>
+                      <div className={`flex items-center justify-center py-12 rounded-xl border shadow-sm ${theme === 'dark'
+                        ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]'
+                        : 'border-[#E1E1E1] bg-white'
+                      }`}>
+                        <div className="text-center">
+                          <div className={`p-3 rounded-xl inline-block mb-3 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                            <Ship className={`h-6 w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                          </div>
+                          <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                            No hay itinerarios disponibles
+                          </p>
+                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                            Intenta ajustar los filtros
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       (() => {
@@ -1050,8 +1120,8 @@ export default function ItinerarioPage() {
           isOpen={isDrawerOpen}
           onClose={handleCloseDrawer}
           itinerario={selectedItinerario}
-          onSave={handleSave}
-          onDelete={handleDelete}
+          onSave={canEdit ? handleSave : undefined}
+          onDelete={canEdit ? handleDelete : undefined}
         />
 
         {/* Modal de creación */}
@@ -1384,8 +1454,21 @@ export default function ItinerarioPage() {
                         {/* Vista Mobile (Cards) */}
                         <div className="lg:hidden space-y-4">
                           {filteredItinerariosForModal.length === 0 ? (
-                            <div className="flex items-center justify-center py-12 rounded-2xl border border-slate-800/60 bg-slate-950/60">
-                              <p className="text-slate-400">No hay itinerarios disponibles</p>
+                            <div className={`flex items-center justify-center py-12 rounded-xl border shadow-sm ${theme === 'dark'
+                              ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]'
+                              : 'border-[#E1E1E1] bg-white'
+                            }`}>
+                              <div className="text-center">
+                                <div className={`p-3 rounded-xl inline-block mb-3 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                                  <Ship className={`h-6 w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                                </div>
+                                <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                                  No hay itinerarios disponibles
+                                </p>
+                                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                                  Intenta ajustar los filtros
+                                </p>
+                              </div>
                             </div>
                           ) : (
                             filteredItinerariosForModal.map((itinerario) => (

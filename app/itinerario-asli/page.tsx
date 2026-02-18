@@ -618,251 +618,314 @@ export default function ItinerarioPublicPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           {/* Overlay con blur */}
           <div 
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            className="fixed inset-0 bg-black/70 backdrop-blur-md transition-opacity"
             onClick={() => setIsDetailModalOpen(false)}
           />
           
           {/* Modal Content */}
-          <div className={`relative min-h-screen ${theme === 'dark' ? 'bg-[#1F1F1F]' : 'bg-white'}`}>
-            {/* Header fijo */}
-            <div className={`sticky top-0 z-10 border-b ${theme === 'dark' 
-              ? 'border-[#3D3D3D] bg-[#2D2D2D]' 
-              : 'border-[#E1E1E1] bg-white'
-            } px-4 py-3 shadow-md`}>
-              <div className="flex items-center justify-between">
-                <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                  Detalles del Viaje
-                </h2>
+          <div className={`relative min-h-screen ${theme === 'dark' ? 'bg-gradient-to-b from-[#1A1A1A] to-[#0F0F0F]' : 'bg-gradient-to-b from-gray-50 to-white'}`}>
+            {/* Header fijo con gradiente moderno */}
+            <div className={`sticky top-0 z-10 border-b backdrop-blur-xl ${theme === 'dark' 
+              ? 'border-[#3D3D3D]/50 bg-gradient-to-r from-[#0078D4]/20 via-[#00AEEF]/20 to-[#0078D4]/20 backdrop-blur-xl' 
+              : 'border-[#E1E1E1] bg-gradient-to-r from-[#00AEEF]/10 via-white to-[#00AEEF]/10 backdrop-blur-xl'
+            } px-3 sm:px-4 md:px-6 py-3 sm:py-4 shadow-lg`}>
+              <div className="flex items-center justify-between max-w-6xl mx-auto gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                  <div className={`p-1.5 sm:p-2 rounded-xl flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                    <Ship className={`h-5 w-5 sm:h-6 sm:w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className={`text-base sm:text-lg md:text-xl font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                      Detalles del Viaje
+                    </h2>
+                    <p className={`text-[10px] sm:text-xs truncate ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                      {selectedItinerario.nave} • {selectedItinerario.viaje || 'N/A'}
+                    </p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setIsDetailModalOpen(false)}
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`p-2 sm:p-2.5 rounded-xl transition-all duration-200 flex-shrink-0 ${
                     theme === 'dark' 
-                      ? 'hover:bg-[#3D3D3D] text-[#C0C0C0]' 
-                      : 'hover:bg-[#F3F3F3] text-[#323130]'
-                  }`}
+                      ? 'hover:bg-[#3D3D3D]/80 text-[#C0C0C0] hover:text-white' 
+                      : 'hover:bg-gray-100 text-[#323130] hover:text-[#1F1F1F]'
+                  } hover:scale-110 active:scale-95`}
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>
 
             {/* Contenido del Modal */}
-            <div className="px-4 py-6 max-w-4xl mx-auto">
-              {/* Información Principal */}
-              <div className={`rounded-lg border ${theme === 'dark' 
-                ? 'border-[#3D3D3D] bg-[#2D2D2D]' 
-                : 'border-[#E1E1E1] bg-white'
-              } p-6 mb-6`}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Nave */}
-                  <div className="flex items-start gap-3">
-                    <Ship className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                        Nave
-                      </p>
-                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                        {selectedItinerario.nave}
-                      </p>
+            <div className="px-3 sm:px-4 md:px-6 py-4 sm:py-6 max-w-6xl mx-auto">
+              {/* Información Principal - Cards modernas */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                {/* Nave */}
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                  : 'border-[#E1E1E1] bg-white shadow-sm'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                      <Ship className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
                     </div>
+                    <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                      Nave
+                    </p>
                   </div>
-
-                  {/* Viaje */}
-                  <div className="flex items-start gap-3">
-                    <Navigation className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                        Viaje
-                      </p>
-                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                        {selectedItinerario.viaje || '—'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Servicio */}
-                  <div className="flex items-start gap-3">
-                    <MapPin className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                        Servicio
-                      </p>
-                      <p className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                        {selectedItinerario.servicio}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Consorcio/Naviera */}
-                  <div className="flex items-start gap-3">
-                    <Ship className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                        {selectedItinerario.consorcio ? 'Consorcio' : 'Naviera'}
-                      </p>
-                      <p className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                        {selectedItinerario.navierasDelServicio && selectedItinerario.navierasDelServicio.length > 0
-                          ? selectedItinerario.navierasDelServicio.join(' - ')
-                          : (selectedItinerario.consorcio || selectedItinerario.naviera || '—')}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* POL */}
-                  <div className="flex items-start gap-3">
-                    <MapPin className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                        POL (Puerto de Origen)
-                      </p>
-                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                        {selectedItinerario.pol}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* ETD */}
-                  <div className="flex items-start gap-3">
-                    <Calendar className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                    <div>
-                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                        ETD (Fecha de Salida)
-                      </p>
-                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                        {selectedItinerario.etd 
-                          ? new Date(selectedItinerario.etd).toLocaleDateString('es-CL', {
-                              day: '2-digit',
-                              month: 'long',
-                              year: 'numeric'
-                            })
-                          : '—'}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Semana */}
-                  {selectedItinerario.semana && (
-                    <div className="flex items-start gap-3">
-                      <Calendar className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`} />
-                      <div>
-                        <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                          Semana
-                        </p>
-                        <p className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                          Semana {selectedItinerario.semana}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                  <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    {selectedItinerario.nave}
+                  </p>
                 </div>
+
+                {/* Viaje */}
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                  : 'border-[#E1E1E1] bg-white shadow-sm'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                      <Navigation className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    </div>
+                    <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                      Viaje
+                    </p>
+                  </div>
+                  <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    {selectedItinerario.viaje || '—'}
+                  </p>
+                </div>
+
+                {/* Servicio */}
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                  : 'border-[#E1E1E1] bg-white shadow-sm'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                      <MapPin className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    </div>
+                    <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                      Servicio
+                    </p>
+                  </div>
+                  <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    {selectedItinerario.servicio}
+                  </p>
+                </div>
+
+                {/* Consorcio/Naviera */}
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                  : 'border-[#E1E1E1] bg-white shadow-sm'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                      <Ship className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    </div>
+                    <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                      {selectedItinerario.consorcio ? 'Consorcio' : 'Naviera'}
+                    </p>
+                  </div>
+                  <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    {selectedItinerario.navierasDelServicio && selectedItinerario.navierasDelServicio.length > 0
+                      ? selectedItinerario.navierasDelServicio.join(' - ')
+                      : (selectedItinerario.consorcio || selectedItinerario.naviera || '—')}
+                  </p>
+                </div>
+
+                {/* POL */}
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-[#1F1F1F]' 
+                  : 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                      <MapPin className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    </div>
+                    <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                      POL
+                    </p>
+                  </div>
+                  <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-emerald-900'}`}>
+                    {selectedItinerario.pol}
+                  </p>
+                </div>
+
+                {/* ETD */}
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-[#1F1F1F]' 
+                  : 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                      <Calendar className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    </div>
+                    <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                      ETD
+                    </p>
+                  </div>
+                  <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-emerald-900'}`}>
+                    {selectedItinerario.etd 
+                      ? new Date(selectedItinerario.etd).toLocaleDateString('es-CL', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric'
+                        })
+                      : '—'}
+                  </p>
+                </div>
+
+                {/* Semana */}
+                {selectedItinerario.semana && (
+                  <div className={`rounded-xl border ${theme === 'dark' 
+                    ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                    : 'border-[#E1E1E1] bg-white shadow-sm'
+                  } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                      <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+                        <Calendar className={`h-4 w-4 sm:h-5 sm:w-5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`} />
+                      </div>
+                      <p className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Semana
+                      </p>
+                    </div>
+                    <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                      Semana {selectedItinerario.semana}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Escalas */}
               {selectedItinerario.escalas && selectedItinerario.escalas.length > 0 && (
-                <div className={`rounded-lg border ${theme === 'dark' 
-                  ? 'border-[#3D3D3D] bg-[#2D2D2D]' 
-                  : 'border-[#E1E1E1] bg-white'
-                } p-6`}>
-                  <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                    Escalas del Viaje
-                  </h3>
+                <div className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                  : 'border-[#E1E1E1] bg-white shadow-sm'
+                } p-4 sm:p-6 mb-4 sm:mb-6`}>
+                  <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 flex-wrap">
+                    <div className={`p-2 sm:p-2.5 rounded-lg ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                      <Navigation className={`h-5 w-5 sm:h-6 sm:w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    </div>
+                    <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                      Escalas del Viaje
+                    </h3>
+                    <span className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold ${
+                      theme === 'dark' 
+                        ? 'bg-[#00AEEF]/20 text-[#4FC3F7]' 
+                        : 'bg-[#00AEEF]/10 text-[#00AEEF]'
+                    }`}>
+                      {selectedItinerario.escalas.length} {selectedItinerario.escalas.length === 1 ? 'escala' : 'escalas'}
+                    </span>
+                  </div>
                   
                   {/* Ordenar escalas por orden */}
-                  {[...selectedItinerario.escalas].sort((a, b) => a.orden - b.orden).map((escala, index) => (
-                    <div 
-                      key={escala.id}
-                      className={`mb-4 last:mb-0 pb-4 last:pb-0 border-b last:border-b-0 ${
-                        theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'
-                      }`}
-                    >
-                      <div className="flex items-start gap-4">
-                        {/* Número de escala */}
-                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                          theme === 'dark' 
-                            ? 'bg-[#00AEEF] text-white' 
-                            : 'bg-[#00AEEF] text-white'
-                        }`}>
-                          {index + 1}
-                        </div>
+                  <div className="space-y-3">
+                    {[...selectedItinerario.escalas].sort((a, b) => a.orden - b.orden).map((escala, index) => (
+                      <div 
+                        key={escala.id}
+                        className={`rounded-xl border ${theme === 'dark' 
+                          ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D]/80 to-[#1F1F1F]' 
+                          : 'border-[#E1E1E1] bg-gradient-to-br from-gray-50 to-white'
+                        } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}
+                      >
+                        <div className="flex items-start gap-3 sm:gap-4">
+                          {/* Número de escala con diseño moderno */}
+                          <div className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-sm sm:text-base shadow-lg ${
+                            theme === 'dark' 
+                              ? 'bg-gradient-to-br from-[#00AEEF] to-[#0078D4] text-white' 
+                              : 'bg-gradient-to-br from-[#00AEEF] to-[#0099CC] text-white'
+                          }`}>
+                            {index + 1}
+                          </div>
 
-                        {/* Información de la escala */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-4 flex-wrap">
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-base font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                          {/* Información de la escala */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 sm:gap-4 mb-3 flex-wrap">
+                              <p className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                                 {escala.puerto_nombre || escala.puerto}
                               </p>
-                              
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {/* ETA */}
-                                {escala.eta && (
-                                  <div className="flex items-center gap-2">
-                                    <Calendar className={`h-4 w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
-                                    <div>
-                                      <p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                                        ETA
-                                      </p>
-                                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                                        {new Date(escala.eta).toLocaleDateString('es-CL', {
-                                          day: '2-digit',
-                                          month: 'long',
-                                          year: 'numeric'
-                                        })}
-                                      </p>
-                                    </div>
+                              {escala.area && (
+                                <span className={`px-2 sm:px-2.5 py-1 rounded-lg text-[10px] sm:text-xs font-semibold flex-shrink-0 ${
+                                  theme === 'dark' 
+                                    ? 'bg-slate-700/50 text-slate-300' 
+                                    : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {escala.area}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                              {/* ETA */}
+                              {escala.eta && (
+                                <div className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg ${
+                                  theme === 'dark' 
+                                    ? 'bg-emerald-900/20 border border-emerald-500/30' 
+                                    : 'bg-emerald-50 border border-emerald-200'
+                                }`}>
+                                  <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                                    <Calendar className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
                                   </div>
-                                )}
+                                  <div className="min-w-0">
+                                    <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                                      ETA
+                                    </p>
+                                    <p className={`text-xs sm:text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-emerald-900'}`}>
+                                      {new Date(escala.eta).toLocaleDateString('es-CL', {
+                                        day: '2-digit',
+                                        month: 'long',
+                                        year: 'numeric'
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
 
-                                {/* Días de Tránsito */}
-                                {escala.dias_transito !== null && escala.dias_transito !== undefined && (
-                                  <div className="flex items-center gap-2">
-                                    <Clock className={`h-4 w-4 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
-                                    <div>
-                                      <p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                                        Días de Tránsito
-                                      </p>
-                                      <p className={`text-sm font-bold ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
-                                        {escala.dias_transito} días
-                                      </p>
-                                    </div>
+                              {/* Días de Tránsito */}
+                              {escala.dias_transito !== null && escala.dias_transito !== undefined && (
+                                <div className={`flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg ${
+                                  theme === 'dark' 
+                                    ? 'bg-[#00AEEF]/10 border border-[#00AEEF]/30' 
+                                    : 'bg-[#00AEEF]/5 border border-[#00AEEF]/20'
+                                }`}>
+                                  <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                                    <Clock className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
                                   </div>
-                                )}
-
-                                {/* Región */}
-                                {escala.area && (
-                                  <div className="flex items-center gap-2">
-                                    <MapPin className={`h-4 w-4 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`} />
-                                    <div>
-                                      <p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                                        Región
-                                      </p>
-                                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
-                                        {escala.area}
-                                      </p>
-                                    </div>
+                                  <div className="min-w-0">
+                                    <p className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide mb-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
+                                      Días de Tránsito
+                                    </p>
+                                    <p className={`text-xs sm:text-sm font-bold ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
+                                      {escala.dias_transito} días
+                                    </p>
                                   </div>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               )}
 
               {/* Botón Cerrar */}
-              <div className="mt-6 flex justify-center">
+              <div className="mt-6 sm:mt-8 flex justify-center">
                 <button
                   onClick={() => setIsDetailModalOpen(false)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                  className={`relative px-6 sm:px-8 py-2.5 sm:py-3.5 rounded-xl font-bold text-xs sm:text-sm transition-all duration-200 overflow-hidden group ${
                     theme === 'dark'
-                      ? 'bg-[#0078D4] hover:bg-[#005A9E] text-white'
-                      : 'bg-[#00AEEF] hover:bg-[#0099CC] text-white'
-                  } shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95`}
+                      ? 'bg-gradient-to-r from-[#0078D4] to-[#00AEEF] hover:from-[#005A9E] hover:to-[#0099CC] text-white'
+                      : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] hover:from-[#0099CC] hover:to-[#0078D4] text-white'
+                  } shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95`}
                 >
-                  Cerrar
+                  <span className="relative z-10 flex items-center gap-2">
+                    <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Cerrar
+                  </span>
+                  <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
                 </button>
               </div>
             </div>
