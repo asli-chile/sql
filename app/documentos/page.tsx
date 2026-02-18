@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { FileText, FileCheck, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon, Globe, BarChart3, DollarSign, Users, Activity } from 'lucide-react';
+import { FileText, FileCheck, ChevronRight, ChevronLeft, X, User as UserIcon, LayoutDashboard, Ship, Truck, Settings, Download, Upload, Trash2, File, Calendar, HardDrive, Filter, X as XIcon, Globe, BarChart3, DollarSign, Users, Activity, CheckCircle2, Clock, AlertCircle, Eye, FileUp } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { UserProfileModal } from '@/components/users/UserProfileModal';
@@ -1046,6 +1046,24 @@ function DocumentosPage() {
 
   const hasActiveFilters = Boolean(selectedSeason || selectedClientes.length > 0 || selectedEjecutivo || selectedEstado || selectedNaviera || selectedEspecie || selectedNave || fechaDesde || fechaHasta);
 
+  // Calcular estadísticas de documentos
+  const documentStats = useMemo(() => {
+    const total = documentosRows.length;
+    const withDocuments = documentosRows.filter(row => 
+      row.reservaPdf || row.instructivo || row.guiaDespacho || row.packingList || 
+      row.proformaInvoice || row.blSwbTelex || row.facturaSii || row.dusLegalizado || row.fullset
+    ).length;
+    const withoutDocuments = total - withDocuments;
+    const completionRate = total > 0 ? Math.round((withDocuments / total) * 100) : 0;
+    
+    return {
+      total,
+      withDocuments,
+      withoutDocuments,
+      completionRate,
+    };
+  }, [documentosRows]);
+
   // Verificar si es superadmin (Hans o Rodrigo) - DEBE ESTAR ANTES DEL RETURN CONDICIONAL
   const isSuperAdmin = useMemo(() => {
     const email = (currentUser?.email || '').toLowerCase();
@@ -1152,26 +1170,6 @@ function DocumentosPage() {
     const canUpload = canEdit;
     const canDeleteDoc = canDelete;
 
-    // Determinar texto del botón
-    let buttonText = 'Pendiente';
-    let buttonClass = '';
-
-    if (hasDocument) {
-      buttonText = 'Ver docs';
-      buttonClass = theme === 'dark'
-        ? 'text-blue-400 hover:bg-slate-700 hover:text-blue-300'
-        : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700';
-    } else if (canUpload) {
-      buttonText = 'Subir';
-      buttonClass = theme === 'dark'
-        ? 'text-slate-300 hover:bg-slate-700 hover:text-slate-200'
-        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900';
-    } else {
-      buttonClass = theme === 'dark'
-        ? 'text-slate-500 cursor-not-allowed'
-        : 'text-gray-400 cursor-not-allowed';
-    }
-
     return (
       <div className="flex items-center justify-center">
         <input
@@ -1192,23 +1190,61 @@ function DocumentosPage() {
           <button
             onClick={() => handleOpenDocumentModal(booking, docType, true)}
             disabled={isUploading || isDeleting}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
+            className={`inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 md:px-2.5 py-1 sm:py-1.5 text-[10px] xs:text-xs font-semibold rounded-md sm:rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              theme === 'dark'
+                ? 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:from-emerald-500/30 hover:to-emerald-600/30 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-95 sm:hover:scale-105'
+                : 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-700 border border-emerald-200 hover:from-emerald-100 hover:to-emerald-200 hover:border-emerald-300 hover:shadow-md active:scale-95 sm:hover:scale-105'
+            }`}
             aria-label="Ver documento"
           >
-            {isUploading ? 'Subiendo...' : isDeleting ? 'Eliminando...' : buttonText}
+            {isUploading ? (
+              <>
+                <div className={`h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin rounded-full border-2 ${theme === 'dark' ? 'border-emerald-300 border-t-transparent' : 'border-emerald-600 border-t-transparent'}`} />
+                <span className="hidden xs:inline">Subiendo...</span>
+              </>
+            ) : isDeleting ? (
+              <>
+                <Trash2 className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                <span className="hidden xs:inline">Eliminando...</span>
+              </>
+            ) : (
+              <>
+                <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <span className="hidden sm:inline">Ver</span>
+              </>
+            )}
           </button>
         ) : canUpload ? (
           <button
             onClick={() => fileInputRefs.current.get(cellKey)?.click()}
             disabled={isUploading || isDeleting}
-            className={`px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${buttonClass}`}
+            className={`inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 md:px-2.5 py-1 sm:py-1.5 text-[10px] xs:text-xs font-semibold rounded-md sm:rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              theme === 'dark'
+                ? 'bg-gradient-to-r from-slate-700/50 to-slate-800/50 text-slate-300 border border-slate-600/50 hover:from-slate-600/60 hover:to-slate-700/60 hover:border-sky-500/50 hover:text-sky-200 hover:shadow-lg hover:shadow-sky-500/10 active:scale-95 sm:hover:scale-105'
+                : 'bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 border border-gray-300 hover:from-gray-200 hover:to-gray-100 hover:border-blue-400 hover:text-blue-600 hover:shadow-md active:scale-95 sm:hover:scale-105'
+            }`}
             aria-label="Subir documento"
           >
-            {isUploading ? 'Subiendo...' : buttonText}
+            {isUploading ? (
+              <>
+                <div className={`h-2.5 w-2.5 sm:h-3 sm:w-3 animate-spin rounded-full border-2 ${theme === 'dark' ? 'border-slate-300 border-t-transparent' : 'border-gray-600 border-t-transparent'}`} />
+                <span className="hidden xs:inline">Subiendo...</span>
+              </>
+            ) : (
+              <>
+                <FileUp className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                <span className="hidden sm:inline">Subir</span>
+              </>
+            )}
           </button>
         ) : (
-          <span className={`px-3 py-1.5 text-xs font-medium ${buttonClass}`}>
-            {buttonText}
+          <span className={`inline-flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 md:px-2.5 py-1 sm:py-1.5 text-[10px] xs:text-xs font-medium rounded-md sm:rounded-lg ${
+            theme === 'dark'
+              ? 'text-slate-500 bg-slate-800/30 border border-slate-700/30'
+              : 'text-gray-400 bg-gray-50 border border-gray-200'
+          }`}>
+            <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+            <span className="hidden sm:inline">Pendiente</span>
           </span>
         )}
       </div>
@@ -1238,14 +1274,17 @@ function DocumentosPage() {
 
       {/* Content */}
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden h-full">
-        <header className={`sticky top-0 z-40 border-b overflow-hidden ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-white'}`}>
-          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-3 sm:py-2 py-2">
+        <header className={`sticky top-0 z-40 border-b overflow-hidden backdrop-blur-xl ${theme === 'dark' 
+          ? 'border-slate-700/50 bg-gradient-to-r from-slate-900/95 via-slate-800/95 to-slate-900/95 shadow-lg' 
+          : 'border-gray-200/50 bg-gradient-to-r from-white/95 via-gray-50/95 to-white/95 shadow-sm'
+        }`}>
+          <div className="flex flex-wrap items-center gap-2 pl-2 pr-2 sm:px-4 sm:py-3 py-2.5">
             {/* Botón hamburguesa para móvil */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className={`lg:hidden flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
-                ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
-                : 'text-gray-600 hover:bg-gray-100 border-gray-300'
+              className={`lg:hidden flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200 flex-shrink-0 ${theme === 'dark'
+                ? 'text-slate-300 hover:bg-slate-700/80 border-slate-700/60 hover:border-sky-500/60 hover:scale-105'
+                : 'text-gray-600 hover:bg-gray-100 border-gray-300 hover:border-blue-400 hover:scale-105'
                 }`}
               aria-label="Abrir menú"
             >
@@ -1255,9 +1294,9 @@ function DocumentosPage() {
             {isSidebarCollapsed && (
               <button
                 onClick={toggleSidebar}
-                className={`hidden lg:flex h-9 w-9 items-center justify-center border transition-colors flex-shrink-0 ${theme === 'dark'
-                  ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
-                  : 'text-gray-600 hover:bg-gray-100 border-gray-300'
+                className={`hidden lg:flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200 flex-shrink-0 ${theme === 'dark'
+                  ? 'text-slate-300 hover:bg-slate-700/80 border-slate-700/60 hover:border-sky-500/60 hover:scale-105'
+                  : 'text-gray-600 hover:bg-gray-100 border-gray-300 hover:border-blue-400 hover:scale-105'
                   }`}
                 aria-label="Expandir menú lateral"
               >
@@ -1266,30 +1305,39 @@ function DocumentosPage() {
             )}
 
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className={`hidden sm:flex h-10 w-10 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/15 border-sky-500/20' : 'bg-blue-100 border-blue-200'}`}>
+              <div className={`hidden sm:flex h-11 w-11 items-center justify-center rounded-xl border transition-all duration-200 ${theme === 'dark' 
+                ? 'bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border-sky-500/30 shadow-lg shadow-sky-500/10' 
+                : 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-200 shadow-sm'
+              }`}>
                 <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
               </div>
               <div>
-                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-slate-500/80' : 'text-gray-500'}`}>Módulo Operativo</p>
-                <h1 className={`text-lg sm:text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Documentos</h1>
-                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Gestión de documentos y facturas</p>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] font-semibold ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Módulo Operativo
+                </p>
+                <h1 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  Documentos
+                </h1>
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                  Gestión de documentos y facturas
+                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
               <button
                 onClick={() => setShowFilters(prev => !prev)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium transition-colors border ${showFilters
+                className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all duration-200 rounded-lg border ${showFilters
                   ? theme === 'dark'
-                    ? 'bg-sky-600 text-white border-sky-500'
-                    : 'bg-blue-600 text-white border-blue-500'
+                    ? 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white border-sky-400 shadow-lg shadow-sky-500/20'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-md'
                   : hasActiveFilters
                     ? theme === 'dark'
-                      ? 'bg-blue-600 text-white border-blue-500'
-                      : 'bg-blue-600 text-white border-blue-500'
+                      ? 'bg-blue-600/90 text-white border-blue-500/60 shadow-md'
+                      : 'bg-blue-600 text-white border-blue-500 shadow-md'
                     : theme === 'dark'
-                      ? 'border-slate-700/60 text-slate-300 hover:border-sky-500 hover:text-sky-200 bg-slate-800/60'
-                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
+                      ? 'border-slate-700/60 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 bg-slate-800/60 hover:bg-slate-700/60 hover:scale-105'
+                      : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white hover:bg-gray-50 hover:scale-105'
                   }`}
                 type="button"
                 aria-label="Mostrar/Ocultar filtros"
@@ -1298,8 +1346,10 @@ function DocumentosPage() {
                 <Filter className="h-4 w-4" />
                 <span className="hidden sm:inline">Filtros</span>
                 {hasActiveFilters && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${theme === 'dark' ? 'bg-white/20' : 'bg-white/30'
-                    }`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${theme === 'dark' 
+                    ? 'bg-white/20 text-white' 
+                    : 'bg-white/30 text-blue-600'
+                  }`}>
                     {[
                       selectedSeason,
                       selectedClientes.length > 0,
@@ -1316,14 +1366,14 @@ function DocumentosPage() {
               </button>
               <button
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 border px-3 py-2 text-xs sm:text-sm ${theme === 'dark'
-                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-400/60 hover:text-sky-200 bg-slate-800/60'
-                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white'
+                className={`hidden sm:flex items-center gap-2 border px-3 py-2 text-xs sm:text-sm rounded-lg transition-all duration-200 ${theme === 'dark'
+                  ? 'border-slate-700/60 text-slate-300 hover:border-sky-400/60 hover:text-sky-200 bg-slate-800/60 hover:bg-slate-700/60 hover:scale-105'
+                  : 'border-gray-300 text-gray-700 hover:border-blue-400 hover:text-blue-600 bg-white hover:bg-gray-50 hover:scale-105'
                   }`}
                 title={currentUser?.nombre || currentUser?.email}
               >
                 <UserIcon className="h-4 w-4" />
-                {currentUser?.nombre || currentUser?.email}
+                <span className="hidden md:inline">{currentUser?.nombre || currentUser?.email}</span>
               </button>
             </div>
           </div>
@@ -1331,7 +1381,69 @@ function DocumentosPage() {
 
         <main className="flex-1 flex flex-col overflow-hidden min-w-0 w-full">
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="flex-shrink-0 px-2 pt-2 sm:px-3 sm:pt-3">
+            <div className="flex-shrink-0 px-2 pt-2 sm:px-3 sm:pt-3 md:px-4 md:pt-4">
+              {/* Cards de Estadísticas */}
+              {!isLoading && (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-3">
+                  <div className={`rounded-xl border p-2.5 sm:p-3 md:p-4 transition-all duration-200 ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm hover:border-sky-500/40 hover:shadow-lg hover:shadow-sky-500/10'
+                    : 'border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md'
+                  }`}>
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                      <FileText className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
+                      <p className={`text-[9px] xs:text-[10px] sm:text-xs font-medium truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Total
+                      </p>
+                    </div>
+                    <p className={`text-base sm:text-lg md:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {documentStats.total}
+                    </p>
+                  </div>
+                  <div className={`rounded-xl border p-2.5 sm:p-3 md:p-4 transition-all duration-200 ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-gradient-to-br from-emerald-900/20 to-slate-900/80 backdrop-blur-sm hover:border-emerald-500/40 hover:shadow-lg hover:shadow-emerald-500/10'
+                    : 'border-emerald-200 bg-emerald-50/50 shadow-sm hover:border-emerald-300 hover:shadow-md'
+                  }`}>
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                      <CheckCircle2 className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      <p className={`text-[9px] xs:text-[10px] sm:text-xs font-medium truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Con Docs
+                      </p>
+                    </div>
+                    <p className={`text-base sm:text-lg md:text-xl font-bold ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                      {documentStats.withDocuments}
+                    </p>
+                  </div>
+                  <div className={`rounded-xl border p-2.5 sm:p-3 md:p-4 transition-all duration-200 ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-gradient-to-br from-amber-900/20 to-slate-900/80 backdrop-blur-sm hover:border-amber-500/40 hover:shadow-lg hover:shadow-amber-500/10'
+                    : 'border-amber-200 bg-amber-50/50 shadow-sm hover:border-amber-300 hover:shadow-md'
+                  }`}>
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                      <AlertCircle className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`} />
+                      <p className={`text-[9px] xs:text-[10px] sm:text-xs font-medium truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Sin Docs
+                      </p>
+                    </div>
+                    <p className={`text-base sm:text-lg md:text-xl font-bold ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                      {documentStats.withoutDocuments}
+                    </p>
+                  </div>
+                  <div className={`rounded-xl border p-2.5 sm:p-3 md:p-4 transition-all duration-200 ${theme === 'dark'
+                    ? 'border-slate-700/60 bg-gradient-to-br from-sky-900/20 to-slate-900/80 backdrop-blur-sm hover:border-sky-500/40 hover:shadow-lg hover:shadow-sky-500/10'
+                    : 'border-sky-200 bg-sky-50/50 shadow-sm hover:border-sky-300 hover:shadow-md'
+                  }`}>
+                    <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                      <BarChart3 className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${theme === 'dark' ? 'text-sky-400' : 'text-sky-600'}`} />
+                      <p className={`text-[9px] xs:text-[10px] sm:text-xs font-medium truncate ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                        Completitud
+                      </p>
+                    </div>
+                    <p className={`text-base sm:text-lg md:text-xl font-bold ${theme === 'dark' ? 'text-sky-300' : 'text-sky-700'}`}>
+                      {documentStats.completionRate}%
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Sidebar de Filtros */}
               <DocumentosFiltersPanel
                 showFilters={showFilters}
@@ -1363,136 +1475,161 @@ function DocumentosPage() {
             </div>
 
             {/* Tabla de Documentos */}
-            <section className={`flex-1 flex flex-col border overflow-hidden min-h-0 mx-2 mb-2 sm:mx-3 sm:mb-3 ${theme === 'dark'
-              ? 'border-slate-700/60 bg-slate-800/60'
-              : 'border-gray-200 bg-white'
+            <section className={`flex-1 flex flex-col border overflow-hidden min-h-0 mx-2 mb-2 sm:mx-3 sm:mb-3 md:mx-4 md:mb-4 rounded-xl ${theme === 'dark'
+              ? 'border-slate-700/60 bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-sm shadow-xl'
+              : 'border-gray-200 bg-white shadow-lg'
               }`}>
-              <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0">
-                <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/60' : 'divide-gray-200'
-                  }`}>
-                  <thead className={`sticky top-0 z-[250] ${theme === 'dark'
-                    ? 'bg-slate-900 border-b border-slate-800/60 shadow-lg'
-                    : 'bg-white border-b border-gray-200 shadow-lg'
+              <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 -webkit-overflow-scrolling-touch">
+                <div className="min-w-full inline-block align-middle">
+                  <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-slate-800/40' : 'divide-gray-200'
                     }`}>
+                    <thead className={`sticky top-0 z-[250] backdrop-blur-sm ${theme === 'dark'
+                      ? 'bg-gradient-to-b from-slate-900/95 to-slate-800/95 border-b border-slate-700/60 shadow-lg'
+                      : 'bg-gradient-to-b from-white/95 to-gray-50/95 border-b border-gray-200 shadow-md'
+                      }`}>
                     <tr>
                       <th
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${theme === 'dark' 
-                          ? 'text-slate-200 bg-slate-900/95 hover:bg-slate-800' 
-                          : 'text-gray-800 bg-white/95 hover:bg-gray-100'
+                        className={`px-2 sm:px-3 md:px-4 py-2.5 sm:py-3 text-left text-[10px] xs:text-xs font-bold uppercase tracking-wider cursor-pointer transition-all duration-200 ${theme === 'dark' 
+                          ? 'text-slate-200 hover:bg-slate-800/80 hover:text-sky-200' 
+                          : 'text-gray-800 hover:bg-gray-100 hover:text-blue-600'
                           }`}
                         onClick={() => handleSort('nave')}
                       >
-                        <div className="flex items-center gap-2">
-                          Nave | Booking | Contenedor
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Ship className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-70 flex-shrink-0" />
+                          <span className="hidden xs:inline">Nave | Booking | Contenedor</span>
+                          <span className="xs:hidden">Nave</span>
                           {sortField === 'nave' && (
-                            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <span className={`text-[10px] xs:text-xs font-bold flex-shrink-0 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                               {sortDirection === 'asc' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
                       </th>
                       <th
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${theme === 'dark' 
-                          ? 'text-slate-200 bg-slate-900/95 hover:bg-slate-800' 
-                          : 'text-gray-800 bg-white/95 hover:bg-gray-100'
+                        className={`px-2 sm:px-3 md:px-4 py-2.5 sm:py-3 text-left text-[10px] xs:text-xs font-bold uppercase tracking-wider cursor-pointer transition-all duration-200 ${theme === 'dark' 
+                          ? 'text-slate-200 hover:bg-slate-800/80 hover:text-sky-200' 
+                          : 'text-gray-800 hover:bg-gray-100 hover:text-blue-600'
                           }`}
                         onClick={() => handleSort('refCliente')}
                       >
-                        <div className="flex items-center gap-2">
-                          Ref Cliente
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-70 flex-shrink-0" />
+                          <span className="hidden sm:inline">Ref Cliente</span>
+                          <span className="sm:hidden">Ref</span>
                           {sortField === 'refCliente' && (
-                            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <span className={`text-[10px] xs:text-xs font-bold flex-shrink-0 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                               {sortDirection === 'asc' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
                       </th>
                       <th
-                        className={`px-4 py-3 text-left text-xs font-bold uppercase tracking-wider cursor-pointer transition-colors ${theme === 'dark' 
-                          ? 'text-slate-200 bg-slate-900/95 hover:bg-slate-800' 
-                          : 'text-gray-800 bg-white/95 hover:bg-gray-100'
+                        className={`px-2 sm:px-3 md:px-4 py-2.5 sm:py-3 text-left text-[10px] xs:text-xs font-bold uppercase tracking-wider cursor-pointer transition-all duration-200 ${theme === 'dark' 
+                          ? 'text-slate-200 hover:bg-slate-800/80 hover:text-sky-200' 
+                          : 'text-gray-800 hover:bg-gray-100 hover:text-blue-600'
                           }`}
                         onClick={() => handleSort('fechaIngreso')}
                       >
-                        <div className="flex items-center gap-2">
-                          Fecha Ingreso
+                        <div className="flex items-center gap-1 sm:gap-2">
+                          <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-70 flex-shrink-0" />
+                          <span className="hidden sm:inline">Fecha Ingreso</span>
+                          <span className="sm:hidden">Fecha</span>
                           {sortField === 'fechaIngreso' && (
-                            <span className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                            <span className={`text-[10px] xs:text-xs font-bold flex-shrink-0 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
                               {sortDirection === 'asc' ? '↑' : '↓'}
                             </span>
                           )}
                         </div>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-2 sm:px-3 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Reserva PDF
+                        <div className="flex items-center justify-center gap-1 sm:gap-1.5">
+                          <FileText className="h-3 w-3 sm:h-3.5 sm:w-3.5 opacity-70 flex-shrink-0" />
+                          <span className="hidden sm:inline">Reserva PDF</span>
+                          <span className="sm:hidden">PDF</span>
+                        </div>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Instructivo
+                        <span className="hidden sm:inline">Instructivo</span>
+                        <span className="sm:hidden">Inst.</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Guía de Despacho
+                        <span className="hidden sm:inline">Guía de Despacho</span>
+                        <span className="sm:hidden">Guía</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Packing List
+                        <span className="hidden sm:inline">Packing List</span>
+                        <span className="sm:hidden">Packing</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Proforma Invoice
+                        <span className="hidden sm:inline">Proforma Invoice</span>
+                        <span className="sm:hidden">Proforma</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        BL-SWB-TELEX
+                        <span className="hidden sm:inline">BL-SWB-TELEX</span>
+                        <span className="sm:hidden">BL</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Factura SII
+                        <span className="hidden sm:inline">Factura SII</span>
+                        <span className="sm:hidden">Factura</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        DUS Legalizado
+                        <span className="hidden sm:inline">DUS Legalizado</span>
+                        <span className="sm:hidden">DUS</span>
                       </th>
-                      <th className={`px-4 py-3 text-center text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
-                        ? 'text-slate-200 bg-slate-900/95' 
-                        : 'text-gray-800 bg-white/95'
+                      <th className={`px-1 sm:px-2 md:px-4 py-2.5 sm:py-3 text-center text-[10px] xs:text-xs font-bold uppercase tracking-wider ${theme === 'dark' 
+                        ? 'text-slate-200' 
+                        : 'text-gray-800'
                         }`}>
-                        Fullset
+                        <span className="hidden sm:inline">Fullset</span>
+                        <span className="sm:hidden">Full</span>
                       </th>
                     </tr>
                   </thead>
-                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800/60 bg-slate-900/50' : 'divide-gray-200 bg-white'
+                  <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800/40 bg-slate-900/30' : 'divide-gray-200 bg-white'
                     }`}>
                     {isLoading ? (
                       <tr>
-                        <td colSpan={12} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        <td colSpan={12} className={`px-4 py-12 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                           }`}>
-                          Cargando documentos...
+                          <div className="flex flex-col items-center gap-3">
+                            <div className={`h-8 w-8 animate-spin rounded-full border-2 ${theme === 'dark' ? 'border-sky-500 border-t-transparent' : 'border-blue-500 border-t-transparent'}`} />
+                            <p className="text-sm font-medium">Cargando documentos...</p>
+                          </div>
                         </td>
                       </tr>
                     ) : sortedDocumentosRows.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className={`px-4 py-8 text-center text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
+                        <td colSpan={12} className={`px-4 py-12 text-center ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
                           }`}>
-                          No hay documentos disponibles
+                          <div className="flex flex-col items-center gap-3">
+                            <FileText className={`h-10 w-10 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+                            <p className="text-sm font-medium">No hay documentos disponibles</p>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -1506,63 +1643,67 @@ function DocumentosPage() {
                               rowRefs.current.delete(row.id);
                             }
                           }}
-                          className={`hover:${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-50'
-                          } transition-colors`}
-                          style={{}}
+                          className={`transition-all duration-200 ${theme === 'dark' 
+                            ? 'hover:bg-slate-800/60 hover:shadow-lg hover:shadow-sky-500/5' 
+                            : 'hover:bg-gray-50 hover:shadow-sm'
+                          }`}
                         >
-                          <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
+                          <td className={`px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
                             }`}>
-                            <div className="flex flex-col space-y-0.5">
-                              <span className="font-medium">{row.nave}</span>
-                              <span className="text-xs opacity-75">{row.booking}</span>
-                              <span className="text-xs opacity-75">{row.contenedor}</span>
+                            <div className="flex flex-col space-y-0.5 min-w-[120px] sm:min-w-0">
+                              <span className="font-medium text-xs sm:text-sm truncate">{row.nave}</span>
+                              <span className="text-[10px] xs:text-xs opacity-75 truncate">{row.booking}</span>
+                              <span className="text-[10px] xs:text-xs opacity-75 truncate">{row.contenedor}</span>
                             </div>
                           </td>
-                          <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
+                          <td className={`px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
                             }`}>
-                            {row.refCliente || '—'}
+                            <span className="text-xs sm:text-sm truncate block max-w-[100px] sm:max-w-none">{row.refCliente || '—'}</span>
                           </td>
-                          <td className={`px-4 py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
+                          <td className={`px-2 sm:px-3 md:px-4 py-2 sm:py-2.5 md:py-3 whitespace-nowrap ${theme === 'dark' ? 'text-slate-300' : 'text-gray-900'
                             }`}>
-                            {(() => {
-                              const registro = registros.find(r => r.id === row.id);
-                              return registro?.ingresado
-                                ? new Date(registro.ingresado).toLocaleDateString('es-CL')
-                                : '—';
-                            })()}
+                            <span className="text-xs sm:text-sm">
+                              {(() => {
+                                const registro = registros.find(r => r.id === row.id);
+                                return registro?.ingresado
+                                  ? new Date(registro.ingresado).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                  : '—';
+                              })()}
+                            </span>
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'reservaPdf', row.reservaPdf)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'instructivo', row.instructivo)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'guiaDespacho', row.guiaDespacho)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'packingList', row.packingList)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'proformaInvoice', row.proformaInvoice)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'blSwbTelex', row.blSwbTelex)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'facturaSii', row.facturaSii)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'dusLegalizado', row.dusLegalizado)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-center">
+                          <td className="px-1 sm:px-2 md:px-4 py-2 sm:py-2.5 md:py-3 text-center">
                             {renderDocumentCell(row.booking, 'fullset', row.fullset)}
                           </td>
                         </tr>
                       ))
                     )}
-                  </tbody>
-                </table>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </section>
           </div>
@@ -1594,35 +1735,36 @@ function DocumentosPage() {
             />
 
             {/* Modal más grande */}
-            <div className={`relative z-[310] w-full max-w-6xl max-h-[90vh] border overflow-hidden ${theme === 'dark'
-              ? 'border-slate-700 bg-slate-800'
-              : 'border-gray-200 bg-white'
+            <div className={`relative z-[310] w-full max-w-6xl max-h-[90vh] border overflow-hidden rounded-xl shadow-2xl ${theme === 'dark'
+              ? 'border-slate-700/60 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 backdrop-blur-xl'
+              : 'border-gray-200 bg-white shadow-xl'
               }`}>
               {/* Header */}
-              <div className={`flex items-center justify-between border-b px-6 py-4 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
-                }`}>
+              <div className={`flex items-center justify-between border-b px-6 py-4 backdrop-blur-sm ${theme === 'dark' 
+                ? 'border-slate-700/60 bg-gradient-to-r from-slate-800/80 to-slate-900/80' 
+                : 'border-gray-200 bg-gradient-to-r from-gray-50 to-white'
+              }`}>
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center border ${theme === 'dark' ? 'bg-sky-500/20 border-sky-500/20' : 'bg-blue-100 border-blue-200'
-                    }`}>
-                    <FileText className={`h-5 w-5 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'
-                      }`} />
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl border transition-all duration-200 ${theme === 'dark' 
+                    ? 'bg-gradient-to-br from-sky-500/20 to-indigo-500/20 border-sky-500/30 shadow-lg shadow-sky-500/10' 
+                    : 'bg-gradient-to-br from-blue-100 to-indigo-100 border-blue-200 shadow-sm'
+                  }`}>
+                    <FileText className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-300' : 'text-blue-600'}`} />
                   </div>
                   <div>
-                    <h2 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
+                    <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                       {documentModal.hasDocument ? 'Vista previa del documento' : 'Subir documento'}
                     </h2>
-                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'
-                      }`}>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                       {documentModal.hasDocument ? 'Visualización del archivo PDF' : 'Revisa la información antes de subir'}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
-                  className={`p-2 transition-colors border ${theme === 'dark'
-                    ? 'text-slate-400 hover:bg-slate-700 hover:text-slate-200 border-slate-700/60'
-                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 border-gray-300'
+                  className={`p-2.5 rounded-lg transition-all duration-200 border ${theme === 'dark'
+                    ? 'text-slate-400 hover:bg-slate-700/80 hover:text-slate-200 border-slate-700/60 hover:border-slate-600 hover:scale-110'
+                    : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600 border-gray-300 hover:border-gray-400 hover:scale-110'
                     }`}
                   aria-label="Cerrar"
                 >
@@ -1870,8 +2012,10 @@ function DocumentosPage() {
               </div>
 
               {/* Footer */}
-              <div className={`flex items-center justify-between border-t px-8 py-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'
-                }`}>
+              <div className={`flex items-center justify-between border-t px-6 py-4 backdrop-blur-sm ${theme === 'dark' 
+                ? 'border-slate-700/60 bg-gradient-to-r from-slate-800/80 to-slate-900/80' 
+                : 'border-gray-200 bg-gradient-to-r from-gray-50 to-white'
+              }`}>
                 <div>
                   {documentModal.hasDocument && canDeleteDoc && (
                     <button
@@ -1883,12 +2027,23 @@ function DocumentosPage() {
                         }
                       }}
                       disabled={isDeleting || isUploading}
-                      className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'
-                        ? 'text-red-400 hover:bg-slate-700 hover:text-red-300 border-slate-700/60'
-                        : 'text-red-600 hover:bg-red-50 hover:text-red-700 border-gray-300'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 border disabled:opacity-50 disabled:cursor-not-allowed ${
+                        theme === 'dark'
+                          ? 'text-red-400 hover:bg-red-500/20 hover:text-red-300 border-red-500/30 hover:border-red-400/50 hover:shadow-lg hover:shadow-red-500/20 hover:scale-105'
+                          : 'text-red-600 hover:bg-red-50 hover:text-red-700 border-red-300 hover:border-red-400 hover:shadow-md hover:scale-105'
+                      }`}
                     >
-                      {isDeleting ? 'Eliminando...' : 'Eliminar documento'}
+                      {isDeleting ? (
+                        <>
+                          <div className={`h-4 w-4 animate-spin rounded-full border-2 ${theme === 'dark' ? 'border-red-400 border-t-transparent' : 'border-red-600 border-t-transparent'}`} />
+                          <span>Eliminando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="h-4 w-4" />
+                          <span>Eliminar</span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>
@@ -1897,45 +2052,49 @@ function DocumentosPage() {
                     <button
                       onClick={handleConfirmUpload}
                       disabled={isUploading || isDeleting}
-                      className={`px-6 py-3 text-sm font-semibold transition-colors border ${theme === 'dark'
-                        ? 'bg-green-600 text-white hover:bg-green-700 border-green-500/60'
-                        : 'bg-blue-600 text-white hover:bg-blue-700 border-blue-500/60'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}>
-                      <div className="flex items-center gap-2">
-                        {isUploading ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin"></div>
-                            Subiendo...
-                          </>
-                        ) : (
-                          <>
-                            <Upload className="h-4 w-4" />
-                            Subir documento
-                          </>
-                        )}
-                      </div>
+                      className={`inline-flex items-center gap-2 px-6 py-3 text-sm font-bold rounded-lg transition-all duration-200 border disabled:opacity-50 disabled:cursor-not-allowed ${
+                        theme === 'dark'
+                          ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white hover:from-emerald-600 hover:to-emerald-700 border-emerald-400/60 shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 hover:scale-105'
+                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 border-blue-500 shadow-md hover:shadow-lg hover:scale-105'
+                      }`}
+                    >
+                      {isUploading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                          <span>Subiendo...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4" />
+                          <span>Subir documento</span>
+                        </>
+                      )}
                     </button>
                   )}
                   {documentModal.hasDocument && (
                     <button
                       onClick={() => handleDownloadDocument(documentModal.booking, documentModal.docType)}
                       disabled={isDeleting || isUploading}
-                      className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'
-                        ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
-                        : 'text-gray-700 hover:bg-gray-100 border-gray-300'
-                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 border disabled:opacity-50 disabled:cursor-not-allowed ${
+                        theme === 'dark'
+                          ? 'text-sky-300 hover:bg-sky-500/20 hover:text-sky-200 border-sky-500/30 hover:border-sky-400/50 hover:shadow-lg hover:shadow-sky-500/20 hover:scale-105'
+                          : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700 border-blue-300 hover:border-blue-400 hover:shadow-md hover:scale-105'
+                      }`}
                     >
-                      Descargar
+                      <Download className="h-4 w-4" />
+                      <span>Descargar</span>
                     </button>
                   )}
                   <button
                     onClick={() => setDocumentModal({ isOpen: false, booking: '', docType: '', hasDocument: false, mode: 'view', file: null })}
-                    className={`px-4 py-2 text-sm font-medium transition-colors border ${theme === 'dark'
-                      ? 'text-slate-300 hover:bg-slate-700 border-slate-700/60'
-                      : 'text-gray-700 hover:bg-gray-100 border-gray-300'
-                      }`}
+                    className={`inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 border ${
+                      theme === 'dark'
+                        ? 'text-slate-300 hover:bg-slate-700/80 hover:text-slate-200 border-slate-700/60 hover:border-slate-600 hover:scale-105'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 border-gray-300 hover:border-gray-400 hover:scale-105'
+                    }`}
                   >
-                    Cerrar
+                    <X className="h-4 w-4" />
+                    <span>Cerrar</span>
                   </button>
                 </div>
               </div>
