@@ -280,6 +280,17 @@ export const PORT_COORDINATES: Record<string, [number, number]> = {
   
   // Perú
   'CALLAO': [-77.1189, -12.0566],
+  'PISCO': [-76.2167, -13.7167],
+  'PAITA': [-81.1000, -5.0833],
+  
+  // Panamá - Puertos adicionales
+  'RODMAN': [-79.5667, 8.9667], // Cerca de Balboa
+  'CRISTOBAL': [-79.9167, 9.3500],
+  'CRISTÓBAL': [-79.9167, 9.3500],
+  'COLON': [-79.9000, 9.3500],
+  'COLÓN': [-79.9000, 9.3500],
+  'COLON FREE ZONE': [-79.9000, 9.3500],
+  'COLÓN FREE ZONE': [-79.9000, 9.3500],
   
   // Ecuador
   'GUAYAQUIL': [-79.9203, -2.1709],
@@ -319,6 +330,123 @@ export const PORT_COORDINATES: Record<string, [number, number]> = {
   'CNTXG': [117.8000, 38.9800],
   'XINGANG TIANJIN': [117.8000, 38.9800],
   'TIANJIN XINGANG': [117.8000, 38.9800],
+  
+  // Argentina
+  'BUENOS AIRES': [-58.3816, -34.6037],
+  'ROSARIO': [-60.6393, -32.9442],
+  'BAHIA BLANCA': [-62.2654, -38.7183],
+  'NECOCHEA': [-58.7397, -38.5545],
+  'MAR DEL PLATA': [-57.5425, -38.0055],
+  'QUEQUEN': [-58.7397, -38.5545],
+  
+  // Brasil - Puertos adicionales
+  'RIO DE JANEIRO': [-43.1729, -22.9068],
+  'RIO': [-43.1729, -22.9068],
+  'PARANAGUA': [-48.5050, -25.5200],
+  'PARANAGUÁ': [-48.5050, -25.5200],
+  'ITAJAI': [-48.6614, -26.9103],
+  'ITAJÁI': [-48.6614, -26.9103],
+  'ITAPOA': [-48.6614, -26.9103],
+  'ITAPOÁ': [-48.6614, -26.9103],
+  'PECEM': [-38.3000, -3.7000],
+  'PECÉM': [-38.3000, -3.7000],
+  'VITORIA': [-40.3081, -20.3155],
+  'VITÓRIA': [-40.3081, -20.3155],
+  'NITEROI': [-43.1031, -22.8833],
+  'NITERÓI': [-43.1031, -22.8833],
+  'PORTO ALEGRE': [-51.2308, -30.0346],
+  'SAO FRANCISCO DO SUL': [-48.6381, -26.2431],
+  'SÃO FRANCISCO DO SUL': [-48.6381, -26.2431],
+  'IMBITUBA': [-48.6667, -28.2333],
+  'RIO GRANDE': [-52.1078, -32.0350],
+  
+  // México - Puertos adicionales
+  'VERACRUZ': [-96.1340, 19.1738],
+  'ALTAMIRA': [-97.9167, 22.3833],
+  'ENSENADA': [-116.6167, 31.8667],
+  'TAMPICO': [-97.8667, 22.2667],
+  'PROGRESO': [-89.6667, 21.2833],
+  'COATZACOALCOS': [-94.4167, 18.1500],
+  'SALINA CRUZ': [-95.2000, 16.1667],
+  'MAZATLAN': [-106.4167, 23.2500],
+  'MAZATLÁN': [-106.4167, 23.2500],
+  'TOPOLOBAMPO': [-109.0500, 25.6000],
+  'GUAYMAS': [-110.9000, 27.9167],
+  
+  // USA - Puertos adicionales
+  'MIAMI': [-80.1918, 25.7617],
+  'BALTIMORE': [-76.6122, 39.2904],
+  'BOSTON': [-71.0589, 42.3601],
+  'JACKSONVILLE': [-81.6557, 30.3322],
+  'MOBILE': [-88.0431, 30.6944],
+  'NEW ORLEANS': [-90.0715, 29.9511],
+  'GALVESTON': [-94.7974, 29.3013],
+  'BEAUMONT': [-94.1016, 30.0802],
+  'PORT ARTHUR': [-93.9297, 29.8849],
+  'TACOMA': [-122.4443, 47.2529],
+  'SEATTLE': [-122.3321, 47.6062],
+  'OAKLAND': [-122.2711, 37.8044],
+  'SAN FRANCISCO': [-122.4194, 37.7749],
+  'SAN DIEGO': [-117.1611, 32.7157],
+  'PORTLAND': [-122.6765, 45.5152],
+  'WILMINGTON': [-77.9447, 34.2257], // North Carolina
+  'MORELHEAD CITY': [-76.7167, 34.7167],
+  'BROWNSVILLE': [-97.4975, 25.9018],
+  'CORPUS CHRISTI': [-97.3964, 27.8006],
+  
+  // Canadá - Puertos adicionales
+  'VANCOUVER': [-123.1216, 49.2827],
+  'PRINCE RUPERT': [-130.3208, 54.3151],
+  'HALIFAX': [-63.5752, 44.6488],
+  'MONTREAL': [-73.5673, 45.5017],
+  'QUEBEC': [-71.2072, 46.8139],
+  'HAMILTON': [-79.8669, 43.2557],
+  'THUNDER BAY': [-89.2477, 48.3809],
+  'SAINT JOHN': [-66.0633, 45.2733], // New Brunswick
+  
+  // República Dominicana
+  'SANTO DOMINGO': [-69.9312, 18.4861],
+  'RIO HAINA': [-70.0000, 18.4167],
+  'RIO HAÍNA': [-70.0000, 18.4167],
+  'PUERTO PLATA': [-70.6947, 19.7933],
+  
+  // Jamaica
+  'KINGSTON': [-76.7936, 18.0179],
+  
+  // Trinidad y Tobago
+  'PORT OF SPAIN': [-61.5189, 10.6549],
+  
+  // Bahamas
+  'NASSAU': [-77.3431, 25.0479],
+  'FREEPORT': [-78.6958, 26.5333],
+  
+  // Cuba
+  'HAVANA': [-82.3666, 23.1136],
+  'LA HABANA': [-82.3666, 23.1136],
+  'SANTIAGO DE CUBA': [-75.8153, 20.0247],
+  
+  // Costa Rica - Puertos adicionales
+  'PUERTO LIMON': [-83.0333, 10.0000], // Costa Rica (diferente de Panamá)
+  'PUERTO LIMÓN': [-83.0333, 10.0000],
+  
+  // Nicaragua - Puertos adicionales
+  'PUERTO SANDINO': [-86.3500, 12.1833],
+  'BLUEFIELDS': [-83.7667, 12.0167],
+  
+  // Belice
+  'BELIZE CITY': [-88.1962, 17.5046],
+  
+  // Uruguay
+  'MONTEVIDEO': [-56.1645, -34.9011],
+  'NUEVA PALMIRA': [-58.0833, -33.8833],
+  
+  // Paraguay
+  'ASUNCION': [-57.5759, -25.2637],
+  'ASUNCIÓN': [-57.5759, -25.2637],
+  
+  // Bolivia
+  'LA PAZ': [-68.1193, -16.5000],
+  'SANTA CRUZ': [-63.1812, -17.8146],
   
   // Otros
   'PRUEBA': null as any, // Puerto de prueba (no coordenadas)

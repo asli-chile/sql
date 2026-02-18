@@ -59,6 +59,11 @@ export function ItinerarioMap({
   puertoSeleccionado 
 }: ItinerarioMapProps) {
   const [popupInfo, setPopupInfo] = useState<{ puerto: string; coordenadas: CoordenadasPuerto } | null>(null);
+  const [viewState, setViewState] = useState<{
+    latitude: number;
+    longitude: number;
+    zoom: number;
+  } | null>(null);
 
   // Obtener todos los puertos únicos con sus coordenadas
   const puertosConCoordenadas = useMemo(() => {
@@ -80,6 +85,7 @@ export function ItinerarioMap({
       longitude: lngPromedio,
     };
   }, [puertosConCoordenadas]);
+
 
   // Contar grupos/tablas de servicio que tienen este puerto como destino
   const contarTablasPorPuerto = useCallback((puerto: string): number => {
@@ -128,6 +134,12 @@ export function ItinerarioMap({
         maxZoom={18}
         style={{ width: '100%', height: '100%' }}
         mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
+        dragPan={true}
+        dragRotate={false}
+        scrollZoom={true}
+        doubleClickZoom={true}
+        touchZoom={true}
+        touchRotate={false}
       >
         {Array.from(puertosConCoordenadas.entries()).map(([puerto, coordenadas]) => {
           const cantidadTablas = contarTablasPorPuerto(puerto);
