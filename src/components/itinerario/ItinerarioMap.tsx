@@ -138,8 +138,6 @@ export function ItinerarioMap({
         dragRotate={false}
         scrollZoom={true}
         doubleClickZoom={true}
-        touchZoom={true}
-        touchRotate={false}
       >
         {Array.from(puertosConCoordenadas.entries()).map(([puerto, coordenadas]) => {
           const cantidadTablas = contarTablasPorPuerto(puerto);
