@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
 import type { Itinerario, ItinerarioEscala } from '@/types/itinerarios';
-import { Plus, Trash2, Save, Calendar, Settings, X } from 'lucide-react';
+import { Plus, Trash2, Save, Calendar, Settings, X, MapPin } from 'lucide-react';
 import { ServiciosManager } from './ServiciosManager';
 
 const AREAS = [
@@ -1433,27 +1433,50 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
     : 'bg-white border-gray-200 text-gray-900';
 
   const inputTone = theme === 'dark'
-    ? 'bg-slate-900/60 border-slate-700/70 text-slate-100 placeholder:text-slate-500 focus:border-sky-500/60 focus:ring-sky-500/30'
-    : 'bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-blue-500/60 focus:ring-blue-500/30';
+    ? 'bg-[#1F1F1F] border-[#3D3D3D]/50 text-white placeholder:text-[#6B6B6B] focus:border-[#00AEEF] focus:ring-[#00AEEF]/30 rounded-lg'
+    : 'bg-white border-gray-300 text-[#1F1F1F] placeholder:text-gray-400 focus:border-[#00AEEF] focus:ring-[#00AEEF]/30 rounded-lg';
 
   return (
     <div className="mx-auto max-w-6xl">
-      <form onSubmit={handleSubmit} className={`border p-6 sm:p-8 ${formTone}`}>
-        <div className="flex flex-col gap-2 border-b pb-4 mb-6">
-          <h2 className="text-lg sm:text-xl font-semibold">Crear nuevo itinerario</h2>
-          <p className="text-sm opacity-70">
-            Ingresa la información del itinerario y sus escalas (PODs).
-          </p>
+      <form onSubmit={handleSubmit} className={`rounded-xl border shadow-lg ${theme === 'dark' 
+        ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+        : 'border-[#E1E1E1] bg-white'
+      } p-4 sm:p-6 md:p-8`}>
+        <div className={`flex items-center gap-3 border-b pb-4 mb-6 ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+          <div className={`p-2.5 rounded-xl ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+            <Plus className={`h-6 w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+          </div>
+          <div>
+            <h2 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+              Crear nuevo itinerario
+            </h2>
+            <p className={`text-xs sm:text-sm mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+              Ingresa la información del itinerario y sus escalas (PODs).
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {loadingCatalogos && serviciosExistentes.length === 0 && (
-            <div className="col-span-full text-center py-4 text-xs opacity-60">
-              Cargando catálogos...
+            <div className={`col-span-full text-center py-6 rounded-xl ${theme === 'dark' 
+              ? 'bg-[#2D2D2D]/50 border border-[#3D3D3D]/50' 
+              : 'bg-gray-50 border border-[#E1E1E1]'
+            }`}>
+              <div className="flex items-center justify-center gap-2">
+                <div className={`h-5 w-5 animate-spin rounded-full border-3 ${theme === 'dark' ? 'border-[#00AEEF]/30 border-t-[#00AEEF]' : 'border-[#00AEEF]/30 border-t-[#00AEEF]'}`} />
+                <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                  Cargando catálogos...
+                </span>
+              </div>
             </div>
           )}
-          <label className="text-xs font-semibold uppercase tracking-wide">
-            Servicio
+          <div className={`rounded-xl border ${theme === 'dark' 
+            ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+            : 'border-[#E1E1E1] bg-white shadow-sm'
+          } p-4 sm:p-5`}>
+            <label className={`text-xs font-semibold uppercase tracking-wide block mb-3 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+              Servicio
+            </label>
             <div className="mt-2 flex gap-2">
               <select
                 value={esServicioNuevo ? '' : servicioId}
@@ -1472,7 +1495,7 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                   }
                 }}
                 disabled={esServicioNuevo || loadingCatalogos}
-                className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone} ${(esServicioNuevo || loadingCatalogos) ? 'opacity-50' : ''}`}
+                className={`flex-1 ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all ${(esServicioNuevo || loadingCatalogos) ? 'opacity-50' : ''}`}
               >
                 <option value="">Selecciona servicio</option>
                 {serviciosExistentes.map(s => (
@@ -1486,32 +1509,37 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                 <option value="__gestionar__">⚙️ Gestionar servicios</option>
               </select>
             </div>
-              {esServicioNuevo && (
-                <input
-                  type="text"
-                  value={servicioNuevo}
-                  onChange={(e) => setServicioNuevo(e.target.value)}
-                  className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
-                  placeholder="Escribe el nuevo servicio"
-                  required
-                />
-              )}
-              {servicioId && navesPorServicio[servicioId] && (
-                <p className="mt-1 text-[10px] opacity-60">
-                  Naves disponibles: {navesPorServicio[servicioId] ? navesPorServicio[servicioId].length : 0}
-                  {!navesPorServicio[servicioId] && (
-                    <span className="text-orange-500 ml-1">(Verificando...)</span>
-                  )}
-                </p>
-              )}
-            </label>
+            {esServicioNuevo && (
+              <input
+                type="text"
+                value={servicioNuevo}
+                onChange={(e) => setServicioNuevo(e.target.value)}
+                className={`mt-2 w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
+                placeholder="Escribe el nuevo servicio"
+                required
+              />
+            )}
+            {servicioId && navesPorServicio[servicioId] && (
+              <p className={`mt-2 text-[10px] font-semibold ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
+                Naves disponibles: {navesPorServicio[servicioId] ? navesPorServicio[servicioId].length : 0}
+                {!navesPorServicio[servicioId] && (
+                  <span className={`ml-1 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-500'}`}>(Verificando...)</span>
+                )}
+              </p>
+            )}
+          </div>
 
-            <label className="text-xs font-semibold uppercase tracking-wide">
-              Naviera
+            <div className={`rounded-xl border ${theme === 'dark' 
+              ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+              : 'border-[#E1E1E1] bg-white shadow-sm'
+            } p-4 sm:p-5`}>
+              <label className={`text-xs font-semibold uppercase tracking-wide block mb-3 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                Naviera
+              </label>
               <select
                 value={naviera}
                 onChange={(e) => setNaviera(e.target.value)}
-                className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                className={`w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
                 required
                 disabled={loadingCatalogos || !servicioId || navierasDisponibles.length === 0}
               >
@@ -1527,17 +1555,22 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                 ))}
               </select>
               {servicioId && navierasDisponibles.length > 0 && (
-                <p className="mt-1 text-[10px] opacity-60">
+                <p className={`mt-2 text-[10px] font-semibold ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
                   Navieras del servicio: {navierasDisponibles.length}
                 </p>
               )}
-            </label>
+            </div>
 
-            <label className="text-xs font-semibold uppercase tracking-wide">
-              Nave
+            <div className={`rounded-xl border ${theme === 'dark' 
+              ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+              : 'border-[#E1E1E1] bg-white shadow-sm'
+            } p-4 sm:p-5`}>
+              <label className={`text-xs font-semibold uppercase tracking-wide block mb-3 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                Nave
+              </label>
               {naviera ? (
                 <>
-                  <div className="mt-2 flex gap-2">
+                  <div className="flex gap-2">
                     <select
                       value={esNaveNueva ? '' : nave}
                       onChange={(e) => {
@@ -1550,7 +1583,7 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                         }
                       }}
                       disabled={esNaveNueva || loadingCatalogos}
-                      className={`flex-1 border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone} ${(esNaveNueva || loadingCatalogos) ? 'opacity-50' : ''}`}
+                      className={`flex-1 ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all ${(esNaveNueva || loadingCatalogos) ? 'opacity-50' : ''}`}
                     >
                       <option value="">Selecciona nave</option>
                       {navesDisponibles.length > 0 ? (
@@ -1570,7 +1603,7 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                       type="text"
                       value={naveNueva}
                       onChange={(e) => setNaveNueva(e.target.value)}
-                      className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                      className={`mt-2 w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
                       placeholder={`Escribe la nueva nave para ${naviera}`}
                       required
                     />
@@ -1581,33 +1614,46 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                   type="text"
                   value=""
                   disabled
-                  className={`mt-2 w-full border px-3 py-2 text-sm outline-none ${inputTone} opacity-50 cursor-not-allowed`}
+                  className={`w-full ${inputTone} px-3 py-2.5 text-sm outline-none opacity-50 cursor-not-allowed`}
                   placeholder="Selecciona una naviera primero"
                 />
               )}
-            </label>
+            </div>
 
-          <label className="text-xs font-semibold uppercase tracking-wide">
-            Número de Viaje
+          <div className={`rounded-xl border ${theme === 'dark' 
+            ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+            : 'border-[#E1E1E1] bg-white shadow-sm'
+          } p-4 sm:p-5`}>
+            <label className={`text-xs font-semibold uppercase tracking-wide block mb-3 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+              Número de Viaje
+            </label>
             <input
               type="text"
               value={viaje}
               onChange={(e) => setViaje(e.target.value)}
-              className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+              className={`w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
               placeholder="Ej: FA606R"
               required
             />
-          </label>
+          </div>
 
           {/* Campo Semana oculto - se calcula y guarda automáticamente */}
           <input type="hidden" value={semana || ''} />
 
-          <label className="text-xs font-semibold uppercase tracking-wide">
-            POL (Puerto de Origen)
+          <div className={`rounded-xl border ${theme === 'dark' 
+            ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-[#1F1F1F]' 
+            : 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm'
+          } p-4 sm:p-5`}>
+            <label className={`text-xs font-semibold uppercase tracking-wide block mb-3 ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+              POL (Puerto de Origen)
+            </label>
             <select
               value={pol}
               onChange={(e) => setPol(e.target.value)}
-              className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+              className={`w-full ${theme === 'dark' 
+                ? 'bg-[#1F1F1F] border-emerald-500/30 text-white' 
+                : 'bg-white border-emerald-300 text-emerald-900'
+              } px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg transition-all`}
               required
               disabled={loadingCatalogos && pols.length === 0}
             >
@@ -1618,16 +1664,24 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                 <option key={p} value={p}>{p}</option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className="text-xs font-semibold uppercase tracking-wide">
-            ETD (Fecha de Zarpe)
-            <div className="mt-2 relative">
+          <div className={`rounded-xl border ${theme === 'dark' 
+            ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-900/20 to-[#1F1F1F]' 
+            : 'border-emerald-200 bg-gradient-to-br from-emerald-50 to-white shadow-sm'
+          } p-4 sm:p-5`}>
+            <label className={`text-xs font-semibold uppercase tracking-wide block mb-3 ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+              ETD (Fecha de Zarpe)
+            </label>
+            <div className="relative">
               <input
                 type="text"
                 value={etdFormatoLatino}
                 onChange={(e) => setEtdFormatoLatino(e.target.value)}
-                className={`w-full border px-3 py-2 pr-10 text-sm outline-none focus:ring-2 ${inputTone}`}
+                className={`w-full ${theme === 'dark' 
+                  ? 'bg-[#1F1F1F] border-emerald-500/30 text-white' 
+                  : 'bg-white border-emerald-300 text-emerald-900'
+                } px-3 py-2.5 pr-10 text-sm outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg transition-all`}
                 placeholder="DD/MM/YYYY (ej: 15/03/2024)"
                 pattern="\d{2}/\d{2}/\d{4}"
                 required
@@ -1635,7 +1689,10 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
               <button
                 type="button"
                 onClick={() => etdDateInputRef.current?.showPicker?.()}
-                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 ${theme === 'dark' ? 'text-slate-400 hover:text-sky-400' : 'text-gray-400 hover:text-blue-600'} transition-colors`}
+                className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-colors ${theme === 'dark' 
+                  ? 'text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/20' 
+                  : 'text-emerald-600 hover:text-emerald-700 hover:bg-emerald-100'
+                }`}
                 title="Abrir calendario"
               >
                 <Calendar className="h-4 w-4" />
@@ -1649,35 +1706,46 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                 aria-hidden="true"
               />
             </div>
-            <p className="mt-1 text-[10px] opacity-60">Formato: DD/MM/YYYY o usa el calendario</p>
-          </label>
+            <p className={`mt-2 text-[10px] font-semibold ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+              Formato: DD/MM/YYYY o usa el calendario
+            </p>
+          </div>
         </div>
 
-        <div className="mt-6 border-t pt-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold uppercase tracking-wide">Escalas (PODs)</h3>
+        <div className={`mt-6 border-t pt-6 ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className={`p-2 rounded-lg ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                <MapPin className={`h-5 w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+              </div>
+              <h3 className={`text-base sm:text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                Escalas (PODs)
+              </h3>
+            </div>
             <div className="flex items-center gap-2">
               {servicioNombre && !esServicioNuevo && (
                 <button
                   type="button"
                   onClick={cargarEscalasDelServicio}
-                  className={`flex items-center gap-2 border px-3 py-1.5 text-xs font-semibold transition ${theme === 'dark'
-                    ? 'border-blue-500/60 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20'
-                    : 'border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-100'
-                    }`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${
+                    theme === 'dark'
+                      ? 'bg-[#00AEEF]/20 text-[#4FC3F7] hover:bg-[#00AEEF]/30 border border-[#00AEEF]/30'
+                      : 'bg-[#00AEEF]/10 text-[#00AEEF] hover:bg-[#00AEEF]/20 border border-[#00AEEF]/20'
+                  }`}
                   title={`Cargar escalas definidas para el servicio "${servicioNombre}"`}
                 >
                   <Plus className="h-3 w-3" />
-                  Cargar Escalas del Servicio
+                  Cargar Escalas
                 </button>
               )}
               <button
                 type="button"
                 onClick={agregarEscala}
-                className={`flex items-center gap-2 border px-3 py-1.5 text-xs font-semibold transition ${theme === 'dark'
-                  ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
-                  : 'border-emerald-500 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                  }`}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${
+                  theme === 'dark'
+                    ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30'
+                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-300'
+                }`}
               >
                 <Plus className="h-3 w-3" />
                 Agregar Escala
@@ -1686,46 +1754,78 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
           </div>
 
           {escalas.length === 0 ? (
-            <p className="text-sm opacity-70 text-center py-4">No hay escalas agregadas. Haz clic en "Agregar Escala" para comenzar.</p>
+            <div className={`text-center py-8 rounded-xl border ${theme === 'dark' 
+              ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/50' 
+              : 'border-[#E1E1E1] bg-gray-50'
+            }`}>
+              <div className={`p-3 rounded-xl inline-block mb-3 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                <MapPin className={`h-6 w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+              </div>
+              <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                No hay escalas agregadas
+              </p>
+              <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                Haz clic en "Agregar Escala" para comenzar
+              </p>
+            </div>
           ) : (
             <div className="grid gap-4">
               {escalas.map((escala, index) => (
-                <div key={index} className={`border p-4 ${theme === 'dark' ? 'border-slate-700/60 bg-slate-900' : 'border-gray-300 bg-white'}`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="text-xs font-semibold uppercase tracking-wide opacity-70">Escala {index + 1}</span>
+                <div key={index} className={`rounded-xl border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D]/80 to-[#1F1F1F]' 
+                  : 'border-[#E1E1E1] bg-gradient-to-br from-gray-50 to-white'
+                } p-4 sm:p-5 hover:shadow-lg transition-all duration-200`}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-sm sm:text-base shadow-lg ${
+                        theme === 'dark' 
+                          ? 'bg-gradient-to-br from-[#00AEEF] to-[#0078D4] text-white' 
+                          : 'bg-gradient-to-br from-[#00AEEF] to-[#0099CC] text-white'
+                      }`}>
+                        {index + 1}
+                      </div>
+                      <span className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Escala {index + 1}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => eliminarEscala(index)}
-                      className={`p-1 border transition ${theme === 'dark'
-                        ? 'border-red-500/60 text-red-400 hover:bg-red-500/20'
-                        : 'border-red-300 text-red-600 hover:bg-red-50'
-                        }`}
+                      className={`p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+                        theme === 'dark'
+                          ? 'border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:border-red-500/50'
+                          : 'border border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400'
+                      }`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <label className="text-xs font-semibold uppercase tracking-wide">
-                      Área
+                    <div>
+                      <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Área
+                      </label>
                       <select
                         value={escala.area}
                         onChange={(e) => actualizarEscala(index, 'area', e.target.value)}
-                        className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                        className={`w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
                         required
                       >
                         {AREAS.map(area => (
                           <option key={area} value={area}>{area}</option>
                         ))}
                       </select>
-                    </label>
-                    <label className="text-xs font-semibold uppercase tracking-wide">
-                      Puerto (POD)
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Puerto (POD)
+                      </label>
                       {escala.esPuertoNuevo ? (
                         <input
                           type="text"
                           value={escala.puerto}
                           onChange={(e) => actualizarEscala(index, 'puerto', e.target.value)}
-                          className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                          className={`w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
                           placeholder="Escribe el nuevo POD"
                           required
                         />
@@ -1733,7 +1833,7 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                         <select
                           value={escala.puerto}
                           onChange={(e) => actualizarEscala(index, 'puerto', e.target.value)}
-                          className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                          className={`w-full ${inputTone} px-3 py-2.5 text-sm outline-none focus:ring-2 transition-all`}
                           required
                         >
                           <option value="">Selecciona POD</option>
@@ -1743,25 +1843,33 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                           <option value="__nuevo__">+ Nuevo POD</option>
                         </select>
                       )}
-                    </label>
-                    <label className="text-xs font-semibold uppercase tracking-wide">
-                      ETA (Fecha de Arribo)
+                    </div>
+                    <div>
+                      <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${theme === 'dark' ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                        ETA (Fecha de Arribo)
+                      </label>
                       <input
                         type="date"
                         value={escala.eta}
                         onChange={(e) => actualizarEscala(index, 'eta', e.target.value)}
-                        className={`mt-2 w-full border px-3 py-2 text-sm outline-none focus:ring-2 ${inputTone}`}
+                        className={`w-full ${theme === 'dark' 
+                          ? 'bg-[#1F1F1F] border-emerald-500/30 text-white' 
+                          : 'bg-white border-emerald-300 text-emerald-900'
+                        } px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg transition-all`}
                         required
                       />
-                    </label>
+                    </div>
                   </div>
                   {escala.eta && etd && (
-                    <div className="mt-3 space-y-2">
-                      <div className="text-xs opacity-70">
+                    <div className={`mt-4 p-3 rounded-lg ${theme === 'dark' 
+                      ? 'bg-[#00AEEF]/10 border border-[#00AEEF]/30' 
+                      : 'bg-[#00AEEF]/5 border border-[#00AEEF]/20'
+                    }`}>
+                      <div className={`text-xs font-bold mb-2 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
                         Días de tránsito: {calcularDiasTransito(etd, escala.eta)} días
                       </div>
                       <div className="flex items-center gap-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide flex-1">
+                        <label className={`text-xs font-semibold uppercase tracking-wide flex-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
                           Ajustar días:
                         </label>
                         <div className="flex items-center gap-1">
@@ -1774,9 +1882,10 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                               const nuevoAjuste = ajusteActual - 1;
                               actualizarEscala(index, 'ajusteDias', nuevoAjuste);
                             }}
-                            className={`px-2 py-1 border text-sm font-bold transition ${theme === 'dark'
-                              ? 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600'
-                              : 'border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            className={`px-2.5 py-1.5 rounded-lg text-sm font-bold transition-all duration-200 hover:scale-110 active:scale-95 ${
+                              theme === 'dark'
+                                ? 'border border-[#3D3D3D]/50 bg-[#2D2D2D] text-slate-200 hover:bg-[#3D3D3D]'
+                                : 'border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                             title="Restar 1 día"
                           >
@@ -1789,7 +1898,7 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                               const valor = parseInt(e.target.value) || 0;
                               actualizarEscala(index, 'ajusteDias', valor);
                             }}
-                            className={`w-16 border px-2 py-1 text-sm text-center outline-none focus:ring-2 ${inputTone}`}
+                            className={`w-16 ${inputTone} px-2 py-1.5 text-sm text-center outline-none focus:ring-2 transition-all rounded-lg`}
                             placeholder="0"
                             title="Ajuste de días de tránsito (+/-)"
                           />
@@ -1802,9 +1911,10 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                               const nuevoAjuste = ajusteActual + 1;
                               actualizarEscala(index, 'ajusteDias', nuevoAjuste);
                             }}
-                            className={`px-2 py-1 border text-sm font-bold transition ${theme === 'dark'
-                              ? 'border-slate-600 bg-slate-700 text-slate-200 hover:bg-slate-600'
-                              : 'border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            className={`px-2.5 py-1.5 rounded-lg text-sm font-bold transition-all duration-200 hover:scale-110 active:scale-95 ${
+                              theme === 'dark'
+                                ? 'border border-[#3D3D3D]/50 bg-[#2D2D2D] text-slate-200 hover:bg-[#3D3D3D]'
+                                : 'border border-gray-300 bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                             title="Sumar 1 día"
                           >
@@ -1813,7 +1923,11 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
                         </div>
                       </div>
                       {escala.ajusteDias && escala.ajusteDias !== 0 && (
-                        <div className={`text-xs ${escala.ajusteDias > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        <div className={`mt-2 text-xs font-semibold px-2 py-1 rounded-lg inline-block ${
+                          escala.ajusteDias > 0 
+                            ? theme === 'dark' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
+                            : theme === 'dark' ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
+                        }`}>
                           {escala.ajusteDias > 0 ? '+' : ''}{escala.ajusteDias} día{escala.ajusteDias !== 1 && escala.ajusteDias !== -1 ? 's' : ''} de ajuste
                         </div>
                       )}
@@ -1826,34 +1940,70 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
         </div>
 
         {errorMessage && (
-          <div className="mt-4 border border-red-500/40 bg-red-500/10 px-4 py-2 text-sm text-red-500">
-            {errorMessage}
+          <div className={`mt-4 rounded-xl border shadow-sm p-4 ${theme === 'dark'
+            ? 'border-red-500/50 bg-red-900/30'
+            : 'border-red-300 bg-red-50'
+          }`}>
+            <div className="flex items-center gap-2">
+              <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-red-500/20' : 'bg-red-100'}`}>
+                <X className={`h-4 w-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+              </div>
+              <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-200' : 'text-red-700'}`}>
+                {errorMessage}
+              </p>
+            </div>
           </div>
         )}
         {successMessage && (
-          <div className="mt-4 border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-500">
-            {successMessage}
+          <div className={`mt-4 rounded-xl border shadow-sm p-4 ${theme === 'dark'
+            ? 'border-emerald-500/50 bg-emerald-900/30'
+            : 'border-emerald-300 bg-emerald-50'
+          }`}>
+            <div className="flex items-center gap-2">
+              <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                <Save className={`h-4 w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+              </div>
+              <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-emerald-200' : 'text-emerald-700'}`}>
+                {successMessage}
+              </p>
+            </div>
           </div>
         )}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className={`mt-6 inline-flex items-center justify-center gap-2 border px-5 py-2.5 text-sm font-semibold transition ${theme === 'dark'
-            ? 'bg-sky-500 border-sky-500 text-slate-950 hover:bg-sky-400'
-            : 'bg-blue-600 border-blue-600 text-white hover:bg-blue-700'
-            } ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`relative mt-6 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all duration-200 overflow-hidden group shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+            theme === 'dark'
+              ? 'bg-gradient-to-r from-[#0078D4] to-[#00AEEF] hover:from-[#005A9E] hover:to-[#0099CC] text-white'
+              : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] hover:from-[#0099CC] hover:to-[#0078D4] text-white'
+          }`}
         >
-          <Save className="h-4 w-4" />
-          {isSubmitting ? 'Guardando...' : 'Guardar Itinerario'}
+          <span className="relative z-10 flex items-center gap-2">
+            <Save className="h-4 w-4" />
+            {isSubmitting ? 'Guardando...' : 'Guardar Itinerario'}
+          </span>
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
         </button>
       </form>
 
-          {itinerarioResultado && (
-        <div className={`mt-8 border p-6 sm:p-8 ${formTone}`}>
-          <div className="flex flex-col gap-2 border-b pb-4 mb-6">
-            <h2 className="text-lg sm:text-xl font-semibold">Itinerario Guardado</h2>
-            <p className="text-sm opacity-70">Vista previa del itinerario guardado.</p>
+      {itinerarioResultado && (
+        <div className={`mt-8 rounded-xl border shadow-lg ${theme === 'dark' 
+          ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+          : 'border-[#E1E1E1] bg-white'
+        } p-4 sm:p-6 md:p-8`}>
+          <div className={`flex items-center gap-3 border-b pb-4 mb-6 ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+            <div className={`p-2.5 rounded-xl ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+              <Save className={`h-6 w-6 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+            </div>
+            <div>
+              <h2 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                Itinerario Guardado
+              </h2>
+              <p className={`text-xs sm:text-sm mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                Vista previa del itinerario guardado.
+              </p>
+            </div>
           </div>
 
           <ItinerarioTable
@@ -1874,35 +2024,44 @@ export function ItinerariosManager({ onSuccess, initialServicio, initialConsorci
 
       {/* Modal para gestionar servicios */}
       {showServiciosManager && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
           <div 
-            className={`relative w-full max-w-4xl max-h-[90vh] overflow-hidden border shadow-2xl ${theme === 'dark'
-              ? 'bg-slate-800 border-slate-700'
-              : 'bg-white border-gray-200'
+            className={`relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-xl shadow-2xl ${theme === 'dark'
+              ? 'bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F] border border-[#3D3D3D]/50'
+              : 'bg-white border border-[#E1E1E1]'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className={`flex items-center justify-between px-6 py-4 border-b ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-200 bg-gray-50'}`}>
-              <div>
-                <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Gestionar Servicios
-                </h2>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Crea y administra servicios marítimos y sus naves asignadas
-                </p>
+            <div className={`flex items-center justify-between px-4 sm:px-6 py-4 border-b ${theme === 'dark' 
+              ? 'border-[#3D3D3D] bg-gradient-to-r from-[#0078D4]/20 via-[#00AEEF]/20 to-[#0078D4]/20' 
+              : 'border-[#E1E1E1] bg-gradient-to-r from-[#00AEEF]/10 via-white to-[#00AEEF]/10'
+            }`}>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={`p-2 rounded-xl flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                  <Settings className={`h-5 w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    Gestionar Servicios
+                  </h2>
+                  <p className={`text-xs sm:text-sm mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    Crea y administra servicios marítimos y sus naves asignadas
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => {
                   setShowServiciosManager(false);
                   void cargarCatalogos();
                 }}
-                className={`inline-flex h-9 w-9 items-center justify-center border transition ${theme === 'dark'
-                  ? 'border-slate-700 text-slate-300 hover:border-sky-500/60 hover:text-sky-200 hover:bg-slate-700'
-                  : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400 hover:text-gray-900 hover:bg-gray-100'
-                }`}
+                className={`p-2 rounded-xl transition-all duration-200 flex-shrink-0 ${
+                  theme === 'dark' 
+                    ? 'hover:bg-[#3D3D3D]/80 text-[#C0C0C0] hover:text-white' 
+                    : 'hover:bg-gray-100 text-[#323130] hover:text-[#1F1F1F]'
+                } hover:scale-110 active:scale-95`}
                 title="Cerrar"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
             </div>
             <div className="overflow-y-auto max-h-[calc(90vh-8rem)] p-6">

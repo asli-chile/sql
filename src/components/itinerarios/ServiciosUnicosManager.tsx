@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createClient } from '@/lib/supabase-browser';
-import { Plus, Trash2, Save, Edit2, X } from 'lucide-react';
+import { Plus, Trash2, Save, Edit2, X, Check, Settings } from 'lucide-react';
 import type { ServicioUnico, ServicioUnicoFormData } from '@/types/servicios';
 
 interface ServiciosUnicosManagerProps {
@@ -452,68 +452,121 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
     <div className="space-y-4">
       {/* Mensajes */}
       {error && (
-        <div className="p-3 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700 text-red-700 dark:text-red-400 rounded">
-          {error}
+        <div className={`rounded-xl border shadow-sm p-4 ${theme === 'dark'
+          ? 'border-red-500/50 bg-red-900/30'
+          : 'border-red-300 bg-red-50'
+        }`}>
+          <div className="flex items-center gap-2">
+            <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-red-500/20' : 'bg-red-100'}`}>
+              <X className={`h-4 w-4 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`} />
+            </div>
+            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-red-200' : 'text-red-700'}`}>
+              {error}
+            </p>
+          </div>
         </div>
       )}
       {success && (
-        <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-700 text-green-700 dark:text-green-400 rounded">
-          {success}
+        <div className={`rounded-xl border shadow-sm p-4 ${theme === 'dark'
+          ? 'border-emerald-500/50 bg-emerald-900/30'
+          : 'border-emerald-300 bg-emerald-50'
+        }`}>
+          <div className="flex items-center gap-2">
+            <div className={`p-1.5 rounded-lg ${theme === 'dark' ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+              <Check className={`h-4 w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+            </div>
+            <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-emerald-200' : 'text-emerald-700'}`}>
+              {success}
+            </p>
+          </div>
         </div>
       )}
 
       {/* Botón crear */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-lg font-bold">Servicios Únicos</h2>
+      <div className="flex justify-between items-center flex-wrap gap-3">
+        <h2 className={`text-xl sm:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+          Servicios Únicos
+        </h2>
         <button
           onClick={abrirModalCrear}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+          className={`relative inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 overflow-hidden group shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 ${
+            theme === 'dark'
+              ? 'bg-gradient-to-r from-[#0078D4] to-[#00AEEF] hover:from-[#005A9E] hover:to-[#0099CC] text-white'
+              : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] hover:from-[#0099CC] hover:to-[#0078D4] text-white'
+          }`}
         >
-          <Plus className="h-4 w-4" />
-          Nuevo Servicio Único
+          <span className="relative z-10 flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Nuevo Servicio Único
+          </span>
+          <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
         </button>
       </div>
 
       {/* Lista de servicios */}
       {servicios.length === 0 ? (
-        <div className="p-8 text-center text-gray-500">
-          No hay servicios únicos creados
+        <div className={`p-8 text-center rounded-xl border ${theme === 'dark' 
+          ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/50' 
+          : 'border-[#E1E1E1] bg-gray-50'
+        }`}>
+          <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+            No hay servicios únicos creados
+          </p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {servicios.map((servicio) => (
             <div
               key={servicio.id}
-              className={`p-4 border rounded ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-white'}`}
+              className={`rounded-xl border shadow-sm hover:shadow-md transition-all duration-200 ${theme === 'dark' 
+                ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                : 'border-[#E1E1E1] bg-white'
+              } p-4 sm:p-5`}
             >
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <h3 className="font-semibold">{servicio.nombre}</h3>
-                  <p className="text-sm text-gray-500">
-                    Naviera: {servicio.naviera_nombre || 'N/A'}
-                  </p>
-                  {servicio.puerto_origen && (
-                    <p className="text-sm text-gray-500">
-                      Puerto de Origen: {servicio.puerto_origen}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">
-                    Naves: {servicio.naves?.length || 0} | Destinos: {servicio.destinos?.length || 0}
-                  </p>
-                </div>
-                <div className="flex gap-2">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className={`font-bold text-base sm:text-lg ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                  {servicio.nombre}
+                </h3>
+                <div className="flex gap-1.5">
                   <button
                     onClick={() => abrirModalEditar(servicio)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                    className={`p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+                      theme === 'dark'
+                        ? 'text-[#4FC3F7] hover:bg-[#00AEEF]/20 border border-[#00AEEF]/30'
+                        : 'text-[#00AEEF] hover:bg-[#00AEEF]/10 border border-[#00AEEF]/20'
+                    }`}
                   >
                     <Edit2 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => eliminarServicio(servicio.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    className={`p-2 rounded-xl transition-all duration-200 hover:scale-110 active:scale-95 ${
+                      theme === 'dark'
+                        ? 'text-red-400 hover:bg-red-500/20 border border-red-500/30'
+                        : 'text-red-600 hover:bg-red-50 border border-red-300'
+                    }`}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                  Naviera: <span className={`font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    {servicio.naviera_nombre || 'N/A'}
+                  </span>
+                </p>
+                {servicio.puerto_origen && (
+                  <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    Puerto de Origen: <span className={`font-bold ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'}`}>
+                      {servicio.puerto_origen}
+                    </span>
+                  </p>
+                )}
+                <div className={`mt-2 pt-2 border-t ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+                  <p className={`text-xs font-semibold ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
+                    Naves: {servicio.naves?.length || 0} | Destinos: {servicio.destinos?.length || 0}
+                  </p>
                 </div>
               </div>
             </div>
@@ -523,20 +576,35 @@ export function ServiciosUnicosManager({ onServicioCreated }: ServiciosUnicosMan
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto ${theme === 'dark' ? 'bg-slate-800' : 'bg-white'} rounded-lg shadow-xl`}>
-            <div className="sticky top-0 flex justify-between items-center p-4 border-b">
-              <div>
-                <h3 className="text-lg font-bold">
-                  {editingServicio ? 'Editar Servicio Único' : 'Nuevo Servicio Único'}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {editingServicio ? 'Modifica la información del servicio' : 'Completa la información del nuevo servicio único'}
-                </p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+          <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl shadow-2xl ${theme === 'dark' 
+            ? 'bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F] border border-[#3D3D3D]/50' 
+            : 'bg-white border border-[#E1E1E1]'
+          }`}>
+            <div className={`sticky top-0 flex justify-between items-center px-4 sm:px-6 py-4 border-b ${theme === 'dark' 
+              ? 'border-[#3D3D3D] bg-gradient-to-r from-[#0078D4]/20 via-[#00AEEF]/20 to-[#0078D4]/20' 
+              : 'border-[#E1E1E1] bg-gradient-to-r from-[#00AEEF]/10 via-white to-[#00AEEF]/10'
+            }`}>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={`p-2 rounded-xl flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                  <Settings className={`h-5 w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className={`text-lg sm:text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    {editingServicio ? 'Editar Servicio Único' : 'Nuevo Servicio Único'}
+                  </h3>
+                  <p className={`text-xs sm:text-sm mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    {editingServicio ? 'Modifica la información del servicio' : 'Completa la información del nuevo servicio único'}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"
+                className={`p-2 rounded-xl transition-all duration-200 flex-shrink-0 ${
+                  theme === 'dark' 
+                    ? 'hover:bg-[#3D3D3D]/80 text-[#C0C0C0] hover:text-white' 
+                    : 'hover:bg-gray-100 text-[#323130] hover:text-[#1F1F1F]'
+                } hover:scale-110 active:scale-95`}
               >
                 <X className="h-5 w-5" />
               </button>

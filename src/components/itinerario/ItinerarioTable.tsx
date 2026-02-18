@@ -2,8 +2,9 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import React from 'react';
-import { Eye, Edit2, X, Save, Plus } from 'lucide-react';
+import { Eye, Edit2, X, Save, Plus, Ship, MapPin } from 'lucide-react';
 import { createClient } from '@/lib/supabase-browser';
+import { useTheme } from '@/contexts/ThemeContext';
 import type { ItinerarioWithEscalas } from '@/types/itinerarios';
 
 interface ItinerarioTableProps {
@@ -276,6 +277,7 @@ export function ItinerarioTable({
   onAddItinerario,
   regionFilter
 }: ItinerarioTableProps) {
+  const { theme } = useTheme();
   const grouped = useMemo(() => {
     // Pasar el filtro de región directamente a groupByService para que solo cree grupos de esa región
     return groupByService(itinerarios, regionFilter || undefined);
@@ -390,11 +392,13 @@ export function ItinerarioTable({
         return (
           <div
             key={`${group.servicio}-${group.region}`}
-            className="border border-[#E1E1E1] dark:border-[#3D3D3D] bg-white dark:bg-[#2D2D2D] overflow-hidden flex flex-col"
-            style={{ borderRadius: '4px' }}
+            className={`rounded-xl border overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-all duration-200 ${theme === 'dark' 
+              ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+              : 'border-[#E1E1E1] bg-white'
+            }`}
           >
             {/* Header del servicio */}
-            <div className="bg-[#0078D4] dark:bg-[#0F1C33] px-3 py-2 border-b border-[#005A9E] dark:border-[#00AEEF]/30 flex-shrink-0">
+            <div className={`bg-gradient-to-r from-[#0078D4] via-[#00AEEF] to-[#0078D4] dark:from-[#005A9E] dark:via-[#0078D4] dark:to-[#005A9E] px-4 py-3 border-b ${theme === 'dark' ? 'border-[#00AEEF]/30' : 'border-[#005A9E]/30'} flex-shrink-0 shadow-lg`}>
               <div className="flex items-center gap-2.5 flex-wrap">
                 {/* Mostrar todos los logos de consorcios */}
                 {group.consorcios.map((consorcio) => {
@@ -499,7 +503,7 @@ export function ItinerarioTable({
                                   const consorcio = group.consorcios.length > 0 ? group.consorcios[0] : null;
                                   onAddItinerario(servicio, consorcio);
                                 }}
-                                className="flex-shrink-0 p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                                className="flex-shrink-0 p-2 rounded-xl text-white/90 hover:text-white hover:bg-white/20 transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm"
                                 title="Agregar nueva nave al servicio"
                               >
                                 <Plus className="h-4 w-4" />
@@ -514,7 +518,7 @@ export function ItinerarioTable({
                                     itinerarioIds
                                   });
                                 }}
-                                className="flex-shrink-0 p-1.5 rounded-md text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                                className="flex-shrink-0 p-2 rounded-xl text-white/90 hover:text-white hover:bg-white/20 transition-all duration-200 hover:scale-110 active:scale-95 shadow-sm"
                                 title="Editar servicio/consorcio del grupo"
                               >
                                 <Edit2 className="h-4 w-4" />
@@ -539,42 +543,45 @@ export function ItinerarioTable({
             {/* Tabla */}
             <div className="overflow-auto">
               <table className="w-full text-xs">
-                <thead className="bg-[#E8F4F8] dark:bg-[#1F1F1F] border-b border-[#C0E0F0] dark:border-[#3D3D3D] sticky top-0 z-20">
+                <thead className={`${theme === 'dark' 
+                  ? 'bg-gradient-to-br from-[#1F1F1F] to-[#2D2D2D] border-b border-[#3D3D3D]' 
+                  : 'bg-gradient-to-br from-[#E8F4F8] to-[#F0F8FC] border-b border-[#C0E0F0]'
+                } sticky top-0 z-20 shadow-sm`}>
                   <tr>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky left-0 bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
+                    <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide sticky left-0 ${theme === 'dark' ? 'bg-[#1F1F1F]' : 'bg-[#E8F4F8]'} z-30`}>
                       Naviera
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky left-[80px] bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
+                    <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide sticky left-[80px] ${theme === 'dark' ? 'bg-[#1F1F1F]' : 'bg-[#E8F4F8]'} z-30`}>
                       Nave
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
+                    <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide`}>
                       Viaje
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
+                    <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide`}>
                       Semana
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
+                    <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide`}>
                       POL
                     </th>
-                    <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide">
+                    <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide`}>
                       ETD
                     </th>
                     {groupPODs.map((pod) => (
                       <th
                         key={pod}
-                        className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide"
+                        className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide`}
                       >
                         {pod}
                       </th>
                     ))}
                     {!hideActionColumn && (
-                      <th className="px-2 py-1.5 text-center text-[10px] font-semibold text-[#1F1F1F] dark:text-[#C0C0C0] uppercase tracking-wide sticky right-0 bg-[#E8F4F8] dark:bg-[#1F1F1F] z-30">
+                      <th className={`px-2 py-1.5 text-center text-[10px] font-semibold ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#1F1F1F]'} uppercase tracking-wide sticky right-0 ${theme === 'dark' ? 'bg-[#1F1F1F]' : 'bg-[#E8F4F8]'} z-30`}>
                         Acción
                       </th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#E1E1E1] dark:divide-[#3D3D3D]">
+                <tbody className={`divide-y ${theme === 'dark' ? 'divide-[#3D3D3D]' : 'divide-[#E1E1E1]'}`}>
                   {group.items.map((itinerario, index) => {
                     // Crear mapa de escalas por puerto para acceso rápido
                     const escalasMap = new Map(
@@ -584,24 +591,27 @@ export function ItinerarioTable({
                     return (
                       <tr
                         key={`${itinerario.id}-${group.region}`}
-                        className="hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-colors"
+                        className={`hover:bg-opacity-50 transition-colors ${theme === 'dark' 
+                          ? 'hover:bg-[#3D3D3D]/50' 
+                          : 'hover:bg-[#F3F3F3]'
+                        }`}
                       >
-                          <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-0 bg-white dark:bg-[#2D2D2D] z-10">
+                          <td className={`px-2 py-1.5 text-center text-xs font-medium ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'} sticky left-0 ${theme === 'dark' ? 'bg-[#2D2D2D]' : 'bg-white'} z-10`}>
                             {itinerario.naviera || '—'}
                           </td>
-                          <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-[80px] bg-white dark:bg-[#2D2D2D] z-10">
+                          <td className={`px-2 py-1.5 text-center text-xs font-medium ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'} sticky left-[80px] ${theme === 'dark' ? 'bg-[#2D2D2D]' : 'bg-white'} z-10`}>
                             {itinerario.nave}
                           </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
+                        <td className={`px-2 py-1.5 text-center text-xs ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                           {itinerario.viaje}
                         </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
+                        <td className={`px-2 py-1.5 text-center text-xs ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                           {itinerario.semana || '—'}
                         </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
+                        <td className={`px-2 py-1.5 text-center text-xs ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                           {itinerario.pol}
                         </td>
-                        <td className="px-2 py-1.5 text-center text-xs text-[#1F1F1F] dark:text-[#FFFFFF]">
+                        <td className={`px-2 py-1.5 text-center text-xs ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                           {formatDate(itinerario.etd)}
                         </td>
                         {groupPODs.map((pod) => {
@@ -615,41 +625,56 @@ export function ItinerarioTable({
                               className="px-2 py-1.5 text-center text-xs"
                             >
                               {etaViewMode === 'dias' && hasDias ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#E8F4FD] text-[#0078D4] dark:bg-[#1A3A52] dark:text-[#4FC3F7]" style={{ borderRadius: '4px' }}>
+                                <span className={`inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-lg ${theme === 'dark' 
+                                  ? 'bg-[#00AEEF]/20 text-[#4FC3F7] border border-[#00AEEF]/30' 
+                                  : 'bg-[#00AEEF]/10 text-[#00AEEF] border border-[#00AEEF]/20'
+                                }`}>
                                   {escala.dias_transito}d
                                 </span>
                               ) : etaViewMode === 'fecha' && hasFecha ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#DFF6DD] text-[#107C10] dark:bg-[#1A3A1A] dark:text-[#6FCF97]" style={{ borderRadius: '4px' }}>
+                                <span className={`inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-lg ${theme === 'dark' 
+                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                  : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                                }`}>
                                   {formatDate(escala.eta)}
                                 </span>
                               ) : etaViewMode === 'ambos' ? (
-                                <div className="flex flex-col items-center gap-0.5">
+                                <div className="flex flex-col items-center gap-1">
                                   {hasDias && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#E8F4FD] text-[#0078D4] dark:bg-[#1A3A52] dark:text-[#4FC3F7]" style={{ borderRadius: '4px' }}>
+                                    <span className={`inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-lg ${theme === 'dark' 
+                                      ? 'bg-[#00AEEF]/20 text-[#4FC3F7] border border-[#00AEEF]/30' 
+                                      : 'bg-[#00AEEF]/10 text-[#00AEEF] border border-[#00AEEF]/20'
+                                    }`}>
                                       {escala.dias_transito}d
                                     </span>
                                   )}
                                   {hasFecha && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium bg-[#DFF6DD] text-[#107C10] dark:bg-[#1A3A1A] dark:text-[#6FCF97]" style={{ borderRadius: '4px' }}>
+                                    <span className={`inline-flex items-center px-2 py-1 text-[10px] font-semibold rounded-lg ${theme === 'dark' 
+                                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                                      : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                                    }`}>
                                       {formatDate(escala.eta)}
                                     </span>
                                   )}
                                   {!hasDias && !hasFecha && (
-                                    <span className="text-[#6B6B6B] dark:text-[#A0A0A0]">—</span>
+                                    <span className={theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}>—</span>
                                   )}
                                 </div>
                               ) : (
-                                <span className="text-[#6B6B6B] dark:text-[#A0A0A0]">—</span>
+                                <span className={theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}>—</span>
                               )}
                             </td>
                           );
                         })}
                         {!hideActionColumn && (
-                          <td className="px-2 py-1.5 text-center sticky right-0 bg-white dark:bg-[#2D2D2D] z-10">
+                          <td className={`px-2 py-1.5 text-center sticky right-0 ${theme === 'dark' ? 'bg-[#2D2D2D]' : 'bg-white'} z-10`}>
                             <button
                               onClick={() => onViewDetail(itinerario)}
-                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-[#0078D4] hover:text-[#005A9E] hover:bg-[#E8F4FD] dark:hover:bg-[#3D3D3D] transition-all duration-150"
-                              style={{ borderRadius: '4px' }}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-semibold rounded-xl transition-all duration-200 hover:scale-105 active:scale-95 shadow-sm hover:shadow-md ${
+                                theme === 'dark'
+                                  ? 'bg-[#00AEEF]/20 text-[#4FC3F7] hover:bg-[#00AEEF]/30 border border-[#00AEEF]/30'
+                                  : 'bg-[#00AEEF]/10 text-[#00AEEF] hover:bg-[#00AEEF]/20 border border-[#00AEEF]/20'
+                              }`}
                             >
                               <Eye className="h-3 w-3" />
                               Ver
@@ -668,53 +693,77 @@ export function ItinerarioTable({
 
       {/* Modal para editar servicio del grupo */}
       {editingGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-lg shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md px-4">
+          <div className={`relative w-full max-w-md rounded-xl shadow-2xl ${theme === 'dark' 
+            ? 'bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F] border border-[#3D3D3D]/50' 
+            : 'bg-white border border-[#E1E1E1]'
+          }`}>
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Editar Servicio del Grupo
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  Cambiará el servicio de {editingGroup.itinerarioIds.length} itinerario(s)
-                </p>
+            <div className={`flex items-center justify-between px-4 sm:px-6 py-4 border-b ${theme === 'dark' 
+              ? 'border-[#3D3D3D] bg-gradient-to-r from-[#0078D4]/20 via-[#00AEEF]/20 to-[#0078D4]/20' 
+              : 'border-[#E1E1E1] bg-gradient-to-r from-[#00AEEF]/10 via-white to-[#00AEEF]/10'
+            }`}>
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={`p-2 rounded-xl flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                  <Edit2 className={`h-5 w-5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    Editar Servicio del Grupo
+                  </h2>
+                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    Cambiará el servicio de {editingGroup.itinerarioIds.length} itinerario(s)
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => {
                   setEditingGroup(null);
                   setNuevoServicioId('');
                 }}
-                className="p-1.5 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                className={`p-2 rounded-xl transition-all duration-200 flex-shrink-0 ${
+                  theme === 'dark' 
+                    ? 'hover:bg-[#3D3D3D]/80 text-[#C0C0C0] hover:text-white' 
+                    : 'hover:bg-gray-100 text-[#323130] hover:text-[#1F1F1F]'
+                } hover:scale-110 active:scale-95`}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            <div className="px-4 sm:px-6 py-4 sm:py-6 space-y-4">
+              <div className={`rounded-xl border ${theme === 'dark' 
+                ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/50' 
+                : 'border-[#E1E1E1] bg-gray-50'
+              } p-4`}>
+                <label className={`block text-xs font-semibold uppercase tracking-wide mb-2 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
                   Servicio Actual
                 </label>
-                <p className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-lg">
+                <p className={`text-sm font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                   {editingGroup.servicio}
                 </p>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
+              <div className={`rounded-xl border ${theme === 'dark' 
+                ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]' 
+                : 'border-[#E1E1E1] bg-white shadow-sm'
+              } p-4`}>
+                <label className={`block text-xs font-semibold uppercase tracking-wide mb-3 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
                   Nuevo Servicio
                 </label>
                 {loadingServicios ? (
                   <div className="flex items-center justify-center py-4">
-                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#00AEEF] border-t-transparent" />
+                    <div className={`h-6 w-6 animate-spin rounded-full border-3 ${theme === 'dark' ? 'border-[#00AEEF]/30 border-t-[#00AEEF]' : 'border-[#00AEEF]/30 border-t-[#00AEEF]'}`} />
                   </div>
                 ) : (
                   <select
                     value={nuevoServicioId}
                     onChange={(e) => setNuevoServicioId(e.target.value)}
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent"
+                    className={`w-full rounded-lg border ${theme === 'dark' 
+                      ? 'border-[#3D3D3D]/50 bg-[#1F1F1F] text-white' 
+                      : 'border-gray-300 bg-white text-[#1F1F1F]'
+                    } px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#00AEEF] focus:border-transparent transition-all`}
                   >
                     <option value="">Seleccionar nuevo servicio</option>
                     {serviciosDisponibles.map((servicio) => (
@@ -730,23 +779,34 @@ export function ItinerarioTable({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+            <div className={`flex items-center justify-end gap-3 px-4 sm:px-6 py-4 border-t ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
               <button
                 onClick={() => {
                   setEditingGroup(null);
                   setNuevoServicioId('');
                 }}
-                className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 transition-colors"
+                className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                  theme === 'dark'
+                    ? 'text-slate-300 hover:text-white hover:bg-[#3D3D3D]'
+                    : 'text-gray-600 hover:text-[#1F1F1F] hover:bg-gray-100'
+                }`}
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSaveGroupService}
                 disabled={!nuevoServicioId || isSavingGroup}
-                className="inline-flex items-center gap-2 px-6 py-2 text-sm font-semibold text-white bg-[#00AEEF] hover:bg-[#4FC3F7] rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                className={`relative inline-flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-semibold transition-all duration-200 overflow-hidden group shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  theme === 'dark'
+                    ? 'bg-gradient-to-r from-[#0078D4] to-[#00AEEF] hover:from-[#005A9E] hover:to-[#0099CC] text-white'
+                    : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] hover:from-[#0099CC] hover:to-[#0078D4] text-white'
+                }`}
               >
-                <Save className="h-4 w-4" />
-                {isSavingGroup ? 'Guardando...' : 'Guardar Cambios'}
+                <span className="relative z-10 flex items-center gap-2">
+                  <Save className="h-4 w-4" />
+                  {isSavingGroup ? 'Guardando...' : 'Guardar Cambios'}
+                </span>
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></span>
               </button>
             </div>
           </div>
