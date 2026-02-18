@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, X, Ship, Calendar, MapPin, Clock, Navigation } from 'lucide-react';
 import Link from 'next/link';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
@@ -17,12 +17,14 @@ export default function ItinerarioPublicPage() {
   const [itinerarios, setItinerarios] = useState<ItinerarioWithEscalas[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersType>({ semanas: 6 });
+  const [filters, setFilters] = useState<FiltersType>({ semanas: 3 });
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [serviciosUnicos, setServiciosUnicos] = useState<any[]>([]);
   const [consorcios, setConsorcios] = useState<any[]>([]);
   const [showMap, setShowMap] = useState(false);
   const [puertoSeleccionadoMapa, setPuertoSeleccionadoMapa] = useState<string | null>(null);
+  const [selectedItinerario, setSelectedItinerario] = useState<ItinerarioWithEscalas | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -401,7 +403,10 @@ export default function ItinerarioPublicPage() {
                 <div className="hidden lg:block w-full">
                   <ItinerarioTable
                     itinerarios={filteredItinerarios}
-                    onViewDetail={() => {}} // Sin acción en modo solo lectura
+                    onViewDetail={(itinerario) => {
+                      setSelectedItinerario(itinerario);
+                      setIsDetailModalOpen(true);
+                    }}
                     etaViewMode={etaViewMode}
                     hideActionColumn={true}
                     regionFilter={filters.region || null}
@@ -409,7 +414,7 @@ export default function ItinerarioPublicPage() {
                 </div>
 
                 {/* Vista Mobile (Cards) */}
-                <div className="lg:hidden space-y-4 w-full">
+                <div className="lg:hidden space-y-2 w-full">
                   {filteredItinerarios.length === 0 ? (
                     <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
                       ? 'border-[#3D3D3D] bg-[#2D2D2D]'
@@ -419,30 +424,95 @@ export default function ItinerarioPublicPage() {
                     </div>
                   ) : (
                     (() => {
+                      // Función para normalizar nombre de servicio (similar a ItinerarioTable)
+                      const normalizarNombreServicio = (nombre: string) => {
+                        return nombre.toUpperCase().trim();
+                      };
+
+                      // Función para obtener regiones de un itinerario
+                      const obtenerRegiones = (it: typeof filteredItinerarios[0]) => {
+                        if (!it.escalas || it.escalas.length === 0) {
+                          return ['SIN REGIÓN'];
+                        }
+                        const regionesSet = new Set<string>();
+                        it.escalas.forEach((escala) => {
+                          if (escala.area) {
+                            const region = escala.area.toUpperCase().trim();
+                            if (region) {
+                              regionesSet.add(region);
+                            }
+                          }
+                        });
+                        if (regionesSet.size === 0) {
+                          return ['SIN REGIÓN'];
+                        }
+                        return Array.from(regionesSet).sort();
+                      };
+
                       // Agrupar por servicio y región como en la tabla
                       const grouped = new Map<string, typeof filteredItinerarios>();
+                      const regionFilterNormalizado = filters.region 
+                        ? filters.region.toUpperCase().trim() 
+                        : null;
+
                       filteredItinerarios.forEach((it) => {
-                        // Obtener regiones del itinerario
-                        const regiones = it.escalas?.map(e => e.area?.toUpperCase().trim()).filter(Boolean) || [];
-                        const regionPrincipal = regiones[0] || 'SIN REGIÓN';
+                        const servicioNormalizado = normalizarNombreServicio(it.servicio);
+                        const regiones = obtenerRegiones(it);
                         
-                        // Si hay filtro de región, usar solo esa región
-                        const regionParaGrupo = filters.region 
-                          ? filters.region.toUpperCase().trim() 
-                          : regionPrincipal;
+                        // Si hay un filtro de región, solo usar esa región
+                        const regionesParaAgrupar = regionFilterNormalizado 
+                          ? regiones.filter(region => region === regionFilterNormalizado)
+                          : regiones;
                         
-                        const key = `${it.servicio}|||${regionParaGrupo}`;
-                        if (!grouped.has(key)) {
-                          grouped.set(key, []);
+                        // Si no hay regiones para agrupar, saltar este itinerario
+                        if (regionesParaAgrupar.length === 0) {
+                          return;
                         }
-                        grouped.get(key)!.push(it);
+                        
+                        // Agregar el itinerario a cada grupo de región correspondiente
+                        regionesParaAgrupar.forEach((region) => {
+                          const key = `${servicioNormalizado}|||${region}`;
+                          if (!grouped.has(key)) {
+                            grouped.set(key, []);
+                          }
+                          grouped.get(key)!.push(it);
+                        });
                       });
 
-                      return Array.from(grouped.entries()).map(([key, items]) => {
-                        const [servicio, region] = key.split('|||');
+                      // Ordenar grupos por región y luego por servicio
+                      const ordenRegiones: Record<string, number> = {
+                        'ASIA': 1,
+                        'EUROPA': 2,
+                        'AMERICA': 3,
+                        'INDIA-MEDIOORIENTE': 4,
+                        'INDIA': 4,
+                        'MEDIOORIENTE': 4,
+                        'SIN REGIÓN': 99,
+                      };
+
+                      const gruposOrdenados = Array.from(grouped.entries()).sort(([keyA], [keyB]) => {
+                        const [, regionA] = keyA.split('|||');
+                        const [, regionB] = keyB.split('|||');
+                        const [servicioA] = keyA.split('|||');
+                        const [servicioB] = keyB.split('|||');
+                        
+                        const ordenA = ordenRegiones[regionA] || 50;
+                        const ordenB = ordenRegiones[regionB] || 50;
+                        
+                        if (ordenA !== ordenB) {
+                          return ordenA - ordenB;
+                        }
+                        
+                        return servicioA.localeCompare(servicioB);
+                      });
+
+                      return gruposOrdenados.map(([key, items]) => {
+                        const [servicioNormalizado, region] = key.split('|||');
+                        // Obtener el servicio original del primer item
+                        const servicio = items[0]?.servicio || servicioNormalizado;
                         
                         return (
-                          <div key={key} className="space-y-3">
+                          <div key={key} className="space-y-2">
                             {/* Header del grupo */}
                             <div className={`sticky top-0 z-10 bg-gradient-to-r ${theme === 'dark' 
                               ? 'from-[#0078D4] to-[#005A9E]' 
@@ -518,12 +588,15 @@ export default function ItinerarioPublicPage() {
                             </div>
                             
                             {/* Cards del grupo */}
-                            <div className="space-y-3 px-1">
+                            <div className="space-y-2 px-1">
                               {items.map((itinerario) => (
                                 <ItinerarioCard
                                   key={`${itinerario.id}-${region}`}
                                   itinerario={itinerario}
-                                  onViewDetail={() => {}} // Sin acción en modo solo lectura
+                                  onViewDetail={(itinerario) => {
+                      setSelectedItinerario(itinerario);
+                      setIsDetailModalOpen(true);
+                    }}
                                   etaViewMode={etaViewMode}
                                 />
                               ))}
@@ -539,6 +612,263 @@ export default function ItinerarioPublicPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal de Detalles - Pantalla Completa */}
+      {isDetailModalOpen && selectedItinerario && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Overlay con blur */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setIsDetailModalOpen(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className={`relative min-h-screen ${theme === 'dark' ? 'bg-[#1F1F1F]' : 'bg-white'}`}>
+            {/* Header fijo */}
+            <div className={`sticky top-0 z-10 border-b ${theme === 'dark' 
+              ? 'border-[#3D3D3D] bg-[#2D2D2D]' 
+              : 'border-[#E1E1E1] bg-white'
+            } px-4 py-3 shadow-md`}>
+              <div className="flex items-center justify-between">
+                <h2 className={`text-lg font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                  Detalles del Viaje
+                </h2>
+                <button
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className={`p-2 rounded-lg transition-colors ${
+                    theme === 'dark' 
+                      ? 'hover:bg-[#3D3D3D] text-[#C0C0C0]' 
+                      : 'hover:bg-[#F3F3F3] text-[#323130]'
+                  }`}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="px-4 py-6 max-w-4xl mx-auto">
+              {/* Información Principal */}
+              <div className={`rounded-lg border ${theme === 'dark' 
+                ? 'border-[#3D3D3D] bg-[#2D2D2D]' 
+                : 'border-[#E1E1E1] bg-white'
+              } p-6 mb-6`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Nave */}
+                  <div className="flex items-start gap-3">
+                    <Ship className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Nave
+                      </p>
+                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        {selectedItinerario.nave}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Viaje */}
+                  <div className="flex items-start gap-3">
+                    <Navigation className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Viaje
+                      </p>
+                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        {selectedItinerario.viaje || '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Servicio */}
+                  <div className="flex items-start gap-3">
+                    <MapPin className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        Servicio
+                      </p>
+                      <p className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        {selectedItinerario.servicio}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Consorcio/Naviera */}
+                  <div className="flex items-start gap-3">
+                    <Ship className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        {selectedItinerario.consorcio ? 'Consorcio' : 'Naviera'}
+                      </p>
+                      <p className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        {selectedItinerario.navierasDelServicio && selectedItinerario.navierasDelServicio.length > 0
+                          ? selectedItinerario.navierasDelServicio.join(' - ')
+                          : (selectedItinerario.consorcio || selectedItinerario.naviera || '—')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* POL */}
+                  <div className="flex items-start gap-3">
+                    <MapPin className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        POL (Puerto de Origen)
+                      </p>
+                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        {selectedItinerario.pol}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* ETD */}
+                  <div className="flex items-start gap-3">
+                    <Calendar className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    <div>
+                      <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        ETD (Fecha de Salida)
+                      </p>
+                      <p className={`text-base font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                        {selectedItinerario.etd 
+                          ? new Date(selectedItinerario.etd).toLocaleDateString('es-CL', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric'
+                            })
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Semana */}
+                  {selectedItinerario.semana && (
+                    <div className="flex items-start gap-3">
+                      <Calendar className={`h-5 w-5 mt-0.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`} />
+                      <div>
+                        <p className={`text-xs font-semibold uppercase tracking-wide mb-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                          Semana
+                        </p>
+                        <p className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                          Semana {selectedItinerario.semana}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Escalas */}
+              {selectedItinerario.escalas && selectedItinerario.escalas.length > 0 && (
+                <div className={`rounded-lg border ${theme === 'dark' 
+                  ? 'border-[#3D3D3D] bg-[#2D2D2D]' 
+                  : 'border-[#E1E1E1] bg-white'
+                } p-6`}>
+                  <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                    Escalas del Viaje
+                  </h3>
+                  
+                  {/* Ordenar escalas por orden */}
+                  {[...selectedItinerario.escalas].sort((a, b) => a.orden - b.orden).map((escala, index) => (
+                    <div 
+                      key={escala.id}
+                      className={`mb-4 last:mb-0 pb-4 last:pb-0 border-b last:border-b-0 ${
+                        theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Número de escala */}
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                          theme === 'dark' 
+                            ? 'bg-[#00AEEF] text-white' 
+                            : 'bg-[#00AEEF] text-white'
+                        }`}>
+                          {index + 1}
+                        </div>
+
+                        {/* Información de la escala */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-4 flex-wrap">
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-base font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                                {escala.puerto_nombre || escala.puerto}
+                              </p>
+                              
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {/* ETA */}
+                                {escala.eta && (
+                                  <div className="flex items-center gap-2">
+                                    <Calendar className={`h-4 w-4 ${theme === 'dark' ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                                    <div>
+                                      <p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                                        ETA
+                                      </p>
+                                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                                        {new Date(escala.eta).toLocaleDateString('es-CL', {
+                                          day: '2-digit',
+                                          month: 'long',
+                                          year: 'numeric'
+                                        })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Días de Tránsito */}
+                                {escala.dias_transito !== null && escala.dias_transito !== undefined && (
+                                  <div className="flex items-center gap-2">
+                                    <Clock className={`h-4 w-4 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                                    <div>
+                                      <p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                                        Días de Tránsito
+                                      </p>
+                                      <p className={`text-sm font-bold ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`}>
+                                        {escala.dias_transito} días
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Región */}
+                                {escala.area && (
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className={`h-4 w-4 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`} />
+                                    <div>
+                                      <p className={`text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                                        Región
+                                      </p>
+                                      <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                                        {escala.area}
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Botón Cerrar */}
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={() => setIsDetailModalOpen(false)}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-200 ${
+                    theme === 'dark'
+                      ? 'bg-[#0078D4] hover:bg-[#005A9E] text-white'
+                      : 'bg-[#00AEEF] hover:bg-[#0099CC] text-white'
+                  } shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95`}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

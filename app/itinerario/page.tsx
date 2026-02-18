@@ -59,7 +59,7 @@ export default function ItinerarioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersType>({ semanas: 4 });
+  const [filters, setFilters] = useState<FiltersType>({ semanas: 3 });
   const [selectedItinerario, setSelectedItinerario] = useState<ItinerarioWithEscalas | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
@@ -918,7 +918,7 @@ export default function ItinerarioPage() {
                   </div>
 
                   {/* Vista Mobile (Cards) */}
-                  <div className="lg:hidden space-y-4">
+                  <div className="lg:hidden space-y-2">
                     {filteredItinerarios.length === 0 ? (
                       <div className="flex items-center justify-center py-12 rounded-2xl border border-slate-800/60 bg-slate-950/60">
                         <p className="text-slate-400">No hay itinerarios disponibles</p>
@@ -948,8 +948,8 @@ export default function ItinerarioPage() {
                           const [servicio, region] = key.split('|||');
                           const consorcios = Array.from(new Set(items.map(it => it.consorcio).filter(Boolean))).sort();
                           
-                          return (
-                            <div key={key} className="space-y-3">
+                        return (
+                          <div key={key} className="space-y-2">
                               {/* Header del grupo */}
                               <div className="sticky top-0 z-10 bg-gradient-to-r from-[#00AEEF] to-[#0099CC] dark:from-[#0078D4] dark:to-[#005A9E] px-4 py-3 rounded-lg shadow-md">
                                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1021,8 +1021,8 @@ export default function ItinerarioPage() {
                                 </div>
                               </div>
                               
-                              {/* Cards del grupo */}
-                              <div className="space-y-3 px-1">
+                            {/* Cards del grupo */}
+                            <div className="space-y-2 px-1">
                                 {items.map((itinerario) => (
                                   <ItinerarioCard
                                     key={`${itinerario.id}-${region}`}

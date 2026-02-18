@@ -65,77 +65,103 @@ export async function GET() {
       serviciosMap.get(servicioKey)!.push(it);
     });
 
-    // Función para obtener navieras del servicio/consorcio (similar a la API admin)
-    const obtenerNavierasDelServicio = async (servicioNombre: string, servicioId: string | null) => {
-      try {
-        if (servicioId) {
-          const { data: servicioUnico } = await adminClient
-            .from('servicios_unicos')
-            .select('id, naviera_id')
-            .eq('id', servicioId)
-            .single();
-          
-          if (servicioUnico?.naviera_id) {
-            const { data: navieraData } = await adminClient
-              .from('catalogos_navieras')
-              .select('id, nombre')
-              .eq('id', servicioUnico.naviera_id)
-              .single();
-            
-            if (navieraData?.nombre) {
-              return [navieraData.nombre];
-            }
+    // OPTIMIZACIÓN: Cargar todos los datos necesarios en batch antes de procesar
+    // Obtener todos los servicios únicos con sus navieras
+    const { data: serviciosUnicos } = await adminClient
+      .from('servicios_unicos')
+      .select('id, naviera_id');
+    
+    const servicioNavieraMap = new Map<string, string>();
+    if (serviciosUnicos) {
+      const navieraIds = [...new Set(serviciosUnicos.map((s: any) => s.naviera_id).filter(Boolean))];
+      if (navieraIds.length > 0) {
+        const { data: navieras } = await adminClient
+          .from('catalogos_navieras')
+          .select('id, nombre')
+          .in('id', navieraIds);
+        
+        const navieraMap = new Map((navieras || []).map((n: any) => [n.id, n.nombre]));
+        serviciosUnicos.forEach((s: any) => {
+          if (s.naviera_id && navieraMap.has(s.naviera_id)) {
+            servicioNavieraMap.set(s.id, navieraMap.get(s.naviera_id)!);
           }
-        }
-        
-        const { data: consorcio } = await adminClient
-          .from('consorcios')
-          .select('id')
-          .eq('nombre', servicioNombre)
-          .single();
-        
-        if (consorcio?.id) {
-          const { data: consorcioServicios } = await adminClient
-            .from('consorcios_servicios')
-            .select(`
-              servicio_unico_id,
-              servicio_unico:servicios_unicos(
-                naviera_id
-              )
-            `)
-            .eq('consorcio_id', consorcio.id)
-            .eq('activo', true);
-          
-          if (consorcioServicios && consorcioServicios.length > 0) {
-            const navieraIds = new Set<string>();
-            consorcioServicios.forEach((cs: any) => {
-              if (cs.servicio_unico?.naviera_id) {
-                navieraIds.add(cs.servicio_unico.naviera_id);
-              }
-            });
-            
-            if (navieraIds.size > 0) {
-              const { data: navieras } = await adminClient
-                .from('catalogos_navieras')
-                .select('id, nombre')
-                .in('id', Array.from(navieraIds));
-              
-              if (navieras && navieras.length > 0) {
-                return navieras.map((n: any) => n.nombre).sort();
-              }
-            }
-          }
-        }
-        
-        return [];
-      } catch (error) {
-        console.error('Error al obtener navieras del servicio:', error);
-        return [];
+        });
       }
+    }
+
+    // Obtener todos los consorcios con sus servicios
+    const { data: consorcios } = await adminClient
+      .from('consorcios')
+      .select('id, nombre');
+    
+    const consorcioMap = new Map((consorcios || []).map((c: any) => [c.nombre, c.id]));
+    const consorcioNavierasMap = new Map<string, string[]>();
+    
+    if (consorcios && consorcios.length > 0) {
+      const consorcioIds = consorcios.map((c: any) => c.id);
+      const { data: consorcioServicios } = await adminClient
+        .from('consorcios_servicios')
+        .select(`
+          consorcio_id,
+          servicio_unico_id,
+          servicio_unico:servicios_unicos(
+            naviera_id
+          )
+        `)
+        .in('consorcio_id', consorcioIds)
+        .eq('activo', true);
+      
+      if (consorcioServicios) {
+        const navieraIdsSet = new Set<string>();
+        consorcioServicios.forEach((cs: any) => {
+          if (cs.servicio_unico?.naviera_id) {
+            navieraIdsSet.add(cs.servicio_unico.naviera_id);
+          }
+        });
+        
+        if (navieraIdsSet.size > 0) {
+          const { data: navierasConsorcio } = await adminClient
+            .from('catalogos_navieras')
+            .select('id, nombre')
+            .in('id', Array.from(navieraIdsSet));
+          
+          const navieraMap = new Map((navierasConsorcio || []).map((n: any) => [n.id, n.nombre]));
+          
+          consorcios.forEach((consorcio: any) => {
+            const navieras: string[] = [];
+            consorcioServicios
+              .filter((cs: any) => cs.consorcio_id === consorcio.id)
+              .forEach((cs: any) => {
+                if (cs.servicio_unico?.naviera_id && navieraMap.has(cs.servicio_unico.naviera_id)) {
+                  const navieraNombre = navieraMap.get(cs.servicio_unico.naviera_id)!;
+                  if (!navieras.includes(navieraNombre)) {
+                    navieras.push(navieraNombre);
+                  }
+                }
+              });
+            if (navieras.length > 0) {
+              consorcioNavierasMap.set(consorcio.nombre, navieras.sort());
+            }
+          });
+        }
+      }
+    }
+
+    // Función optimizada para obtener navieras del servicio (usa cache)
+    const obtenerNavierasDelServicio = (servicioNombre: string, servicioId: string | null): string[] => {
+      if (servicioId && servicioNavieraMap.has(servicioId)) {
+        return [servicioNavieraMap.get(servicioId)!];
+      }
+      
+      if (consorcioNavierasMap.has(servicioNombre)) {
+        return consorcioNavierasMap.get(servicioNombre)!;
+      }
+      
+      return [];
     };
 
     // Para cada servicio, encontrar el primer viaje y ordenar todas las escalas según su ETA
-    const itinerariosConEscalasOrdenadas = await Promise.all((itinerarios || []).map(async (it: any) => {
+    const itinerariosConEscalasOrdenadas = (itinerarios || []).map((it: any) => {
       const servicioKey = it.servicio_id || it.servicio || 'sin-servicio';
       const viajesDelServicio = serviciosMap.get(servicioKey) || [];
       
@@ -179,15 +205,15 @@ export async function GET() {
         return ordenA - ordenB;
       });
 
-      // Obtener navieras del servicio/consorcio
-      const navierasDelServicio = await obtenerNavierasDelServicio(it.servicio, it.servicio_id);
+      // Obtener navieras del servicio/consorcio (ahora es síncrono, usa cache)
+      const navierasDelServicio = obtenerNavierasDelServicio(it.servicio, it.servicio_id);
       
       return {
         ...it,
         escalas: escalasOrdenadas,
         navierasDelServicio,
       };
-    }));
+    });
 
     return NextResponse.json({
       success: true,
