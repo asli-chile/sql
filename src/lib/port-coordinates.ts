@@ -398,7 +398,6 @@ export const PORT_COORDINATES: Record<string, [number, number]> = {
   'VANCOUVER': [-123.1216, 49.2827],
   'PRINCE RUPERT': [-130.3208, 54.3151],
   'HALIFAX': [-63.5752, 44.6488],
-  'MONTREAL': [-73.5673, 45.5017],
   'QUEBEC': [-71.2072, 46.8139],
   'HAMILTON': [-79.8669, 43.2557],
   'THUNDER BAY': [-89.2477, 48.3809],
