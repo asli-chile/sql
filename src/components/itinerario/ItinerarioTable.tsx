@@ -160,6 +160,27 @@ function groupByService(itinerarios: ItinerarioWithEscalas[]) {
       consorcios, // Ahora es un array de consorcios
       items: itemsOrdenados,
     };
+  }).sort((a, b) => {
+    // Ordenar primero por región (orden definido: ASIA, EUROPA, AMERICA, INDIA-MEDIOORIENTE, SIN REGIÓN)
+    const ordenRegiones: Record<string, number> = {
+      'ASIA': 1,
+      'EUROPA': 2,
+      'AMERICA': 3,
+      'INDIA-MEDIOORIENTE': 4,
+      'INDIA': 4,
+      'MEDIOORIENTE': 4,
+      'SIN REGIÓN': 99,
+    };
+    
+    const ordenA = ordenRegiones[a.region] || 50;
+    const ordenB = ordenRegiones[b.region] || 50;
+    
+    if (ordenA !== ordenB) {
+      return ordenA - ordenB;
+    }
+    
+    // Si tienen la misma región, ordenar por servicio
+    return a.servicio.localeCompare(b.servicio);
   });
 }
 
@@ -541,7 +562,7 @@ export function ItinerarioTable({
                     
                     return (
                       <tr
-                        key={itinerario.id}
+                        key={`${itinerario.id}-${group.region}`}
                         className="hover:bg-[#F3F3F3] dark:hover:bg-[#3D3D3D] transition-colors"
                       >
                           <td className="px-2 py-1.5 text-center text-xs font-medium text-[#1F1F1F] dark:text-[#FFFFFF] sticky left-0 bg-white dark:bg-[#2D2D2D] z-10">

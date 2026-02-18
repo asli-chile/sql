@@ -6,9 +6,11 @@ import Link from 'next/link';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
 import { ItinerarioCard } from '@/components/itinerario/ItinerarioCard';
+import { ItinerarioMap } from '@/components/itinerario/ItinerarioMap';
 import { fetchPublicItinerarios } from '@/lib/itinerarios-service';
 import type { ItinerarioWithEscalas, ItinerarioFilters as FiltersType } from '@/types/itinerarios';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Map as MapIcon } from 'lucide-react';
 
 export default function ItinerarioPublicPage() {
   const { theme, toggleTheme } = useTheme();
@@ -19,6 +21,8 @@ export default function ItinerarioPublicPage() {
   const [etaViewMode, setEtaViewMode] = useState<'dias' | 'fecha' | 'ambos'>('dias');
   const [serviciosUnicos, setServiciosUnicos] = useState<any[]>([]);
   const [consorcios, setConsorcios] = useState<any[]>([]);
+  const [showMap, setShowMap] = useState(false);
+  const [puertoSeleccionadoMapa, setPuertoSeleccionadoMapa] = useState<string | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -204,6 +208,13 @@ export default function ItinerarioPublicPage() {
         const hasRegion = it.escalas?.some((escala) => escala.area === filters.region);
         if (!hasRegion) return false;
       }
+      // Filtro por puerto del mapa
+      if (puertoSeleccionadoMapa) {
+        const hasPuerto = it.escalas?.some((escala) => 
+          (escala.puerto || escala.puerto_nombre) === puertoSeleccionadoMapa
+        );
+        if (!hasPuerto) return false;
+      }
       return true;
     });
     
@@ -245,7 +256,7 @@ export default function ItinerarioPublicPage() {
     });
     
     return filtered;
-  }, [itinerarios, filters, serviciosParaFiltro, consorcioDelServicioSeleccionado]);
+  }, [itinerarios, filters, serviciosParaFiltro, consorcioDelServicioSeleccionado, puertoSeleccionadoMapa]);
 
   return (
     <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#202020]' : 'bg-[#F5F5F5]'}`}>
@@ -272,6 +283,29 @@ export default function ItinerarioPublicPage() {
               </div>
             </Link>
             <div className="flex items-center gap-2">
+              {/* Botón Mapa */}
+              <button
+                onClick={() => {
+                  setShowMap(!showMap);
+                  if (showMap) {
+                    setPuertoSeleccionadoMapa(null);
+                  }
+                }}
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border transition-all duration-150 ${
+                  theme === 'dark'
+                    ? showMap
+                      ? 'border-[#00AEEF] bg-[#00AEEF]/20 text-[#00AEEF]'
+                      : 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
+                    : showMap
+                      ? 'border-[#00AEEF] bg-[#00AEEF]/10 text-[#00AEEF]'
+                      : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                }`}
+                style={{ borderRadius: '4px' }}
+                title={showMap ? 'Ocultar mapa' : 'Ver mapa'}
+              >
+                <MapIcon className="h-3.5 w-3.5" />
+                <span>{showMap ? 'Ocultar Mapa' : 'Ver Mapa'}</span>
+              </button>
               {/* Botón Día/Noche */}
               <button
                 onClick={toggleTheme}
@@ -309,11 +343,27 @@ export default function ItinerarioPublicPage() {
               regiones={regionesDisponibles}
               filters={filters}
               onFiltersChange={setFilters}
-              onReset={() => setFilters({})}
+              onReset={() => {
+                setFilters({});
+                setPuertoSeleccionadoMapa(null);
+              }}
               etaViewMode={etaViewMode}
               onEtaViewModeChange={setEtaViewMode}
             />
           </div>
+
+          {/* Mapa */}
+          {showMap && (
+            <div className="flex-shrink-0 w-full h-96">
+              <ItinerarioMap
+                itinerarios={filteredItinerarios}
+                onPuertoClick={(puerto) => {
+                  setPuertoSeleccionadoMapa(puerto === puertoSeleccionadoMapa ? null : puerto);
+                }}
+                puertoSeleccionado={puertoSeleccionadoMapa}
+              />
+            </div>
+          )}
 
           {/* Contenido */}
           <div className="flex-1 w-full">

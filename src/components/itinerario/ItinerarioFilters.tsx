@@ -118,7 +118,7 @@ export function ItinerarioFilters({
             style={{ borderRadius: '4px', borderColor: '#E1E1E1' }}
           >
             <option value="">Todos los servicios</option>
-            {servicios.map((servicio) => (
+            {Array.from(new Set(servicios)).map((servicio) => (
               <option key={servicio} value={servicio}>
                 {servicio}
               </option>
