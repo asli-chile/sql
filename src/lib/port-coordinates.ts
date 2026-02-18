@@ -425,8 +425,10 @@ export const PORT_COORDINATES: Record<string, [number, number]> = {
   'SANTIAGO DE CUBA': [-75.8153, 20.0247],
   
   // Costa Rica - Puertos adicionales
-  'PUERTO LIMON': [-83.0333, 10.0000], // Costa Rica (diferente de Panamá)
-  'PUERTO LIMÓN': [-83.0333, 10.0000],
+  'PUERTO LIMON - COSTA RICA': [-83.0333, 10.0000],
+  'PUERTO LIMON COSTA RICA': [-83.0333, 10.0000],
+  'PUERTO LIMÓN - COSTA RICA': [-83.0333, 10.0000],
+  'PUERTO LIMÓN COSTA RICA': [-83.0333, 10.0000],
   
   // Nicaragua - Puertos adicionales
   'PUERTO SANDINO': [-86.3500, 12.1833],
