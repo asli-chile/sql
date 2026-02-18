@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
@@ -409,7 +409,7 @@ export default function ItinerarioPublicPage() {
                 </div>
 
                 {/* Vista Mobile (Cards) */}
-                <div className="lg:hidden space-y-2 w-full">
+                <div className="lg:hidden space-y-4 w-full">
                   {filteredItinerarios.length === 0 ? (
                     <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
                       ? 'border-[#3D3D3D] bg-[#2D2D2D]'
@@ -418,14 +418,120 @@ export default function ItinerarioPublicPage() {
                       <p className={theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}>No hay itinerarios disponibles</p>
                     </div>
                   ) : (
-                    filteredItinerarios.map((itinerario) => (
-                      <ItinerarioCard
-                        key={itinerario.id}
-                        itinerario={itinerario}
-                        onViewDetail={() => {}} // Sin acción en modo solo lectura
-                        etaViewMode={etaViewMode}
-                      />
-                    ))
+                    (() => {
+                      // Agrupar por servicio y región como en la tabla
+                      const grouped = new Map<string, typeof filteredItinerarios>();
+                      filteredItinerarios.forEach((it) => {
+                        // Obtener regiones del itinerario
+                        const regiones = it.escalas?.map(e => e.area?.toUpperCase().trim()).filter(Boolean) || [];
+                        const regionPrincipal = regiones[0] || 'SIN REGIÓN';
+                        
+                        // Si hay filtro de región, usar solo esa región
+                        const regionParaGrupo = filters.region 
+                          ? filters.region.toUpperCase().trim() 
+                          : regionPrincipal;
+                        
+                        const key = `${it.servicio}|||${regionParaGrupo}`;
+                        if (!grouped.has(key)) {
+                          grouped.set(key, []);
+                        }
+                        grouped.get(key)!.push(it);
+                      });
+
+                      return Array.from(grouped.entries()).map(([key, items]) => {
+                        const [servicio, region] = key.split('|||');
+                        
+                        return (
+                          <div key={key} className="space-y-3">
+                            {/* Header del grupo */}
+                            <div className={`sticky top-0 z-10 bg-gradient-to-r ${theme === 'dark' 
+                              ? 'from-[#0078D4] to-[#005A9E]' 
+                              : 'from-[#00AEEF] to-[#0099CC]'
+                            } px-4 py-3 rounded-lg shadow-md`}>
+                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {items[0]?.consorcio && (() => {
+                                    const consorcioUpper = items[0].consorcio.toUpperCase();
+                                    const logos: React.ReactElement[] = [];
+                                    const getImageSrc = (filename: string) => {
+                                      const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX;
+                                      if (assetPrefix && typeof window !== 'undefined') {
+                                        return `${assetPrefix}${filename}`;
+                                      }
+                                      return filename;
+                                    };
+                                    
+                                    if (consorcioUpper.includes('MSC')) {
+                                      logos.push(
+                                        <img
+                                          key="msc"
+                                          src={getImageSrc('/msc.png')}
+                                          alt=""
+                                          className="h-6 w-auto object-contain"
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                      );
+                                    }
+                                    if (consorcioUpper.includes('COSCO')) {
+                                      logos.push(
+                                        <img
+                                          key="cosco"
+                                          src={getImageSrc('/cosco.png')}
+                                          alt=""
+                                          className="h-6 w-auto object-contain"
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                      );
+                                    }
+                                    if (consorcioUpper.includes('EVERGREEN')) {
+                                      logos.push(
+                                        <img
+                                          key="evergreen"
+                                          src={getImageSrc('/evergreen.png')}
+                                          alt=""
+                                          className="h-6 w-auto object-contain"
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                      );
+                                    }
+                                    return logos;
+                                  })()}
+                                  <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-bold text-white leading-tight">
+                                      {items[0]?.navierasDelServicio && items[0].navierasDelServicio.length > 0
+                                        ? items[0].navierasDelServicio.join(' - ')
+                                        : (items[0]?.consorcio || items[0]?.naviera || '—')}
+                                    </h3>
+                                    <p className="text-[10px] text-white/90 mt-0.5">
+                                      Servicio: {servicio} {region !== 'SIN REGIÓN' && `• Región: ${region}`}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {region !== 'SIN REGIÓN' && (
+                                    <span className="px-2 py-1 text-[10px] font-semibold text-white bg-white/20 rounded">
+                                      {region}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {/* Cards del grupo */}
+                            <div className="space-y-3 px-1">
+                              {items.map((itinerario) => (
+                                <ItinerarioCard
+                                  key={`${itinerario.id}-${region}`}
+                                  itinerario={itinerario}
+                                  onViewDetail={() => {}} // Sin acción en modo solo lectura
+                                  etaViewMode={etaViewMode}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()
                   )}
                 </div>
               </>
