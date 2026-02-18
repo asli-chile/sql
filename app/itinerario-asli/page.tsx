@@ -205,7 +205,13 @@ export default function ItinerarioPublicPage() {
       if (filters.consorcio && it.consorcio !== filters.consorcio) return false;
       if (filters.pol && it.pol !== filters.pol) return false;
       if (filters.region) {
-        const hasRegion = it.escalas?.some((escala) => escala.area === filters.region);
+        // Filtrar por región: el itinerario debe tener al menos una escala con esa región
+        // Normalizar ambas partes para comparación consistente
+        const regionFilterNormalizada = filters.region.toUpperCase().trim();
+        const hasRegion = it.escalas?.some((escala) => {
+          if (!escala.area) return false;
+          return escala.area.toUpperCase().trim() === regionFilterNormalizada;
+        });
         if (!hasRegion) return false;
       }
       // Filtro por puerto del mapa
@@ -398,6 +404,7 @@ export default function ItinerarioPublicPage() {
                     onViewDetail={() => {}} // Sin acción en modo solo lectura
                     etaViewMode={etaViewMode}
                     hideActionColumn={true}
+                    regionFilter={filters.region || null}
                   />
                 </div>
 

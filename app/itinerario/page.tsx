@@ -304,7 +304,12 @@ export default function ItinerarioPage() {
       }
       if (filters.region) {
         // Filtrar por región: el itinerario debe tener al menos una escala con esa región
-        const hasRegion = it.escalas?.some((escala) => escala.area === filters.region);
+        // Normalizar ambas partes para comparación consistente
+        const regionFilterNormalizada = filters.region.toUpperCase().trim();
+        const hasRegion = it.escalas?.some((escala) => {
+          if (!escala.area) return false;
+          return escala.area.toUpperCase().trim() === regionFilterNormalizada;
+        });
         if (!hasRegion) return false;
       }
       // Filtrar por puerto seleccionado en el mapa
@@ -380,7 +385,12 @@ export default function ItinerarioPage() {
       if (viewModalFilters.pol && it.pol !== viewModalFilters.pol) return false;
       if (viewModalFilters.region) {
         // Filtrar por región: el itinerario debe tener al menos una escala con esa región
-        const hasRegion = it.escalas?.some((escala) => escala.area === viewModalFilters.region);
+        // Normalizar ambas partes para comparación consistente
+        const regionFilterNormalizada = viewModalFilters.region.toUpperCase().trim();
+        const hasRegion = it.escalas?.some((escala) => {
+          if (!escala.area) return false;
+          return escala.area.toUpperCase().trim() === regionFilterNormalizada;
+        });
         if (!hasRegion) return false;
       }
       return true;
@@ -903,6 +913,7 @@ export default function ItinerarioPage() {
                       etaViewMode={etaViewMode}
                       onGroupServiceChange={handleGroupServiceChange}
                       onAddItinerario={handleAddItinerario}
+                      regionFilter={filters.region || null}
                     />
                   </div>
 
@@ -1261,6 +1272,7 @@ export default function ItinerarioPage() {
                             onViewDetail={() => {}} // Sin acción en modo solo lectura
                             etaViewMode={viewModalEtaMode}
                             hideActionColumn={true}
+                            regionFilter={viewModalFilters.region || null}
                             // No permitir edición en modo solo lectura
                           />
                         </div>

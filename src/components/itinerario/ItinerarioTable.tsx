@@ -13,6 +13,7 @@ interface ItinerarioTableProps {
   hideActionColumn?: boolean;
   onGroupServiceChange?: (itinerarioIds: string[], nuevoServicio: string, nuevoConsorcio: string | null) => Promise<void>;
   onAddItinerario?: (servicio: string, consorcio: string | null) => void;
+  regionFilter?: string | null; // Filtro de región para mostrar solo grupos de esa región
 }
 
 // Normalizar nombre de servicio para agrupar variantes del mismo servicio
@@ -81,17 +82,33 @@ function obtenerRegiones(itinerario: ItinerarioWithEscalas): string[] {
 
 // Agrupar itinerarios por servicio y región
 // Si un itinerario tiene múltiples regiones, aparecerá en múltiples grupos
-function groupByService(itinerarios: ItinerarioWithEscalas[]) {
+// Si regionFilter está presente, solo se crearán grupos para esa región específica
+function groupByService(itinerarios: ItinerarioWithEscalas[], regionFilter?: string | null) {
   const grouped = new Map<string, ItinerarioWithEscalas[]>();
+  
+  // Normalizar el filtro de región si está presente
+  const regionFilterNormalizado = regionFilter 
+    ? regionFilter.toUpperCase().trim() 
+    : null;
   
   itinerarios.forEach((it) => {
     // Normalizar el nombre del servicio para agrupar variantes
     const servicioNormalizado = normalizarNombreServicio(it.servicio);
-    // Obtener todas las regiones del itinerario
+    // Obtener todas las regiones del itinerario (ya normalizadas)
     const regiones = obtenerRegiones(it);
     
+    // Si hay un filtro de región, solo usar esa región específica
+    const regionesParaAgrupar = regionFilterNormalizado 
+      ? regiones.filter(region => region === regionFilterNormalizado)
+      : regiones;
+    
+    // Si no hay regiones para agrupar (por ejemplo, el filtro no coincide), saltar este itinerario
+    if (regionesParaAgrupar.length === 0) {
+      return;
+    }
+    
     // Agregar el itinerario a cada grupo de región correspondiente
-    regiones.forEach((region) => {
+    regionesParaAgrupar.forEach((region) => {
       // Crear key combinando servicio y región
       const key = `${servicioNormalizado}|||${region}`;
       
@@ -256,9 +273,13 @@ export function ItinerarioTable({
   etaViewMode = 'dias', 
   hideActionColumn = false,
   onGroupServiceChange,
-  onAddItinerario
+  onAddItinerario,
+  regionFilter
 }: ItinerarioTableProps) {
-  const grouped = useMemo(() => groupByService(itinerarios), [itinerarios]);
+  const grouped = useMemo(() => {
+    // Pasar el filtro de región directamente a groupByService para que solo cree grupos de esa región
+    return groupByService(itinerarios, regionFilter || undefined);
+  }, [itinerarios, regionFilter]);
   
   // Obtener todos los PODs únicos para crear columnas dinámicas
   const allPODs = useMemo(() => getAllPODs(itinerarios), [itinerarios]);
