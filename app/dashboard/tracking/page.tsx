@@ -176,31 +176,33 @@ export default function TrackingPage() {
         loadCounts();
     }, [currentUser]);
 
-    // Cargar lista inicial
+    // Cargar lista inicial (respeta rol del usuario: admin/lector ven todo; ejecutivo sus clientes; usuario los que creó; cliente los de su empresa)
     useEffect(() => {
         const initFetch = async () => {
             setLoading(true);
-            const data = await searchShipments('');
+            const data = await searchShipments('', currentUser ?? null);
             setShipments(data);
             if (data.length > 0) {
                 setSelectedId(data[0].id || null);
+            } else {
+                setSelectedId(null);
             }
             setLoading(false);
         };
         initFetch();
-    }, []);
+    }, [currentUser]);
 
-    // Búsqueda con debounce
+    // Búsqueda con debounce (respeta rol del usuario)
     useEffect(() => {
         const timer = setTimeout(async () => {
             setSearching(true);
-            const data = await searchShipments(searchTerm);
+            const data = await searchShipments(searchTerm, currentUser ?? null);
             setShipments(data);
             setSearching(false);
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [searchTerm]);
+    }, [searchTerm, currentUser]);
 
     // Cargar tracking cuando cambia la selección
     useEffect(() => {

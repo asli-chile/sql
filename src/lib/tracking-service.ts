@@ -3,11 +3,21 @@ import { Registro } from '@/types/registros';
 import { convertSupabaseToApp } from './migration-utils';
 import { TrackingEvent, ShipmentHito, MILESTONES_ORDER, MILESTONE_LABELS, MilestoneStatus } from '@/types/tracking';
 
+/** Usuario mínimo para aplicar filtros por rol */
+export interface TrackingUserContext {
+    id: string;
+    email?: string;
+    rol: string;
+    cliente_nombre?: string | null;
+    clientes_asignados?: string[];
+}
+
 /**
  * Busca embarques (registros) basados en un término de búsqueda.
- * La política de RLS de Supabase filtra automáticamente por rol (admin/ejecutivo/cliente).
+ * Respeta el nivel de roles: admin/lector ven todo; ejecutivo solo sus clientes;
+ * usuario solo los que creó; cliente solo los de su empresa.
  */
-export async function searchShipments(query: string): Promise<Registro[]> {
+export async function searchShipments(query: string, currentUser?: TrackingUserContext | null): Promise<Registro[]> {
     const supabase = createClient();
 
     let q = supabase
@@ -17,8 +27,43 @@ export async function searchShipments(query: string): Promise<Registro[]> {
         .order('updated_at', { ascending: false })
         .limit(50);
 
-    if (query) {
-        // Búsqueda en múltiples campos (se remueve id para evitar errores con UUID)
+    // Aplicar filtros por rol
+    if (currentUser) {
+        const isAdmin = currentUser.rol === 'admin';
+        const isLector = currentUser.rol === 'lector';
+        const isEjecutivo = currentUser.rol === 'ejecutivo' || (currentUser.email?.endsWith('@asli.cl') && currentUser.rol !== 'cliente');
+        const isUsuario = currentUser.rol === 'usuario';
+        const isCliente = currentUser.rol === 'cliente';
+
+        if (!isAdmin && !isLector) {
+            if (isCliente && currentUser.cliente_nombre?.trim()) {
+                q = q.ilike('shipper', currentUser.cliente_nombre.trim());
+            } else if (isEjecutivo) {
+                const clientes = currentUser.clientes_asignados || [];
+                if (clientes.length === 0) {
+                    q = q.eq('id', 'NONE');
+                } else {
+                    q = q.in('shipper', clientes);
+                }
+            } else if (isUsuario) {
+                const email = currentUser.email || '';
+                const id = currentUser.id || '';
+                if (email && id) {
+                    q = q.or(`created_by.eq.${email},created_by.eq.${id}`);
+                } else if (email) {
+                    q = q.eq('created_by', email);
+                } else if (id) {
+                    q = q.eq('created_by', id);
+                } else {
+                    q = q.eq('id', 'NONE');
+                }
+            } else {
+                q = q.eq('id', 'NONE');
+            }
+        }
+    }
+
+    if (query?.trim()) {
         q = q.or(`booking.ilike.%${query}%,contenedor.ilike.%${query}%,ref_asli.ilike.%${query}%,nave_inicial.ilike.%${query}%`);
     }
 
