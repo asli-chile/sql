@@ -28,6 +28,7 @@ const nextConfig = {
       { source: "/api/:path*", destination: `${erpBaseUrl}/api/:path*` },
       // Rutas principales de la ERP
       { source: "/auth", destination: `${erpBaseUrl}/auth` },
+      { source: "/cachitodelastefy", destination: `${erpBaseUrl}/cachitodelastefy` },
       { source: "/contacto", destination: `${erpBaseUrl}/contacto` },
       { source: "/dashboard/:path*", destination: `${erpBaseUrl}/dashboard/:path*` },
       { source: "/documentos/:path*", destination: `${erpBaseUrl}/documentos/:path*` },

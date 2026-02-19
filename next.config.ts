@@ -17,6 +17,7 @@ const nextConfig: NextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [{ protocol: 'https', hostname: 'asli.cl', pathname: '/img/**' }],
   },
   assetPrefix,
   // Configuración de Turbopack (vacía para usar webpack)

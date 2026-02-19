@@ -56,6 +56,10 @@
       ]
     },
     {
+      "source": "/cachitodelastefy",
+      "destination": "https://registo-de-embarques-asli-toox.vercel.app/cachitodelastefy"
+    },
+    {
       "source": "/contacto",
       "destination": "https://registo-de-embarques-asli-toox.vercel.app/contacto"
     },
