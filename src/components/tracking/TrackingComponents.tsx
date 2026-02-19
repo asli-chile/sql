@@ -13,45 +13,52 @@ interface MovementCardProps {
 }
 
 export const MovementCard: React.FC<MovementCardProps> = ({ registro, isSelected, onClick, theme }) => {
+    const contStr = Array.isArray(registro.contenedor) ? registro.contenedor.join(', ') : (registro.contenedor || 'Carga Suelta');
     return (
         <div
             onClick={onClick}
-            className={`p-3 border transition-all cursor-pointer mb-2 ${isSelected
+            className={`p-4 rounded-lg cursor-pointer transition-all duration-200 ${isSelected
                 ? theme === 'dark'
-                    ? 'border-sky-500 bg-sky-500/10'
-                    : 'border-blue-500 bg-blue-50'
+                    ? 'border-2 border-[#00AEEF] bg-[#00AEEF]/15 ring-2 ring-[#00AEEF]/20'
+                    : 'border-2 border-[#00AEEF] bg-[#00AEEF]/10 shadow-md'
                 : theme === 'dark'
-                    ? 'border-slate-700/60 bg-slate-900/50 hover:border-slate-600'
-                    : 'border-gray-300 bg-white hover:border-gray-400'
+                    ? 'border border-slate-700/60 bg-slate-800/60 hover:border-[#00AEEF]/50 hover:bg-slate-800'
+                    : 'border border-[#E8E8E8] bg-white hover:border-[#00AEEF]/50 hover:shadow-sm'
                 }`}
         >
-            <div className="flex justify-between items-start mb-2">
-                <span className={`text-xs font-bold uppercase tracking-wider ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`}>
+            <div className="flex justify-between items-start gap-2 mb-2">
+                <span className={`text-sm font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-[#00AEEF]' : 'text-[#0078D4]'}`}>
                     {registro.booking || 'SIN BOOKING'}
                 </span>
-                <span className={`text-[10px] ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                <span className={`text-xs flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-[#6B6B6B]'}`}>
                     {registro.updatedAt ? format(new Date(registro.updatedAt), 'dd MMM HH:mm', { locale: es }) : ''}
                 </span>
             </div>
 
-            <h4 className={`text-xs font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {registro.contenedor || 'Carga Suelta'}
+            <h4 className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-slate-100' : 'text-[#1F1F1F]'}`}>
+                {contStr}
             </h4>
 
-            <p className={`text-[10px] mt-1 font-medium ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                Ref. Cliente: {registro.refCliente || registro.refAsli}
+            <p className={`text-xs mt-0.5 font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
+                Ref: {registro.refCliente || registro.refAsli}
             </p>
 
-            <div className="mt-2 space-y-1">
-                <div className="flex items-center gap-2 text-xs">
-                    <MapPin className="h-3 w-3 text-slate-400" />
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>
+            {registro.shipper && (
+                <p className={`text-xs mt-0.5 truncate ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
+                    {registro.shipper}
+                </p>
+            )}
+
+            <div className="mt-2.5 space-y-1">
+                <div className="flex items-center gap-2 text-sm">
+                    <MapPin className={`h-4 w-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-[#6B6B6B]'}`} />
+                    <span className={`truncate ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
                         {registro.pol} → {registro.pod}
                     </span>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
-                    <Ship className="h-3 w-3 text-slate-400" />
-                    <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>
+                <div className="flex items-center gap-2 text-sm">
+                    <Ship className={`h-4 w-4 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-[#6B6B6B]'}`} />
+                    <span className={`truncate ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
                         {registro.naveInicial || '-'}
                     </span>
                 </div>
@@ -66,9 +73,10 @@ interface TimelineStepProps {
     theme: 'light' | 'dark';
     canEdit?: boolean;
     onEdit?: (hito: ShipmentHito) => void;
+    hideConnector?: boolean;
 }
 
-export const TimelineStep: React.FC<TimelineStepProps> = ({ hito, isLast, theme, canEdit, onEdit }) => {
+export const TimelineStep: React.FC<TimelineStepProps> = ({ hito, isLast, theme, canEdit, onEdit, hideConnector }) => {
     const isSi = hito.status === 'SI';
     const isNo = hito.status === 'NO';
     const isPendiente = hito.status === 'PENDIENTE';
@@ -76,63 +84,62 @@ export const TimelineStep: React.FC<TimelineStepProps> = ({ hito, isLast, theme,
 
     return (
         <div
-            className={`relative flex gap-3 pb-4 transition-opacity ${shouldAllowEdit ? 'cursor-pointer hover:opacity-80' : ''}`}
+            className={`relative flex gap-3 pb-3 transition-opacity ${shouldAllowEdit ? 'cursor-pointer hover:opacity-90' : ''}`}
             onClick={() => shouldAllowEdit && onEdit && onEdit(hito)}
         >
-            {!isLast && (
+            {!isLast && !hideConnector && (
                 <div className={`absolute left-[9px] top-5 w-[1.5px] h-full ${isSi
-                    ? theme === 'dark' ? 'bg-emerald-500/30' : 'bg-emerald-200'
-                    : theme === 'dark' ? 'bg-slate-800' : 'bg-gray-100'
+                    ? theme === 'dark' ? 'bg-[#0D5C2E]/40' : 'bg-[#D4F4DD]'
+                    : theme === 'dark' ? 'bg-slate-700' : 'bg-[#E1E1E1]'
                     }`} />
             )}
 
-            <div className="relative z-10 flex-shrink-0 mt-0.5">
+            <div className="relative z-10 flex-shrink-0 mt-0">
                 {isSi ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <CheckCircle2 className="h-5 w-5 text-[#0D5C2E]" />
                 ) : isNo ? (
-                    <XCircle className="h-5 w-5 text-rose-500" />
+                    <XCircle className="h-5 w-5 text-[#A1260D]" />
                 ) : (
-                    <Clock className={`h-5 w-5 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`} />
+                    <Clock className={`h-5 w-5 ${theme === 'dark' ? 'text-slate-500' : 'text-[#C0C0C0]'}`} />
                 )}
             </div>
 
-            <div className="flex-1">
-                <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
-                        <h5 className={`text-sm font-bold ${isSi
-                            ? theme === 'dark' ? 'text-emerald-400' : 'text-emerald-700'
+            <div className="flex-1 min-w-0">
+                <div className="flex flex-row items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        <h5 className={`text-sm font-semibold ${isSi
+                            ? theme === 'dark' ? 'text-[#4EC9B0]' : 'text-[#0D5C2E]'
                             : isNo
-                                ? 'text-rose-500'
-                                : theme === 'dark' ? 'text-slate-400' : 'text-gray-500'
+                                ? 'text-[#A1260D]'
+                                : theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'
                             }`}>
                             {hito.label}
                         </h5>
                         {shouldAllowEdit && (
-                            <span className="text-[8px] bg-sky-500/10 text-sky-500 px-1 rounded uppercase font-bold">Editar</span>
+                            <span className="text-[10px] bg-[#00AEEF]/15 text-[#00AEEF] px-2 py-0.5 rounded uppercase font-medium">Editar</span>
                         )}
                         {hito.isAutomated && (
-                            <span className={`text-[8px] px-1 rounded uppercase font-bold ${theme === 'dark' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600'
-                                }`}>Sincronizado</span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded uppercase font-medium ${theme === 'dark' ? 'bg-[#0D5C2E]/20 text-[#4EC9B0]' : 'bg-[#D4F4DD] text-[#0D5C2E]'}`}>Sincronizado</span>
                         )}
                     </div>
                     {hito.date && !isNaN(new Date(hito.date).getTime()) && (
-                        <span className={`text-[10px] font-medium flex items-center gap-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                            <Calendar className="h-3 w-3" />
-                            {format(new Date(hito.date), "dd-MM-yyyy HH:mm", { locale: es })}
+                        <span className={`text-xs font-medium flex items-center gap-1.5 flex-shrink-0 ${theme === 'dark' ? 'text-slate-500' : 'text-[#6B6B6B]'}`}>
+                            <Calendar className="h-3.5 w-3.5" />
+                            {format(new Date(hito.date), "dd-MM-yy HH:mm", { locale: es })}
                         </span>
                     )}
                 </div>
 
                 {hito.observation && (
-                    <p className={`mt-1 text-xs leading-relaxed ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                    <p className={`mt-1 text-xs leading-snug line-clamp-2 ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
                         {hito.observation}
                     </p>
                 )}
 
                 {isPendiente && (
-                    <span className={`inline-block mt-1 text-[10px] px-2 py-0.5 border ${theme === 'dark'
-                        ? 'border-slate-800 bg-slate-900/50 text-slate-500'
-                        : 'border-gray-200 bg-gray-50 text-gray-400'
+                    <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded ${theme === 'dark'
+                        ? 'bg-slate-800/80 text-slate-500'
+                        : 'bg-[#F5F5F5] text-[#6B6B6B]'
                         }`}>
                         A la espera de actualización
                     </span>
@@ -174,35 +181,37 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
     };
 
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
             <div
-                className={`w-full max-w-md overflow-hidden border ${theme === 'dark' ? 'bg-slate-900 border-slate-700/60' : 'bg-white border-gray-300'
+                className={`w-full max-w-md overflow-hidden border ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-[#E1E1E1]'
                     }`}
+                style={{ borderRadius: '4px' }}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-100'}`}>
-                    <h3 className="text-lg font-bold">Actualizar: {hito.label}</h3>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                        Cambia el estado del hito operativo para este embarque
+                <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-[#E1E1E1]'}`}>
+                    <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-slate-100' : 'text-[#1F1F1F]'}`}>Actualizar: {hito.label}</h3>
+                    <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
+                        Cambia el estado del hito operativo
                     </p>
                 </div>
 
-                <div className="p-6 space-y-4">
+                <div className="p-4 space-y-4">
                     <div>
-                        <label className={`block text-[10px] uppercase font-bold tracking-widest mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                            Estado Actual
+                        <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
+                            Estado
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                             {(['SI', 'NO', 'PENDIENTE'] as MilestoneStatus[]).map((s) => (
                                 <button
                                     key={s}
                                     onClick={() => setStatus(s)}
-                                    className={`py-2 px-1 text-xs font-bold border transition-all ${status === s
-                                        ? s === 'SI' ? 'bg-emerald-500/20 border-emerald-500 text-emerald-500' :
-                                            s === 'NO' ? 'bg-rose-500/20 border-rose-500 text-rose-500' :
-                                                'bg-slate-500/20 border-slate-500 text-slate-500'
-                                        : theme === 'dark' ? 'bg-slate-800 border-transparent text-slate-400' : 'bg-gray-100 border-transparent text-gray-500'
+                                    className={`py-2 px-2 text-xs font-semibold border transition-colors ${status === s
+                                        ? s === 'SI' ? 'bg-[#0D5C2E]/20 border-[#0D5C2E] text-[#4EC9B0]' :
+                                            s === 'NO' ? 'bg-[#A1260D]/20 border-[#A1260D] text-[#A1260D]' :
+                                                theme === 'dark' ? 'bg-slate-800 border-slate-600 text-slate-300' : 'bg-[#E1E1E1] border-[#6B6B6B] text-[#323130]'
+                                        : theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-400 hover:border-[#00AEEF]/50' : 'bg-[#F5F5F5] border-[#E1E1E1] text-[#6B6B6B] hover:border-[#00AEEF]/50'
                                         }`}
+                                    style={{ borderRadius: '4px' }}
                                 >
                                     {s}
                                 </button>
@@ -211,51 +220,57 @@ export const MilestoneEditModal: React.FC<MilestoneEditModalProps> = ({ hito, on
                     </div>
 
                     <div>
-                        <label className={`block text-[10px] uppercase font-bold tracking-widest mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                        <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
                             Fecha del Evento
                         </label>
                         <input
                             type="date"
                             value={date}
                             onChange={(e) => setDate(e.target.value)}
-                            className={`w-full p-3 border text-sm transition-all focus:outline-none focus:ring-2 ${theme === 'dark'
-                                ? 'bg-slate-800 border-slate-700 text-white focus:ring-sky-500/30 focus:border-sky-500'
-                                : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-blue-500/20 focus:border-blue-500'
+                            className={`w-full p-2.5 border text-sm focus:outline-none focus:ring-1 ${theme === 'dark'
+                                ? 'bg-slate-900 border-slate-700 text-slate-100 focus:border-[#00AEEF] focus:ring-[#00AEEF]/30'
+                                : 'bg-white border-[#E1E1E1] text-[#323130] focus:border-[#00AEEF] focus:ring-[#00AEEF]/20'
                                 }`}
+                            style={{ borderRadius: '4px' }}
                         />
                     </div>
 
                     <div>
-                        <label className={`block text-[10px] uppercase font-bold tracking-widest mb-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-                            Observaciones (Opcional)
+                        <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-slate-400' : 'text-[#6B6B6B]'}`}>
+                            Observaciones (opcional)
                         </label>
                         <textarea
                             value={observation}
                             onChange={(e) => setObservation(e.target.value)}
                             rows={3}
-                            placeholder="Detalles adicionales sobre el hito..."
-                            className={`w-full p-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 resize-none ${theme === 'dark'
-                                ? 'bg-slate-800 border-slate-700 text-white focus:ring-sky-500/30 focus:border-sky-500'
-                                : 'bg-gray-50 border-gray-200 text-gray-900 focus:ring-blue-500/20 focus:border-blue-500'
+                            placeholder="Detalles adicionales..."
+                            className={`w-full p-2.5 border text-sm focus:outline-none focus:ring-1 resize-none ${theme === 'dark'
+                                ? 'bg-slate-900 border-slate-700 text-slate-100 placeholder-slate-500 focus:border-[#00AEEF] focus:ring-[#00AEEF]/30'
+                                : 'bg-white border-[#E1E1E1] text-[#323130] placeholder-[#6B6B6B] focus:border-[#00AEEF] focus:ring-[#00AEEF]/20'
                                 }`}
+                            style={{ borderRadius: '4px' }}
                         />
                     </div>
                 </div>
 
-                <div className={`p-6 flex gap-3 ${theme === 'dark' ? 'bg-slate-900/50' : 'bg-gray-50/50'}`}>
+                <div className={`p-4 flex gap-2 border-t ${theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-[#E1E1E1] bg-[#FAFAFA]'}`}>
                     <button
                         onClick={onClose}
-                        className={`flex-1 py-3 text-sm font-bold transition-all border ${theme === 'dark' ? 'bg-slate-800 border-slate-700/60 text-slate-300 hover:bg-slate-700' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
-                            }`}
+                        className={`flex-1 py-2.5 text-sm font-medium border transition-colors ${theme === 'dark'
+                            ? 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+                            : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                        }`}
+                        style={{ borderRadius: '4px' }}
                     >
                         Cancelar
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={loading}
-                        className={`flex-1 py-3 text-sm font-bold bg-sky-600 border border-sky-500 text-white hover:bg-sky-700 disabled:opacity-50 transition-all`}
+                        className="flex-1 py-2.5 text-sm font-medium bg-[#00AEEF] border border-[#00AEEF] text-white hover:bg-[#0099CC] disabled:opacity-50 transition-colors"
+                        style={{ borderRadius: '4px' }}
                     >
-                        {loading ? 'Guardando...' : 'Guardar Hito'}
+                        {loading ? 'Guardando...' : 'Guardar'}
                     </button>
                 </div>
             </div>
