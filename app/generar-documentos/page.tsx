@@ -69,9 +69,7 @@ export default function GenerarDocumentosPage() {
   const [selectedContenedor, setSelectedContenedor] = useState<ContenedorInfo | null>(null);
   const [showInstructivoModal, setShowInstructivoModal] = useState(false);
   const [showProformaModal, setShowProformaModal] = useState(false);
-  const [expandedNaves, setExpandedNaves] = useState<Set<string>>(new Set());
-  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
-  
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -410,28 +408,13 @@ export default function GenerarDocumentosPage() {
       : []),
   ];
 
-  const toggleNave = (naveName: string) => {
-    setExpandedNaves(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(naveName)) {
-        newSet.delete(naveName);
-      } else {
-        newSet.add(naveName);
-      }
-      return newSet;
-    });
+  const handleSelectNave = (nave: NaveInfo) => {
+    setSelectedNave(prev => (prev?.nave === nave.nave ? null : nave));
+    setSelectedBooking(null);
   };
 
-  const toggleBooking = (bookingName: string) => {
-    setExpandedBookings(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(bookingName)) {
-        newSet.delete(bookingName);
-      } else {
-        newSet.add(bookingName);
-      }
-      return newSet;
-    });
+  const handleSelectBooking = (booking: BookingInfo) => {
+    setSelectedBooking(prev => (prev?.booking === booking.booking ? null : booking));
   };
 
   const handleGenerarInstructivo = (booking: BookingInfo) => {
@@ -605,7 +588,7 @@ export default function GenerarDocumentosPage() {
   }
 
   return (
-    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`flex h-screen overflow-hidden ${theme === 'dark' ? 'bg-[#202020] text-[#E0E0E0]' : 'bg-[#F5F5F5] text-[#323130]'}`}>
       {isMobileMenuOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
@@ -625,68 +608,65 @@ export default function GenerarDocumentosPage() {
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className={`p-4 border-b ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <div className="flex items-center justify-between">
+        {/* Header - Estilo itinerarios */}
+        <header className={`sticky top-0 z-30 border-b backdrop-blur-sm ${theme === 'dark'
+          ? 'border-[#3D3D3D] bg-[#2D2D2D]/95'
+          : 'border-[#E1E1E1] bg-[#FFFFFF]/95'
+        }`}>
+          <div className="w-full px-3 py-2.5 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => isSidebarCollapsed ? setIsSidebarCollapsed(false) : setIsMobileMenuOpen(true)}
-                className={`p-2 border transition-colors rounded-lg ${theme === 'dark'
-                  ? 'hover:bg-slate-700 border-slate-700 text-slate-400'
-                  : 'hover:bg-gray-100 border-gray-300 text-gray-500'
-                  } ${!isSidebarCollapsed && 'lg:hidden'}`}
+                className={`p-2 border transition-colors ${theme === 'dark'
+                  ? 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
+                  : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                } ${!isSidebarCollapsed && 'lg:hidden'}`}
+                style={{ borderRadius: '4px' }}
               >
                 <Menu className="h-5 w-5" />
               </button>
               <div>
-                <h1 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                <h1 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                   Generar Documentos
                 </h1>
-                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  Selecciona nave → booking → contenedor paso a paso
+                <p className={`text-xs ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                  Nave → booking → contenedor
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border ${showFilters
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border transition-colors ${showFilters
                   ? theme === 'dark'
-                    ? 'bg-sky-600 text-white hover:bg-sky-500 border-sky-500'
-                    : 'bg-blue-600 text-white hover:bg-blue-500 border-blue-500'
+                    ? 'border-[#00AEEF] bg-[#00AEEF]/20 text-[#00AEEF]'
+                    : 'border-[#00AEEF] bg-[#00AEEF]/10 text-[#0078D4]'
                   : theme === 'dark'
-                    ? 'border-slate-700 text-slate-100 hover:border-sky-500 hover:text-sky-200 hover:bg-slate-700 bg-slate-800'
-                    : 'border-gray-300 text-gray-900 hover:border-blue-500 hover:text-blue-700 hover:bg-gray-100 bg-white'
-                  }`}
+                    ? 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
+                    : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                }`}
+                style={{ borderRadius: '4px' }}
               >
                 <Filter className="h-4 w-4" />
                 Filtros
                 {hasActiveFilters && (
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${showFilters
-                    ? 'bg-white/20'
-                    : theme === 'dark'
-                      ? 'bg-sky-500/30'
-                      : 'bg-blue-500/20'
-                    }`}>
+                  <span className="text-xs px-1.5 py-0.5 bg-white/20 rounded">
                     {selectedClientes.length + (selectedNaviera ? 1 : 0) + (filterNave ? 1 : 0) + (selectedEspecie ? 1 : 0)}
                   </span>
                 )}
               </button>
-              
               <button
                 type="button"
                 onClick={() => setShowProfileModal(true)}
-                className={`hidden sm:flex items-center gap-2 border rounded-lg px-4 py-2 transition ${theme === 'dark'
-                  ? 'border-slate-700 bg-slate-800 text-slate-200 hover:border-sky-500 hover:text-sky-200'
-                  : 'border-gray-300 bg-white text-gray-700 hover:border-blue-500 hover:text-blue-700'
-                  }`}
+                className={`hidden sm:flex items-center gap-2 border px-3 py-1.5 text-xs font-medium transition-colors ${theme === 'dark'
+                  ? 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
+                  : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                }`}
+                style={{ borderRadius: '4px' }}
                 title={currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
               >
                 <UserIcon className="h-4 w-4" />
-                <span className="max-w-[160px] truncate font-medium text-sm">
-                  {currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}
-                </span>
+                <span className="max-w-[160px] truncate">{currentUser?.nombre || user?.user_metadata?.full_name || user?.email || 'Usuario'}</span>
               </button>
             </div>
           </div>
@@ -696,232 +676,206 @@ export default function GenerarDocumentosPage() {
           {/* Panel Principal - Lista Vertical */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Búsqueda */}
-            <div className={`p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-              <div className="relative max-w-2xl">
-                <Search className={`absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`} />
+            <div className={`flex-shrink-0 p-3 border-b ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`}>
+              <div className="relative w-full">
+                <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`} />
                 <input
                   type="text"
                   placeholder="Buscar nave, booking, contenedor..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-12 pr-4 py-3 border rounded-lg text-sm ${theme === 'dark'
-                    ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-400'
-                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                    }`}
+                  className={`w-full pl-10 pr-3 py-2 border text-sm focus:outline-none focus:ring-1 ${theme === 'dark'
+                    ? 'bg-[#1F1F1F] border-[#3D3D3D] text-white placeholder-[#6B6B6B] focus:border-[#00AEEF] focus:ring-[#00AEEF]/30'
+                    : 'bg-white border-[#E1E1E1] text-[#323130] placeholder-[#6B6B6B] focus:border-[#00AEEF] focus:ring-[#00AEEF]/20'
+                  }`}
+                  style={{ borderRadius: '4px' }}
                 />
               </div>
             </div>
 
-            {/* Lista de Naves - Expandible */}
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="max-w-4xl mx-auto space-y-3">
-                {filteredNaves.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Anchor className={`h-16 w-16 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-300'}`} />
-                    <p className={`text-lg font-medium ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                      {searchTerm ? 'No se encontraron naves' : 'No hay naves disponibles'}
-                    </p>
-                  </div>
-                ) : (
-                  filteredNaves.map((nave) => (
-                    <div
-                      key={nave.nave}
-                      className={`border rounded-lg overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}
-                    >
-                      {/* Header de Nave */}
+            {/* Layout 3 columnas: Naves | Bookings | Contenedores/Acciones */}
+            <div className={`flex-1 flex min-h-0 overflow-x-auto ${theme === 'dark' ? 'bg-[#202020]' : 'bg-[#F5F5F5]'}`}>
+              {/* Columna 1: Naves */}
+              <div className={`flex-1 min-w-[200px] flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+                <div className={`flex-shrink-0 px-3 py-2 border-b ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`}>
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    Naves
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  {filteredNaves.length === 0 ? (
+                    <div className={`text-center py-8 px-3 border ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`} style={{ borderRadius: '4px' }}>
+                      <Anchor className={`h-8 w-8 mx-auto mb-2 block ${theme === 'dark' ? 'text-[#6B6B6B]' : 'text-[#C0C0C0]'}`} />
+                      <p className={`text-xs font-medium ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                        {searchTerm ? 'No hay resultados' : 'No hay naves'}
+                      </p>
+                    </div>
+                  ) : (
+                    filteredNaves.map((nave) => (
                       <button
-                        onClick={() => toggleNave(nave.nave)}
-                        className={`w-full p-4 flex items-center justify-between hover:bg-opacity-50 transition-colors ${
-                          expandedNaves.has(nave.nave)
-                            ? theme === 'dark'
-                              ? 'bg-sky-900/20'
-                              : 'bg-blue-50'
-                            : ''
+                        key={nave.nave}
+                        type="button"
+                        onClick={() => handleSelectNave(nave)}
+                        className={`w-full p-2.5 flex items-center justify-between text-left border ${theme === 'dark'
+                          ? selectedNave?.nave === nave.nave
+                            ? 'bg-[#00AEEF]/15 border-[#00AEEF]'
+                            : 'border-[#3D3D3D] bg-[#2D2D2D] hover:border-[#00AEEF]/50'
+                          : selectedNave?.nave === nave.nave
+                            ? 'bg-[#00AEEF]/10 border-[#00AEEF]'
+                            : 'border-[#E1E1E1] bg-white hover:border-[#00AEEF]/50'
                         }`}
+                        style={{ borderRadius: '4px' }}
                       >
-                        <div className="flex items-center gap-3">
-                          <Anchor className={`h-6 w-6 ${theme === 'dark' ? 'text-sky-400' : 'text-blue-600'}`} />
-                          <div className="text-left">
-                            <p className={`font-bold text-lg ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                              {nave.nave}
-                            </p>
-                            <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              {nave.naveCompleta}
-                            </p>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`} style={{ borderRadius: '4px' }}>
+                            <Anchor className={`h-4 w-4 ${theme === 'dark' ? 'text-[#00AEEF]' : 'text-[#0078D4]'}`} />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <p className={`font-semibold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>{nave.nave}</p>
+                            <p className={`text-xs truncate ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>{nave.bookings.length} reservas</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className={`text-sm px-3 py-1 rounded-full ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                            {nave.bookings.length} {nave.bookings.length === 1 ? 'reserva' : 'reservas'}
-                          </span>
-                          {expandedNaves.has(nave.nave) ? (
-                            <ChevronDown className={`h-5 w-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-                          ) : (
-                            <ChevronRight className={`h-5 w-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-                          )}
-                        </div>
                       </button>
+                    ))
+                  )}
+                </div>
+              </div>
 
-                      {/* Lista de Bookings */}
-                      {expandedNaves.has(nave.nave) && (
-                        <div className={`border-t ${theme === 'dark' ? 'border-slate-700 bg-slate-900/50' : 'border-gray-200 bg-gray-50'}`}>
-                          {nave.bookings.map((booking) => {
-                            const hasInstructivo = existingDocs[booking.booking]?.instructivo;
-                            const hasProforma = existingDocs[booking.booking]?.proforma;
-
-                            return (
-                              <div
-                                key={booking.booking}
-                                className={`border-b last:border-b-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}
-                              >
-                                {/* Header de Booking */}
-                                <button
-                                  onClick={() => toggleBooking(booking.booking)}
-                                  className={`w-full p-4 pl-12 flex items-center justify-between hover:bg-opacity-50 transition-colors ${
-                                    expandedBookings.has(booking.booking)
-                                      ? theme === 'dark'
-                                        ? 'bg-slate-800'
-                                        : 'bg-white'
-                                      : ''
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-3">
-                                    <FileText className={`h-5 w-5 ${theme === 'dark' ? 'text-violet-400' : 'text-violet-600'}`} />
-                                    <div className="text-left">
-                                      <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                        {booking.booking}
-                                      </p>
-                                      <div className="flex gap-2 mt-1">
-                                        {booking.refAsli && (
-                                          <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                                            ASLI: {booking.refAsli}
-                                          </span>
-                                        )}
-                                        {booking.refCliente && (
-                                          <span className={`text-xs px-2 py-0.5 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                                            Cliente: {booking.refCliente}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-slate-700 text-slate-300' : 'bg-gray-200 text-gray-700'}`}>
-                                      {booking.contenedores.length} {booking.contenedores.length === 1 ? 'contenedor' : 'contenedores'}
-                                    </span>
-                                    {expandedBookings.has(booking.booking) ? (
-                                      <ChevronDown className={`h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-                                    ) : (
-                                      <ChevronRight className={`h-4 w-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`} />
-                                    )}
-                                  </div>
-                                </button>
-
-                                {/* Acciones y Contenedores */}
-                                {expandedBookings.has(booking.booking) && (
-                                  <div className={`p-4 pl-16 space-y-3 ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
-                                    {/* Botón Instructivo */}
-                                    <div className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-                                      <div className="flex items-center justify-between">
-                                        <div>
-                                          <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                            Instructivo de Embarque
-                                          </p>
-                                          <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                                            Documento para coordinación de transporte
-                                          </p>
-                                        </div>
-                                        <button
-                                          onClick={() => handleGenerarInstructivo(booking)}
-                                          disabled={hasInstructivo}
-                                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                                            hasInstructivo
-                                              ? theme === 'dark'
-                                                ? 'bg-green-900/30 text-green-400 border border-green-700'
-                                                : 'bg-green-50 text-green-700 border border-green-200'
-                                              : theme === 'dark'
-                                                ? 'bg-sky-600 text-white hover:bg-sky-500'
-                                                : 'bg-blue-600 text-white hover:bg-blue-500'
-                                          }`}
-                                        >
-                                          {hasInstructivo ? (
-                                            <>
-                                              <CheckCircle2 className="h-4 w-4" />
-                                              Ya existe
-                                            </>
-                                          ) : (
-                                            <>
-                                              <Receipt className="h-4 w-4" />
-                                              Generar
-                                            </>
-                                          )}
-                                        </button>
-                                      </div>
-                                    </div>
-
-                                    {/* Lista de Contenedores */}
-                                    <div className="space-y-2">
-                                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                                        Contenedores ({booking.contenedores.length})
-                                      </p>
-                                      {booking.contenedores.map((contenedor) => (
-                                        <div
-                                          key={contenedor.contenedor}
-                                          className={`p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}
-                                        >
-                                          <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                              <Package className={`h-5 w-5 ${theme === 'dark' ? 'text-orange-400' : 'text-orange-600'}`} />
-                                              <p className={`font-mono font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                                                {contenedor.contenedor}
-                                              </p>
-                                            </div>
-                                            <button
-                                              onClick={() => {
-                                                if (hasProforma) {
-                                                  // Redirigir a la página de documentos con el booking como parámetro
-                                                  const bookingParam = encodeURIComponent(booking.booking);
-                                                  window.location.href = `/documentos?booking=${bookingParam}`;
-                                                } else {
-                                                  handleGenerarProforma(contenedor, booking);
-                                                }
-                                              }}
-                                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
-                                                hasProforma
-                                                  ? theme === 'dark'
-                                                    ? 'bg-green-900/30 text-green-400 border border-green-700 hover:bg-green-900/50 cursor-pointer'
-                                                    : 'bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 cursor-pointer'
-                                                  : theme === 'dark'
-                                                    ? 'bg-violet-600 text-white hover:bg-violet-500'
-                                                    : 'bg-violet-600 text-white hover:bg-violet-500'
-                                              }`}
-                                            >
-                                              {hasProforma ? (
-                                                <>
-                                                  <CheckCircle2 className="h-4 w-4" />
-                                                  Proforma existe
-                                                </>
-                                              ) : (
-                                                <>
-                                                  <Receipt className="h-4 w-4" />
-                                                  Generar Proforma
-                                                </>
-                                              )}
-                                            </button>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+              {/* Columna 2: Bookings de la nave seleccionada */}
+              <div className={`flex-1 min-w-[200px] flex flex-col border-r overflow-hidden ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+                <div className={`flex-shrink-0 px-3 py-2 border-b ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`}>
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    Bookings
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  {!selectedNave ? (
+                    <div className={`text-center py-8 px-3 border ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`} style={{ borderRadius: '4px' }}>
+                      <FileText className={`h-8 w-8 mx-auto mb-2 block ${theme === 'dark' ? 'text-[#6B6B6B]' : 'text-[#C0C0C0]'}`} />
+                      <p className={`text-xs font-medium ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Selecciona una nave</p>
                     </div>
-                  ))
-                )}
+                  ) : selectedNave.bookings.length === 0 ? (
+                    <div className={`text-center py-8 px-3 border ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`} style={{ borderRadius: '4px' }}>
+                      <p className={`text-xs font-medium ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Sin bookings</p>
+                    </div>
+                  ) : (
+                    selectedNave.bookings.map((booking) => {
+                      const hasInstructivo = existingDocs[booking.booking]?.instructivo;
+                      const isSelected = selectedBooking?.booking === booking.booking;
+                      return (
+                        <button
+                          key={booking.booking}
+                          type="button"
+                          onClick={() => handleSelectBooking(booking)}
+                          className={`w-full p-2.5 flex items-center justify-between text-left border ${theme === 'dark'
+                            ? isSelected ? 'bg-[#00AEEF]/15 border-[#00AEEF]' : 'border-[#3D3D3D] bg-[#2D2D2D] hover:border-[#00AEEF]/50'
+                            : isSelected ? 'bg-[#00AEEF]/10 border-[#00AEEF]' : 'border-[#E1E1E1] bg-white hover:border-[#00AEEF]/50'
+                          }`}
+                          style={{ borderRadius: '4px' }}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`} style={{ borderRadius: '4px' }}>
+                              <FileText className={`h-4 w-4 ${theme === 'dark' ? 'text-[#00AEEF]' : 'text-[#0078D4]'}`} />
+                            </div>
+                            <div className="min-w-0 text-left">
+                              <p className={`font-semibold text-sm truncate ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>{booking.booking}</p>
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {booking.refAsli && <span className={`text-[10px] px-1.5 py-0.5 ${theme === 'dark' ? 'bg-[#3D3D3D] text-[#C0C0C0]' : 'bg-[#E1E1E1] text-[#323130]'}`} style={{ borderRadius: '4px' }}>ASLI</span>}
+                                {hasInstructivo && <span className={`text-[10px] px-1.5 py-0.5 ${theme === 'dark' ? 'text-[#4EC9B0]' : 'text-[#0D5C2E]'}`}>Instructivo</span>}
+                              </div>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 font-medium flex-shrink-0 ${theme === 'dark' ? 'bg-[#3D3D3D] text-[#C0C0C0]' : 'bg-[#E1E1E1] text-[#323130]'}`} style={{ borderRadius: '4px' }}>
+                            {booking.contenedores.length} cnt
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Columna 3: Detalle del booking (Instructivo + Contenedores) */}
+              <div className={`flex-1 min-w-[240px] flex flex-col overflow-hidden ${theme === 'dark' ? 'bg-[#252525]' : 'bg-[#FAFAFA]'}`}>
+                <div className={`flex-shrink-0 px-3 py-2 border-b ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`}>
+                  <h3 className={`text-xs font-semibold uppercase tracking-wider ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                    Documentos
+                  </h3>
+                </div>
+                <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                  {!selectedBooking ? (
+                    <div className={`text-center py-12 px-4 border ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D]' : 'border-[#E1E1E1] bg-white'}`} style={{ borderRadius: '4px' }}>
+                      <Receipt className={`h-10 w-10 mx-auto mb-3 block ${theme === 'dark' ? 'text-[#6B6B6B]' : 'text-[#C0C0C0]'}`} />
+                      <p className={`text-sm font-medium ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Selecciona un booking</p>
+                      <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#6B6B6B]' : 'text-[#9B9B9B]'}`}>Instructivo y proformas por contenedor</p>
+                    </div>
+                  ) : (
+                    <>
+                      {(() => {
+                        const hasInstructivo = existingDocs[selectedBooking.booking]?.instructivo;
+                        const hasProforma = existingDocs[selectedBooking.booking]?.proforma;
+                        return (
+                          <>
+                            <div className={`p-3 border ${theme === 'dark' ? 'bg-[#2D2D2D] border-[#3D3D3D]' : 'bg-white border-[#E1E1E1]'}`} style={{ borderRadius: '4px' }}>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>Instructivo de Embarque</p>
+                                  <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Documento para coordinación de transporte</p>
+                                </div>
+                                <button
+                                  onClick={() => handleGenerarInstructivo(selectedBooking)}
+                                  disabled={hasInstructivo}
+                                  className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border flex-shrink-0 ${
+                                    hasInstructivo
+                                      ? theme === 'dark' ? 'bg-[#0D5C2E]/30 text-[#4EC9B0] border-[#0D5C2E]' : 'bg-[#D4F4DD] text-[#0D5C2E] border-[#0D5C2E]/40'
+                                      : theme === 'dark' ? 'bg-[#00AEEF] text-white border-[#00AEEF] hover:bg-[#0099CC]' : 'bg-[#00AEEF] text-white border-[#00AEEF] hover:bg-[#0099CC]'
+                                  }`}
+                                  style={{ borderRadius: '4px' }}
+                                >
+                                  {hasInstructivo ? <><CheckCircle2 className="h-3.5 w-3.5" /> Ya existe</> : <><Receipt className="h-3.5 w-3.5" /> Generar</>}
+                                </button>
+                              </div>
+                            </div>
+                            <p className={`text-xs font-medium ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Contenedores ({selectedBooking.contenedores.length})</p>
+                            {selectedBooking.contenedores.map((contenedor) => (
+                              <div
+                                key={contenedor.contenedor}
+                                className={`p-3 border ${theme === 'dark' ? 'bg-[#2D2D2D] border-[#3D3D3D]' : 'bg-white border-[#E1E1E1]'}`}
+                                style={{ borderRadius: '4px' }}
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className={`flex-shrink-0 flex h-8 w-8 items-center justify-center ${theme === 'dark' ? 'bg-[#3D3D3D]' : 'bg-[#E1E1E1]'}`} style={{ borderRadius: '4px' }}>
+                                      <Package className={`h-4 w-4 ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#323130]'}`} />
+                                    </div>
+                                    <p className={`font-mono font-semibold text-sm ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>{contenedor.contenedor}</p>
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      if (hasProforma) {
+                                        window.location.href = `/documentos?booking=${encodeURIComponent(selectedBooking.booking)}`;
+                                      } else {
+                                        handleGenerarProforma(contenedor, selectedBooking);
+                                      }
+                                    }}
+                                    className={`inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border flex-shrink-0 ${
+                                      hasProforma
+                                        ? theme === 'dark' ? 'bg-[#0D5C2E]/30 text-[#4EC9B0] border-[#0D5C2E]' : 'bg-[#D4F4DD] text-[#0D5C2E] border-[#0D5C2E]/40'
+                                        : theme === 'dark' ? 'bg-[#00AEEF] text-white border-[#00AEEF] hover:bg-[#0099CC]' : 'bg-[#00AEEF] text-white border-[#00AEEF] hover:bg-[#0099CC]'
+                                    }`}
+                                    style={{ borderRadius: '4px' }}
+                                  >
+                                    {hasProforma ? <><CheckCircle2 className="h-3.5 w-3.5" /> Proforma existe</> : <><Receipt className="h-3.5 w-3.5" /> Generar Proforma</>}
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -934,18 +888,18 @@ export default function GenerarDocumentosPage() {
                 onClick={() => setShowFilters(false)}
               />
               <aside className={`fixed lg:relative top-0 right-0 h-full w-80 flex-shrink-0 border-l overflow-y-auto z-[70] ${
-                theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'
+                theme === 'dark' ? 'bg-[#2D2D2D] border-[#3D3D3D]' : 'bg-white border-[#E1E1E1]'
               }`}>
-                <div className="p-4 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Filtros</h3>
+                <div className={`p-3 border-b ${theme === 'dark' ? 'border-[#3D3D3D]' : 'border-[#E1E1E1]'}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className={`font-semibold text-xs uppercase tracking-wider ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#323130]'}`}>
+                      Filtros
+                    </h3>
                     {hasActiveFilters && (
                       <button
                         onClick={handleClearFilters}
-                        className={`text-xs px-2 py-1 rounded ${theme === 'dark'
-                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          }`}
+                        className={`text-xs font-medium px-2 py-1 border ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]' : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'}`}
+                        style={{ borderRadius: '4px' }}
                       >
                         Limpiar
                       </button>
@@ -953,86 +907,37 @@ export default function GenerarDocumentosPage() {
                   </div>
                 </div>
 
-                <div className="p-4 space-y-4">
-                  {/* Filtro de Clientes */}
+                <div className="p-3 space-y-4">
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Clientes
-                    </label>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Clientes</label>
+                    <div className={`space-y-1 max-h-48 overflow-y-auto p-2 border ${theme === 'dark' ? 'border-[#3D3D3D] bg-[#252525]' : 'border-[#E1E1E1] bg-[#FAFAFA]'}`} style={{ borderRadius: '4px' }}>
                       {filterOptions.clientes.map((cliente) => (
-                        <label key={cliente} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedClientes.includes(cliente)}
-                            onChange={() => handleToggleCliente(cliente)}
-                            className="rounded"
-                          />
-                          <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                            {cliente}
-                          </span>
+                        <label key={cliente} className={`flex items-center gap-2 cursor-pointer py-1 px-2 ${theme === 'dark' ? 'hover:bg-[#3D3D3D]' : 'hover:bg-[#E1E1E1]'}`} style={{ borderRadius: '4px' }}>
+                          <input type="checkbox" checked={selectedClientes.includes(cliente)} onChange={() => handleToggleCliente(cliente)} className="rounded border-[#3D3D3D] text-[#00AEEF] focus:ring-[#00AEEF]" />
+                          <span className={`text-sm truncate ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#323130]'}`}>{cliente}</span>
                         </label>
                       ))}
                     </div>
                   </div>
-
-                  {/* Filtro de Naviera */}
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Naviera
-                    </label>
-                    <select
-                      value={selectedNaviera || ''}
-                      onChange={(e) => setSelectedNaviera(e.target.value || null)}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm ${theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                    >
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Naviera</label>
+                    <select value={selectedNaviera || ''} onChange={(e) => setSelectedNaviera(e.target.value || null)} className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-1 ${theme === 'dark' ? 'bg-[#1F1F1F] border-[#3D3D3D] text-white focus:border-[#00AEEF] focus:ring-[#00AEEF]/30' : 'bg-white border-[#E1E1E1] text-[#323130] focus:border-[#00AEEF] focus:ring-[#00AEEF]/20'}`} style={{ borderRadius: '4px' }}>
                       <option value="">Todas</option>
-                      {filterOptions.navieras.map((naviera) => (
-                        <option key={naviera} value={naviera}>{naviera}</option>
-                      ))}
+                      {filterOptions.navieras.map((n) => (<option key={n} value={n}>{n}</option>))}
                     </select>
                   </div>
-
-                  {/* Filtro de Nave */}
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Nave
-                    </label>
-                    <select
-                      value={filterNave || ''}
-                      onChange={(e) => setFilterNave(e.target.value || null)}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm ${theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                    >
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Nave</label>
+                    <select value={filterNave || ''} onChange={(e) => setFilterNave(e.target.value || null)} className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-1 ${theme === 'dark' ? 'bg-[#1F1F1F] border-[#3D3D3D] text-white focus:border-[#00AEEF] focus:ring-[#00AEEF]/30' : 'bg-white border-[#E1E1E1] text-[#323130] focus:border-[#00AEEF] focus:ring-[#00AEEF]/20'}`} style={{ borderRadius: '4px' }}>
                       <option value="">Todas</option>
-                      {filterOptions.naves.map((nave) => (
-                        <option key={nave} value={nave}>{nave}</option>
-                      ))}
+                      {filterOptions.naves.map((n) => (<option key={n} value={n}>{n}</option>))}
                     </select>
                   </div>
-
-                  {/* Filtro de Especie */}
                   <div>
-                    <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Especie
-                    </label>
-                    <select
-                      value={selectedEspecie || ''}
-                      onChange={(e) => setSelectedEspecie(e.target.value || null)}
-                      className={`w-full px-3 py-2 border rounded-lg text-sm ${theme === 'dark'
-                        ? 'bg-slate-700 border-slate-600 text-white'
-                        : 'bg-white border-gray-300 text-gray-900'
-                        }`}
-                    >
+                    <label className={`block text-xs font-medium mb-1.5 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Especie</label>
+                    <select value={selectedEspecie || ''} onChange={(e) => setSelectedEspecie(e.target.value || null)} className={`w-full px-3 py-2 border text-sm focus:outline-none focus:ring-1 ${theme === 'dark' ? 'bg-[#1F1F1F] border-[#3D3D3D] text-white focus:border-[#00AEEF] focus:ring-[#00AEEF]/30' : 'bg-white border-[#E1E1E1] text-[#323130] focus:border-[#00AEEF] focus:ring-[#00AEEF]/20'}`} style={{ borderRadius: '4px' }}>
                       <option value="">Todas</option>
-                      {filterOptions.especies.map((especie) => (
-                        <option key={especie} value={especie}>{especie}</option>
-                      ))}
+                      {filterOptions.especies.map((esp) => (<option key={esp} value={esp}>{esp}</option>))}
                     </select>
                   </div>
                 </div>
