@@ -552,37 +552,37 @@ export default function IndicadoresPage() {
       {/* Banner Clima: 4 ciudades × (hoy + 3 días) */}
       {climaBanner.length > 0 && (
         <section className="w-full px-4 sm:px-8 lg:px-12 2xl:px-12 mt-2 2xl:mt-3">
-          <div className="w-full max-w-[2560px] mx-auto rounded-xl bg-[#0F1C33] overflow-x-auto">
+          <div className="w-full max-w-[2304px] mx-auto rounded-xl bg-[#0F1C33] overflow-x-auto">
             <div
-              className="grid gap-x-6 2xl:gap-x-8 hd:gap-x-12 gap-y-2 2xl:gap-y-3 hd:gap-y-4 px-4 py-3 2xl:px-6 2xl:py-4 hd:px-8 hd:py-6 min-w-[720px]"
+              className="grid gap-x-4 2xl:gap-x-6 hd:gap-x-8 gap-y-1.5 2xl:gap-y-2.5 hd:gap-y-2.5 px-4 py-2 2xl:px-5 2xl:py-3 hd:px-6 hd:py-4 min-w-[980px]"
               style={{
-                gridTemplateColumns: 'minmax(90px, 1fr) minmax(120px, 1fr) repeat(4, minmax(130px, 1.2fr))',
+                gridTemplateColumns: 'minmax(110px, 1fr) minmax(190px, 1.4fr) repeat(4, minmax(180px, 1.4fr))',
               }}
             >
               {/* Encabezados */}
-              <div className="text-xs 2xl:text-base hd:text-lg font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ciudad</div>
-              <div className="text-xs 2xl:text-base hd:text-lg font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ahora</div>
+              <div className="text-xs 2xl:text-sm hd:text-base font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ciudad</div>
+              <div className="text-xs 2xl:text-sm hd:text-base font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ahora</div>
               {(climaBanner[0]?.dias ?? []).map((d, i) => (
-                <div key={`h-${i}`} className="text-xs 2xl:text-base hd:text-lg font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{d.fecha}</div>
+                <div key={`h-${i}`} className="text-xs 2xl:text-sm hd:text-base font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{d.fecha}</div>
               ))}
               {/* Filas por ciudad */}
               {climaBanner.map(({ ciudad, ahora, dias }) => (
                 <React.Fragment key={ciudad}>
-                  <div className="font-medium text-sm 2xl:text-base hd:text-lg" style={{ color: 'rgba(255,255,255,0.95)' }}>{ciudad}</div>
-                  <div className="flex items-center gap-2">
+                  <div className="font-medium text-xs 2xl:text-sm hd:text-base whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.95)' }}>{ciudad}</div>
+                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
                     {ahora ? (
                       <>
-                        <span className="font-mono text-sm 2xl:text-base hd:text-xl tabular-nums" style={{ color: '#4FC3F7' }}>{ahora.temp}°</span>
-                        <span className="text-xs 2xl:text-sm hd:text-base truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{ahora.estado}</span>
+                        <span className="font-mono text-xs 2xl:text-sm hd:text-base tabular-nums whitespace-nowrap shrink-0" style={{ color: '#4FC3F7' }}>{ahora.temp}°</span>
+                        <span className="text-xs 2xl:text-xs hd:text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{ahora.estado}</span>
                       </>
                     ) : (
-                      <span className="text-xs 2xl:text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>—</span>
+                      <span className="text-xs 2xl:text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>—</span>
                     )}
                   </div>
                   {dias.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="font-mono text-sm 2xl:text-base hd:text-xl tabular-nums" style={{ color: '#4FC3F7' }}>{d.tempMin}° / {d.tempMax}°</span>
-                      <span className="text-xs 2xl:text-sm hd:text-base truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{d.estado}</span>
+                    <div key={i} className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                      <span className="font-mono text-xs 2xl:text-sm hd:text-base tabular-nums whitespace-nowrap shrink-0" style={{ color: '#4FC3F7' }}>{d.tempMin}° / {d.tempMax}°</span>
+                      <span className="text-xs 2xl:text-xs hd:text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{d.estado}</span>
                     </div>
                   ))}
                 </React.Fragment>
