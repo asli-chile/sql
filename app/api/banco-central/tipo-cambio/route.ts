@@ -4,9 +4,15 @@ export const dynamic = 'force-dynamic';
 
 const BANCO_CENTRAL_API_URL = 'https://si3.bcentral.cl/SieteRestWS/SieteRestWS.ashx';
 
-// Serie para tipo de cambio dólar observado diario
-// Código: F073.TCO.PRE.Z.D (Tipo de Cambio Observado - Dólar - Diario)
-const SERIE_TIPO_CAMBIO = 'F073.TCO.PRE.Z.D';
+// Series Banco Central de Chile
+const SERIES: Record<string, string> = {
+  dolar: 'F073.TCO.PRE.Z.D',   // Dólar observado
+  euro: 'F074.TCO.PRE.Z.D',    // Euro observado
+  uf: 'F000.TOT.SV.CLS.UF.D',  // UF
+  utm: 'F000.TOT.SV.CLS.UTM.M', // UTM
+  // IPC general, variación mensual (serie vigente base 2023)
+  ipc: 'G073.IPC.VAR.2023.M',
+};
 
 /**
  * Verifica si una fecha es día hábil (lunes a viernes)
@@ -68,6 +74,8 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const fecha = searchParams.get('fecha'); // Formato: YYYY-MM-DD
+    const indicador = (searchParams.get('indicador') || searchParams.get('moneda') || 'dolar').toLowerCase();
+    const SERIE_TIPO_CAMBIO = SERIES[indicador] || SERIES.dolar;
 
     if (!fecha) {
       return NextResponse.json(
@@ -133,15 +141,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Función auxiliar para consultar el Banco Central para una fecha específica
-    const consultarBancoCentral = async (fechaConsulta: string): Promise<{ data: BancoCentralResponse | null; error: string | null }> => {
+    // Función auxiliar para consultar el Banco Central para un rango de fechas
+    const consultarBancoCentralRango = async (firstdate: string, lastdate: string): Promise<{ data: BancoCentralResponse | null; error: string | null }> => {
       const url = new URL(BANCO_CENTRAL_API_URL);
       url.searchParams.set('user', user);
       url.searchParams.set('pass', pass);
       url.searchParams.set('function', 'GetSeries');
       url.searchParams.set('timeseries', SERIE_TIPO_CAMBIO);
-      url.searchParams.set('firstdate', fechaConsulta);
-      url.searchParams.set('lastdate', fechaConsulta);
+      url.searchParams.set('firstdate', firstdate);
+      url.searchParams.set('lastdate', lastdate);
 
       try {
         const response = await fetch(url.toString(), {
@@ -172,14 +180,65 @@ export async function GET(request: NextRequest) {
       }
     };
 
+    // IPC es mensual: consultar rango amplio para obtener el último dato disponible
+    if (indicador === 'ipc') {
+      const fechaOriginal = new Date(fechaObj);
+      const desde = new Date(fechaObj);
+      desde.setDate(desde.getDate() - 120); // ~4 meses
+      const resultadoIpc = await consultarBancoCentralRango(formatearFecha(desde), formatearFecha(fechaObj));
+
+      if (!resultadoIpc.data?.Series?.Obs?.length) {
+        return NextResponse.json({
+          fecha,
+          tipoCambio: 0,
+          valor: 0,
+          indicador,
+          moneda: indicador,
+          fechaObservacion: null,
+          sinDatos: true,
+        });
+      }
+
+      const obsValidas = resultadoIpc.data.Series.Obs.filter((o) => o?.value && o.value !== 'NeuN');
+      const ultima = obsValidas[obsValidas.length - 1];
+      const anterior = obsValidas.length > 1 ? obsValidas[obsValidas.length - 2] : null;
+      const valorIpc = Number(ultima?.value);
+      if (!ultima || Number.isNaN(valorIpc)) {
+        return NextResponse.json({
+          fecha,
+          tipoCambio: 0,
+          valor: 0,
+          indicador,
+          moneda: indicador,
+          fechaObservacion: null,
+          sinDatos: true,
+        });
+      }
+
+      return NextResponse.json({
+        fecha,
+        tipoCambio: valorIpc,
+        valor: valorIpc,
+        indicador,
+        moneda: indicador,
+        fechaObservacion: ultima.indexDateString,
+        fechaUtilizada: ultima.indexDateString,
+        valorAnterior: anterior ? Number(anterior.value) : null,
+        fechaAnterior: anterior?.indexDateString ?? null,
+        esDiaHabil: esDiaHabil(fechaOriginal),
+        serie: SERIE_TIPO_CAMBIO,
+      });
+    }
+
     // Intentar primero con la fecha solicitada
     const fechaOriginal = new Date(fechaObj);
     let fechaBusqueda = new Date(fechaOriginal);
     let fechaConsulta = formatearFecha(fechaBusqueda);
-    let resultado = await consultarBancoCentral(fechaConsulta);
+    let resultado = await consultarBancoCentralRango(fechaConsulta, fechaConsulta);
     let fechaUtilizada = fechaConsulta;
     let intentos = 0;
-    const maxIntentos = 30; // Máximo 30 días hacia atrás
+    // Para indicadores sin datos diarios evitamos búsquedas largas
+    const maxIntentos = indicador === 'dolar' ? 30 : 5;
 
     // Si no hay datos, buscar hacia atrás día por día hasta encontrar un día hábil con datos
     while (!resultado.data && intentos < maxIntentos) {
@@ -196,23 +255,22 @@ export async function GET(request: NextRequest) {
       }
       
       fechaUtilizada = fechaConsulta;
-      resultado = await consultarBancoCentral(fechaConsulta);
+      resultado = await consultarBancoCentralRango(fechaConsulta, fechaConsulta);
       intentos++;
     }
 
-    // Si después de todos los intentos no hay datos, retornar error
+    // Si no hay datos, retornar 200 con valor 0 para que el frontend no falle
     if (!resultado.data) {
-      console.error(`❌ No se encontraron datos después de ${intentos} intentos`);
-      return NextResponse.json(
-        { 
-          error: 'No se encontró tipo de cambio disponible',
-          fecha,
-          fechaConsultada: fechaUtilizada,
-          intentos,
-          detalles: resultado.error
-        },
-        { status: 404 }
-      );
+      console.warn(`⚠️ Sin datos para ${indicador} (${fecha}) después de ${intentos} intentos`);
+      return NextResponse.json({
+        fecha,
+        tipoCambio: 0,
+        valor: 0,
+        indicador,
+        moneda: indicador,
+        fechaObservacion: null,
+        sinDatos: true,
+      });
     }
 
     const data = resultado.data;
@@ -232,7 +290,8 @@ export async function GET(request: NextRequest) {
     
     const tipoCambio = parseFloat(ultimoValor.value);
 
-    if (isNaN(tipoCambio) || tipoCambio <= 0) {
+    const requierePositivo = indicador !== 'ipc';
+    if (isNaN(tipoCambio) || (requierePositivo && tipoCambio <= 0)) {
       console.error('❌ Tipo de cambio inválido:', ultimoValor.value);
       return NextResponse.json(
         { 
@@ -259,8 +318,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       fecha,
       tipoCambio,
+      valor: tipoCambio,
+      indicador,
+      moneda: indicador,
       fechaObservacion,
-      fechaUtilizada: fechaObservacion, // Fecha del último día hábil usado
+      fechaUtilizada: fechaObservacion,
       esDiaHabil: esDiaHabil(fechaOriginal),
       serie: SERIE_TIPO_CAMBIO,
     });

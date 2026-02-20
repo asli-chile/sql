@@ -128,13 +128,7 @@ function getProximoCumpleanos(): { nombre: string; fechaStr: string; esHoy: bool
   return { nombre: siguiente.nombre, fechaStr: siguiente.fechaStr, esHoy: false, foto };
 }
 
-type DolarItem = { fecha: string; valor: number };
-type Indicadores = {
-  uf: { valor: number; fecha: string };
-  utm: { valor: number; fecha: string };
-  ivp: { valor: number; fecha: string };
-  ipc: { valor: number; fecha: string };
-};
+const INDICADORES_BC = ['dolar', 'euro', 'uf', 'utm', 'ipc', 'bitcoin'] as const;
 
 function formatearFecha(fechaStr: string): string {
   const d = new Date(fechaStr);
@@ -168,9 +162,26 @@ function formatearFeriadoFecha(dateStr: string): string {
   return `${d} de ${meses[m]}`;
 }
 
+type IndicadorBc = typeof INDICADORES_BC[number];
+type IndicadorValor = { hoy: number; anterior: number | null; fechaHoy: string | null };
+
+function formatearFechaDato(fechaRaw?: string | null): string | undefined {
+  if (!fechaRaw) return undefined;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(fechaRaw)) return fechaRaw;
+  const d = new Date(fechaRaw);
+  if (Number.isNaN(d.getTime())) return undefined;
+  return d.toLocaleDateString('es-CL');
+}
+
 export default function IndicadoresPage() {
-  const [dolarSerie, setDolarSerie] = useState<DolarItem[]>([]);
-  const [indicadores, setIndicadores] = useState<Indicadores | null>(null);
+  const [indicadores, setIndicadores] = useState<Record<IndicadorBc, IndicadorValor>>({
+    dolar: { hoy: 0, anterior: null, fechaHoy: null },
+    euro: { hoy: 0, anterior: null, fechaHoy: null },
+    uf: { hoy: 0, anterior: null, fechaHoy: null },
+    utm: { hoy: 0, anterior: null, fechaHoy: null },
+    ipc: { hoy: 0, anterior: null, fechaHoy: null },
+    bitcoin: { hoy: 0, anterior: null, fechaHoy: null },
+  });
   const [feriados, setFeriados] = useState<Feriado[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,10 +192,6 @@ export default function IndicadoresPage() {
     ahora?: { temp: number; estado: string };
     dias: Array<{ fecha: string; tempMax: number; tempMin: number; estado: string }>;
   }>>([]);
-  const [divisas, setDivisas] = useState<Record<'dolar' | 'euro', { hoy: number; ayer: number }>>({
-    dolar: { hoy: 0, ayer: 0 },
-    euro: { hoy: 0, ayer: 0 },
-  });
   const [tarjetaDerecha, setTarjetaDerecha] = useState<'cumple' | 'santo' | 'feriado'>('cumple');
 
   useEffect(() => {
@@ -193,14 +200,6 @@ export default function IndicadoresPage() {
     }, 10000);
     return () => clearInterval(t);
   }, []);
-
-  const getIndicadorActual = useCallback((nombre: 'dolar' | 'euro'): number => {
-    return divisas[nombre]?.hoy ?? 0;
-  }, [divisas]);
-
-  const getIndicadorAyer = useCallback((nombre: 'dolar' | 'euro'): number => {
-    return divisas[nombre]?.ayer ?? 0;
-  }, [divisas]);
 
   const actualizarReloj = useCallback(() => {
     const now = new Date();
@@ -223,52 +222,7 @@ export default function IndicadoresPage() {
   for (let i = 0; i < (primerDia === 0 ? 6 : primerDia - 1); i++) diasCalendario.push(null);
   for (let d = 1; d <= diasEnMes; d++) diasCalendario.push(d);
 
-  const indicadoresMonetarios = ['dolar', 'euro'] as const;
-  const labelsMoneda: Record<string, string> = { dolar: 'Dólar', euro: 'Euro' };
-
   useEffect(() => {
-    const fetchIndicadores = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [dolarRes, indicadoresRes] = await Promise.all([
-          fetch('https://mindicador.cl/api/dolar'),
-          fetch('https://mindicador.cl/api'),
-        ]);
-
-        if (!dolarRes.ok || !indicadoresRes.ok) {
-          throw new Error('Error al obtener datos');
-        }
-
-        const dolarData = await dolarRes.json();
-        const indicadoresData = await indicadoresRes.json();
-
-        if (dolarData?.serie && Array.isArray(dolarData.serie)) {
-          setDolarSerie(dolarData.serie.slice(0, 1));
-        }
-
-        if (indicadoresData?.uf && indicadoresData?.utm) {
-          setIndicadores({
-            uf: { valor: indicadoresData.uf.valor, fecha: indicadoresData.uf.fecha },
-            utm: { valor: indicadoresData.utm.valor, fecha: indicadoresData.utm.fecha },
-            ivp: indicadoresData.ivp
-              ? { valor: indicadoresData.ivp.valor, fecha: indicadoresData.ivp.fecha }
-              : { valor: 0, fecha: '' },
-            ipc: indicadoresData.ipc
-              ? { valor: indicadoresData.ipc.valor, fecha: indicadoresData.ipc.fecha }
-              : { valor: 0, fecha: '' },
-          });
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Error al cargar indicadores');
-        setDolarSerie([]);
-        setIndicadores(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     const fetchFeriados = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
@@ -283,69 +237,111 @@ export default function IndicadoresPage() {
       }
     };
 
-    void fetchIndicadores();
     void fetchFeriados();
   }, []);
 
   useEffect(() => {
-    const fetchDivisas = async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-      const hoy = new Date();
-      const ayer = new Date(hoy);
-      ayer.setDate(ayer.getDate() - 1);
-      const fmt = (d: Date) => d.toISOString().slice(0, 10);
-
-      let dolarHoy = 0, dolarAyer = 0, euroHoy = 0, euroAyer = 0;
+    const fetchIndicadoresBc = async () => {
+      setLoading(true);
+      setError(null);
+      const ahora = new Date();
+      const fmt = (d: Date) => d.toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+      const fmtMindicador = (d: Date) => {
+        const dd = String(d.getDate()).padStart(2, '0');
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const yyyy = d.getFullYear();
+        return `${dd}-${mm}-${yyyy}`;
+      };
+      const hoyStr = fmt(ahora);
 
       try {
-        const [dolarHoyRes, dolarAyerRes, euroRes] = await Promise.all([
-          fetch(`${apiUrl}/api/banco-central/tipo-cambio?fecha=${fmt(hoy)}`),
-          fetch(`${apiUrl}/api/banco-central/tipo-cambio?fecha=${fmt(ayer)}`),
-          fetch('https://mindicador.cl/api/euro'),
+        const parsed: Record<IndicadorBc, IndicadorValor> = {
+          dolar: { hoy: 0, anterior: null, fechaHoy: null },
+          euro: { hoy: 0, anterior: null, fechaHoy: null },
+          uf: { hoy: 0, anterior: null, fechaHoy: null },
+          utm: { hoy: 0, anterior: null, fechaHoy: null },
+          ipc: { hoy: 0, anterior: null, fechaHoy: null },
+          bitcoin: { hoy: 0, anterior: null, fechaHoy: null },
+        };
+        const DIARIOS: IndicadorBc[] = ['dolar', 'euro', 'uf'];
+
+        const mindicadorMap: Record<IndicadorBc, string> = {
+          dolar: 'dolar',
+          euro: 'euro',
+          uf: 'uf',
+          utm: 'utm',
+          ipc: 'ipc',
+          bitcoin: 'bitcoin',
+        };
+        const [allRes, ...serieRes] = await Promise.all([
+          fetch('https://mindicador.cl/api'),
+          ...INDICADORES_BC.map((ind) =>
+            fetch(`https://mindicador.cl/api/${mindicadorMap[ind]}`).then((r) => (r.ok ? r.json() : null))
+          ),
         ]);
-
-        const dh = await dolarHoyRes.json();
-        if (dolarHoyRes.ok && dh?.tipoCambio) dolarHoy = dh.tipoCambio;
-
-        const da = await dolarAyerRes.json();
-        if (dolarAyerRes.ok && da?.tipoCambio) dolarAyer = da.tipoCambio;
-
-        const er = await euroRes.json();
-        if (euroRes.ok && er?.serie?.length >= 1) {
-          euroHoy = er.serie[0]?.valor ?? 0;
-          euroAyer = er.serie[1]?.valor ?? euroHoy;
-        }
-
-        if (dolarHoy === 0 && dolarAyer === 0) {
-          const dr = await fetch('https://mindicador.cl/api/dolar');
-          const data = await dr.json();
-          if (data?.serie?.length >= 2) {
-            dolarHoy = data.serie[0]?.valor ?? 0;
-            dolarAyer = data.serie[1]?.valor ?? dolarHoy;
+        const all = allRes.ok ? await allRes.json() : {};
+        INDICADORES_BC.forEach((ind, idx) => {
+          const key = mindicadorMap[ind];
+          const ser = serieRes[idx] as any;
+          const serie = Array.isArray(ser?.serie) ? ser.serie : [];
+          const getVal = (obj: any) => (obj?.valor != null ? Number(obj.valor) : 0);
+          const hoyApi = getVal(all?.[key]);
+          const hoySerie = getVal(serie[0]);
+          const anteriorSerie = getVal(serie[1]);
+          const hoyVal = hoySerie || hoyApi;
+          const anteriorVal = anteriorSerie || null;
+          if (hoyVal !== 0 || anteriorVal != null) {
+            parsed[ind] = {
+              hoy: hoyVal,
+              // diarios: vs día anterior; no diarios: vs última actualización (ambos serie[1])
+              anterior: DIARIOS.includes(ind) ? anteriorVal : anteriorVal,
+              fechaHoy: all?.[key]?.fecha || ser?.serie?.[0]?.fecha || null,
+            };
           }
-        }
+        });
 
-        setDivisas((prev) => ({
-          ...prev,
-          dolar: { hoy: dolarHoy, ayer: dolarAyer || dolarHoy },
-          euro: { hoy: euroHoy, ayer: euroAyer || euroHoy },
-        }));
-      } catch {
+        // IPC forzado desde BC (si BC responde), porque mindicador puede venir desactualizado
         try {
-          const dr = await fetch('https://mindicador.cl/api/dolar');
-          const data = await dr.json();
-          if (data?.serie?.length >= 2) {
-            setDivisas((prev) => ({
-              ...prev,
-              dolar: { hoy: data.serie[0]?.valor ?? 0, ayer: data.serie[1]?.valor ?? 0 },
-            }));
+          const ipcHoyRes = await fetch(`/api/banco-central/tipo-cambio?fecha=${hoyStr}&indicador=ipc`, { signal: AbortSignal.timeout(7000) });
+          const ipcHoy = ipcHoyRes.ok ? await ipcHoyRes.json() : null;
+          const toNum = (v: unknown) => (v != null && !Number.isNaN(Number(v)) ? Number(v) : null);
+          const h = toNum(ipcHoy?.valor ?? ipcHoy?.tipoCambio);
+          let a = toNum(ipcHoy?.valorAnterior);
+
+          // Si el endpoint no envía valorAnterior, obtener publicación previa desde BC
+          if (a == null && typeof ipcHoy?.fechaObservacion === 'string') {
+            const m = ipcHoy.fechaObservacion.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+            if (m) {
+              const obsDate = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+              obsDate.setDate(obsDate.getDate() - 1);
+              const fechaPrev = fmt(obsDate);
+              const ipcPrevRes = await fetch(`/api/banco-central/tipo-cambio?fecha=${fechaPrev}&indicador=ipc`, { signal: AbortSignal.timeout(7000) });
+              const ipcPrev = ipcPrevRes.ok ? await ipcPrevRes.json() : null;
+              a = toNum(ipcPrev?.valor ?? ipcPrev?.tipoCambio);
+            }
+          }
+
+          const bcIpcValido = Boolean(ipcHoy && !ipcHoy.sinDatos && (ipcHoy.fechaObservacion || ipcHoy.fechaUtilizada));
+          if (bcIpcValido && h != null) {
+            parsed.ipc = {
+              hoy: h,
+              anterior: a,
+              fechaHoy: ipcHoy?.fechaObservacion || ipcHoy?.fechaUtilizada || ipcHoy?.fecha || parsed.ipc.fechaHoy,
+            };
           }
         } catch {
-          // Mantener valores por defecto
+          // Si falla BC, se mantiene dato de mindicador
         }
+
+        setIndicadores(parsed);
+      } catch (err) {
+        console.error('Error fetchIndicadoresBc:', err);
+        setError(err instanceof Error ? err.message : 'Error al cargar indicadores');
+      } finally {
+        setLoading(false);
       }
     };
-    void fetchDivisas();
+    void fetchIndicadoresBc();
   }, []);
 
   useEffect(() => {
@@ -385,9 +381,11 @@ export default function IndicadoresPage() {
   type RowItem = {
     label: string;
     sublabel?: string;
+    fechaDato?: string;
     valor?: number;
     key: string;
-    tipo: 'pesos' | 'porcentaje';
+    tipo: 'pesos' | 'porcentaje' | 'dolares';
+    variacion?: { absoluta: number; porcentual: number };
   };
 
   const proximoCumple = getProximoCumpleanos();
@@ -400,46 +398,54 @@ export default function IndicadoresPage() {
         .filter((f) => f.date > hoyStr)
         .sort((a, b) => a.date.localeCompare(b.date))[0] || null;
 
-  const rows: RowItem[] = [
-    ...(dolarSerie.map((item) => ({
-      label: 'Dólar Observado',
-      sublabel: formatearFecha(item.fecha),
-      valor: item.valor,
-      key: `dolar-${item.fecha}`,
-      tipo: 'pesos' as const,
-    }))),
-    ...(indicadores ? [
-      { label: 'UTM', sublabel: 'Unidad Tributaria Mensual', valor: indicadores.utm.valor, key: 'utm', tipo: 'pesos' as const },
-      { label: 'UF', sublabel: 'Unidad de Fomento', valor: indicadores.uf.valor, key: 'uf', tipo: 'pesos' as const },
-      { label: 'IVP', sublabel: 'Índice de Valor Promedio', valor: indicadores.ivp.valor, key: 'ivp', tipo: 'pesos' as const },
-      { label: 'IPC', sublabel: 'Índice de Precios al Consumidor', valor: indicadores.ipc.valor, key: 'ipc', tipo: 'porcentaje' as const },
-    ] : []),
-  ];
+  const config: Record<IndicadorBc, { label: string; sublabel: string; tipo: 'pesos' | 'porcentaje' | 'dolares' }> = {
+    dolar: { label: 'Dólar Observado', sublabel: 'Tipo de cambio BCCh', tipo: 'pesos' },
+    euro: { label: 'Euro Observado', sublabel: 'Tipo de cambio BCCh', tipo: 'pesos' },
+    uf: { label: 'UF', sublabel: 'Unidad de Fomento', tipo: 'pesos' },
+    utm: { label: 'UTM', sublabel: 'Unidad Tributaria Mensual', tipo: 'pesos' },
+    ipc: { label: 'IPC', sublabel: 'Índice de Precios al Consumidor', tipo: 'porcentaje' },
+    bitcoin: { label: 'Bitcoin', sublabel: 'Valor en USD (mindicador)', tipo: 'dolares' },
+  };
+
+  const rows: RowItem[] = INDICADORES_BC.map((key) => {
+    const { hoy, anterior, fechaHoy } = indicadores[key];
+    const { label, sublabel, tipo } = config[key];
+    const sinDato = hoy === 0 && anterior == null;
+    return {
+      label,
+      sublabel,
+      fechaDato: sinDato ? undefined : formatearFechaDato(fechaHoy),
+      valor: sinDato ? undefined : hoy,
+      key,
+      tipo,
+      variacion: sinDato || anterior == null ? undefined : calcularVariacion(hoy, anterior),
+    };
+  });
 
   return (
     <div className="min-h-screen bg-[#0A1524] flex flex-col w-full" style={{ color: '#ffffff' }}>
-      {/* Header superior: 3 zonas */}
-      <header className="w-full flex-shrink-0 pt-4 pb-2 px-3 sm:px-6 lg:px-8">
-        <div className="w-full max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 items-stretch">
+      {/* Header superior: 3 zonas - optimizado 70" */}
+      <header className="w-full flex-shrink-0 pt-4 pb-2 px-4 sm:px-8 lg:px-12 2xl:pt-6 2xl:pb-3 2xl:px-12">
+        <div className="w-full max-w-[2560px] mx-auto grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 2xl:gap-8 items-stretch">
           {/* IZQUIERDA: Reloj + Fecha + Mini calendario compacto */}
-          <div className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 order-2 lg:order-1 flex flex-col min-h-[140px] lg:min-h-0 relative">
+          <div className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 2xl:p-5 hd:p-6 order-2 lg:order-1 flex flex-col min-h-[140px] lg:min-h-0 2xl:min-h-[160px] hd:min-h-[200px] relative">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <div className="font-mono text-xl sm:text-2xl font-bold tabular-nums leading-tight" style={{ color: '#4FC3F7' }}>{hora}</div>
-                <div className="text-xs mt-0.5 capitalize" style={{ color: 'rgba(255,255,255,0.85)' }}>{fechaCompleta}</div>
+                <div className="font-mono text-xl sm:text-2xl 2xl:text-4xl hd:text-6xl font-bold tabular-nums leading-tight" style={{ color: '#4FC3F7' }}>{hora}</div>
+                <div className="text-xs 2xl:text-base hd:text-xl mt-0.5 capitalize" style={{ color: 'rgba(255,255,255,0.85)' }}>{fechaCompleta}</div>
               </div>
-              <div className="text-base sm:text-lg font-semibold capitalize shrink-0" style={{ color: '#4FC3F7' }}>
+              <div className="text-base sm:text-lg 2xl:text-xl font-semibold capitalize shrink-0" style={{ color: '#4FC3F7' }}>
                 {MESES[hoy.getMonth()]}
               </div>
             </div>
-            <div className="mt-2 grid grid-cols-7 gap-px text-[9px]">
+            <div className="mt-2 2xl:mt-3 hd:mt-4 grid grid-cols-7 gap-px 2xl:gap-0.5 hd:gap-1 text-[9px] 2xl:text-sm hd:text-base">
               {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d) => (
-                <div key={d} className="w-5 h-5 flex items-center justify-center font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>{d}</div>
+                <div key={d} className="w-5 h-5 2xl:w-8 2xl:h-8 hd:w-10 hd:h-10 flex items-center justify-center font-medium" style={{ color: 'rgba(255,255,255,0.6)' }}>{d}</div>
               ))}
               {diasCalendario.map((d, i) => (
                 <div
                   key={i}
-                  className={`w-5 h-5 flex items-center justify-center rounded-sm ${
+                  className={`w-5 h-5 2xl:w-8 2xl:h-8 hd:w-10 hd:h-10 flex items-center justify-center rounded-sm ${
                     d === hoy.getDate()
                       ? 'bg-[#4FC3F7] text-[#0A1524] font-semibold'
                       : d ? 'text-white/80' : 'opacity-20'
@@ -451,57 +457,57 @@ export default function IndicadoresPage() {
             </div>
           </div>
 
-          {/* CENTRO: Logo + Título */}
-          <div className="flex flex-col items-center gap-2 order-1 lg:order-2">
+          {/* CENTRO: Logo + Título - centrado en pantalla */}
+          <div className="flex flex-col items-center justify-center gap-2 2xl:gap-3 hd:gap-4 order-1 lg:order-2 place-self-center">
             <Image
               src="https://asli.cl/img/logoblanco.png"
               alt="ASLI Logo"
-              width={180}
-              height={72}
-              className="object-contain"
-              style={{ width: 'auto', height: 72 }}
+              width={224}
+              height={90}
+              className="object-contain w-auto h-14 2xl:h-24 hd:h-36"
+              style={{ width: 'auto' }}
               loading="eager"
               unoptimized
             />
-            <h1 className="text-lg md:text-xl font-semibold text-center" style={{ color: '#f0f4f8' }}>
+            <h1 className="text-lg md:text-xl 2xl:text-3xl hd:text-4xl font-semibold text-center" style={{ color: '#f0f4f8' }}>
               Indicadores Económicos Chile
             </h1>
           </div>
 
           {/* DERECHA: Cumpleaños / Santo - alterna cada 10 s con transición */}
-          <div className="rounded-xl border border-white/15 bg-[#0F1C33] p-4 order-3 min-h-[140px] lg:min-h-0 flex flex-col flex-1 relative overflow-hidden">
+          <div className="rounded-xl border border-white/15 bg-[#0F1C33] p-4 2xl:p-5 hd:p-6 order-3 min-h-[140px] lg:min-h-0 2xl:min-h-[160px] hd:min-h-[200px] flex flex-col flex-1 relative overflow-hidden">
             <div
               className={`absolute inset-0 p-4 flex flex-row items-center justify-center gap-4 transition-opacity duration-500 ease-in-out ${
                 tarjetaDerecha === 'cumple' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'
               }`}
             >
               {proximoCumple?.foto ? (
-                <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-2 flex-shrink-0" style={{ borderColor: '#4FC3F7' }}>
+                <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 2xl:w-32 2xl:h-32 hd:w-40 hd:h-40 rounded-full overflow-hidden border-2 flex-shrink-0" style={{ borderColor: '#4FC3F7' }}>
                   <Image
                     src={proximoCumple.foto}
                     alt={proximoCumple.nombre}
                     width={128}
                     height={128}
                     className="w-full h-full object-cover"
-                    unoptimized
-                  />
-                </div>
-              ) : proximoCumple ? (
-                <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(79,195,247,0.2)' }}>
-                  <Gift className="w-12 h-12 sm:w-14 sm:h-14" style={{ color: '#4FC3F7' }} />
+                  unoptimized
+                />
+              </div>
+            ) : proximoCumple ? (
+              <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 2xl:w-32 2xl:h-32 hd:w-40 hd:h-40 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(79,195,247,0.2)' }}>
+                <Gift className="w-12 h-12 sm:w-14 sm:h-14 2xl:w-16 2xl:h-16 hd:w-20 hd:h-20" style={{ color: '#4FC3F7' }} />
                 </div>
               ) : null}
               <div className="flex-1 min-w-0 flex flex-col justify-center">
-                <div className="text-sm font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                <div className="text-sm 2xl:text-base font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   {proximoCumple?.esHoy ? 'Hoy cumple' : 'Próximo cumpleaños'}
                 </div>
                 {proximoCumple ? (
                   <>
-                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{proximoCumple.nombre}</div>
-                    <div className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>{proximoCumple.fechaStr}</div>
+                    <div className="text-xl sm:text-2xl lg:text-3xl 2xl:text-3xl hd:text-4xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{proximoCumple.nombre}</div>
+                    <div className="text-base 2xl:text-lg mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>{proximoCumple.fechaStr}</div>
                   </>
                 ) : (
-                  <span className="text-lg" style={{ color: 'rgba(255,255,255,0.6)' }}>—</span>
+                  <span className="text-lg 2xl:text-base" style={{ color: 'rgba(255,255,255,0.6)' }}>—</span>
                 )}
               </div>
             </div>
@@ -510,32 +516,32 @@ export default function IndicadoresPage() {
                 tarjetaDerecha === 'santo' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'
               }`}
             >
-              <div className="text-sm font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>Hoy está de santo</div>
-              <div className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight px-2" style={{ color: '#4FC3F7' }}>{getSantosDelDia()}</div>
+                <div className="text-sm 2xl:text-base hd:text-lg font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>Hoy está de santo</div>
+              <div className="text-xl sm:text-2xl lg:text-3xl 2xl:text-3xl hd:text-4xl font-bold leading-tight px-2" style={{ color: '#4FC3F7' }}>{getSantosDelDia()}</div>
             </div>
             <div
               className={`absolute inset-0 p-4 flex flex-row items-center justify-center gap-4 transition-opacity duration-500 ease-in-out ${
                 tarjetaDerecha === 'feriado' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'
               }`}
             >
-              <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(79,195,247,0.2)' }}>
-                <Calendar className="w-12 h-12 sm:w-14 sm:h-14" style={{ color: '#4FC3F7' }} />
+              <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 2xl:w-32 2xl:h-32 hd:w-40 hd:h-40 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(79,195,247,0.2)' }}>
+                <Calendar className="w-12 h-12 sm:w-14 sm:h-14 2xl:w-16 2xl:h-16 hd:w-20 hd:h-20" style={{ color: '#4FC3F7' }} />
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
-                <div className="text-sm font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                <div className="text-sm 2xl:text-base font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.7)' }}>
                   {feriadoHoy ? 'Feriado en curso' : 'Próximo feriado'}
                 </div>
                 {feriadoHoy ? (
                   <>
-                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{feriadoHoy.name}</div>
+                    <div className="text-xl sm:text-2xl lg:text-3xl 2xl:text-3xl hd:text-4xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{feriadoHoy.name}</div>
                   </>
                 ) : proximoFeriado ? (
                   <>
-                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{proximoFeriado.name}</div>
-                    <div className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>{formatearFeriadoFecha(proximoFeriado.date)}</div>
+                    <div className="text-xl sm:text-2xl lg:text-3xl 2xl:text-3xl hd:text-4xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{proximoFeriado.name}</div>
+                    <div className="text-base 2xl:text-lg mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>{formatearFeriadoFecha(proximoFeriado.date)}</div>
                   </>
                 ) : (
-                  <span className="text-lg" style={{ color: 'rgba(255,255,255,0.6)' }}>{loading ? 'Cargando...' : '—'}</span>
+                  <span className="text-lg 2xl:text-base" style={{ color: 'rgba(255,255,255,0.6)' }}>{loading ? 'Cargando...' : '—'}</span>
                 )}
               </div>
             </div>
@@ -545,38 +551,38 @@ export default function IndicadoresPage() {
 
       {/* Banner Clima: 4 ciudades × (hoy + 3 días) */}
       {climaBanner.length > 0 && (
-        <section className="w-full px-3 sm:px-6 lg:px-8 mt-2">
-          <div className="w-full max-w-[1800px] mx-auto rounded-xl bg-[#0F1C33] overflow-x-auto">
+        <section className="w-full px-4 sm:px-8 lg:px-12 2xl:px-12 mt-2 2xl:mt-3">
+          <div className="w-full max-w-[2560px] mx-auto rounded-xl bg-[#0F1C33] overflow-x-auto">
             <div
-              className="grid gap-x-6 gap-y-2 px-4 py-3 min-w-[720px]"
+              className="grid gap-x-6 2xl:gap-x-8 hd:gap-x-12 gap-y-2 2xl:gap-y-3 hd:gap-y-4 px-4 py-3 2xl:px-6 2xl:py-4 hd:px-8 hd:py-6 min-w-[720px]"
               style={{
                 gridTemplateColumns: 'minmax(90px, 1fr) minmax(120px, 1fr) repeat(4, minmax(130px, 1.2fr))',
               }}
             >
               {/* Encabezados */}
-              <div className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ciudad</div>
-              <div className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ahora</div>
+              <div className="text-xs 2xl:text-base hd:text-lg font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ciudad</div>
+              <div className="text-xs 2xl:text-base hd:text-lg font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ahora</div>
               {(climaBanner[0]?.dias ?? []).map((d, i) => (
-                <div key={`h-${i}`} className="text-xs font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{d.fecha}</div>
+                <div key={`h-${i}`} className="text-xs 2xl:text-base hd:text-lg font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{d.fecha}</div>
               ))}
               {/* Filas por ciudad */}
               {climaBanner.map(({ ciudad, ahora, dias }) => (
                 <React.Fragment key={ciudad}>
-                  <div className="font-medium text-sm" style={{ color: 'rgba(255,255,255,0.95)' }}>{ciudad}</div>
+                  <div className="font-medium text-sm 2xl:text-base hd:text-lg" style={{ color: 'rgba(255,255,255,0.95)' }}>{ciudad}</div>
                   <div className="flex items-center gap-2">
                     {ahora ? (
                       <>
-                        <span className="font-mono text-sm tabular-nums" style={{ color: '#4FC3F7' }}>{ahora.temp}°</span>
-                        <span className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{ahora.estado}</span>
+                        <span className="font-mono text-sm 2xl:text-base hd:text-xl tabular-nums" style={{ color: '#4FC3F7' }}>{ahora.temp}°</span>
+                        <span className="text-xs 2xl:text-sm hd:text-base truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{ahora.estado}</span>
                       </>
                     ) : (
-                      <span className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>—</span>
+                      <span className="text-xs 2xl:text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>—</span>
                     )}
                   </div>
                   {dias.map((d, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="font-mono text-sm tabular-nums" style={{ color: '#4FC3F7' }}>{d.tempMin}° / {d.tempMax}°</span>
-                      <span className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{d.estado}</span>
+                      <span className="font-mono text-sm 2xl:text-base hd:text-xl tabular-nums" style={{ color: '#4FC3F7' }}>{d.tempMin}° / {d.tempMax}°</span>
+                      <span className="text-xs 2xl:text-sm hd:text-base truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{d.estado}</span>
                     </div>
                   ))}
                 </React.Fragment>
@@ -586,79 +592,74 @@ export default function IndicadoresPage() {
         </section>
       )}
 
-      {/* Indicadores monetarios: Dólar (BC), Euro (mindicador) con variación */}
-      <section className="w-full px-3 sm:px-6 lg:px-8 mt-2">
-        <div className="w-full max-w-[1800px] mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {indicadoresMonetarios.map((nombre) => {
-            const actual = getIndicadorActual(nombre);
-            const ayer = getIndicadorAyer(nombre);
-            const { absoluta, porcentual } = calcularVariacion(actual, ayer);
-            const sube = absoluta >= 0;
-            const sinDatos = actual === 0 && ayer === 0;
+      {/* Tarjetas indicadores - una sola fila */}
+      <main className="w-full max-w-[2560px] mt-8 2xl:mt-10 flex-1 px-4 sm:px-8 lg:px-12 2xl:px-12 mx-auto">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 2xl:gap-5 hd:gap-6">
+        {loading ? (
+          <div className="col-span-full rounded-xl border border-white/15 bg-[#0F1C33] p-8 2xl:p-10 text-center text-lg 2xl:text-xl" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            Cargando indicadores...
+          </div>
+        ) : error ? (
+          <div className="col-span-full rounded-xl border border-white/15 bg-[#0F1C33] p-8 2xl:p-10 text-center text-amber-400 text-lg 2xl:text-xl">
+            {error}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="col-span-full rounded-xl border border-white/15 bg-[#0F1C33] p-8 2xl:p-10 text-center text-lg 2xl:text-xl" style={{ color: 'rgba(255,255,255,0.8)' }}>
+            Sin datos
+          </div>
+        ) : (
+          rows.map((row) => {
+            const variacion = row.variacion;
+            const tieneVar = variacion && row.valor != null;
+            const sube = variacion ? variacion.absoluta >= 0 : false;
             return (
-              <div key={nombre} className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 flex flex-col h-[150px] max-h-[150px]">
-                <div className="text-xs sm:text-sm font-medium" style={{ color: 'rgba(255,255,255,0.8)' }}>{labelsMoneda[nombre]}</div>
-                <div className="mt-1.5 font-mono text-lg sm:text-xl font-semibold tabular-nums" style={{ color: '#4FC3F7' }}>
-                  {sinDatos ? '—' : `$${formatearMoneda(actual)}`}
+              <div
+                key={row.key}
+                className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 sm:p-4 2xl:p-5 hd:p-6 shadow-lg flex flex-col h-[150px] 2xl:h-[175px] hd:h-[240px] max-h-[150px] 2xl:max-h-[175px] hd:max-h-none"
+              >
+                <div>
+                  <div className="font-medium text-sm 2xl:text-base hd:text-lg" style={{ color: '#ffffff' }}>
+                    {row.label}
+                  </div>
+                  {row.sublabel && (
+                    <div className="text-xs 2xl:text-sm hd:text-base mt-0.5 capitalize" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                      {row.sublabel}
+                    </div>
+                  )}
+                  {row.fechaDato && (
+                    <div className="text-xs 2xl:text-sm hd:text-base mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                      Dato: {row.fechaDato}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                  {!sinDatos && (
-                    <>
-                      {sube ? <ChevronUp className="w-4 h-4" style={{ color: '#22c55e' }} /> : <ChevronDown className="w-4 h-4" style={{ color: '#ef4444' }} />}
-                      <span style={{ color: sube ? '#22c55e' : '#ef4444' }} className="text-sm font-medium">
-                        {sube ? '+' : ''}{formatearMoneda(absoluta)} ({sube ? '+' : ''}{formatearMoneda(porcentual, 1)}%)
+                <div className="mt-auto pt-2 2xl:pt-3 hd:pt-4">
+                  <div className="font-mono text-lg sm:text-xl 2xl:text-2xl hd:text-4xl font-semibold tabular-nums" style={{ color: '#4FC3F7' }}>
+                    {row.valor == null
+                      ? '—'
+                      : row.tipo === 'porcentaje'
+                        ? formatearPorcentaje(row.valor)
+                        : row.tipo === 'dolares'
+                          ? `US$${formatearPesos(row.valor)}`
+                        : `$${formatearPesos(row.valor)}`}
+                  </div>
+                  {tieneVar && variacion && (
+                    <div className="mt-1.5 2xl:mt-2 flex items-center gap-2 flex-wrap">
+                      {sube ? <ChevronUp className="w-4 h-4 2xl:w-5 2xl:h-5 hd:w-6 hd:h-6" style={{ color: '#22c55e' }} /> : <ChevronDown className="w-4 h-4 2xl:w-5 2xl:h-5 hd:w-6 hd:h-6" style={{ color: '#ef4444' }} />}
+                      <span style={{ color: sube ? '#22c55e' : '#ef4444' }} className="text-xs 2xl:text-sm hd:text-base font-medium">
+                        {sube ? '+' : ''}{formatearMoneda(variacion.absoluta)} ({sube ? '+' : ''}{formatearMoneda(variacion.porcentual, 1)}%)
                       </span>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
             );
-          })}
-        </div>
-      </section>
-
-      {/* Tarjetas indicadores */}
-      <main className="w-full max-w-[1800px] mt-8 flex-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 px-3 sm:px-6 lg:px-8 mx-auto">
-        {loading ? (
-          <div className="col-span-full rounded-xl border border-white/15 bg-[#0F1C33] p-8 text-center" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            Cargando indicadores...
-          </div>
-        ) : error ? (
-          <div className="col-span-full rounded-xl border border-white/15 bg-[#0F1C33] p-8 text-center text-amber-400">
-            {error}
-          </div>
-        ) : rows.length === 0 ? (
-          <div className="col-span-full rounded-xl border border-white/15 bg-[#0F1C33] p-8 text-center" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            Sin datos
-          </div>
-        ) : (
-          rows.map((row) => (
-            <div
-              key={row.key}
-              className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 sm:p-4 shadow-lg flex flex-col h-[150px] max-h-[150px]"
-            >
-              <div>
-                <div className="font-medium text-sm" style={{ color: '#ffffff' }}>
-                  {row.label}
-                </div>
-                {row.sublabel && (
-                  <div className="text-xs mt-0.5 capitalize" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                    {row.sublabel}
-                  </div>
-                )}
-              </div>
-              <div className="mt-auto pt-2 font-mono text-lg sm:text-xl font-semibold tabular-nums" style={{ color: '#4FC3F7' }}>
-                {row.tipo === 'porcentaje'
-                  ? formatearPorcentaje(row.valor!)
-                  : `$${formatearPesos(row.valor!)}`}
-              </div>
-            </div>
-          ))
+          })
         )}
+        </div>
       </main>
 
-      <p className="mt-auto pt-8 pb-8 flex-shrink-0 text-xs text-center px-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
-        Fuente: Banco Central de Chile
+      <p className="mt-auto pt-8 2xl:pt-10 pb-8 2xl:pb-10 flex-shrink-0 text-xs 2xl:text-base text-center px-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        Fuente: mindicador.cl (datos del Banco Central de Chile)
       </p>
     </div>
   );

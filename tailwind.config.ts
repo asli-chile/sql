@@ -10,6 +10,7 @@ const config: Config = {
   darkMode: 'class',
   theme: {
     extend: {
+      screens: { 'hd': '2560px' },
       colors: {
         background: 'var(--background)',
         foreground: 'var(--foreground)',
