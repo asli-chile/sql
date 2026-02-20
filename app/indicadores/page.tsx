@@ -464,7 +464,7 @@ export default function IndicadoresPage() {
               alt="ASLI Logo"
               width={224}
               height={90}
-              className="object-contain w-auto h-14 2xl:h-24 hd:h-36"
+              className="object-contain w-auto h-20 2xl:h-36 hd:h-52"
               style={{ width: 'auto' }}
               loading="eager"
               unoptimized
@@ -481,8 +481,30 @@ export default function IndicadoresPage() {
                 tarjetaDerecha === 'cumple' ? 'opacity-100 z-10' : 'opacity-0 pointer-events-none z-0'
               }`}
             >
+              {proximoCumple && (
+                <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                  <span className="absolute left-2 top-2 text-lg 2xl:text-xl animate-bounce" style={{ animationDelay: '0ms', animationDuration: '1.8s' }}>🎈</span>
+                  <span className="absolute left-9 top-1 text-lg 2xl:text-xl animate-bounce" style={{ animationDelay: '250ms', animationDuration: '2s' }}>🎈</span>
+                  <span className="absolute left-16 top-3 text-sm 2xl:text-base animate-pulse" style={{ animationDelay: '120ms' }}>🎊</span>
+
+                  <span className="absolute right-2 top-2 text-lg 2xl:text-xl animate-bounce" style={{ animationDelay: '120ms', animationDuration: '1.9s' }}>🎈</span>
+                  <span className="absolute right-9 top-1 text-lg 2xl:text-xl animate-bounce" style={{ animationDelay: '350ms', animationDuration: '2.1s' }}>🎈</span>
+                  <span className="absolute right-16 top-3 text-sm 2xl:text-base animate-pulse" style={{ animationDelay: '220ms' }}>🎉</span>
+
+                  <span className="absolute left-1/3 top-1 text-sm 2xl:text-base animate-pulse" style={{ animationDelay: '400ms' }}>✨</span>
+                  <span className="absolute right-1/3 top-1 text-sm 2xl:text-base animate-pulse" style={{ animationDelay: '620ms' }}>✨</span>
+
+                  <span className="absolute left-4 bottom-2 text-sm 2xl:text-base opacity-90 animate-pulse">〰️</span>
+                  <span className="absolute left-12 bottom-1 text-xs 2xl:text-sm opacity-80 animate-pulse" style={{ animationDelay: '300ms' }}>🎉</span>
+                  <span className="absolute right-12 bottom-1 text-xs 2xl:text-sm opacity-80 animate-pulse" style={{ animationDelay: '500ms' }}>🎊</span>
+                  <span className="absolute right-4 bottom-2 text-sm 2xl:text-base opacity-90 animate-pulse">〰️</span>
+                </div>
+              )}
               {proximoCumple?.foto ? (
-                <div className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 2xl:w-32 2xl:h-32 hd:w-40 hd:h-40 rounded-full overflow-hidden border-2 flex-shrink-0" style={{ borderColor: '#4FC3F7' }}>
+                <div
+                  className="shrink-0 w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 2xl:w-32 2xl:h-32 hd:w-40 hd:h-40 rounded-full overflow-hidden border-2 flex-shrink-0"
+                  style={{ borderColor: /stefan[iey]/i.test(proximoCumple.nombre) ? '#ff2fa3' : '#4FC3F7' }}
+                >
                   <Image
                     src={proximoCumple.foto}
                     alt={proximoCumple.nombre}
@@ -503,7 +525,12 @@ export default function IndicadoresPage() {
                 </div>
                 {proximoCumple ? (
                   <>
-                    <div className="text-xl sm:text-2xl lg:text-3xl 2xl:text-3xl hd:text-4xl font-bold leading-tight break-words" style={{ color: '#4FC3F7' }}>{proximoCumple.nombre}</div>
+                    <div
+                      className="text-xl sm:text-2xl lg:text-3xl 2xl:text-3xl hd:text-4xl font-bold leading-tight break-words"
+                      style={{ color: /stefan[iey]/i.test(proximoCumple.nombre) ? '#f472b6' : '#4FC3F7' }}
+                    >
+                      {proximoCumple.nombre}
+                    </div>
                     <div className="text-base 2xl:text-lg mt-1" style={{ color: 'rgba(255,255,255,0.8)' }}>{proximoCumple.fechaStr}</div>
                   </>
                 ) : (
@@ -552,37 +579,37 @@ export default function IndicadoresPage() {
       {/* Banner Clima: 4 ciudades × (hoy + 3 días) */}
       {climaBanner.length > 0 && (
         <section className="w-full px-4 sm:px-8 lg:px-12 2xl:px-12 mt-2 2xl:mt-3">
-          <div className="w-full max-w-[2304px] mx-auto rounded-xl bg-[#0F1C33] overflow-x-auto">
+          <div className="w-full max-w-[2304px] h-[150px] mx-auto rounded-xl bg-[#0F1C33] overflow-hidden">
             <div
-              className="grid gap-x-4 2xl:gap-x-6 hd:gap-x-8 gap-y-1.5 2xl:gap-y-2.5 hd:gap-y-2.5 px-4 py-2 2xl:px-5 2xl:py-3 hd:px-6 hd:py-4 min-w-[980px]"
+              className="grid gap-x-3 2xl:gap-x-4 hd:gap-x-5 gap-y-1.5 2xl:gap-y-2 hd:gap-y-2 px-3 py-2 2xl:px-4 2xl:py-2.5 hd:px-5 hd:py-3 items-center w-full"
               style={{
-                gridTemplateColumns: 'minmax(110px, 1fr) minmax(190px, 1.4fr) repeat(4, minmax(180px, 1.4fr))',
+                gridTemplateColumns: '1fr 1.25fr repeat(4, 1.15fr)',
               }}
             >
               {/* Encabezados */}
-              <div className="text-xs 2xl:text-sm hd:text-base font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ciudad</div>
-              <div className="text-xs 2xl:text-sm hd:text-base font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>Ahora</div>
+              <div className="text-[10px] 2xl:text-xs hd:text-sm font-medium uppercase tracking-wide pl-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Ciudad</div>
+              <div className="text-[10px] 2xl:text-xs hd:text-sm font-medium uppercase tracking-wide pl-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Ahora</div>
               {(climaBanner[0]?.dias ?? []).map((d, i) => (
-                <div key={`h-${i}`} className="text-xs 2xl:text-sm hd:text-base font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.5)' }}>{d.fecha}</div>
+                <div key={`h-${i}`} className="text-[10px] 2xl:text-xs hd:text-sm font-medium uppercase tracking-wide text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>{d.fecha}</div>
               ))}
               {/* Filas por ciudad */}
               {climaBanner.map(({ ciudad, ahora, dias }) => (
                 <React.Fragment key={ciudad}>
-                  <div className="font-medium text-xs 2xl:text-sm hd:text-base whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.95)' }}>{ciudad}</div>
-                  <div className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
+                  <div className="font-medium text-[11px] 2xl:text-xs hd:text-sm whitespace-nowrap pl-1" style={{ color: 'rgba(255,255,255,0.95)' }}>{ciudad}</div>
+                  <div className="flex items-center gap-1 whitespace-nowrap min-w-0 pl-1">
                     {ahora ? (
                       <>
-                        <span className="font-mono text-xs 2xl:text-sm hd:text-base tabular-nums whitespace-nowrap shrink-0" style={{ color: '#4FC3F7' }}>{ahora.temp}°</span>
-                        <span className="text-xs 2xl:text-xs hd:text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{ahora.estado}</span>
+                        <span className="font-mono text-[11px] 2xl:text-xs hd:text-sm tabular-nums whitespace-nowrap shrink-0" style={{ color: '#4FC3F7' }}>{ahora.temp}°</span>
+                        <span className="text-[10px] 2xl:text-[11px] hd:text-xs whitespace-nowrap truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{ahora.estado}</span>
                       </>
                     ) : (
-                      <span className="text-xs 2xl:text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>—</span>
+                      <span className="text-[10px] 2xl:text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>—</span>
                     )}
                   </div>
                   {dias.map((d, i) => (
-                    <div key={i} className="flex items-center gap-1.5 whitespace-nowrap min-w-0">
-                      <span className="font-mono text-xs 2xl:text-sm hd:text-base tabular-nums whitespace-nowrap shrink-0" style={{ color: '#4FC3F7' }}>{d.tempMin}° / {d.tempMax}°</span>
-                      <span className="text-xs 2xl:text-xs hd:text-sm whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.7)' }}>{d.estado}</span>
+                    <div key={i} className="flex items-center justify-center gap-1 whitespace-nowrap min-w-0">
+                      <span className="font-mono text-[11px] 2xl:text-xs hd:text-sm tabular-nums whitespace-nowrap shrink-0" style={{ color: '#4FC3F7' }}>{d.tempMin}° / {d.tempMax}°</span>
+                      <span className="text-[10px] 2xl:text-[11px] hd:text-xs whitespace-nowrap truncate" style={{ color: 'rgba(255,255,255,0.7)' }}>{d.estado}</span>
                     </div>
                   ))}
                 </React.Fragment>
@@ -615,7 +642,7 @@ export default function IndicadoresPage() {
             return (
               <div
                 key={row.key}
-                className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 sm:p-4 2xl:p-5 hd:p-6 shadow-lg flex flex-col h-[150px] 2xl:h-[175px] hd:h-[240px] max-h-[150px] 2xl:max-h-[175px] hd:max-h-none"
+                className="rounded-xl border border-white/15 bg-[#0F1C33] p-3 sm:p-4 2xl:p-5 hd:p-6 shadow-lg flex flex-col h-[200px] 2xl:h-[200px] hd:h-[200px] max-h-[200px]"
               >
                 <div>
                   <div className="font-medium text-sm 2xl:text-base hd:text-lg" style={{ color: '#ffffff' }}>
