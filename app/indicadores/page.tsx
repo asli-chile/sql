@@ -168,7 +168,7 @@ function formatearFeriadoFecha(dateStr: string): string {
   return `${d} de ${meses[m]}`;
 }
 
-export default function CachitodelastefyPage() {
+export default function IndicadoresPage() {
   const [dolarSerie, setDolarSerie] = useState<DolarItem[]>([]);
   const [indicadores, setIndicadores] = useState<Indicadores | null>(null);
   const [feriados, setFeriados] = useState<Feriado[]>([]);
