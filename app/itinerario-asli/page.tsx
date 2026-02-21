@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Sun, Moon, X, Ship, Calendar, MapPin, Clock, Navigation } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Sun, Moon, X, Ship, Calendar, MapPin, Clock, Navigation, Search, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { ItinerarioFilters } from '@/components/itinerario/ItinerarioFilters';
 import { ItinerarioTable } from '@/components/itinerario/ItinerarioTable';
@@ -25,6 +25,11 @@ export default function ItinerarioPublicPage() {
   const [puertoSeleccionadoMapa, setPuertoSeleccionadoMapa] = useState<string | null>(null);
   const [selectedItinerario, setSelectedItinerario] = useState<ItinerarioWithEscalas | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [destinoSearch, setDestinoSearch] = useState('');
+  const [destinoSeleccionado, setDestinoSeleccionado] = useState<string | null>(null);
+  const [showDestinoDropdown, setShowDestinoDropdown] = useState(false);
+  const destinoInputRef = useRef<HTMLInputElement>(null);
+  const destinoDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -162,6 +167,47 @@ export default function ItinerarioPublicPage() {
     [itinerarios]
   );
 
+  // Obtener destinos únicos de todos los itinerarios
+  const destinosUnicos = useMemo(() => {
+    const destinosSet = new Set<string>();
+    itinerarios.forEach((it) => {
+      if (it.escalas && Array.isArray(it.escalas)) {
+        it.escalas.forEach((escala) => {
+          const nombrePuerto = escala.puerto_nombre || escala.puerto;
+          if (nombrePuerto) {
+            destinosSet.add(nombrePuerto);
+          }
+        });
+      }
+    });
+    return Array.from(destinosSet).sort();
+  }, [itinerarios]);
+
+  // Filtrar destinos según búsqueda
+  const destinosFiltrados = useMemo(() => {
+    if (!destinoSearch.trim()) return destinosUnicos;
+    const searchLower = destinoSearch.toLowerCase().trim();
+    return destinosUnicos.filter(destino => 
+      destino.toLowerCase().includes(searchLower)
+    );
+  }, [destinosUnicos, destinoSearch]);
+
+  // Cerrar dropdown al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        destinoDropdownRef.current && 
+        !destinoDropdownRef.current.contains(event.target as Node) &&
+        destinoInputRef.current &&
+        !destinoInputRef.current.contains(event.target as Node)
+      ) {
+        setShowDestinoDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Filtrar itinerarios
   const filteredItinerarios = useMemo(() => {
     const hoy = new Date();
@@ -223,6 +269,13 @@ export default function ItinerarioPublicPage() {
         );
         if (!hasPuerto) return false;
       }
+      // Filtro por destino seleccionado en búsqueda
+      if (destinoSeleccionado) {
+        const hasDestino = it.escalas?.some((escala) => 
+          (escala.puerto_nombre || escala.puerto) === destinoSeleccionado
+        );
+        if (!hasDestino) return false;
+      }
       return true;
     });
     
@@ -264,33 +317,32 @@ export default function ItinerarioPublicPage() {
     });
     
     return filtered;
-  }, [itinerarios, filters, serviciosParaFiltro, consorcioDelServicioSeleccionado, puertoSeleccionadoMapa]);
+  }, [itinerarios, filters, serviciosParaFiltro, consorcioDelServicioSeleccionado, puertoSeleccionadoMapa, destinoSeleccionado]);
 
   return (
-    <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-[#202020]' : 'bg-[#F5F5F5]'}`}>
-      {/* Header - Estilo Windows Fluent */}
-      <header className={`sticky top-0 z-40 border-b backdrop-blur-sm ${theme === 'dark' 
-        ? 'border-[#3D3D3D] bg-[#2D2D2D]/95' 
-        : 'border-[#E1E1E1] bg-[#FFFFFF]/95'
-      }`}>
-        <div className="w-full px-3 py-2.5">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <img
-                src="https://asli.cl/img/logoblanco.png"
-                alt="ASLI Logo"
-                className="h-9 w-auto object-contain group-hover:opacity-90 transition-opacity"
-              />
+    <div className={`min-h-screen w-full ${theme === 'dark' ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
+      {/* Header - Estilo similar a versión usuario */}
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-xl ${theme === 'dark' 
+        ? 'border-[#3D3D3D]/50 bg-gradient-to-r from-[#0078D4]/20 via-[#00AEEF]/20 to-[#0078D4]/20' 
+        : 'border-[#E1E1E1] bg-gradient-to-r from-[#00AEEF]/10 via-white to-[#00AEEF]/10'
+      } shadow-lg`}>
+        <div className="w-full px-2 sm:px-4 py-2 sm:py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Link href="/" className="flex items-center gap-3 sm:gap-4 group">
+              <div className={`p-2 sm:p-2.5 rounded-xl flex-shrink-0 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                <Ship className={`h-5 w-5 sm:h-6 sm:w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+              </div>
               <div>
-                <h1 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                <p className={`text-[10px] sm:text-[11px] uppercase tracking-[0.2em] sm:tracking-[0.3em] ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Itinerarios</p>
+                <h1 className={`text-lg sm:text-xl md:text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
                   ITINERARIO
                 </h1>
-                <p className={`text-xs ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
-                  Vista de solo lectura
+                <p className={`text-[11px] sm:text-xs ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                  Tentativo semanal por servicio
                 </p>
               </div>
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               {/* Botón Mapa */}
               <button
                 onClick={() => {
@@ -299,38 +351,186 @@ export default function ItinerarioPublicPage() {
                     setPuertoSeleccionadoMapa(null);
                   }
                 }}
-                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border transition-all duration-150 ${
-                  theme === 'dark'
-                    ? showMap
-                      ? 'border-[#00AEEF] bg-[#00AEEF]/20 text-[#00AEEF]'
-                      : 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
-                    : showMap
-                      ? 'border-[#00AEEF] bg-[#00AEEF]/10 text-[#00AEEF]'
-                      : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${showMap
+                  ? theme === 'dark'
+                    ? 'border-[#00AEEF] bg-gradient-to-r from-[#00AEEF]/30 to-[#0078D4]/30 text-[#4FC3F7] hover:from-[#00AEEF]/40 hover:to-[#0078D4]/40'
+                    : 'border-[#00AEEF] bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white hover:from-[#0099CC] hover:to-[#0078D4]'
+                  : theme === 'dark'
+                    ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-200 hover:bg-[#3D3D3D] hover:border-[#00AEEF]/50'
+                    : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-[#00AEEF]'
                 }`}
-                style={{ borderRadius: '4px' }}
                 title={showMap ? 'Ocultar mapa' : 'Ver mapa'}
               >
-                <MapIcon className="h-3.5 w-3.5" />
-                <span>{showMap ? 'Ocultar Mapa' : 'Ver Mapa'}</span>
+                <MapIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">{showMap ? 'Ocultar Mapa' : 'Ver Mapa'}</span>
               </button>
+              {/* Campo de búsqueda de destinos */}
+              <div className="relative">
+                <div className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 shadow-sm transition-all duration-200 ${
+                  showDestinoDropdown || destinoSeleccionado
+                    ? theme === 'dark'
+                      ? 'border-[#00AEEF] bg-[#2D2D2D]/90 ring-1 ring-[#00AEEF]/30'
+                      : 'border-[#00AEEF] bg-white ring-1 ring-[#00AEEF]/30'
+                    : theme === 'dark'
+                      ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80 hover:border-[#00AEEF]/50'
+                      : 'border-gray-300 bg-white hover:border-[#00AEEF]'
+                }`}>
+                  <Search className={`h-4 w-4 flex-shrink-0 ${
+                    destinoSeleccionado
+                      ? theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'
+                      : theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                  }`} />
+                  <input
+                    ref={destinoInputRef}
+                    type="text"
+                    placeholder="Buscar destino..."
+                    value={destinoSeleccionado || destinoSearch}
+                    onChange={(e) => {
+                      setDestinoSearch(e.target.value);
+                      setDestinoSeleccionado(null);
+                      setShowDestinoDropdown(true);
+                    }}
+                    onFocus={() => setShowDestinoDropdown(true)}
+                    className={`w-24 sm:w-36 text-xs sm:text-sm font-medium bg-transparent outline-none placeholder:text-gray-400 ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}
+                  />
+                  {destinoSeleccionado && (
+                    <button
+                      onClick={() => {
+                        setDestinoSeleccionado(null);
+                        setDestinoSearch('');
+                      }}
+                      className={`p-0.5 rounded-full transition-colors ${
+                        theme === 'dark' 
+                          ? 'hover:bg-slate-600 text-slate-400 hover:text-white' 
+                          : 'hover:bg-gray-200 text-gray-400 hover:text-gray-700'
+                      }`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {!destinoSeleccionado && (
+                    <ChevronDown className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${
+                      showDestinoDropdown ? 'rotate-180' : ''
+                    } ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
+                  )}
+                </div>
+                {/* Dropdown de destinos */}
+                {showDestinoDropdown && (
+                  <div
+                    ref={destinoDropdownRef}
+                    className={`absolute top-full left-0 mt-1 w-56 max-h-64 overflow-y-auto rounded-xl border shadow-2xl z-[100] ${
+                      theme === 'dark'
+                        ? 'border-[#3D3D3D] bg-[#2D2D2D] backdrop-blur-xl'
+                        : 'border-gray-200 bg-white backdrop-blur-xl'
+                    }`}
+                  >
+                    {destinosFiltrados.length === 0 ? (
+                      <div className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                        No se encontraron destinos
+                      </div>
+                    ) : (
+                      destinosFiltrados.map((destino) => (
+                        <button
+                          key={destino}
+                          onClick={() => {
+                            setDestinoSeleccionado(destino);
+                            setDestinoSearch('');
+                            setShowDestinoDropdown(false);
+                          }}
+                          className={`w-full px-3 py-2 text-left text-xs sm:text-sm transition-colors ${
+                            destinoSeleccionado === destino
+                              ? theme === 'dark'
+                                ? 'bg-[#00AEEF]/20 text-[#4FC3F7]'
+                                : 'bg-[#00AEEF]/10 text-[#00AEEF]'
+                              : theme === 'dark'
+                                ? 'text-slate-200 hover:bg-[#3D3D3D]'
+                                : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <MapPin className={`h-3.5 w-3.5 flex-shrink-0 ${
+                              theme === 'dark' ? 'text-slate-400' : 'text-gray-400'
+                            }`} />
+                            <span className="truncate">{destino}</span>
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Toggle de vista ETA */}
+              <div className={`flex items-center gap-0 border rounded-xl overflow-hidden shadow-sm ${theme === 'dark'
+                ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80'
+                : 'border-gray-300 bg-white'
+              }`}>
+                <button
+                  onClick={() => setEtaViewMode('dias')}
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold transition-all duration-200 ${
+                    etaViewMode === 'dias'
+                      ? theme === 'dark'
+                        ? 'bg-gradient-to-r from-[#00AEEF] to-[#0078D4] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white shadow-sm'
+                      : theme === 'dark'
+                        ? 'text-slate-300 hover:bg-[#3D3D3D]'
+                        : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="Mostrar días de tránsito"
+                >
+                  Días
+                </button>
+                <button
+                  onClick={() => setEtaViewMode('fecha')}
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold transition-all duration-200 border-l ${
+                    theme === 'dark' ? 'border-[#3D3D3D]/50' : 'border-gray-300'
+                  } ${
+                    etaViewMode === 'fecha'
+                      ? theme === 'dark'
+                        ? 'bg-gradient-to-r from-[#00AEEF] to-[#0078D4] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white shadow-sm'
+                      : theme === 'dark'
+                        ? 'text-slate-300 hover:bg-[#3D3D3D]'
+                        : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="Mostrar fecha de llegada"
+                >
+                  Fecha
+                </button>
+                <button
+                  onClick={() => setEtaViewMode('ambos')}
+                  className={`px-2.5 py-1.5 text-[10px] sm:text-xs font-semibold transition-all duration-200 border-l ${
+                    theme === 'dark' ? 'border-[#3D3D3D]/50' : 'border-gray-300'
+                  } ${
+                    etaViewMode === 'ambos'
+                      ? theme === 'dark'
+                        ? 'bg-gradient-to-r from-[#00AEEF] to-[#0078D4] text-white shadow-sm'
+                        : 'bg-gradient-to-r from-[#00AEEF] to-[#0099CC] text-white shadow-sm'
+                      : theme === 'dark'
+                        ? 'text-slate-300 hover:bg-[#3D3D3D]'
+                        : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title="Mostrar días y fecha"
+                >
+                  Ambos
+                </button>
+              </div>
               {/* Botón Día/Noche */}
               <button
                 onClick={toggleTheme}
-                className={`flex items-center gap-1 px-3 py-1.5 text-xs font-medium border transition-all duration-150 ${
-                  theme === 'dark'
-                    ? 'border-[#3D3D3D] bg-[#2D2D2D] text-[#C0C0C0] hover:bg-[#3D3D3D]'
-                    : 'border-[#E1E1E1] bg-white text-[#323130] hover:bg-[#F3F3F3]'
+                className={`flex items-center gap-1.5 rounded-xl border px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105 active:scale-95 ${theme === 'dark'
+                  ? 'border-[#3D3D3D]/50 bg-[#2D2D2D]/80 text-slate-200 hover:bg-[#3D3D3D] hover:border-[#00AEEF]/50'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-[#00AEEF]'
                 }`}
-                style={{ borderRadius: '4px' }}
                 title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
               >
                 {theme === 'dark' ? (
-                  <Sun className="h-3.5 w-3.5" />
+                  <Sun className="h-4 w-4" />
                 ) : (
-                  <Moon className="h-3.5 w-3.5" />
+                  <Moon className="h-4 w-4" />
                 )}
-                <span>{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
+                <span className="hidden sm:inline">{theme === 'dark' ? 'Claro' : 'Oscuro'}</span>
               </button>
             </div>
           </div>
@@ -338,8 +538,8 @@ export default function ItinerarioPublicPage() {
       </header>
 
       {/* Main Content - Pantalla completa */}
-      <main className="w-full px-3 py-2">
-        <div className="flex flex-col gap-2 w-full">
+      <main className="flex-1 overflow-auto min-w-0 w-full">
+        <div className="flex flex-col w-full px-1 sm:px-2 py-2 space-y-2">
           {/* Filtros */}
           <div className="flex-shrink-0 w-full">
             <ItinerarioFilters
@@ -354,15 +554,15 @@ export default function ItinerarioPublicPage() {
               onReset={() => {
                 setFilters({});
                 setPuertoSeleccionadoMapa(null);
+                setDestinoSeleccionado(null);
+                setDestinoSearch('');
               }}
-              etaViewMode={etaViewMode}
-              onEtaViewModeChange={setEtaViewMode}
             />
           </div>
 
           {/* Mapa */}
           {showMap && (
-            <div className="flex-shrink-0 w-full h-96">
+            <div className="flex-shrink-0 w-full h-96 mb-4">
               <ItinerarioMap
                 itinerarios={filteredItinerarios}
                 onPuertoClick={(puerto) => {
@@ -374,27 +574,46 @@ export default function ItinerarioPublicPage() {
           )}
 
           {/* Contenido */}
-          <div className="flex-1 w-full">
+          <div className="flex-1 min-h-0 overflow-auto w-full">
             {isLoading ? (
-              <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
-                ? 'border-[#3D3D3D] bg-[#2D2D2D]'
+              <div className={`h-full flex items-center justify-center rounded-xl border shadow-lg ${theme === 'dark'
+                ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]'
                 : 'border-[#E1E1E1] bg-white'
-              }`} style={{ borderRadius: '4px' }}>
-                <div className="flex items-center justify-center gap-2">
-                  <div className={`h-5 w-5 animate-spin rounded-full border-2 ${theme === 'dark' ? 'border-[#0078D4]' : 'border-[#0078D4]'} border-t-transparent`} />
-                  <span className={`text-sm ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>Cargando itinerarios...</span>
+              }`}>
+                <div className="flex flex-col items-center justify-center gap-4">
+                  <div className={`relative h-12 w-12 ${theme === 'dark' ? 'text-[#00AEEF]' : 'text-[#00AEEF]'}`}>
+                    <div className="absolute inset-0 animate-spin rounded-full border-4 border-t-transparent border-[#00AEEF]/30"></div>
+                    <div className="absolute inset-0 animate-spin rounded-full border-4 border-t-transparent border-[#00AEEF] [animation-delay:-0.15s]"></div>
+                  </div>
+                  <div className="text-center">
+                    <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                      Cargando itinerarios...
+                    </p>
+                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                      Por favor espera
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : error ? (
-              <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
-                ? 'border-[#D83B01] bg-[#D83B01]/10'
-                : 'border-[#D83B01] bg-[#FFF4F1]'
-              }`} style={{ borderRadius: '4px' }}>
-                <div className="space-y-4 text-center">
-                  <div className={`text-lg font-semibold ${theme === 'dark' ? 'text-[#FF6B47]' : 'text-[#D83B01]'}`}>
-                    ⚠️ Error
+              <div className={`h-full flex items-center justify-center rounded-xl border shadow-lg p-8 ${theme === 'dark'
+                ? 'border-amber-500/40 bg-gradient-to-br from-amber-900/20 to-[#1F1F1F]'
+                : 'border-amber-300 bg-gradient-to-br from-amber-50 to-white'
+              }`}>
+                <div className="space-y-4 text-center max-w-md">
+                  <div className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-amber-500/20' : 'bg-amber-100'} inline-block`}>
+                    <div className={`text-2xl ${theme === 'dark' ? 'text-amber-400' : 'text-amber-600'}`}>
+                      ⚠️
+                    </div>
                   </div>
-                  <div className={`text-sm ${theme === 'dark' ? 'text-[#C0C0C0]' : 'text-[#323130]'}`}>{error}</div>
+                  <div>
+                    <h3 className={`text-lg font-bold mb-2 ${theme === 'dark' ? 'text-amber-300' : 'text-amber-700'}`}>
+                      Error al cargar
+                    </h3>
+                    <p className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                      {error}
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -416,11 +635,21 @@ export default function ItinerarioPublicPage() {
                 {/* Vista Mobile (Cards) */}
                 <div className="lg:hidden space-y-2 w-full">
                   {filteredItinerarios.length === 0 ? (
-                    <div className={`flex items-center justify-center py-12 border ${theme === 'dark'
-                      ? 'border-[#3D3D3D] bg-[#2D2D2D]'
+                    <div className={`flex items-center justify-center py-12 rounded-xl border shadow-sm ${theme === 'dark'
+                      ? 'border-[#3D3D3D]/50 bg-gradient-to-br from-[#2D2D2D] to-[#1F1F1F]'
                       : 'border-[#E1E1E1] bg-white'
-                    }`} style={{ borderRadius: '4px' }}>
-                      <p className={theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}>No hay itinerarios disponibles</p>
+                    }`}>
+                      <div className="text-center">
+                        <div className={`p-3 rounded-xl inline-block mb-3 ${theme === 'dark' ? 'bg-[#00AEEF]/20' : 'bg-[#00AEEF]/10'}`}>
+                          <Ship className={`h-6 w-6 ${theme === 'dark' ? 'text-[#4FC3F7]' : 'text-[#00AEEF]'}`} />
+                        </div>
+                        <p className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-[#1F1F1F]'}`}>
+                          No hay itinerarios disponibles
+                        </p>
+                        <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-[#A0A0A0]' : 'text-[#6B6B6B]'}`}>
+                          Intenta ajustar los filtros
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     (() => {
