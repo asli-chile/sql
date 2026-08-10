@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { useReveal } from '../hooks/useReveal'
 
 /**
- * Sección: Tracking de cargas
- * Fondo #003F5A, UI para consulta de seguimiento
+ * Formulario de tracking — selecciona naviera y redirige al sitio oficial
  */
 const Tracking = () => {
   const [naviera, setNaviera] = useState('')
+  const { ref, style } = useReveal()
 
   const navieras = [
     { value: '', label: 'Seleccione una naviera' },
@@ -31,11 +32,9 @@ const Tracking = () => {
       return
     }
 
-    // Buscar la naviera seleccionada
     const navieraSeleccionada = navieras.find((nav) => nav.value === naviera)
 
     if (navieraSeleccionada && navieraSeleccionada.url) {
-      // Abrir la página de tracking de la naviera en una nueva pestaña
       window.open(navieraSeleccionada.url, '_blank', 'noopener,noreferrer')
     } else {
       alert('Por favor, seleccione una naviera de la lista para acceder al tracking.')
@@ -43,58 +42,50 @@ const Tracking = () => {
   }
 
   return (
-    <section className="py-16 md:py-24 bg-asli-dark">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              Tracking de cargas
-            </h2>
-            <p className="text-lg text-gray-200 max-w-2xl mx-auto">
-              Ingresa los datos de tu carga y serás redirigido a la página oficial de tracking de la naviera seleccionada
-            </p>
-          </div>
-
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white rounded-lg shadow-xl p-6 md:p-8"
-          >
-            <div className="space-y-6">
-              <div>
-                <label
-                  htmlFor="naviera"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
-                >
-                  Naviera
-                </label>
-                <select
-                  id="naviera"
-                  value={naviera}
-                  onChange={(e) => setNaviera(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-asli-primary focus:border-transparent text-gray-900 bg-white"
-                  required
-                >
-                  {navieras.map((nav) => (
-                    <option key={nav.value} value={nav.value} className="text-gray-900">
-                      {nav.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-asli-accent text-white px-6 py-3 rounded-md text-lg font-semibold hover:bg-opacity-90 transition-all duration-200 shadow-md hover:shadow-lg"
-              >
-                Ir a tracking de la naviera
-              </button>
-            </div>
-          </form>
+    <section className="grain-surface bg-asli-light py-20 md:py-28">
+      <div ref={ref} style={style} className="relative z-[2] container-asli">
+        <div className="max-w-xl mx-auto text-center mb-12">
+          <h2 className="font-display text-asli-dark text-[clamp(1.75rem,3.5vw,2.5rem)] font-bold tracking-tight mb-4">
+            Consulta el estado de tu carga
+          </h2>
+          <p className="text-asli-dark/65 text-base md:text-lg leading-relaxed">
+            Selecciona la naviera y serás redirigido a su página oficial de tracking.
+          </p>
         </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="max-w-xl mx-auto bg-white border border-asli-dark/10 p-6 md:p-10 shadow-asli-med"
+        >
+          <div className="space-y-6">
+            <div>
+              <label htmlFor="naviera" className="section-label !mb-2">
+                Naviera
+              </label>
+              <select
+                id="naviera"
+                value={naviera}
+                onChange={(e) => setNaviera(e.target.value)}
+                className="w-full px-4 py-3.5 bg-asli-light border border-asli-dark/15 text-asli-dark focus:outline-none focus:ring-2 focus:ring-asli-primary/30 focus:border-asli-primary transition-colors duration-320"
+                style={{ borderRadius: 'var(--radius-md)' }}
+                required
+              >
+                {navieras.map((nav) => (
+                  <option key={nav.value} value={nav.value}>
+                    {nav.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button type="submit" className="btn-primary w-full">
+              Ir a tracking de la naviera
+            </button>
+          </div>
+        </form>
       </div>
     </section>
   )
 }
 
 export default Tracking
-

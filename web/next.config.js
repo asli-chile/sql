@@ -1,52 +1,79 @@
 /** @type {import('next').NextConfig} */
 const erpBaseUrl =
   process.env.NEXT_PUBLIC_ERP_URL ||
-  "https://registo-de-embarques-asli-toox.vercel.app";
+  'https://registo-de-embarques-asli-toox.vercel.app'
+
+/**
+ * Rewrites solo para rutas del ERP.
+ * NO reescribir /_next/* — esos assets pertenecen al landing.
+ */
+const erpRewrites = [
+  { source: '/logoasli.png', destination: `${erpBaseUrl}/logoasli.png` },
+  { source: '/api/:path*', destination: `${erpBaseUrl}/api/:path*` },
+  { source: '/auth', destination: `${erpBaseUrl}/auth` },
+  { source: '/auth/:path*', destination: `${erpBaseUrl}/auth/:path*` },
+  { source: '/indicadores', destination: `${erpBaseUrl}/indicadores` },
+  { source: '/indicadores/:path*', destination: `${erpBaseUrl}/indicadores/:path*` },
+  { source: '/contacto', destination: `${erpBaseUrl}/contacto` },
+  { source: '/dashboard', destination: `${erpBaseUrl}/dashboard` },
+  { source: '/dashboard/:path*', destination: `${erpBaseUrl}/dashboard/:path*` },
+  { source: '/documentos', destination: `${erpBaseUrl}/documentos` },
+  { source: '/documentos/:path*', destination: `${erpBaseUrl}/documentos/:path*` },
+  { source: '/facturas', destination: `${erpBaseUrl}/facturas` },
+  { source: '/facturas/:path*', destination: `${erpBaseUrl}/facturas/:path*` },
+  { source: '/facturar-preview', destination: `${erpBaseUrl}/facturar-preview` },
+  { source: '/facturar-preview/:path*', destination: `${erpBaseUrl}/facturar-preview/:path*` },
+  { source: '/itinerario', destination: `${erpBaseUrl}/itinerario` },
+  { source: '/itinerario/:path*', destination: `${erpBaseUrl}/itinerario/:path*` },
+  { source: '/itinerario-asli', destination: `${erpBaseUrl}/itinerario-asli` },
+  { source: '/mantenimiento', destination: `${erpBaseUrl}/mantenimiento` },
+  { source: '/mantenimiento/:path*', destination: `${erpBaseUrl}/mantenimiento/:path*` },
+  { source: '/profile', destination: `${erpBaseUrl}/profile` },
+  { source: '/profile/:path*', destination: `${erpBaseUrl}/profile/:path*` },
+  { source: '/registros', destination: `${erpBaseUrl}/registros` },
+  { source: '/registros/:path*', destination: `${erpBaseUrl}/registros/:path*` },
+  { source: '/reportes', destination: `${erpBaseUrl}/reportes` },
+  { source: '/reportes/:path*', destination: `${erpBaseUrl}/reportes/:path*` },
+  { source: '/finanzas', destination: `${erpBaseUrl}/finanzas` },
+  { source: '/finanzas/:path*', destination: `${erpBaseUrl}/finanzas/:path*` },
+  {
+    source: '/tablas-personalizadas',
+    destination: `${erpBaseUrl}/tablas-personalizadas`,
+  },
+  {
+    source: '/tablas-personalizadas/:path*',
+    destination: `${erpBaseUrl}/tablas-personalizadas/:path*`,
+  },
+  { source: '/transportes', destination: `${erpBaseUrl}/transportes` },
+  { source: '/transportes/:path*', destination: `${erpBaseUrl}/transportes/:path*` },
+  { source: '/vessel-diagnose', destination: `${erpBaseUrl}/vessel-diagnose` },
+  {
+    source: '/vessel-diagnose/:path*',
+    destination: `${erpBaseUrl}/vessel-diagnose/:path*`,
+  },
+  {
+    source: '/generar-documentos',
+    destination: `${erpBaseUrl}/generar-documentos`,
+  },
+  {
+    source: '/generar-documentos/:path*',
+    destination: `${erpBaseUrl}/generar-documentos/:path*`,
+  },
+]
 
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
   images: {
-    domains: ["asli.cl"],
+    remotePatterns: [{ protocol: 'https', hostname: 'asli.cl' }],
   },
   async rewrites() {
-    return [
-      // IMPORTANTE: Assets de Next.js PRIMERO (mayor prioridad)
-      // Assets de Next.js (JS, CSS, chunks, etc.) - ambas variantes
-      { source: "/_next/static/:path*", destination: `${erpBaseUrl}/_next/static/:path*` },
-      { source: "/_next/image/:path*", destination: `${erpBaseUrl}/_next/image/:path*` },
-      { source: "/_next/chunks/:path*", destination: `${erpBaseUrl}/_next/chunks/:path*` },
-      { source: "/_next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
-      { source: "/next/static/:path*", destination: `${erpBaseUrl}/_next/static/:path*` },
-      { source: "/next/:path*", destination: `${erpBaseUrl}/_next/:path*` },
-      // Assets estáticos de la ERP (logos, imágenes, etc.)
-      { source: "/logoasli.png", destination: `${erpBaseUrl}/logoasli.png` },
-      { source: "/favicon.ico", destination: `${erpBaseUrl}/favicon.ico` },
-      // Fuentes y otros recursos
-      { source: "/fonts/:path*", destination: `${erpBaseUrl}/fonts/:path*` },
-      // Rutas API completas
-      { source: "/api/:path*", destination: `${erpBaseUrl}/api/:path*` },
-      // Rutas principales de la ERP
-      { source: "/auth", destination: `${erpBaseUrl}/auth` },
-      { source: "/indicadores", destination: `${erpBaseUrl}/indicadores` },
-      { source: "/contacto", destination: `${erpBaseUrl}/contacto` },
-      { source: "/dashboard/:path*", destination: `${erpBaseUrl}/dashboard/:path*` },
-      { source: "/documentos/:path*", destination: `${erpBaseUrl}/documentos/:path*` },
-      { source: "/facturas/:path*", destination: `${erpBaseUrl}/facturas/:path*` },
-      { source: "/facturar-preview/:path*", destination: `${erpBaseUrl}/facturar-preview/:path*` },
-      { source: "/itinerario/:path*", destination: `${erpBaseUrl}/itinerario/:path*` },
-      { source: "/itinerario-asli", destination: `${erpBaseUrl}/itinerario-asli` },
-      { source: "/mantenimiento/:path*", destination: `${erpBaseUrl}/mantenimiento/:path*` },
-      { source: "/profile/:path*", destination: `${erpBaseUrl}/profile/:path*` },
-      { source: "/registros/:path*", destination: `${erpBaseUrl}/registros/:path*` },
-      {
-        source: "/tablas-personalizadas/:path*",
-        destination: `${erpBaseUrl}/tablas-personalizadas/:path*`,
-      },
-      { source: "/transportes/:path*", destination: `${erpBaseUrl}/transportes/:path*` },
-      { source: "/vessel-diagnose/:path*", destination: `${erpBaseUrl}/vessel-diagnose/:path*` },
-    ];
+    // En desarrollo local el landing sirve solo sus páginas;
+    // el CTA "Acceder a la app" va a localhost:3001 (ERP).
+    if (process.env.NODE_ENV === 'development') {
+      return []
+    }
+    return erpRewrites
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

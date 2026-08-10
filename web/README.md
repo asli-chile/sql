@@ -1,69 +1,79 @@
-# ASLI - Asesorías y Servicios Logísticos Integrales Ltda.
+# ASLI Web — Sitio público
 
-Sitio web oficial de ASLI, empresa chilena especializada en servicios logísticos internacionales.
+Sitio oficial de **ASLI** (Asesorías y Servicios Logísticos Integrales Ltda.).
 
 **Ubicación:** Longitudinal Sur Km. 186, 3340000 Curicó, Maule
 
-## 🚀 Tecnologías
+## Stack
 
-- **React 18** - Biblioteca de UI
-- **Vite** - Build tool y dev server
-- **TailwindCSS** - Framework de estilos
-- **React Router** - Enrutamiento
+- Next.js 14 (Pages Router)
+- React 18
+- Tailwind CSS 3
+- Design DNA: [`design-dna.json`](./design-dna.json)
 
-## 📦 Instalación
+## Desarrollo
+
+El landing vive en esta carpeta (`ASLI/web`), **no** en la raíz de `ASLI` (esa es el ERP y redirige a `/auth`).
 
 ```bash
+cd web
 npm install
-```
-
-## 🛠️ Desarrollo
-
-```bash
 npm run dev
 ```
 
-El servidor de desarrollo se iniciará en `http://localhost:5173`
+Abre `http://localhost:3000` (o el puerto que indique la terminal).
 
-## 🏗️ Build
+> Si ya tienes el ERP corriendo en el 3000, usa otro puerto:
+> `npm run dev -- -p 3002`
+
+## Build
 
 ```bash
 npm run build
+npm start
 ```
 
-## 🎨 Paleta de Colores
+## Design DNA
 
-- **Fondo claro principal**: `#F6EEE8`
-- **Color primario (marca)**: `#007A7B`
-- **Color secundario**: `#003F5A`
-- **Color oscuro corporativo**: `#11224E`
-- **Color acento / estados**: `#669900`
+El rediseño sigue el flujo de [design-dna](https://github.com/zanwei/design-dna):
 
-## 📁 Estructura del Proyecto
+| Dimensión | En este proyecto |
+|-----------|------------------|
+| **design_system** | Tokens en `design-dna.json` → CSS vars en `src/index.css` + Tailwind |
+| **design_style** | Logística moderna: brand-first, servicios como eje, tipografía Syne + Manrope |
+| **visual_effects** | CSS-only: hero entrance, scroll fade-up, hover de imagen, grain sutil |
 
-```
-src/
-├── components/      # Componentes reutilizables
-│   ├── Header.jsx
-│   ├── Hero.jsx
-│   ├── Servicios.jsx
-│   ├── Tracking.jsx
-│   ├── Cotizacion.jsx
-│   ├── PorQueAsli.jsx
-│   ├── AccesoClientes.jsx
-│   └── Footer.jsx
-├── pages/          # Páginas
-│   └── Home.jsx
-├── App.jsx         # Componente principal
-├── main.jsx        # Punto de entrada
-└── index.css       # Estilos globales
-```
+Skill instalada en el monorepo ASLI:
 
-## 🔜 Próximos Pasos
+- `.agents/skills/design-dna/`
+- `.cursor/skills/design-dna/`
 
-- Integración con Supabase para backend
-- Implementación de autenticación
-- Portal privado para clientes
-- Funcionalidad real de tracking
-- Sistema de cotizaciones
+### Paleta
 
+| Token | Hex | Uso |
+|-------|-----|-----|
+| `asli-light` | `#F6EEE8` | Fondo página |
+| `asli-primary` | `#007A7B` | CTAs, acentos |
+| `asli-secondary` | `#003F5A` | Franjas profundas |
+| `asli-dark` | `#11224E` | Navy institucional |
+| `asli-accent` | `#669900` | Énfasis / slogan |
+
+### Tipografía
+
+- **Display:** Syne
+- **Body:** Manrope
+
+### Estructura Home
+
+1. Hero full-bleed (marca + CTA)
+2. Servicios (editorial rows)
+3. Confianza (clientes / partners / navieras)
+4. Contacto / ubicación
+5. Footer
+
+## Páginas
+
+- `/` — Home
+- `/servicios` — Catálogo + equipo de contacto
+- `/tracking` — Tracking
+- `/presentacion` — Presentación
